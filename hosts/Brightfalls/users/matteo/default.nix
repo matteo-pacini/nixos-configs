@@ -9,6 +9,8 @@
     ./gnome.nix
     ./firefox.nix
     ./flatpak.nix
+    ./git.nix
+    ./text-editors.nix
   ];
 
   home.username = "matteo";
@@ -37,27 +39,6 @@
   ];
 
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
-
-  programs.git = {
-    enable = true;
-    package = pkgs.gitAndTools.gitFull;
-    userName = "matteo-pacini";
-    userEmail = "matteo@codecraft.it";
-  };
-
-  programs.vscode = {
-    enable = true;
-    extensions = let
-      vscext = pkgs.vscode-extensions;
-    in [
-      vscext.jnoortheen.nix-ide
-      vscext.kamadorueda.alejandra
-    ];
-    mutableExtensionsDir = true;
-    userSettings = {
-      "nix.formatterPath" = "alejandra";
-    };
-  };
 
   programs.zsh = {
     initExtra = ''
