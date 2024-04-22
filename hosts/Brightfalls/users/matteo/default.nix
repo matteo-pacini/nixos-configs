@@ -27,7 +27,7 @@
     qemu
     quickemu
     # Video
-    vlc
+
     # Custom packages
     reshade-steam-proton
     radiogogo
@@ -35,6 +35,8 @@
     unstable.mangohud
     vulkan-tools
     mesa-demos
+    # Music
+    cmus
     # Other
     eza
   ];
