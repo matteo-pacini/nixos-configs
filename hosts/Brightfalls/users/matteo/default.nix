@@ -11,6 +11,7 @@
     ./flatpak.nix
     ./git.nix
     ./text-editors.nix
+    ./mounts.nix
   ];
 
   home.username = "matteo";
@@ -63,24 +64,6 @@
       l = "eza -lh";
       ll = "eza -lha";
     };
-  };
-
-  home.file."scripts/mount_games.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      [ -d /home/matteo/Mounts ] || mkdir /home/matteo/Mounts
-      [ -d /home/matteo/Mounts/Games ] || mkdir /home/matteo/Mounts/Games
-      mount -t fuse.sshfs -o port=1788,idmap=user matteo@192.168.7.7:/diskpool/games /home/matteo/Mounts/Games
-    '';
-  };
-
-  home.file."scripts/unmount_games.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      fusermount -u /home/matteo/Mounts/Games
-    '';
   };
 
   home.stateVersion = "23.11";
