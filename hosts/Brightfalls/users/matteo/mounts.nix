@@ -8,14 +8,16 @@
     Unit = {
       Description = "Games folder on nexus";
       After = [
+        "graphical-session.target"
         "network-online.target"
       ];
       Requires = [
+        "graphical-session.target"
         "network-online.target"
       ];
     };
 
-    Install = {WantedBy = ["multi-user.target"];};
+    Install = {WantedBy = ["graphical-session.target"];};
 
     Mount = {
       What = "matteo@192.168.7.7:/diskpool/games";
