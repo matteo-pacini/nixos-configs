@@ -1,6 +1,9 @@
-{ config, pkgs, inputs, ... }:
-
 {
+  config,
+  pkgs,
+  inputs,
+  ...
+}: {
   home.file.".mozilla/firefox/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
 
   programs.firefox.enable = true;
@@ -20,5 +23,4 @@
       "browser.theme.dark-private-windows" = false; # Disable private window dark theme
     };
   };
-
 }

@@ -18,9 +18,9 @@
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
             (import ./overlays/unstable-mesa.nix)
-            #(import ./overlays/minimal-qemu.nix)
-            (import ./overlays/reshade-linux.nix)
-            #(import ./overlays/radiogogo.nix)
+            (import ./overlays/minimal-qemu.nix)
+            (import ./overlays/reshade-steam-proton.nix)
+            (import ./overlays/radiogogo.nix)
           ];
         }
         ./hosts/Brightfalls

@@ -1,3 +1,3 @@
-self: super: {
-  radiogogo = super.callPackage ../packages/radiogogo.nix { };
+final: prev: {
+  radiogogo = prev.callPackage ../packages/radiogogo.nix {};
 }

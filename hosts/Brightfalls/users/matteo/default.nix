@@ -26,7 +26,8 @@
     # Video
     vlc
     # Custom packages
-    reshade-linux
+    reshade-steam-proton
+    radiogogo
     # Gaming
     unstable.mangohud
     vulkan-tools
