@@ -5,15 +5,18 @@
   ...
 }: {
   systemd.user.mounts.games = {
+    enable = true;
+
     Unit = {
       Description = "Games folder on nexus";
       After = [
         "graphical-session.target"
-        "network-online.target"
       ];
       Requires = [
-        "graphical-session.target"
         "network-online.target"
+      ];
+      PartOf = [
+        "graphical-session.target"
       ];
     };
 
