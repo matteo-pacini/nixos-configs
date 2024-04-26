@@ -26,8 +26,6 @@
     # Virtualisation
     qemu
     quickemu
-    # Video
-
     # Custom packages
     reshade-steam-proton
     radiogogo
@@ -35,6 +33,7 @@
     unstable.mangohud
     vulkan-tools
     mesa-demos
+    unstable.bottles
     # Music
     cmus
     # Other

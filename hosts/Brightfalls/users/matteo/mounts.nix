@@ -26,7 +26,7 @@
       What = "matteo@192.168.7.7:/diskpool/games";
       Where = "/home/matteo/Mounts/Games";
       Type = "fuse.sshfs";
-      Options = "port=1788,idmap=user";
+      Options = "port=1788,idmap=user,_netdev,IdentityFile=/home/matteo/.ssh/nexus,x-systemd.automount";
       TimeoutSec = 60;
     };
   };
@@ -48,7 +48,7 @@
       What = "matteo@192.168.7.7:/diskpool/music";
       Where = "/home/matteo/Mounts/Music";
       Type = "fuse.sshfs";
-      Options = "port=1788,idmap=user";
+      Options = "port=1788,idmap=user,_netdev,IdentityFile=/home/matteo/.ssh/nexus,x-systemd.automount";
       TimeoutSec = 60;
     };
   };

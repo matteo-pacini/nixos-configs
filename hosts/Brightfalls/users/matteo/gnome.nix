@@ -13,8 +13,17 @@ with lib.hm.gvariant; {
       #gtk-theme = "Adwaita-dark";
     };
     "org/gnome/shell" = {
-      "enabled-extensions" = [
+      enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
+      ];
+      favorite-apps = [
+        "org.gnome.Nautilus.desktop"
+        "firefox.desktop"
+        "org.corectrl.corectrl.desktop"
+        "org.gnome.Console.desktop"
+        "com.obsproject.Studio.desktop"
+        "steam.desktop"
+        "com.usebottles.bottles.desktop"
       ];
     };
     "org/gnome/desktop/session" = {
