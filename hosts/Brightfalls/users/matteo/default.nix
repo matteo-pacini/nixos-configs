@@ -21,7 +21,7 @@
     #Gnome
     gnomeExtensions.appindicator
     gnome.gnome-tweaks
-    # GUI Apps
+    # Security
     _1password-gui
     # Virtualisation
     qemu
@@ -36,6 +36,8 @@
     unstable.bottles
     # Music
     cmus
+    # Social
+    telegram-desktop
     # Other
     eza
   ];
