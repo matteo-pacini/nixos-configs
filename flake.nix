@@ -21,7 +21,6 @@
             (import ./overlays/minimal-qemu.nix)
             (import ./overlays/reshade-steam-proton.nix)
             (import ./overlays/radiogogo.nix)
-            (import ./overlays/telegram-desktop.nix)
           ];
         }
         ./hosts/Brightfalls

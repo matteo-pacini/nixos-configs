@@ -37,7 +37,6 @@
     # Music
     cmus
     # Social
-    telegram-desktop
     # Other
     eza
   ];
