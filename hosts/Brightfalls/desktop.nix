@@ -23,17 +23,16 @@
       simple-scan
     ])
     ++ (with pkgs.gnome; [
-      cheese # webcam tool
+      cheese
       gnome-music
-      #gedit # text editor
-      epiphany # web browser
-      geary # email reader
+      epiphany
+      geary
       gnome-characters
-      tali # poker game
-      iagno # go game
-      hitori # sudoku game
-      atomix # puzzle game
-      yelp # Help view
+      tali
+      iagno
+      hitori
+      atomix
+      yelp
       gnome-contacts
       gnome-initial-setup
       gnome-maps

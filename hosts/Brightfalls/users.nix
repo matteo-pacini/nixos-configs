@@ -9,7 +9,15 @@
 
   users.users."matteo" = {
     isNormalUser = true;
-    extraGroups = ["wheel" "networkmanager" "audio" "video" "input" "corectrl"];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+      "audio"
+      "video"
+      "input"
+      "corectrl"
+      "docker"
+    ];
     shell = pkgs.zsh;
   };
 }
