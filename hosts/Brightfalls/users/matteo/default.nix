@@ -26,6 +26,7 @@
     # Virtualisation
     qemu
     quickemu
+    unstable._86Box-with-roms
     # Custom packages
     reshade-steam-proton
     radiogogo
@@ -38,6 +39,7 @@
     cmus
     # Social
     # Other
+    nix-output-monitor
     eza
   ];
 
