@@ -8,6 +8,8 @@
       url = "github:rafaelmardojai/firefox-gnome-theme";
       flake = false;
     };
+    nix-darwin.url = "github:lnl7/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs: {
@@ -31,6 +33,11 @@
           home-manager.users.matteo = import ./hosts/Brightfalls/users/matteo;
           home-manager.extraSpecialArgs = {inherit inputs;};
         }
+      ];
+    };
+    darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
+      modules = [
+        ./hosts/NightSprings
       ];
     };
   };
