@@ -36,8 +36,15 @@
       ];
     };
     darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
       modules = [
         ./hosts/NightSprings
+        inputs.home-manager.darwinModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.matteo = import ./hosts/NightSprings/users/matteo;
+        }
       ];
     };
   };

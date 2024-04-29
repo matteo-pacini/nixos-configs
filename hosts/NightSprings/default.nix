@@ -1,18 +1,39 @@
-{ pkgs, ... }: {
-      
-      environment.systemPackages =
-      [
-           
-      ];
+{pkgs, ...}: {
+  environment.systemPackages = with pkgs; [
+    alejandra
+  ];
 
-      services.nix-daemon.enable = true;
+  users.users."matteo" = {
+    home = "/Users/matteo";
+  };
 
-      nix.settings.experimental-features = "nix-command flakes";
+  programs.zsh.enable = true;
 
-      programs.zsh.enable = true;
+  security.pam.enableSudoTouchIdAuth = true;
 
-      system.stateVersion = 4;
+  services.nix-daemon.enable = true;
 
-      nixpkgs.hostPlatform = "aarch64-darwin";
+  nixpkgs.config.allowUnfree = true;
+  nix.settings.experimental-features = ["nix-command" "flakes"];
+  nix.gc.automatic = true;
 
+  homebrew = {
+    enable = true;
+    onActivation.cleanup = "zap";
+    casks = [
+      "1password"
+      "firefox"
+      "xcodes"
+      "iterm2"
+      "zoom"
+      "slack"
+      "utm"
+    ];
+    masApps = {
+    };
+  };
+
+  system.stateVersion = 4;
+
+  nixpkgs.hostPlatform = "aarch64-darwin";
 }
