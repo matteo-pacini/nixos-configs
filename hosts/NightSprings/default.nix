@@ -1,6 +1,5 @@
 {pkgs, ...}: {
   environment.systemPackages = with pkgs; [
-    alejandra
   ];
 
   users.users."matteo" = {
@@ -23,11 +22,12 @@
     casks = [
       "1password"
       "firefox"
-      "xcodes"
-      "iterm2"
       "zoom"
       "slack"
-      "utm"
+      "mullvadvpn"
+      "dash"
+      "telegram"
+      "whatsapp"
     ];
     masApps = {
     };

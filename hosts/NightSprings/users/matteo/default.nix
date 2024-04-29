@@ -15,11 +15,21 @@
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
+    # Terminal
+    iterm2
+    # Development
+    xcodes-app-bin
+    # Virtualization
+    utm
     # Extra
     eza
   ];
 
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
+
+  home.file."Library/Preferences/com.googlecode.iterm2.plist".text = ''
+    SUEnableAutomaticChecks = 0
+  '';
 
   programs.zsh = {
     initExtra = ''
@@ -43,7 +53,7 @@
     shellAliases = {
       l = "eza -lh";
       ll = "eza -lha";
-      boom = "brew update && brew upgrade && brew cleanup -s";
+      boom = "/opt/homebrew/bin/brew update && /opt/homebrew/bin/brew upgrade && /opt/homebrew/bin/brew cleanup -s";
     };
   };
 

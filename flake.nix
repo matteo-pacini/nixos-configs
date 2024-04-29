@@ -38,6 +38,12 @@
     darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [
+        {
+          nixpkgs.overlays = [
+            (import ./overlays/unstable.nix {inherit inputs;})
+            (import ./overlays/darwin/xcodes-app-bin.nix)
+          ];
+        }
         ./hosts/NightSprings
         inputs.home-manager.darwinModules.home-manager
         {
