@@ -21,12 +21,13 @@
     #Gnome
     gnomeExtensions.appindicator
     gnome.gnome-tweaks
+    # Downloads
+    aria
     # Security
     _1password-gui
     # Virtualisation
     qemu
     quickemu
-    unstable._86Box-with-roms
     # Custom packages
     reshade-steam-proton
     radiogogo
