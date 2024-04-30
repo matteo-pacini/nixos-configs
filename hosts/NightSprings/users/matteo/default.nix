@@ -5,8 +5,11 @@
   ...
 }: {
   imports = [
+    ../../../../modules/home-manager/darwin/xcodes.nix
+
     ./git.nix
     ./text-editors.nix
+    ./xcodes.nix
   ];
 
   home.username = "matteo";
@@ -17,8 +20,6 @@
     coreutils
     # Terminal
     iterm2
-    # Development
-    xcodes-app
     # Virtualization
     utm
     colima
