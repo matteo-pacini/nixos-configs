@@ -21,6 +21,8 @@
     xcodes-app-bin
     # Virtualization
     utm
+    colima
+    docker
     # Extra
     eza
   ];
