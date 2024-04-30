@@ -12,6 +12,8 @@
       vscext.jnoortheen.nix-ide
       vscext.kamadorueda.alejandra
       vscext.github.copilot
+      vscext.usernamehw.errorlens
+      vscext.timonwong.shellcheck
     ];
     mutableExtensionsDir = false;
     userSettings = {
