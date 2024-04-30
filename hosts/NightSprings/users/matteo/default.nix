@@ -18,7 +18,7 @@
     # Terminal
     iterm2
     # Development
-    xcodes-app-bin
+    xcodes-app
     # Virtualization
     utm
     colima
@@ -55,7 +55,6 @@
     shellAliases = {
       l = "eza -lh";
       ll = "eza -lha";
-      boom = "/opt/homebrew/bin/brew update && /opt/homebrew/bin/brew upgrade && /opt/homebrew/bin/brew cleanup -s";
     };
   };
 

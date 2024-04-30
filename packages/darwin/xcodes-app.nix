@@ -5,7 +5,7 @@
   unzip,
 }:
 stdenvNoCC.mkDerivation rec {
-  pname = "xcodes-app-bin";
+  pname = "xcodes-app";
   version = "2.1.2b26";
 
   src = fetchurl {
@@ -37,6 +37,6 @@ stdenvNoCC.mkDerivation rec {
     homepage = "https://github.com/XcodesOrg/XcodesApp";
     license = licenses.mit;
     maintainers = with maintainers; [];
-    platforms = ["x86_64-darwin" "aarch64-darwin"];
+    platforms = platforms.darwin;
   };
 }

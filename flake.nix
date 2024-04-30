@@ -41,7 +41,7 @@
         {
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
-            (import ./overlays/darwin/xcodes-app-bin.nix)
+            (import ./overlays/darwin/xcodes-app.nix)
           ];
         }
         ./hosts/NightSprings
