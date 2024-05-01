@@ -10,6 +10,10 @@
     };
     nix-darwin.url = "github:lnl7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    xcode-dracula-theme = {
+      url = "github:dracula/xcode/master";
+      flake = false;
+    };
   };
 
   outputs = inputs: {
@@ -41,7 +45,7 @@
         {
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
-            (import ./overlays/darwin/xcodes-app.nix)
+            (import ./overlays/darwin)
           ];
         }
         ./hosts/NightSprings
@@ -50,6 +54,7 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.matteo = import ./hosts/NightSprings/users/matteo;
+          home-manager.extraSpecialArgs = {inherit inputs;};
         }
       ];
     };

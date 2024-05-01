@@ -96,7 +96,25 @@
         "home-manager": "home-manager",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-unstable": "nixpkgs-unstable"
+        "nixpkgs-unstable": "nixpkgs-unstable",
+        "xcode-dracula-theme": "xcode-dracula-theme"
+      }
+    },
+    "xcode-dracula-theme": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1693405412,
+        "narHash": "sha256-7X53+FhWPfOwZ8ugtr2eNOfwlP7x2BXpeWiLyKwIiMM=",
+        "owner": "dracula",
+        "repo": "xcode",
+        "rev": "047130d1cd012e9b3d952b9d4b07f420a73fa391",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dracula",
+        "ref": "master",
+        "repo": "xcode",
+        "type": "github"
       }
     }
   },
