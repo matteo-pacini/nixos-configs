@@ -28,6 +28,8 @@
     element-desktop
     # Extra
     eza
+    # Mine
+    radiogogo
   ];
 
   home.stateVersion = "23.11";
