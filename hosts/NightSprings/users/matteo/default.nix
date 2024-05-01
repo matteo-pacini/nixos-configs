@@ -10,6 +10,7 @@
     ./git.nix
     ./text-editors.nix
     ./xcodes.nix
+    ./terminal.nix
   ];
 
   home.username = "matteo";
@@ -18,8 +19,6 @@
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
-    # Terminal
-    iterm2
     # Virtualization
     utm
     colima
@@ -29,10 +28,6 @@
   ];
 
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
-
-  home.file."Library/Preferences/com.googlecode.iterm2.plist".text = ''
-    SUEnableAutomaticChecks = 0
-  '';
 
   programs.zsh = {
     initExtra = ''

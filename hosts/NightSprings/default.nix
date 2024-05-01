@@ -17,6 +17,11 @@
 
   programs.zsh.enable = true;
 
+  fonts.fontDir.enable = true;
+  fonts.fonts = with pkgs; [
+    meslo-lgs-nf
+  ];
+
   security.pam.enableSudoTouchIdAuth = true;
 
   system.stateVersion = 4;
