@@ -27,7 +27,9 @@
     # Social
     element-desktop
     # Extra
+    tree
     eza
+    unstable.yt-dlp
     # Mine
     radiogogo
   ];
