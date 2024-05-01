@@ -9,6 +9,11 @@ with lib; let
 in {
   options.programs.xcodes = {
     enable = mkEnableOption "Manages multiple Xcode installations on macOS";
+    useAria = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Use aria2 for downloading Xcode archives.";
+    };
     versions = mkOption {
       type = types.listOf types.str;
       default = ["15.3"];
@@ -22,14 +27,26 @@ in {
   };
 
   config = mkIf cfg.enable {
-    home.packages = with pkgs; [
-      aria
-      xcodes
+    assertions = [
+      {
+        assertion = pkgs.stdenv.hostPlatform.isDarwin;
+        message = "Xcodes is only available on macOS.";
+      }
+      {
+        assertion = cfg.versions == [] || lib.elem cfg.active cfg.versions;
+        message = "Active Xcode version must be one of the requested versions.";
+      }
     ];
+
+    home.packages = with pkgs;
+      [
+        xcodes
+      ]
+      ++ lib.optionals cfg.useAria [aria];
 
     home.activation.xcodes = lib.hm.dag.entryAfter ["writeBoundary"] ''
 
-      export PATH="${lib.makeBinPath (with pkgs; [xcodes aria])}:$PATH"
+      export PATH="${lib.makeBinPath (with pkgs; [xcodes] ++ lib.optionals cfg.useAria [aria])}:$PATH"
 
       REQUIRED_XCODES="${concatStringsSep "\n" cfg.versions}"
       INSTALLED_XCODES=$(
