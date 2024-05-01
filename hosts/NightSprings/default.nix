@@ -1,6 +1,7 @@
 {pkgs, ...}: {
   imports = [
     ./homebrew.nix
+    ./fonts.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
@@ -16,11 +17,6 @@
   };
 
   programs.zsh.enable = true;
-
-  fonts.fontDir.enable = true;
-  fonts.fonts = with pkgs; [
-    meslo-lgs-nf
-  ];
 
   security.pam.enableSudoTouchIdAuth = true;
 

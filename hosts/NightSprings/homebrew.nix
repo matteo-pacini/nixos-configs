@@ -11,6 +11,7 @@
       "dash"
       "telegram"
       "whatsapp"
+      "google-chrome"
     ];
     masApps = {
     };
