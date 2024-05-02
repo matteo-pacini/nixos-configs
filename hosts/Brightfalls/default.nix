@@ -13,7 +13,7 @@
     ./services.nix
     ./gaming.nix
     ./fonts.nix
-    ./bluetooth.nix
+    ../shared/bluetooth.nix
     ./printer.nix
   ];
 
