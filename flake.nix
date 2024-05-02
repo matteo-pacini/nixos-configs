@@ -39,6 +39,24 @@
         }
       ];
     };
+    nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        {
+          nixpkgs.overlays = [
+            (import ./overlays/unstable.nix {inherit inputs;})
+          ];
+        }
+        ./hosts/CauldronLake
+        inputs.home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.debora = import ./hosts/CauldronLake/users/debora;
+          home-manager.extraSpecialArgs = {inherit inputs;};
+        }
+      ];
+    };
     darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [
