@@ -16,6 +16,6 @@
   };
 
   home.activation.xcodeThemes = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    install -v -m 755 "${inputs.xcode-dracula-theme}/Dracula.xccolortheme" "$HOME/Library/Developer/Xcode/UserData/FontAndColorThemes/"
+    install -v -m 755 "${inputs.xcode-dracula-theme}/Dracula.xccolortheme" "${config.home.homeDirectory}/Library/Developer/Xcode/UserData/FontAndColorThemes/"
   '';
 }

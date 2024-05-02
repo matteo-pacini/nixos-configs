@@ -12,6 +12,7 @@
       "telegram"
       "whatsapp"
       "google-chrome"
+      "secretive"
     ];
     masApps = {
     };
