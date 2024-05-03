@@ -12,7 +12,9 @@
 
   services.udev.packages = with pkgs; [gnome.gnome-settings-daemon];
 
-  services.xserver.excludePackages = [pkgs.xterm];
+  services.xserver.excludePackages = [
+    pkgs.xterm
+  ];
 
   environment.gnome.excludePackages =
     (with pkgs; [

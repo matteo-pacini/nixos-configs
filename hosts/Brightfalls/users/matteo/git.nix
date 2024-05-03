@@ -7,7 +7,7 @@
   programs.git = {
     enable = true;
     package = pkgs.gitAndTools.gitFull;
-    userName = "matteo-pacini";
+    userName = "Matteo Pacini";
     userEmail = "matteo@codecraft.it";
   };
 }
