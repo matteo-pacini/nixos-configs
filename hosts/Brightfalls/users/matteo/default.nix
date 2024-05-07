@@ -32,7 +32,7 @@
     reshade-steam-proton
     radiogogo
     # Gaming
-    unstable.mangohud
+    fixed-unstable-mangohud
     vulkan-tools
     mesa-demos
     unstable.bottles

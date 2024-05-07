@@ -27,6 +27,7 @@
             (import ./overlays/minimal-qemu.nix)
             (import ./overlays/reshade-steam-proton.nix)
             (import ./overlays/radiogogo.nix)
+            (import ./overlays/fixed-unstable-mangohud.nix)
           ];
         }
         ./hosts/Brightfalls
