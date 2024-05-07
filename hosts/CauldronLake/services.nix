@@ -12,4 +12,6 @@
   services.mullvad-vpn.package = pkgs.unstable.mullvad-vpn;
 
   services.xserver.videoDrivers = ["nvidia"];
+
+  services.thermald.enable = true;
 }
