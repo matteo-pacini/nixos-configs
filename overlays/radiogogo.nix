@@ -1,3 +1,3 @@
 final: prev: {
-  radiogogo = prev.callPackage ../packages/radiogogo.nix {};
+  radiogogo = prev.unstable.callPackage ../packages/radiogogo.nix {};
 }

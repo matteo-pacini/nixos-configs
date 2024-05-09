@@ -3,10 +3,10 @@
   stdenv,
   fetchFromGitHub,
   buildGoModule,
-  ffmpeg_5-full,
+  ffmpeg,
   makeWrapper,
 }: let
-  version = "0.3.1";
+  version = "0.3.2";
 in
   buildGoModule {
     pname = "radiogogo";
@@ -16,16 +16,16 @@ in
       owner = "matteo-pacini";
       repo = "RadioGoGo";
       rev = "v${version}";
-      hash = "sha256-Yb1K/nC41K8AoXWSB/8aDVCNDe06bvsSON1wwGPrSgI=";
+      hash = "sha256-vEZUBA+KeDHgqZvzrAN6ramZ5D4iqQdVU+qFOK/39co=";
     };
 
-    vendorHash = "sha256-h/ipRovm/fmfA2Wanx0Hp8Om2yTEZ1zZRCJ19LGP/NE=";
+    vendorHash = "sha256-hYEXzKrACpSyvrAYbV0jkX504Ix/ch2PVrhksYKFhwE=";
 
     nativeBuildInputs = [makeWrapper];
 
     postInstall = ''
       wrapProgram $out/bin/radiogogo \
-          --prefix PATH : ${lib.makeBinPath [ffmpeg_5-full]}
+          --prefix PATH : ${lib.makeBinPath [ffmpeg]}
     '';
 
     meta = with lib; {
