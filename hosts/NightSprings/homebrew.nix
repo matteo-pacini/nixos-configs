@@ -2,17 +2,17 @@
   homebrew = {
     enable = true;
     onActivation.cleanup = "zap";
+    onActivation.upgrade = true;
+    onActivation.autoUpdate = true;
     casks = [
       "1password"
       "firefox"
-      "zoom"
-      "slack"
       "mullvadvpn"
       "dash"
       "telegram"
       "whatsapp"
-      "google-chrome"
       "secretive"
+      "microsoft-teams"
     ];
     masApps = {
     };

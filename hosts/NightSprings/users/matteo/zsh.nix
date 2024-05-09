@@ -28,6 +28,16 @@
     shellAliases = {
       l = "eza -lh";
       ll = "eza -lha";
+      refreshDock = ''
+        defaults write com.apple.dock ResetLaunchPad -bool true;
+        killall Dock;
+        defaults write com.apple.dock ResetLaunchPad -bool false
+      '';
+      reloadSkhd = ''
+        launchctl unload /Users/matteo/Library/LaunchAgents/org.nixos.skhd.plist;
+        sleep 1;
+        launchctl load /Users/matteo/Library/LaunchAgents/org.nixos.skhd.plist;
+      '';
     };
   };
 }

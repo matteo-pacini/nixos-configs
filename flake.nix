@@ -17,6 +17,7 @@
   };
 
   outputs = inputs: {
+    # Gaming PC
     nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
@@ -40,6 +41,7 @@
         }
       ];
     };
+    # Razer Laptop
     nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
@@ -58,6 +60,7 @@
         }
       ];
     };
+    # Macbook Pro M1 Max
     darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [

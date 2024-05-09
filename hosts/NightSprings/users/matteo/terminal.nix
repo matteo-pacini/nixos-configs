@@ -10,9 +10,11 @@
     extraConfig = ''
       return {
           font = wezterm.font("MesloLGS NF", {weight="Regular", stretch="Normal", style="Normal"}),
-          font_size = 16.0,
+          font_size = 18.0,
           enable_tab_bar = false,
           color_scheme = "Dracula (Official)",
+          window_decorations = "RESIZE",
+          window_close_confirmation = "NeverPrompt",
         }
     '';
   };

@@ -2,6 +2,8 @@
   imports = [
     ./homebrew.nix
     ./fonts.nix
+    ./system.nix
+    ./yabai.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
@@ -16,14 +18,7 @@
     home = "/Users/matteo";
   };
 
-  system.defaults.NSGlobalDomain.AppleInterfaceStyle = "Dark";
-  system.defaults.dock.magnification = true;
-  system.defaults.dock.show-recents = false;
-  system.defaults.finder.AppleShowAllExtensions = true;
-
   programs.zsh.enable = true;
-
-  security.pam.enableSudoTouchIdAuth = true;
 
   system.stateVersion = 4;
 
