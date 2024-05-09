@@ -31,7 +31,7 @@
     eza
     unstable.yt-dlp
     # Mine
-    radiogogo
+    inputs.radiogogo.packages.aarch64-darwin.radiogogo
   ];
 
   home.stateVersion = "23.11";

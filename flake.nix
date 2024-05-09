@@ -14,6 +14,8 @@
       url = "github:dracula/xcode/master";
       flake = false;
     };
+    radiogogo.url = "github:matteo-pacini/radiogogo";
+    radiogogo.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };
 
   outputs = inputs: {
@@ -27,7 +29,6 @@
             (import ./overlays/unstable-mesa.nix)
             (import ./overlays/minimal-qemu.nix)
             (import ./overlays/reshade-steam-proton.nix)
-            (import ./overlays/radiogogo.nix)
             (import ./overlays/fixed-unstable-mangohud.nix)
           ];
         }

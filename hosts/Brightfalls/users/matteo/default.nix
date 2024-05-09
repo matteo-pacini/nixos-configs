@@ -30,7 +30,7 @@
     quickemu
     # Custom packages
     reshade-steam-proton
-    radiogogo
+    inputs.radiogogo.packages.x86_64-linux.radiogogo
     # Gaming
     fixed-unstable-mangohud
     vulkan-tools
