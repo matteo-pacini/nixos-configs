@@ -30,6 +30,11 @@
             (import ./overlays/minimal-qemu.nix)
             (import ./overlays/reshade-steam-proton.nix)
             (import ./overlays/fixed-unstable-mangohud.nix)
+            (
+              final: prev: {
+                radiogogo = inputs.radiogogo.defaultPackage.x86_64-linux;
+              }
+            )
           ];
         }
         ./hosts/Brightfalls
@@ -69,6 +74,11 @@
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
             (import ./overlays/darwin)
+            (
+              final: prev: {
+                radiogogo = inputs.radiogogo.defaultPackage.aarch64-darwin;
+              }
+            )
           ];
         }
         ./hosts/NightSprings

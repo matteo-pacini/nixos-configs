@@ -116,11 +116,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1715286984,
-        "narHash": "sha256-x0tqsXGSd84NL1aGoGrh+/7sqQnBsDtUFi25wzg585w=",
+        "lastModified": 1715297203,
+        "narHash": "sha256-N2O3x6LAe+3XWh7iPIwe7cIygUXX4Pnu/GMqeiZtXNI=",
         "owner": "matteo-pacini",
         "repo": "radiogogo",
-        "rev": "e4ba64e5f6b599758237579118e50aeadd511fae",
+        "rev": "212cfc6f00962b930724b4e39e13859413a20bab",
         "type": "github"
       },
       "original": {
