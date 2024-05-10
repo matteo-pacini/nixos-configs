@@ -11,7 +11,6 @@
       "dash"
       "telegram"
       "whatsapp"
-      "secretive"
       "microsoft-teams"
     ];
     masApps = {
