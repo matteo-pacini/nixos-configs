@@ -20,7 +20,7 @@
 
   outputs = inputs: {
     # Gaming PC
-    nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
+    nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem rec {
       system = "x86_64-linux";
       modules = [
         {
@@ -32,7 +32,7 @@
             (import ./overlays/fixed-unstable-mangohud.nix)
             (
               final: prev: {
-                radiogogo = inputs.radiogogo.defaultPackage.x86_64-linux;
+                radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
               }
             )
           ];
@@ -67,7 +67,7 @@
       ];
     };
     # Macbook Pro M1 Max
-    darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
+    darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem rec {
       system = "aarch64-darwin";
       modules = [
         {
@@ -76,7 +76,7 @@
             (import ./overlays/darwin)
             (
               final: prev: {
-                radiogogo = inputs.radiogogo.defaultPackage.aarch64-darwin;
+                radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
               }
             )
           ];
