@@ -32,7 +32,7 @@
     package = pkgs.unstable.yabai;
     enableScriptingAddition = true;
     config = {
-      focus_follows_mouse = "autoraise";
+      #focus_follows_mouse = "autoraise";
       mouse_follows_focus = "on";
       window_placement = "second_child";
       layout = "bsp";
@@ -41,19 +41,14 @@
       left_padding = 10;
       right_padding = 10;
       window_gap = 10;
-      window_opacity = "on";
-      active_window_opacity = 1;
-      normal_window_opacity = 0.9;
       mouse_modifier = "fn";
       mouse_action1 = "move";
       mouse_action2 = "resize";
       mouse_drop_action = "swap";
     };
     extraConfig = ''
-      # rules
       yabai -m rule --add app='System Settings' manage=off
-
-      # Any other arbitrary config here
+      yabai -m rule --add app='Finder' manage=off
     '';
   };
 }
