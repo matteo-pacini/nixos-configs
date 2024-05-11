@@ -278,7 +278,7 @@
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "radiogogo": "radiogogo",
-        "xcode-catppuccin-theme": "xcode-catppuccin-theme"
+        "xcode-dracula-theme": "xcode-dracula-theme"
       }
     },
     "systems": {
@@ -311,18 +311,18 @@
         "type": "github"
       }
     },
-    "xcode-catppuccin-theme": {
+    "xcode-dracula-theme": {
       "flake": false,
       "locked": {
-        "lastModified": 1711835754,
-        "narHash": "sha256-K+I8c8GjGD5Bo9TLEPAtLGUSy2Rg20zqEzvRVqu67+Y=",
-        "owner": "catppuccin",
+        "lastModified": 1693405412,
+        "narHash": "sha256-7X53+FhWPfOwZ8ugtr2eNOfwlP7x2BXpeWiLyKwIiMM=",
+        "owner": "dracula",
         "repo": "xcode",
-        "rev": "363616bc3d22ba8b0052eecb19caefbca2689c48",
+        "rev": "047130d1cd012e9b3d952b9d4b07f420a73fa391",
         "type": "github"
       },
       "original": {
-        "owner": "catppuccin",
+        "owner": "dracula",
         "repo": "xcode",
         "type": "github"
       }

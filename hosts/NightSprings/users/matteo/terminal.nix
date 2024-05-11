@@ -12,7 +12,7 @@
           font = wezterm.font("MesloLGS NF", {weight="Regular", stretch="Normal", style="Normal"}),
           font_size = 18.0,
           enable_tab_bar = false,
-          color_scheme = "Catppuccin Mocha",
+          color_scheme = "Dracula (Official)",
           window_decorations = "RESIZE",
           window_close_confirmation = "NeverPrompt",
           adjust_window_size_when_changing_font_size = false,

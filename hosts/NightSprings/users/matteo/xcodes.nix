@@ -20,9 +20,6 @@
     [ -d "$THEMES_DIR" ] || mkdir -p "$THEMES_DIR"
     cd "$THEMES_DIR"
     find . -type l -delete
-    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Frappé.xccolortheme" .
-    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Latte.xccolortheme" .
-    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Macchiato.xccolortheme" .
-    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Mocha.xccolortheme" .
+    $DRY_RUN_CMD ln -s "${inputs.xcode-dracula-theme}/Dracula.xccolortheme" .
   '';
 }

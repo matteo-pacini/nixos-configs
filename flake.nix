@@ -24,8 +24,8 @@
       url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
-    xcode-catppuccin-theme = {
-      url = "github:catppuccin/xcode";
+    xcode-dracula-theme = {
+      url = "github:dracula/xcode";
       flake = false;
     };
     radiogogo.url = "github:matteo-pacini/radiogogo";
