@@ -31,6 +31,19 @@
     radiogogo
   ];
 
+  home.file."Brewfile".text = ''
+    cask_args appdir: '/Applications'
+    cask '1password'
+    cask 'firefox'
+    cask 'mullvadvpn'
+    cask 'dash'
+    cask 'telegram-desktop'
+    cask 'whatsapp'
+    cask 'microsoft-teams'
+    cask 'utm'
+    cask 'zerotier-one'
+  '';
+
   home.stateVersion = "23.11";
 
   programs.home-manager.enable = true;

@@ -57,21 +57,34 @@ in {
       echo -e "Requested versions:\n$REQUIRED_XCODES"
       echo -e "Installed versions:\n$INSTALLED_XCODES"
 
-      for version in $REQUIRED_XCODES; do
-        if ! echo $INSTALLED_XCODES | grep -q "$version"; then
+      while IFS= read -r version; do
+        if ! echo $INSTALLED_XCODES | grep -q "$(echo $version | xargs)"; then
           echo "Installing Xcode $version..."
-          xcodes install --directory "${config.home.homeDirectory}/Applications" "$version"
+          xcodes install \
+            --empty-trash \
+            --no-superuser \
+            --directory "${config.home.homeDirectory}/Applications" "$version"
         else
-          echo "Xcode $version is already installed"
+          echo "Xcode $version is already installed, skipping..."
         fi
-      done
+      done <<< "$REQUIRED_XCODES"
 
-      for version in $INSTALLED_XCODES; do
-        if ! echo $REQUIRED_XCODES | grep -q "$version"; then
-          echo "Purging Xcode $version..."
-          xcodes uninstall --directory "${config.home.homeDirectory}/Applications" "$version"
+      INSTALLED_XCODES=$(
+        NO_COLOR=1 xcodes installed --directory "${config.home.homeDirectory}/Applications" | \
+        grep -oE '^[^\(]*' || true
+      )
+
+      echo -e "Installed versions after changes:\n$INSTALLED_XCODES"
+
+      while IFS= read -r version; do
+        if ! echo $REQUIRED_XCODES | grep -q "$(echo $version | xargs)"; then
+          echo "Purging Xcode $version in 5 seconds..."
+          sleep 5
+          xcodes uninstall \
+            --empty-trash \
+            --directory "${config.home.homeDirectory}/Applications" "$version"
         fi
-      done
+      done <<< "$INSTALLED_XCODES"
 
       echo "Setting active Xcode to ${cfg.active}..."
       xcodes select --directory "${config.home.homeDirectory}/Applications" "${cfg.active}"

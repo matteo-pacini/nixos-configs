@@ -1,6 +1,5 @@
 {pkgs, ...}: {
   imports = [
-    ./homebrew.nix
     ./fonts.nix
     ./system.nix
     ./yabai.nix

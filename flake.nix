@@ -10,8 +10,22 @@
     };
     nix-darwin.url = "github:lnl7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
-    xcode-dracula-theme = {
-      url = "github:dracula/xcode/master";
+    nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
+    nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
+    homebrew-core = {
+      url = "github:homebrew/homebrew-core";
+      flake = false;
+    };
+    homebrew-cask = {
+      url = "github:homebrew/homebrew-cask";
+      flake = false;
+    };
+    homebrew-bundle = {
+      url = "github:homebrew/homebrew-bundle";
+      flake = false;
+    };
+    xcode-catppuccin-theme = {
+      url = "github:catppuccin/xcode";
       flake = false;
     };
     radiogogo.url = "github:matteo-pacini/radiogogo";
@@ -73,7 +87,6 @@
         {
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
-            (import ./overlays/darwin)
             (
               final: prev: {
                 radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
@@ -88,6 +101,20 @@
           home-manager.useUserPackages = true;
           home-manager.users.matteo = import ./hosts/NightSprings/users/matteo;
           home-manager.extraSpecialArgs = {inherit inputs;};
+        }
+        inputs.nix-homebrew.darwinModules.nix-homebrew
+        {
+          nix-homebrew = {
+            enable = true;
+            enableRosetta = true;
+            user = "matteo";
+            taps = {
+              "homebrew/homebrew-core" = inputs.homebrew-core;
+              "homebrew/homebrew-cask" = inputs.homebrew-cask;
+              "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
+            };
+            mutableTaps = false;
+          };
         }
       ];
     };
