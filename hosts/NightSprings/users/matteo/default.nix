@@ -43,7 +43,7 @@
     cask 'firefox'
     cask 'mullvadvpn'
     cask 'dash'
-    cask 'telegram-desktop'
+    cask 'telegram'
     cask 'whatsapp'
     cask 'microsoft-teams'
     cask 'utm'
