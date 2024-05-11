@@ -2,6 +2,7 @@
   config,
   pkgs,
   inputs,
+  lib,
   ...
 }: {
   imports = [
@@ -32,6 +33,11 @@
   ];
 
   home.file."Brewfile".text = ''
+
+    tap "homebrew/bundle"
+    tap "homebrew/cask"
+    tap "homebrew/core"
+
     cask_args appdir: '/Applications'
     cask '1password'
     cask 'firefox'
@@ -42,7 +48,20 @@
     cask 'microsoft-teams'
     cask 'utm'
     cask 'zerotier-one'
+    cask 'jellyfin-media-player'
   '';
+
+  home.activation.brewUpdate =
+    lib.hm.dag.entryAfter [
+      "linkGeneration"
+    ] ''
+      export PATH="$PATH:/opt/homebrew/bin"
+      $DRY_RUN_CMD brew bundle --file="$HOME/Brewfile" \
+        --no-lock \
+        --cleanup --zap \
+        --verbose \
+        install
+    '';
 
   home.stateVersion = "23.11";
 

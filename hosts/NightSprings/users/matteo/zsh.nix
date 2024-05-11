@@ -14,15 +14,12 @@
     enableCompletion = true;
     enableAutosuggestions = true;
     syntaxHighlighting.enable = true;
+    historySubstringSearch.enable = true;
     plugins = [
       {
         name = "powerlevel10k";
         src = pkgs.zsh-powerlevel10k;
         file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-      }
-      {
-        name = "zsh-history-substring-search";
-        src = pkgs.zsh-history-substring-search;
       }
     ];
     shellAliases = {
@@ -37,6 +34,11 @@
         launchctl unload /Users/matteo/Library/LaunchAgents/org.nixos.skhd.plist;
         sleep 1;
         launchctl load /Users/matteo/Library/LaunchAgents/org.nixos.skhd.plist;
+      '';
+      reloadYabai = ''
+        launchctl unload /Users/matteo/Library/LaunchAgents/org.nixos.yabai.plist;
+        sleep 1;
+        launchctl load /Users/matteo/Library/LaunchAgents/org.nixos.yabai.plist;
       '';
     };
   };

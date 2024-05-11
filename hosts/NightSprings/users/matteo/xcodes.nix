@@ -19,9 +19,10 @@
     THEMES_DIR="${config.home.homeDirectory}/Library/Developer/Xcode/UserData/FontAndColorThemes"
     [ -d "$THEMES_DIR" ] || mkdir -p "$THEMES_DIR"
     cd "$THEMES_DIR"
-    [ -f "Catppuccin Frappé.xccolortheme" ] || ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Frappé.xccolortheme" .
-    [ -f "Catppuccin Latte.xccolortheme" ] || ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Latte.xccolortheme" .
-    [ -f "Catppuccin Macchiato.xccolortheme" ] || ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Macchiato.xccolortheme" .
-    [ -f "Catppuccin Mocha.xccolortheme" ] || ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Mocha.xccolortheme" .
+    find . -type l -delete
+    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Frappé.xccolortheme" .
+    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Latte.xccolortheme" .
+    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Macchiato.xccolortheme" .
+    $DRY_RUN_CMD ln -s "${inputs.xcode-catppuccin-theme}/dist/Catppuccin Mocha.xccolortheme" .
   '';
 }
