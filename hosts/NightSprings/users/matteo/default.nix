@@ -21,11 +21,8 @@
     # Basic utilities
     coreutils
     # Virtualization
-    utm
     colima
     docker
-    # Social
-    element-desktop
     # Extra
     tree
     eza

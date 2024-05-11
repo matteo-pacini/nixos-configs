@@ -12,6 +12,8 @@
       "telegram"
       "whatsapp"
       "microsoft-teams"
+      "utm"
+      "zerotier-one"
     ];
     masApps = {
     };
