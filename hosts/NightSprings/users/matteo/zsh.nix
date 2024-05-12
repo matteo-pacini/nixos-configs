@@ -23,9 +23,7 @@
       }
     ];
     shellAliases = {
-      l = "eza -lh";
-      ll = "eza -lha";
-      refreshDock = ''
+      reloadDock = ''
         defaults write com.apple.dock ResetLaunchPad -bool true;
         killall Dock;
         defaults write com.apple.dock ResetLaunchPad -bool false

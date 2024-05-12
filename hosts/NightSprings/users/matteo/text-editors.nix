@@ -24,6 +24,7 @@
     userSettings = {
       "nix.formatterPath" = "alejandra";
       "editor.fontSize" = 16;
+      "editor.fontFamily" = "MesloLGS NF";
       "workbench.colorTheme" = "Dracula";
     };
   };

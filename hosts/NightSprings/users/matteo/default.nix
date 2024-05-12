@@ -26,7 +26,6 @@
     docker
     # Extra
     tree
-    eza
     unstable.yt-dlp
     # Mine
     radiogogo
