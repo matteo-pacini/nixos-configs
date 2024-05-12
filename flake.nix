@@ -28,6 +28,10 @@
       url = "github:dracula/xcode";
       flake = false;
     };
+    colorls-dracula-theme = {
+      url = "github:dracula/colorls";
+      flake = false;
+    };
     radiogogo.url = "github:matteo-pacini/radiogogo";
     radiogogo.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };

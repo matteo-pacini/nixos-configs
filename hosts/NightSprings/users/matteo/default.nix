@@ -25,6 +25,7 @@
     colima
     docker
     # Extra
+    colorls
     tree
     unstable.yt-dlp
     # Mine
@@ -53,6 +54,7 @@
   home.activation.brewUpdate =
     lib.hm.dag.entryAfter [
       "linkGeneration"
+      "writeBoundary"
     ] ''
       export PATH="$PATH:/opt/homebrew/bin"
       $DRY_RUN_CMD brew bundle --file="$HOME/Brewfile" \

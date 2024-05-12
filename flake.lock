@@ -17,6 +17,22 @@
         "type": "github"
       }
     },
+    "colorls-dracula-theme": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1646679646,
+        "narHash": "sha256-+sF/xmvNVvV+O0AT471ZeePqbR2QbYvyv+OI90FkgX4=",
+        "owner": "dracula",
+        "repo": "colorls",
+        "rev": "b8396e57df3406d231764f6561eef7d006367e18",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dracula",
+        "repo": "colorls",
+        "type": "github"
+      }
+    },
     "firefox-gnome-theme": {
       "flake": false,
       "locked": {
@@ -268,6 +284,7 @@
     },
     "root": {
       "inputs": {
+        "colorls-dracula-theme": "colorls-dracula-theme",
         "firefox-gnome-theme": "firefox-gnome-theme",
         "home-manager": "home-manager",
         "homebrew-bundle": "homebrew-bundle",

@@ -4,6 +4,37 @@
   inputs,
   ...
 }: {
+  home.file.".config/colorls/dark_colors.yaml".source = "${inputs.colorls-dracula-theme}/dark_colors.yaml";
+
+  programs.autojump = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+    defaultOptions = ["--preview 'bat --color=always {}'"];
+  };
+
+  programs.bat = {
+    enable = true;
+    themes = {
+      dracula = {
+        src = pkgs.fetchFromGitHub {
+          owner = "dracula";
+          repo = "sublime";
+          rev = "26c57ec282abcaa76e57e055f38432bd827ac34e";
+          sha256 = "019hfl4zbn4vm4154hh3bwk6hm7bdxbr1hdww83nabxwjn99ndhv";
+        };
+        file = "Dracula.tmTheme";
+      };
+    };
+    config = {
+      theme = "Dracula";
+    };
+  };
+
   programs.zsh = {
     enable = true;
     enableCompletion = true;
@@ -11,6 +42,7 @@
     syntaxHighlighting.enable = true;
     historySubstringSearch.enable = true;
     shellAliases = {
+      ls = "colorls --dark";
       reloadDock = ''
         defaults write com.apple.dock ResetLaunchPad -bool true;
         killall Dock;
