@@ -6,6 +6,6 @@
 }: {
   fonts.fontDir.enable = true;
   fonts.fonts = with pkgs; [
-    meslo-lgs-nf
+    (nerdfonts.override {fonts = ["FiraCode"];})
   ];
 }
