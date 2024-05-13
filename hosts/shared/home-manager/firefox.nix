@@ -4,7 +4,18 @@
   inputs,
   lib,
   ...
-}: {
+}: let
+  isDarwin = pkgs.stdenv.isDarwin;
+in {
+  home.file =
+    if isDarwin
+    then {
+      "Library/Application Support/Firefox/Profiles/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
+    }
+    else {
+      ".mozilla/firefox/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
+    };
+
   programs.firefox = {
     enable = true;
     package =
@@ -39,30 +50,15 @@
               icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
               definedAliases = ["@np"];
             };
-            "Github" = {
-              urls = [
-                {
-                  template = "https://github.com/search";
-                  params = [
-                    {
-                      name = "type";
-                      value = "code";
-                    }
-                    {
-                      name = "q";
-                      value = "{searchTerms}";
-                    }
-                  ];
-                }
-              ];
-              definedAliases = ["@gh"];
-            };
           };
         };
+        userChrome = ''
+          @import "firefox-gnome-theme/userChrome.css";
+        '';
+        userContent = ''
+          @import "firefox-gnome-theme/userContent.css";
+        '';
         settings = {
-          # Firefox View
-          "browser.tabs.firefox-view" = false;
-          "browser.tabs.firefox-view-next" = false;
           # Mozilla telemetry
           "browser.newtabpage.activity-stream.feeds.telemetry" = false;
           "browser.newtabpage.activity-stream.telemetry" = false;
@@ -106,18 +102,23 @@
           "pdfjs.enableScripting" = false;
           # Other
           "browser.aboutConfig.showWarning" = false;
+          #########################
+          ## Firefox gnome theme ##
+          #########################
+          "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+          "browser.uidensity" = 0;
+          "svg.context-properties.content.enabled" = true;
+          "browser.theme.dark-private-windows" = false;
         };
         # https://github.com/nix-community/nur-combined/blob/master/repos/rycee/pkgs/firefox-addons/generated-firefox-addons.nix
-        extensions = with pkgs.nur.repos.rycee.firefox-addons;
-          [
-            ublock-origin
-            darkreader
-            onepassword-password-manager
-            istilldontcareaboutcookies
-          ]
-          ++ lib.optionals (pkgs.stdenv.isDarwin) [
-            dracula-dark-colorscheme
-          ];
+        extensions = with pkgs.nur.repos.rycee.firefox-addons; [
+          ublock-origin
+          darkreader
+          onepassword-password-manager
+          istilldontcareaboutcookies
+          privacy-badger
+          decentraleyes
+        ];
       };
     };
   };
