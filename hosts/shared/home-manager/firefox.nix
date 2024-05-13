@@ -6,15 +6,11 @@
   ...
 }: let
   isDarwin = pkgs.stdenv.isDarwin;
+  isLinux = pkgs.stdenv.isLinux;
 in {
-  home.file =
-    if isDarwin
-    then {
-      "Library/Application Support/Firefox/Profiles/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
-    }
-    else {
-      ".mozilla/firefox/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
-    };
+  home.file = lib.optionalAttrs isLinux {
+    ".mozilla/firefox/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
+  };
 
   programs.firefox = {
     enable = true;
@@ -52,73 +48,88 @@ in {
             };
           };
         };
-        userChrome = ''
-          @import "firefox-gnome-theme/userChrome.css";
-        '';
-        userContent = ''
-          @import "firefox-gnome-theme/userContent.css";
-        '';
-        settings = {
-          # Mozilla telemetry
-          "browser.newtabpage.activity-stream.feeds.telemetry" = false;
-          "browser.newtabpage.activity-stream.telemetry" = false;
-          "browser.ping-centre.telemetry" = false;
-          "toolkit.telemetry.archive.enabled" = false;
-          "toolkit.telemetry.bhrPing.enabled" = false;
-          "toolkit.telemetry.enabled" = false;
-          "toolkit.telemetry.firstShutdownPing.enabled" = false;
-          "toolkit.telemetry.hybridContent.enabled" = false;
-          "toolkit.telemetry.newProfilePing.enabled" = false;
-          "toolkit.telemetry.reportingpolicy.firstRun" = false;
-          "toolkit.telemetry.shutdownPingSender.enabled" = false;
-          "toolkit.telemetry.unified" = false;
-          "toolkit.telemetry.updatePing.enabled" = false;
-          # Addon recomendations
-          "browser.discovery.enabled" = false;
-          "extensions.getAddons.showPane" = false;
-          "extensions.htmlaboutaddons.recommendations.enabled" = false;
-          # Experiments
-          "experiments.activeExperiment" = false;
-          "experiments.enabled" = false;
-          "experiments.supported" = false;
-          "network.allow-experiments" = false;
-          # Pocket & Other Sponsored Content
-          "extensions.pocket.enabled" = false;
-          "extensions.pocket.showHome" = false;
-          "browser.newtabpage.activity-stream.feeds.discoverystreamfeed" = false;
-          "browser.newtabpage.activity-stream.feeds.section.topstories" = false;
-          "browser.newtabpage.activity-stream.section.highlights.includePocket" = false;
-          "browser.newtabpage.activity-stream.showSponsored" = false;
-          "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;
-          "browser.newtabpage.activity-stream.system.showSponsored" = false;
-          # Block updates
-          "extensions.update.enabled" = false;
-          # Privacy
-          "privacy.donottrackheader.enabled" = true;
-          "signon.rememberSignons" = false;
-          # Harden SSL
-          "security.ssl.require_safe_negotiation" = true;
-          # Disable JS in PDFs
-          "pdfjs.enableScripting" = false;
-          # Other
-          "browser.aboutConfig.showWarning" = false;
-          #########################
-          ## Firefox gnome theme ##
-          #########################
-          "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
-          "browser.uidensity" = 0;
-          "svg.context-properties.content.enabled" = true;
-          "browser.theme.dark-private-windows" = false;
-        };
-        # https://github.com/nix-community/nur-combined/blob/master/repos/rycee/pkgs/firefox-addons/generated-firefox-addons.nix
-        extensions = with pkgs.nur.repos.rycee.firefox-addons; [
-          ublock-origin
-          darkreader
-          onepassword-password-manager
-          istilldontcareaboutcookies
-          privacy-badger
-          decentraleyes
+        userChrome =
+          lib.optionalString isLinux
+          ''
+            @import "firefox-gnome-theme/userChrome.css";
+          '';
+        userContent =
+          lib.optionalString isLinux
+          ''
+            @import "firefox-gnome-theme/userContent.css";
+          '';
+        settings = lib.mkMerge [
+          {
+            # Mozilla telemetry
+            "browser.newtabpage.activity-stream.feeds.telemetry" = false;
+            "browser.newtabpage.activity-stream.telemetry" = false;
+            "browser.ping-centre.telemetry" = false;
+            "toolkit.telemetry.archive.enabled" = false;
+            "toolkit.telemetry.bhrPing.enabled" = false;
+            "toolkit.telemetry.enabled" = false;
+            "toolkit.telemetry.firstShutdownPing.enabled" = false;
+            "toolkit.telemetry.hybridContent.enabled" = false;
+            "toolkit.telemetry.newProfilePing.enabled" = false;
+            "toolkit.telemetry.reportingpolicy.firstRun" = false;
+            "toolkit.telemetry.shutdownPingSender.enabled" = false;
+            "toolkit.telemetry.unified" = false;
+            "toolkit.telemetry.updatePing.enabled" = false;
+            # Addon recomendations
+            "browser.discovery.enabled" = false;
+            "extensions.getAddons.showPane" = false;
+            "extensions.htmlaboutaddons.recommendations.enabled" = false;
+            # Experiments
+            "experiments.activeExperiment" = false;
+            "experiments.enabled" = false;
+            "experiments.supported" = false;
+            "network.allow-experiments" = false;
+            # Pocket & Other Sponsored Content
+            "extensions.pocket.enabled" = false;
+            "extensions.pocket.showHome" = false;
+            "browser.newtabpage.activity-stream.feeds.discoverystreamfeed" = false;
+            "browser.newtabpage.activity-stream.feeds.section.topstories" = false;
+            "browser.newtabpage.activity-stream.section.highlights.includePocket" = false;
+            "browser.newtabpage.activity-stream.showSponsored" = false;
+            "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;
+            "browser.newtabpage.activity-stream.system.showSponsored" = false;
+            # Block updates
+            "extensions.update.enabled" = false;
+            # Privacy
+            "privacy.donottrackheader.enabled" = true;
+            "signon.rememberSignons" = false;
+            # Harden SSL
+            "security.ssl.require_safe_negotiation" = true;
+            # Disable JS in PDFs
+            "pdfjs.enableScripting" = false;
+            # Other
+            "browser.aboutConfig.showWarning" = false;
+          }
+          (lib.mkIf
+            isLinux
+            {
+              #########################
+              ## Firefox gnome theme ##
+              #########################
+              "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+              "browser.uidensity" = 0;
+              "svg.context-properties.content.enabled" = true;
+              "browser.theme.dark-private-windows" = false;
+            })
         ];
+
+        # https://github.com/nix-community/nur-combined/blob/master/repos/rycee/pkgs/firefox-addons/generated-firefox-addons.nix
+        extensions = with pkgs.nur.repos.rycee.firefox-addons;
+          [
+            ublock-origin
+            darkreader
+            onepassword-password-manager
+            istilldontcareaboutcookies
+            privacy-badger
+            decentraleyes
+          ]
+          ++ lib.optionals isDarwin [
+            dracula-dark-colorscheme
+          ];
       };
     };
   };
