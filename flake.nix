@@ -2,17 +2,28 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    ################
+    # Home Manager #
+    ################
     home-manager.url = "github:nix-community/home-manager/release-23.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    firefox-gnome-theme = {
-      url = "github:rafaelmardojai/firefox-gnome-theme";
-      flake = false;
-    };
+    ##############
+    # Nix Darwin #
+    ##############
     nix-darwin.url = "github:lnl7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    ################
+    # Nix Homebrew #
+    ################
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
+    #######
+    # NUR #
+    #######
     nur.url = "github:nix-community/NUR";
+    #################
+    # Homebrew Taps #
+    #################
     homebrew-core = {
       url = "github:homebrew/homebrew-core";
       flake = false;
@@ -25,6 +36,9 @@
       url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
+    ###########
+    # Dracula #
+    ###########
     xcode-dracula-theme = {
       url = "github:dracula/xcode";
       flake = false;
@@ -33,12 +47,28 @@
       url = "github:dracula/colorls";
       flake = false;
     };
+    sublime-dracula-theme = {
+      url = "github:dracula/sublime";
+      flake = false;
+    };
+    ###############
+    # Gnome theme #
+    ###############
+    firefox-gnome-theme = {
+      url = "github:rafaelmardojai/firefox-gnome-theme";
+      flake = false;
+    };
+    ########
+    # Mine #
+    ########
     radiogogo.url = "github:matteo-pacini/radiogogo";
     radiogogo.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };
 
   outputs = inputs: {
-    # Gaming PC
+    #############
+    # Gaming PC #
+    #############
     nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem rec {
       system = "x86_64-linux";
       modules = [
@@ -67,7 +97,9 @@
         }
       ];
     };
-    # Razer Laptop
+    ################
+    # Razer Laptop #
+    ################
     nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
@@ -86,7 +118,9 @@
         }
       ];
     };
-    # Macbook Pro M1 Max
+    ######################
+    # Macbook Pro M1 Max #
+    ######################
     darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem rec {
       system = "aarch64-darwin";
       modules = [

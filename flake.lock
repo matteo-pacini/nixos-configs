@@ -311,7 +311,24 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nur": "nur",
         "radiogogo": "radiogogo",
+        "sublime-dracula-theme": "sublime-dracula-theme",
         "xcode-dracula-theme": "xcode-dracula-theme"
+      }
+    },
+    "sublime-dracula-theme": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1693403648,
+        "narHash": "sha256-8mCovVSrBjtFi5q+XQdqAaqOt3Q+Fo29eIDwECOViro=",
+        "owner": "dracula",
+        "repo": "sublime",
+        "rev": "456d3289827964a6cb503a3b0a6448f4326f291b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dracula",
+        "repo": "sublime",
+        "type": "github"
       }
     },
     "systems": {

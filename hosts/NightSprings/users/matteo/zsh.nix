@@ -4,7 +4,11 @@
   inputs,
   ...
 }: {
-  home.file.".config/colorls/dark_colors.yaml".source = "${inputs.colorls-dracula-theme}/dark_colors.yaml";
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+  };
 
   programs.autojump = {
     enable = true;
@@ -27,12 +31,7 @@
     enable = true;
     themes = {
       dracula = {
-        src = pkgs.fetchFromGitHub {
-          owner = "dracula";
-          repo = "sublime";
-          rev = "26c57ec282abcaa76e57e055f38432bd827ac34e";
-          sha256 = "019hfl4zbn4vm4154hh3bwk6hm7bdxbr1hdww83nabxwjn99ndhv";
-        };
+        src = inputs.sublime-dracula-theme;
         file = "Dracula.tmTheme";
       };
     };
