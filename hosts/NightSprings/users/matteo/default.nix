@@ -39,7 +39,8 @@
     tap "homebrew/cask"
     tap "homebrew/core"
 
-    cask_args appdir: '/Applications'
+    cask_args appdir: '/Applications', require_sha: true
+
     cask '1password'
     cask 'mullvadvpn'
     cask 'dash'

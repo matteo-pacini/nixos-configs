@@ -9,7 +9,7 @@
     enable = true;
     package =
       if pkgs.stdenv.isDarwin
-      then pkgs.firefox-darwin-bin
+      then pkgs.firefox-app
       else pkgs.unstable.firefox;
     profiles = {
       matteo = {
