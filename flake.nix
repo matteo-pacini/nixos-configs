@@ -54,6 +54,7 @@
                 radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
               }
             )
+            inputs.nur.overlay
           ];
         }
         ./hosts/Brightfalls

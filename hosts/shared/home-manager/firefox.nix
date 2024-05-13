@@ -108,13 +108,16 @@
           "browser.aboutConfig.showWarning" = false;
         };
         # https://github.com/nix-community/nur-combined/blob/master/repos/rycee/pkgs/firefox-addons/generated-firefox-addons.nix
-        extensions = with pkgs.nur.repos.rycee.firefox-addons; [
-          ublock-origin
-          darkreader
-          onepassword-password-manager
-          dracula-dark-colorscheme
-          istilldontcareaboutcookies
-        ];
+        extensions = with pkgs.nur.repos.rycee.firefox-addons;
+          [
+            ublock-origin
+            darkreader
+            onepassword-password-manager
+            istilldontcareaboutcookies
+          ]
+          ++ lib.optionals (pkgs.stdenv.isDarwin) [
+            dracula-dark-colorscheme
+          ];
       };
     };
   };

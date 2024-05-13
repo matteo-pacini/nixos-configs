@@ -4,9 +4,12 @@
   inputs,
   ...
 }: {
+  imports = [
+    ../../../shared/home-manager/firefox.nix
+  ];
+
   home.file.".mozilla/firefox/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
 
-  programs.firefox.enable = true;
   programs.firefox.profiles.matteo = {
     userChrome = ''
       @import "firefox-gnome-theme/userChrome.css";
