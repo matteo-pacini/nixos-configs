@@ -13,6 +13,7 @@
     ./xcodes.nix
     ./terminal.nix
     ./zsh.nix
+    ./browser.nix
   ];
 
   home.username = "matteo";
@@ -40,7 +41,6 @@
 
     cask_args appdir: '/Applications'
     cask '1password'
-    cask 'firefox'
     cask 'mullvadvpn'
     cask 'dash'
     cask 'telegram'

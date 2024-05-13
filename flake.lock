@@ -261,6 +261,21 @@
         "type": "github"
       }
     },
+    "nur": {
+      "locked": {
+        "lastModified": 1715588836,
+        "narHash": "sha256-H6dKRVSLE7rJfCFUuaSsjgJBhwKqodAK+QCdldD4gRw=",
+        "owner": "nix-community",
+        "repo": "NUR",
+        "rev": "3478942a77be062c5914af2607021f8fbf3abc71",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "NUR",
+        "type": "github"
+      }
+    },
     "radiogogo": {
       "inputs": {
         "flake-utils": "flake-utils_2",
@@ -294,6 +309,7 @@
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "nur": "nur",
         "radiogogo": "radiogogo",
         "xcode-dracula-theme": "xcode-dracula-theme"
       }

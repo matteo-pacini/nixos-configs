@@ -12,6 +12,7 @@
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
+    nur.url = "github:nix-community/NUR";
     homebrew-core = {
       url = "github:homebrew/homebrew-core";
       flake = false;
@@ -96,6 +97,12 @@
                 radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
               }
             )
+            (
+              final: prev: {
+                firefox-darwin-bin = prev.callPackage ./packages/darwin/firefox-darwin-bin.nix {};
+              }
+            )
+            inputs.nur.overlay
           ];
         }
         ./hosts/NightSprings
