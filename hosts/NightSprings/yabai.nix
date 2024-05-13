@@ -30,7 +30,7 @@
   services.yabai = {
     enable = true;
     package = pkgs.unstable.yabai;
-    enableScriptingAddition = true;
+    enableScriptingAddition = false;
     config = {
       #focus_follows_mouse = "autoraise";
       mouse_follows_focus = "on";
@@ -41,15 +41,7 @@
       left_padding = 10;
       right_padding = 10;
       window_gap = 10;
-      mouse_modifier = "fn";
-      mouse_action1 = "move";
-      mouse_action2 = "resize";
       mouse_drop_action = "swap";
-      window_opacity = "on";
-      active_window_opacity = 1.0;
-      normal_window_opacity = 0.8;
-      window_animation_duration = 0.1;
-      window_animation_easing = "ease_out_circ";
     };
     extraConfig = ''
       yabai -m rule --add app='System Settings' manage=off
