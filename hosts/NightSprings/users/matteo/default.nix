@@ -13,7 +13,7 @@
     ./xcodes.nix
     ./terminal.nix
     ./zsh.nix
-    ./browser.nix
+    ../../../shared/home-manager/firefox.nix
   ];
 
   home.username = "matteo";
