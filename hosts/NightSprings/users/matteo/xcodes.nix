@@ -10,9 +10,9 @@
     useAria = true;
     versions = [
       "15.3"
-      "15.4 Release Candidate"
+      "15.4"
     ];
-    active = "15.3";
+    active = "15.4";
   };
 
   home.activation.xcodeThemes = lib.hm.dag.entryAfter ["writeBoundary"] ''
