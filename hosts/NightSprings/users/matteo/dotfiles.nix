@@ -20,8 +20,6 @@
     cask 'dash'
     cask 'telegram'
     cask 'whatsapp'
-    cask 'microsoft-teams'
-    cask 'microsoft-outlook'
     cask 'utm'
     cask 'zerotier-one'
     cask 'jellyfin-media-player'
