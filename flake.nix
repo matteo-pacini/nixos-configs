@@ -160,5 +160,41 @@
         }
       ];
     };
+    #########################
+    # Macbook Pro M? (Work) #
+    #########################
+    darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem rec {
+      system = "aarch64-darwin";
+      modules = [
+        {
+          nixpkgs.overlays = [
+            (import ./overlays/unstable.nix {inherit inputs;})
+            (import ./overlays/darwin/binary-apps.nix)
+            inputs.nur.overlay
+          ];
+        }
+        ./hosts/WorkLaptop
+        inputs.home-manager.darwinModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.matteo = import ./hosts/WorkLaptop/users/matteo;
+          home-manager.extraSpecialArgs = {inherit inputs;};
+        }
+        inputs.nix-homebrew.darwinModules.nix-homebrew
+        {
+          nix-homebrew = {
+            enable = true;
+            user = "matteo";
+            taps = {
+              "homebrew/homebrew-core" = inputs.homebrew-core;
+              "homebrew/homebrew-cask" = inputs.homebrew-cask;
+              "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
+            };
+            mutableTaps = false;
+          };
+        }
+      ];
+    };
   };
 }

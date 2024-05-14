@@ -337,7 +337,7 @@ in {
             # Disable TLS1.3 0-RTT (round-trip time)
             "security.tls.enable_0rtt_data" = false;
 
-            # Set OCSP to terminate the connection when a CA isn’t validate
+            # Set OCSP to terminate the connection when a CA isn’t valid
             "security.OCSP.require" = true;
 
             # Disable SHA-1 certificates

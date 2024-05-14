@@ -16,13 +16,9 @@
     cask_args appdir: '/Applications', require_sha: true
 
     cask '1password'
-    cask 'mullvadvpn'
-    cask 'dash'
-    cask 'telegram'
-    cask 'whatsapp'
-    cask 'utm'
-    cask 'zerotier-one'
-    cask 'jellyfin-media-player'
+    cask 'microsoft-teams'
+    cask 'microsoft-outlook'
+    cask 'slack'
     cask 'sf-symbols'
   '';
 
