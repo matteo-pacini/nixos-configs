@@ -106,6 +106,7 @@
         {
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
+            inputs.nur.overlay
           ];
         }
         ./hosts/CauldronLake
