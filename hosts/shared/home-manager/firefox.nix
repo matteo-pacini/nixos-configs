@@ -61,6 +61,7 @@ in {
         settings = lib.mkMerge [
           {
             # Based on https://brainfucksec.github.io/firefox-hardening-guide
+            # and https://github.com/arkenfox/user.js/blob/master/user.js
 
             ####################
             # Startup Settings #
@@ -149,6 +150,7 @@ in {
             # Disable crash reports
             "breakpad.reportURL" = "";
             "browser.tabs.crashReporting.sendReport" = false;
+            "browser.crashReports.unsubmittedCheck.autoSubmit2" = false;
 
             #############################################
             # Captive Portal Detection / Network Checks #
@@ -229,8 +231,34 @@ in {
             #####################################
 
             # Disable search suggestions
-            "browser.search.suggest.enabled" = false;
-            "browser.urlbar.suggest.searches" = false;
+            "browser.search.suggest.addons" = false;
+            #"browser.search.suggest.bookmark" = false;
+            "browser.search.suggest.calculator" = false;
+            #"browser.search.suggest.clipboard" = false;
+            "browser.search.suggest.engines" = false;
+            #"browser.search.suggest.history" = false;
+            "browser.search.suggest.mdn" = false;
+            "browser.search.suggest.pocket" = false;
+            "browser.search.suggest.trending" = false;
+            "browser.search.suggest.weather" = false;
+            "browser.search.suggest.yelp" = false;
+
+            # Same for urlbar
+            "browser.urlbar.suggest.addons" = false;
+            #"browser.urlbar.suggest.bookmark" = false;
+            "browser.urlbar.suggest.calculator" = false;
+            #"browser.urlbar.suggest.clipboard" = false;
+            "browser.urlbar.suggest.engines" = false;
+            #"browser.urlbar.suggest.history" = false;
+            "browser.urlbar.suggest.mdn" = false;
+            "browser.urlbar.suggest.pocket" = false;
+            "browser.urlbar.suggest.trending" = false;
+            "browser.urlbar.suggest.weather" = false;
+            "browser.urlbar.suggest.yelp" = false;
+
+            # Search telemetry
+            "browser.search.serpEventTelemetry.enabled" = false;
+            "browser.search.serpEventTelemetryCategorization.enabled" = false;
 
             # Disable location bar domain guessing
             "browser.fixup.alternate.enabled" = false;
