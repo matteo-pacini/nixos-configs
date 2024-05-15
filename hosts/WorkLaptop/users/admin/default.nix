@@ -17,8 +17,8 @@
     ../../../shared/home-manager/firefox.nix
   ];
 
-  home.username = "matteo";
-  home.homeDirectory = "/Users/matteo";
+  home.username = "admin";
+  home.homeDirectory = "/Users/admin";
 
   home.packages = with pkgs; [
     # Basic utilities

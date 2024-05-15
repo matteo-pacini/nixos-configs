@@ -54,14 +54,14 @@
         defaults write com.apple.dock ResetLaunchPad -bool false
       '';
       reloadSkhd = ''
-        launchctl unload /Users/matteo/Library/LaunchAgents/org.nixos.skhd.plist;
+        launchctl unload ${config.home.homeDirectory}/Library/LaunchAgents/org.nixos.skhd.plist;
         sleep 1;
-        launchctl load /Users/matteo/Library/LaunchAgents/org.nixos.skhd.plist;
+        launchctl load ${config.home.homeDirectory}/Library/LaunchAgents/org.nixos.skhd.plist;
       '';
       reloadYabai = ''
-        launchctl unload /Users/matteo/Library/LaunchAgents/org.nixos.yabai.plist;
+        launchctl unload ${config.home.homeDirectory}/Library/LaunchAgents/org.nixos.yabai.plist;
         sleep 1;
-        launchctl load /Users/matteo/Library/LaunchAgents/org.nixos.yabai.plist;
+        launchctl load ${config.home.homeDirectory}/Library/LaunchAgents/org.nixos.yabai.plist;
       '';
     };
   };

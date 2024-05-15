@@ -5,7 +5,7 @@
 }:
 stdenvNoCC.mkDerivation rec {
   pname = "Firefox";
-  version = "125.0.3";
+  version = "126.0";
 
   buildInputs = [undmg];
 
@@ -14,7 +14,7 @@ stdenvNoCC.mkDerivation rec {
   src = fetchurl {
     name = "Firefox-${version}.dmg";
     url = "https://download-installer.cdn.mozilla.net/pub/firefox/releases/${version}/mac/en-GB/Firefox%20${version}.dmg";
-    hash = "sha256-Yl4wvtzpNsViCHMW9mTvBDM36HGX8o57p/lx8198f1E=";
+    hash = "sha256-0fSvHy9vwCbbhZ1ikdw7ZfxpkHdyfSdwoT+uDyE8p0I=";
   };
 
   phases = ["unpackPhase" "installPhase"];

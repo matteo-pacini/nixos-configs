@@ -161,7 +161,7 @@
       ];
     };
     #########################
-    # Macbook Pro M? (Work) #
+    # Macbook Pro M1 (Work) #
     #########################
     darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem rec {
       system = "aarch64-darwin";
@@ -178,14 +178,14 @@
         {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users.matteo = import ./hosts/WorkLaptop/users/matteo;
+          home-manager.users.admin = import ./hosts/WorkLaptop/users/admin;
           home-manager.extraSpecialArgs = {inherit inputs;};
         }
         inputs.nix-homebrew.darwinModules.nix-homebrew
         {
           nix-homebrew = {
             enable = true;
-            user = "matteo";
+            user = "admin";
             taps = {
               "homebrew/homebrew-core" = inputs.homebrew-core;
               "homebrew/homebrew-cask" = inputs.homebrew-cask;

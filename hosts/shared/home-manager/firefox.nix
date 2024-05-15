@@ -9,7 +9,7 @@
   isLinux = pkgs.stdenv.isLinux;
 in {
   home.file = lib.optionalAttrs isLinux {
-    ".mozilla/firefox/matteo/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
+    ".mozilla/firefox/default/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
   };
 
   programs.firefox = {
@@ -19,9 +19,9 @@ in {
       then pkgs.firefox-app
       else pkgs.unstable.firefox;
     profiles = {
-      matteo = {
+      default = {
         id = 0;
-        name = "Matteo";
+        name = "Default";
         isDefault = true;
         search = {
           default = "DuckDuckGo";

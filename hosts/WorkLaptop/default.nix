@@ -16,8 +16,8 @@
 
   environment.systemPackages = with pkgs; [];
 
-  users.users."matteo" = {
-    home = "/Users/matteo";
+  users.users."admin" = {
+    home = "/Users/admin";
   };
 
   programs.zsh.enable = true;
