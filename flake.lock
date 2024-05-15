@@ -33,6 +33,22 @@
         "type": "github"
       }
     },
+    "dracula-wallpaper": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1699895880,
+        "narHash": "sha256-P0MfGkVap8wDd6eSMwmLhvQ4/7Z+pNmgY7O+qt9C1bg=",
+        "owner": "dracula",
+        "repo": "wallpaper",
+        "rev": "f2b8cc4223bcc2dfd5f165ab80f701bbb84e3303",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dracula",
+        "repo": "wallpaper",
+        "type": "github"
+      }
+    },
     "firefox-gnome-theme": {
       "flake": false,
       "locked": {
@@ -141,11 +157,11 @@
     "homebrew-core": {
       "flake": false,
       "locked": {
-        "lastModified": 1715810290,
-        "narHash": "sha256-46JWhnuXGsovg8FRXFn/eSt1sSGjluA1Ui6OdJAiifE=",
+        "lastModified": 1715816093,
+        "narHash": "sha256-KHYpCrYez/w9cDe8PM1zYpXqOW/1kdknBOv15SolKJY=",
         "owner": "homebrew",
         "repo": "homebrew-core",
-        "rev": "1d6035dc75cc93398f12a41087ff42b576c35d21",
+        "rev": "dc29f9583fe6698d9491b15050c272a280944f1c",
         "type": "github"
       },
       "original": {
@@ -300,6 +316,7 @@
     "root": {
       "inputs": {
         "colorls-dracula-theme": "colorls-dracula-theme",
+        "dracula-wallpaper": "dracula-wallpaper",
         "firefox-gnome-theme": "firefox-gnome-theme",
         "home-manager": "home-manager",
         "homebrew-bundle": "homebrew-bundle",

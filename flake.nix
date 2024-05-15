@@ -51,6 +51,10 @@
       url = "github:dracula/sublime";
       flake = false;
     };
+    dracula-wallpaper = {
+      url = "github:dracula/wallpaper";
+      flake = false;
+    };
     ###############
     # Gnome theme #
     ###############

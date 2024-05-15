@@ -38,4 +38,8 @@
         --verbose \
         install
     '';
+
+  wallpapers.dracula = {
+    enable = true;
+  };
 }
