@@ -7,6 +7,7 @@
 }: {
   imports = [
     ../../../../modules/home-manager/darwin/xcodes.nix
+    ../../../../modules/home-manager/darwin/dracula-wallpaper.nix
 
     ./dotfiles.nix
     ./git.nix
