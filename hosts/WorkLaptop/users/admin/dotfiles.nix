@@ -16,6 +16,7 @@
     cask_args appdir: '/Applications', require_sha: true
 
     brew 'needle'
+    brew 'swiftlint'
 
     cask '1password'
     cask 'microsoft-teams'
@@ -36,6 +37,11 @@
         --verbose \
         install
     '';
+
+  home.sessionPath = [
+    "/opt/homebrew/opt/needle/bin"
+    "/opt/homebrew/opt/swiftlint/bin"
+  ];
 
   wallpapers.dracula = {
     enable = true;
