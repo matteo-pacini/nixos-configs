@@ -24,6 +24,7 @@
     cask 'zerotier-one'
     cask 'jellyfin-media-player'
     cask 'sf-symbols'
+    cask 'logitune', args: { require_sha: false }
   '';
 
   home.activation.brewUpdate =
