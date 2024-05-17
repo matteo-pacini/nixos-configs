@@ -15,7 +15,6 @@
 
     cask_args appdir: '/Applications', require_sha: true
 
-    brew 'needle'
     brew 'swiftlint'
 
     cask '1password'

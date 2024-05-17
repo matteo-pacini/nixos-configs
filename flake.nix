@@ -132,7 +132,7 @@
         {
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
-            (import ./overlays/darwin/binary-apps.nix)
+            (import ./overlays/darwin)
             (
               final: prev: {
                 radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
@@ -173,7 +173,7 @@
         {
           nixpkgs.overlays = [
             (import ./overlays/unstable.nix {inherit inputs;})
-            (import ./overlays/darwin/binary-apps.nix)
+            (import ./overlays/darwin)
             inputs.nur.overlay
           ];
         }

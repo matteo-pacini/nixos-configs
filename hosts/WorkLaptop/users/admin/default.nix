@@ -30,6 +30,8 @@
     # Extra
     colorls
     tree
+    # Development
+    needle
   ];
 
   home.stateVersion = "23.11";
