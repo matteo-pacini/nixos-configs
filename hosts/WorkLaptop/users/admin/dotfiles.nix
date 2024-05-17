@@ -15,8 +15,6 @@
 
     cask_args appdir: '/Applications', require_sha: true
 
-    brew 'swiftlint'
-
     cask '1password'
     cask 'microsoft-teams'
     cask 'microsoft-outlook'

@@ -32,6 +32,7 @@
     tree
     # Development
     needle
+    swiftlint
   ];
 
   home.stateVersion = "23.11";
