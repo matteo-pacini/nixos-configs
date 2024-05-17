@@ -36,11 +36,6 @@
         install
     '';
 
-  home.sessionPath = [
-    "/opt/homebrew/opt/needle/bin"
-    "/opt/homebrew/opt/swiftlint/bin"
-  ];
-
   wallpapers.dracula = {
     enable = true;
   };
