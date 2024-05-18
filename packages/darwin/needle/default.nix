@@ -1,12 +1,12 @@
 {
   stdenv,
+  lib,
   fetchFromGitHub,
   swift,
   swiftpm,
   swiftpm2nix,
   sqlite,
 }: let
-  # Pass the generated files to the helper.
   generated = swiftpm2nix.helpers ./nix;
 in
   stdenv.mkDerivation rec {
@@ -37,4 +37,11 @@ in
       cp $binPath/needle $out/bin/
       runHook postInstall
     '';
+
+    meta = with lib; {
+      description = "Compile-time safe Swift dependency injection framework";
+      homepage = "https://github.com/uber/needle";
+      platforms = platforms.darwin;
+      license = licenses.asl20;
+    };
   }

@@ -1,5 +1,6 @@
 {
   stdenvNoCC,
+  lib,
   fetchurl,
   undmg,
 }:
@@ -21,10 +22,15 @@ stdenvNoCC.mkDerivation rec {
 
   installPhase = ''
     runHook preInstall
-
     mkdir -p $out/Applications
     cp -r Firefox*.app "$out/Applications/"
-
     runHook postInstall
   '';
+
+  meta = with lib; {
+    description = "Mozilla Firefox web browser for macOS";
+    homepage = "https://www.mozilla.org/en-US/firefox/";
+    platforms = platforms.darwin;
+    license = lib.licenses.mpl20;
+  };
 }

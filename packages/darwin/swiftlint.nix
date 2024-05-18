@@ -1,5 +1,6 @@
 {
   stdenvNoCC,
+  lib,
   fetchurl,
   unzip,
 }:
@@ -30,4 +31,11 @@ stdenvNoCC.mkDerivation rec {
     cp swiftlint $out/bin
     runHook postInstall
   '';
+
+  meta = with lib; {
+    description = "A tool to enforce Swift style and conventions.";
+    homepage = "https://realm.github.io/SwiftLint/";
+    platforms = platforms.darwin;
+    license = lib.licenses.mit;
+  };
 }
