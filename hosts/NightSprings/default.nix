@@ -2,7 +2,7 @@
   imports = [
     ./fonts.nix
     ./system.nix
-    ./yabai.nix
+    ../shared/darwin/yabai.nix
   ];
 
   nixpkgs.config.allowUnfree = true;

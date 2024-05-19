@@ -21,6 +21,7 @@
       shift + cmd - j : yabai -m window --warp south
       shift + cmd - k : yabai -m window --warp north
       shift + cmd - l : yabai -m window --warp east
+      shift + cmd - f : yabai -m window --toggle float
       shift + alt + cmd - l : yabai -m window --display next
       shift + alt + cmd - h : yabai -m window --display prev
       shift + alt + cmd - r : yabai -m space --balance
