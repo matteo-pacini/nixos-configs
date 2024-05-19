@@ -20,12 +20,16 @@
         "[](bg:green fg:purple)"
         "$git_branch"
         "$git_status"
-        "[](bg:black fg:green)"
+        "[](bg:pink fg:green)"
+        "$direnv"
+        "[](bg:black fg:pink)"
         "$fill"
         # Right
         "[](bg:black fg:selection)"
         "$character"
-        "[](bg:selection fg:comment)"
+        "[](bg:selection fg:purple)"
+        "$nix_shell"
+        "[](bg:purple fg:comment)"
         "$time"
         "$line_break$line_break"
         "[ 󰌌 ](bg:selection fg:foreground)"
@@ -67,10 +71,24 @@
         style = "bg:green";
         format = "[[($all_status$ahead_behind )](fg:black bg:green)]($style)";
       };
+      direnv = {
+        disabled = false;
+        style = "bold bg:pink fg:black";
+        format = "[ $symbol $loaded ($allowed) ]($style)";
+        symbol = "direnv";
+      };
+      fill = {
+        symbol = " ";
+      };
       character = {
         success_symbol = "[](bold bg:selection fg:green)";
         error_symbol = "[](bold bg:selection fg:red)";
         format = "[ $symbol ](bg:selection)";
+      };
+      nix_shell = {
+        style = "bold bg:purple fg:black";
+        format = "[ $symbol$state (\($name\)) ]($style)";
+        symbol = " ";
       };
       time = {
         disabled = false;
