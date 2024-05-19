@@ -51,6 +51,11 @@
       }
     ];
     shellAliases = {
+      nix-gc = ''
+        nix-collect-garbage --delete-old;
+        sudo nix-collect-garbage --delete-old;
+        nix-store --optimize -v;
+      '';
     };
   };
 

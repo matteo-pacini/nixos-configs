@@ -25,8 +25,6 @@
 
   nix.settings.experimental-features = ["nix-command" "flakes"];
 
-  nix.gc.automatic = true;
-
   # Timezone and locale
 
   time.timeZone = "Europe/London";

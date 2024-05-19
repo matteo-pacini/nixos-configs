@@ -68,6 +68,11 @@
     shellAliases = {
       l = "eza -lh";
       ll = "eza -lha";
+      nix-gc = ''
+        nix-collect-garbage --delete-old;
+        sudo nix-collect-garbage --delete-old;
+        nix-store --optimize -v;
+      '';
     };
   };
 

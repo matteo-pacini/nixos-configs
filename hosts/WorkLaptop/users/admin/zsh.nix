@@ -63,6 +63,11 @@
         sleep 1;
         launchctl load ${config.home.homeDirectory}/Library/LaunchAgents/org.nixos.yabai.plist;
       '';
+      nix-gc = ''
+        nix-collect-garbage --delete-old;
+        sudo nix-collect-garbage --delete-old;
+        nix-store --optimize -v;
+      '';
     };
   };
 }
