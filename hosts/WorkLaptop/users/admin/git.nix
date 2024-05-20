@@ -20,7 +20,7 @@
     lfs.enable = true;
     package = pkgs.gitAndTools.gitFull;
     userName = "Matteo Pacini";
-    userEmail = "matteo@codecraft.it";
+    userEmail = "matteo.pacini@transreport.co.uk";
     extraConfig = {
       init.defaultBranch = "master";
       core.editor = "code --wait";
@@ -28,19 +28,19 @@
       difftool.vscode.cmd = "code --wait --diff $LOCAL $REMOTE";
       merge.tool = "vscode";
       mergetool.vscode.cmd = "code --wait --merge $REMOTE $LOCAL $BASE $MERGED";
-      core.sshCommand = "ssh -i ~/.ssh/github";
+      core.sshCommand = "ssh -i ~/.ssh/github_work";
     };
     includes = [
       {
         contents = {
           user = {
-            email = "matteo.pacini@transreport.co.uk";
+            email = "matteo@codecraft.it";
           };
           core = {
-            sshCommand = "ssh -i ~/.ssh/github_work";
+            sshCommand = "ssh -i ~/.ssh/github";
           };
         };
-        condition = "gitdir:${config.home.homeDirectory}/Work/";
+        condition = "gitdir:${config.home.homeDirectory}/Repositories/";
       }
     ];
     ignores = [
