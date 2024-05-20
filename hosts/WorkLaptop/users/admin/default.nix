@@ -16,7 +16,7 @@
     ./xcodes.nix
     ./terminal.nix
     ./zsh.nix
-    ../../../shared/home-manager/firefox.nix
+    ./firefox.nix
   ];
 
   home.username = "admin";
