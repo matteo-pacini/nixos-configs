@@ -37,6 +37,11 @@
         install
     '';
 
+  home.file.".config/asciinema/config".text = ''
+    [record]
+    command = ${config.programs.zsh.package}/bin/zsh
+  '';
+
   wallpapers.dracula = {
     enable = true;
   };

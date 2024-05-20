@@ -31,9 +31,9 @@
     # Extra
     colorls
     tree
-    # Development
-    needle
-    swiftlint
+    # Other
+    asciinema
+    asciinema-agg
   ];
 
   home.stateVersion = "23.11";
