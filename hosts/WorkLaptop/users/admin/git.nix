@@ -42,6 +42,18 @@
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/";
       }
+      {
+        contents = {
+          core.excludesfile = builtins.toFile "ignore" ''
+            flake.nix
+            flake.lock
+            gemset.nix
+            .envrc
+            .direnv
+          '';
+        };
+        condition = "gitdir:${config.home.homeDirectory}/Work/";
+      }
     ];
     ignores = [
       ".DS_Store"
