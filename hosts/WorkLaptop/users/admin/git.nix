@@ -42,9 +42,15 @@
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/";
       }
-    ];
-    ignores = [
-      ".DS_Store"
+      {
+        contents = {
+          core.excludesfile = pkgs.writeText ".gitignore" ''
+            .direnv
+            .envrc
+          '';
+        };
+        condition = "gitdir:${config.home.homeDirectory}/Work/";
+      }
     ];
   };
 }
