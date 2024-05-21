@@ -47,6 +47,7 @@
           core.excludesfile = pkgs.writeText ".gitignore" ''
             .direnv
             .envrc
+            nix/xcode.sh
           '';
         };
         condition = "gitdir:${config.home.homeDirectory}/Work/";
