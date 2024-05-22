@@ -7,7 +7,7 @@
   imports = [
     ./gaming.nix
     ./gnome.nix
-    ../../../shared/home-manager/firefox.nix
+    ./firefox.nix
     ./flatpak.nix
     ./text-editors.nix
     ./mounts.nix
