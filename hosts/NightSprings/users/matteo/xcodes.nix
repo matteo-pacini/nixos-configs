@@ -7,9 +7,8 @@
 }: {
   programs.xcodes = {
     enable = true;
-    useAria = true;
+    enableAria = true;
     versions = [
-      "15.3"
       "15.4"
     ];
     active = "15.4";
