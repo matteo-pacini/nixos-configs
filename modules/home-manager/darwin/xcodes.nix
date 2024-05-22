@@ -9,10 +9,10 @@ with lib; let
 in {
   options.programs.xcodes = {
     enable = mkEnableOption "Manages multiple Xcode installations on macOS";
-    useAria = mkOption {
+    enableAria = mkOption {
       type = types.bool;
       default = true;
-      description = "Use aria2 for downloading Xcode archives.";
+      description = "Use aria2 to download Xcode archives.";
     };
     versions = mkOption {
       type = types.listOf types.str;
@@ -42,52 +42,29 @@ in {
       [
         xcodes
       ]
-      ++ lib.optionals cfg.useAria [aria];
+      ++ lib.optionals cfg.enableAria [aria];
 
-    home.activation.xcodes = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    home.activation.xcodes = lib.hm.dag.entryAfter ["writeBoundary"] (''
 
-      export PATH="${lib.makeBinPath (with pkgs; [xcodes] ++ lib.optionals cfg.useAria [aria])}:$PATH"
+        export PATH="${lib.makeBinPath (with pkgs; [xcodes] ++ lib.optionals cfg.enableAria [aria])}:$PATH"
 
-      REQUIRED_XCODES="${concatStringsSep "\n" cfg.versions}"
-      INSTALLED_XCODES=$(
-        NO_COLOR=1 xcodes installed --directory "${config.home.homeDirectory}/Applications" | \
-        grep -oE '^[^\(]*' || true
-      )
-
-      echo -e "Requested versions:\n$REQUIRED_XCODES"
-      echo -e "Installed versions:\n$INSTALLED_XCODES"
-
-      while IFS= read -r version; do
-        if ! echo $INSTALLED_XCODES | grep -q "$(echo $version | xargs)"; then
-          echo "Installing Xcode $version..."
+      ''
+      + lib.concatMapStringsSep "\n" (
+        version: ''
           xcodes install \
             --empty-trash \
             --no-superuser \
-            --directory "${config.home.homeDirectory}/Applications" "$version"
-        else
-          echo "Xcode $version is already installed, skipping..."
-        fi
-      done <<< "$REQUIRED_XCODES"
-
-      INSTALLED_XCODES=$(
-        NO_COLOR=1 xcodes installed --directory "${config.home.homeDirectory}/Applications" | \
-        grep -oE '^[^\(]*' || true
+            --directory "${config.home.homeDirectory}/Applications" "${version}"
+        ''
       )
+      cfg.versions
+      + ''
 
-      echo -e "Installed versions after changes:\n$INSTALLED_XCODES"
+        xcodes select --directory "${config.home.homeDirectory}/Applications" "${cfg.active}"
 
-      while IFS= read -r version; do
-        if ! echo $REQUIRED_XCODES | grep -q "$(echo $version | xargs)"; then
-          echo "Purging Xcode $version in 5 seconds..."
-          sleep 5
-          xcodes uninstall \
-            --empty-trash \
-            --directory "${config.home.homeDirectory}/Applications" "$version"
-        fi
-      done <<< "$INSTALLED_XCODES"
+      ''
+      + ''
 
-      echo "Setting active Xcode to ${cfg.active}..."
-      xcodes select --directory "${config.home.homeDirectory}/Applications" "${cfg.active}"
-    '';
+      '');
   };
 }
