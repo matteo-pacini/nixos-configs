@@ -31,6 +31,8 @@
     # Extra
     colorls
     tree
+    # Development
+    gh
     # Other
     asciinema
     asciinema-agg
