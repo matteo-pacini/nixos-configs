@@ -18,6 +18,7 @@
       vscext.usernamehw.errorlens
       vscext.timonwong.shellcheck
       vscext.dracula-theme.theme-dracula
+      vscext.eamodio.gitlens
     ];
     mutableExtensionsDir = false;
     userSettings = {
