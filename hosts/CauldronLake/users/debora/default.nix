@@ -5,11 +5,11 @@
   ...
 }: {
   imports = [
+    ../../../shared/home-manager/firefox.nix
+
     ./gaming.nix
     ./gnome.nix
-    ./firefox.nix
     ./flatpak.nix
-    ./text-editors.nix
     ./mounts.nix
   ];
 
@@ -30,6 +30,11 @@
   ];
 
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
+
+  programs.git = {
+    enable = true;
+    package = pkgs.gitAndTools.gitFull;
+  };
 
   programs.zsh = {
     initExtra = ''
@@ -55,6 +60,14 @@
         nix-collect-garbage --delete-old;
         sudo nix-collect-garbage --delete-old;
         nix-store --optimize -v;
+      '';
+      update = ''
+        cd /etc/nixos;
+        git reset --hard;
+        git clean -xdf;
+        git pull;
+        sudo nixos-rebuild boot;
+        echo "Update complete, please reboot the computer";
       '';
     };
   };
