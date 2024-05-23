@@ -16,12 +16,12 @@ in {
     };
     versions = mkOption {
       type = types.listOf types.str;
-      default = ["15.3"];
+      default = ["15.4"];
       description = "List of Xcode versions to be installed.";
     };
     active = mkOption {
       type = types.str;
-      default = "15.3";
+      default = "15.4";
       description = "Active Xcode version.";
     };
   };
@@ -38,15 +38,13 @@ in {
       }
     ];
 
-    home.packages = with pkgs;
-      [
-        xcodes
-      ]
-      ++ lib.optionals cfg.enableAria [aria];
+    home.packages = with pkgs; [
+      xcodes
+    ];
 
     home.activation.xcodes = lib.hm.dag.entryAfter ["writeBoundary"] (''
 
-        export PATH="${lib.makeBinPath (with pkgs; [xcodes] ++ lib.optionals cfg.enableAria [aria])}:$PATH"
+        export PATH="${lib.makeBinPath (with pkgs; [xcodes nawk] ++ lib.optionals cfg.enableAria [aria])}:$PATH"
 
       ''
       + lib.concatMapStringsSep "\n" (
@@ -64,6 +62,22 @@ in {
 
       ''
       + ''
+
+        REQUESTED_VERSIONS="${concatStringsSep "\n" cfg.versions}"
+        INSTALLED_VERSIONS="$(NO_COLOR=1 xcodes installed --directory "${config.home.homeDirectory}/Applications" | nawk -F ' \\(' '{print $1}')"
+
+        TO_REMOVE="$(comm -23 <(echo "$INSTALLED_VERSIONS" | sort) <(echo "$REQUESTED_VERSIONS" | sort))"
+
+        if [ -z "$TO_REMOVE" ]; then
+          echo "No Xcodes to remove."
+          exit 0
+        fi
+
+        while IFS= read -r version; do
+          echo "Removing Xcode $version..."
+          xcodes uninstall --empty-trash \
+            --directory "${config.home.homeDirectory}/Applications" "$version"
+        done <<< "$TO_REMOVE"
 
       '');
   };
