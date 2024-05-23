@@ -6,9 +6,11 @@
   ...
 }: {
   imports = [
+    ../../../../modules/home-manager/dracula-wallpaper.nix
     ../../../../modules/home-manager/darwin/xcodes.nix
+
+    ../../../shared/home-manager/firefox.nix
     ../../../shared/home-manager/darwin/starship.nix
-    ../../../../modules/home-manager/darwin/dracula-starship.nix
 
     ./dotfiles.nix
     ./git.nix
@@ -16,7 +18,6 @@
     ./xcodes.nix
     ./terminal.nix
     ./zsh.nix
-    ../../../shared/home-manager/firefox.nix
   ];
 
   home.username = "matteo";
