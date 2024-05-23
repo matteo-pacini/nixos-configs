@@ -7,7 +7,7 @@
 }: {
   imports = [
     ../../../../modules/home-manager/darwin/xcodes.nix
-    ../../../../modules/home-manager/darwin/dracula-wallpaper.nix
+    ../../../shared/home-manager/darwin/starship.nix
     ../../../../modules/home-manager/darwin/dracula-starship.nix
 
     ./dotfiles.nix
