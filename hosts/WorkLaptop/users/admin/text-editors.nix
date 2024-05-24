@@ -17,7 +17,6 @@
       vscext.github.copilot
       vscext.usernamehw.errorlens
       vscext.timonwong.shellcheck
-      vscext.dracula-theme.theme-dracula
       vscext.eamodio.gitlens
     ];
     mutableExtensionsDir = false;
@@ -25,7 +24,6 @@
       "nix.formatterPath" = "alejandra";
       "editor.fontSize" = 16;
       "editor.fontFamily" = "FiraCode Nerd Font";
-      "workbench.colorTheme" = "Dracula";
     };
   };
 }

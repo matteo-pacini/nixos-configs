@@ -5,8 +5,6 @@
   lib,
   ...
 }: {
-  home.file.".config/colorls/dark_colors.yaml".source = "${inputs.colorls-dracula-theme}/dark_colors.yaml";
-
   home.file."Brewfile".text = ''
 
     tap "homebrew/bundle"
@@ -42,7 +40,12 @@
     command = ${config.programs.zsh.package}/bin/zsh
   '';
 
-  wallpapers.dracula = {
-    enable = true;
+  dracula = {
+    wallpaper.enable = true;
+    colorls.enable = true;
+    vscode.enable = true;
+    xcode.enable = true;
+    fzf.enable = true;
+    bat.enable = true;
   };
 }
