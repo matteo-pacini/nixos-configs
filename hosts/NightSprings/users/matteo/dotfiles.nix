@@ -23,6 +23,7 @@
     cask 'jellyfin-media-player'
     cask 'sf-symbols'
     cask 'logitune', args: { require_sha: false }
+    cask 'vlc'
   '';
 
   home.activation.brewUpdate =
