@@ -46,6 +46,8 @@ in {
 
         export PATH="${lib.makeBinPath (with pkgs; [xcodes nawk] ++ lib.optionals cfg.enableAria [aria])}:$PATH"
 
+        xcodes update 2>&1 > /dev/null
+
       ''
       + lib.concatMapStringsSep "\n" (
         version: ''
