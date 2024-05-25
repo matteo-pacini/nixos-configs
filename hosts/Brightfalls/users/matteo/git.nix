@@ -4,6 +4,15 @@
   inputs,
   ...
 }: {
+  programs.ssh = {
+    enable = true;
+    compression = true;
+    extraConfig = ''
+      AddKeysToAgent yes
+      IdentitiesOnly yes
+    '';
+  };
+
   programs.git = {
     enable = true;
     lfs.enable = true;
@@ -17,9 +26,7 @@
       difftool.vscode.cmd = "code --wait --diff $LOCAL $REMOTE";
       merge.tool = "vscode";
       mergetool.vscode.cmd = "code --wait --merge $REMOTE $LOCAL $BASE $MERGED";
+      core.sshCommand = "ssh -i ~/.ssh/github";
     };
-    ignores = [
-      ".DS_Store"
-    ];
   };
 }
