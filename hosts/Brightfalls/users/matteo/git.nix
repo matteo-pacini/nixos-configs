@@ -8,7 +8,6 @@
     enable = true;
     compression = true;
     extraConfig = ''
-      AddKeysToAgent yes
       IdentitiesOnly yes
     '';
   };
