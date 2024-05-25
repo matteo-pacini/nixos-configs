@@ -9,7 +9,6 @@ with lib.hm.gvariant; {
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
-      icon-theme = "Adwaita";
     };
     "org/gnome/shell" = {
       enabled-extensions = [
@@ -45,20 +44,36 @@ with lib.hm.gvariant; {
       gap-inner = mkUint32 8;
       gap-outer = mkUint32 8;
     };
+    "org/gnome/desktop/notifications" = {
+      show-banners = false;
+    };
+    "org/gnome/Console" = {
+      use-system-font = false;
+      custom-font = "FiraCode Nerd Font 14";
+    };
   };
 
   gtk = {
     enable = true;
+    cursorTheme = {
+      name = "Adwaita";
+      package = pkgs.gnome.gnome-themes-extra;
+    };
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome.gnome-themes-extra;
     };
-  };
+    gtk3.extraConfig = {
+      Settings = ''
+        gtk-application-prefer-dark-theme=1
+      '';
+    };
 
-  xdg.configFile = {
-    "gtk-4.0/assets".source = "${config.gtk.theme.package}/share/themes/${config.gtk.theme.name}/gtk-4.0/assets";
-    "gtk-4.0/gtk.css".source = "${config.gtk.theme.package}/share/themes/${config.gtk.theme.name}/gtk-4.0/gtk.css";
-    "gtk-4.0/gtk-dark.css".source = "${config.gtk.theme.package}/share/themes/${config.gtk.theme.name}/gtk-4.0/gtk-dark.css";
+    gtk4.extraConfig = {
+      Settings = ''
+        gtk-application-prefer-dark-theme=1
+      '';
+    };
   };
 
   qt = {
