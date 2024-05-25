@@ -10,7 +10,9 @@
     desktopManager.gnome.enable = true;
   };
 
-  services.udev.packages = with pkgs; [gnome.gnome-settings-daemon];
+  services.udev.packages = with pkgs; [
+    gnome.gnome-settings-daemon
+  ];
 
   services.xserver.excludePackages = [
     pkgs.xterm

@@ -12,6 +12,7 @@
     ./git.nix
     ./text-editors.nix
     ./mounts.nix
+    ./zsh.nix
   ];
 
   home.username = "matteo";
@@ -20,6 +21,7 @@
   home.packages = with pkgs; [
     #Gnome
     gnomeExtensions.appindicator
+    pkgs.unstable.gnomeExtensions.pop-shell
     gnome.gnome-tweaks
     # Downloads
     aria
@@ -30,7 +32,6 @@
     quickemu
     # Custom packages
     reshade-steam-proton
-    radiogogo
     # Gaming
     fixed-unstable-mangohud
     vulkan-tools
@@ -41,46 +42,7 @@
     # Social
     # Other
     nix-output-monitor
-    eza
   ];
-
-  home.file.".p10k.zsh".source = ./dot_p10k.zsh;
-
-  programs.zsh = {
-    initExtra = ''
-      source ~/.p10k.zsh
-    '';
-    enable = true;
-    enableCompletion = true;
-    enableAutosuggestions = true;
-    syntaxHighlighting.enable = true;
-    plugins = [
-      {
-        name = "powerlevel10k";
-        src = pkgs.zsh-powerlevel10k;
-        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-      }
-      {
-        name = "zsh-history-substring-search";
-        src = pkgs.zsh-history-substring-search;
-      }
-    ];
-    shellAliases = {
-      l = "eza -lh";
-      ll = "eza -lha";
-      nix-gc = ''
-        nix-collect-garbage --delete-old;
-        sudo nix-collect-garbage --delete-old;
-        nix-store --optimize -v;
-      '';
-    };
-  };
-
-  programs.direnv = {
-    enable = true;
-    enableZshIntegration = true;
-    nix-direnv.enable = true;
-  };
 
   home.stateVersion = "23.11";
 
