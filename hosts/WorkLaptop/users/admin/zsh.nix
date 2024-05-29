@@ -30,7 +30,7 @@
   programs.zsh = {
     enable = true;
     enableCompletion = true;
-    eautosuggestion.enable = true;
+    autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     historySubstringSearch.enable = true;
     shellAliases = {
