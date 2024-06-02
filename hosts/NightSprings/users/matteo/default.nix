@@ -29,6 +29,7 @@
     # Virtualization
     colima
     docker
+    unstable.qemu
     # Extra
     colorls
     tree
