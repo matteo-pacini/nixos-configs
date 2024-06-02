@@ -34,6 +34,8 @@
     colorls
     tree
     unstable.yt-dlp
+    # Music
+    cmus
     # Mine
     radiogogo
   ];

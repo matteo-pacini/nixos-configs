@@ -18,7 +18,6 @@
     cask 'dash'
     cask 'telegram'
     cask 'whatsapp'
-    cask 'utm'
     cask 'zerotier-one'
     cask 'jellyfin-media-player'
     cask 'sf-symbols'
