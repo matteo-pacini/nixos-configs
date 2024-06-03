@@ -1,8 +1,5 @@
+{ config, pkgs, ... }:
 {
-  config,
-  pkgs,
-  ...
-}: {
   programs.zsh.enable = true;
 
   programs.command-not-found.enable = true;

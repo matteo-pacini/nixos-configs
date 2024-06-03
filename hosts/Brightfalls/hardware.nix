@@ -4,15 +4,19 @@
   pkgs,
   modulesPath,
   ...
-}: {
-  imports = [
-    (modulesPath + "/installer/scan/not-detected.nix")
-  ];
+}:
+{
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
-  boot.initrd.availableKernelModules = ["xhci_pci" "ahci" "usbhid" "sd_mod"];
-  boot.initrd.kernelModules = ["dm-snapshot"];
-  boot.kernelModules = ["kvm-amd"];
-  boot.extraModulePackages = [];
+  boot.initrd.availableKernelModules = [
+    "xhci_pci"
+    "ahci"
+    "usbhid"
+    "sd_mod"
+  ];
+  boot.initrd.kernelModules = [ "dm-snapshot" ];
+  boot.kernelModules = [ "kvm-amd" ];
+  boot.extraModulePackages = [ ];
   boot.kernelPackages = pkgs.linuxPackages_6_8;
 
   boot.kernelParams = [
@@ -33,7 +37,10 @@
   fileSystems."/" = {
     device = "/dev/disk/by-uuid/cfeb4539-1275-4bed-8713-637c6194e01a";
     fsType = "xfs";
-    options = ["defaults" "noatime"];
+    options = [
+      "defaults"
+      "noatime"
+    ];
   };
 
   boot.initrd.luks.devices."root".device = "/dev/disk/by-uuid/5c7a8b8e-ed65-4820-a85e-0fb3cbe8a198";
@@ -46,10 +53,13 @@
   };
 
   systemd.services."systemd-cryptsetup@" = {
-    path = with pkgs; [util-linux e2fsprogs];
+    path = with pkgs; [
+      util-linux
+      e2fsprogs
+    ];
     overrideStrategy = "asDropin";
     serviceConfig = {
-      ExecStartPost = ["${pkgs.systemd}/sbin/udevadm trigger /dev/mapper/%i"];
+      ExecStartPost = [ "${pkgs.systemd}/sbin/udevadm trigger /dev/mapper/%i" ];
     };
   };
 
@@ -65,7 +75,10 @@
     device = "/dev/mapper/home";
     fsType = "xfs";
     mountPoint = "/home";
-    options = ["defaults" "noatime"];
+    options = [
+      "defaults"
+      "noatime"
+    ];
   };
 
   fileSystems."/data" = {
@@ -73,7 +86,10 @@
     device = "/dev/mapper/data";
     fsType = "xfs";
     mountPoint = "/data";
-    options = ["defaults" "noatime"];
+    options = [
+      "defaults"
+      "noatime"
+    ];
   };
 
   fileSystems."swap" = {
@@ -81,7 +97,7 @@
     device = "/dev/mapper/swap";
     fsType = "swap";
     mountPoint = "none";
-    options = ["sw"];
+    options = [ "sw" ];
   };
 
   fileSystems."/tmp" = {
@@ -89,7 +105,7 @@
     device = "/dev/mapper/tmp";
     fsType = "tmpfs";
     mountPoint = "/tmp";
-    options = ["defaults"];
+    options = [ "defaults" ];
   };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";

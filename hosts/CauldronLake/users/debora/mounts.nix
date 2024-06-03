@@ -3,23 +3,20 @@
   pkgs,
   inputs,
   ...
-}: {
-  systemd.user.tmpfiles.rules = [
-    "d /home/debora/Mounts/Debora 0700 debora users -"
-  ];
+}:
+{
+  systemd.user.tmpfiles.rules = [ "d /home/debora/Mounts/Debora 0700 debora users -" ];
 
   systemd.user.mounts.home-debora-Mounts-Debora = {
     Unit = {
       Description = "Debora folder on nexus";
-      After = [
-        "network-online.target"
-      ];
-      Wants = [
-        "network-online.target"
-      ];
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
     };
 
-    Install = {WantedBy = ["default.target"];};
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
 
     Mount = {
       What = "debora@192.168.7.7:/diskpool/debora";

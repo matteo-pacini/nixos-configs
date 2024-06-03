@@ -4,7 +4,8 @@
   inputs,
   lib,
   ...
-}: {
+}:
+{
   imports = [
     ../../../../modules/home-manager/dracula.nix
     ../../../../modules/home-manager/darwin/xcodes.nix

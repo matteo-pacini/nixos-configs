@@ -21,7 +21,7 @@ stdenv.mkDerivation {
     sha256 = "sha256-jVqeVIW5cIgRkK/V3HxN1RKcRb+LaFR7n8GHxvowW0I=";
   };
 
-  nativeBuildInputs = [makeWrapper];
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
     mkdir -p $out/bin
@@ -30,16 +30,43 @@ stdenv.mkDerivation {
     cp "$src/reshade-steam-proton.sh" "$out/bin/._reshade-steam-proton.sh"
     makeWrapper "$out/bin/._reshade-linux.sh" \
                 "$out/bin/reshade-linux.sh" \
-                 --prefix PATH : "${lib.makeBinPath [wineWowPackages.minimal p7zip git curl wget file]}"
+                 --prefix PATH : "${
+                   lib.makeBinPath [
+                     wineWowPackages.minimal
+                     p7zip
+                     git
+                     curl
+                     wget
+                     file
+                   ]
+                 }"
 
 
     makeWrapper "$out/bin/._reshade-linux-flatpak.sh" \
                 "$out/bin/reshade-linux-flatpak.sh" \
-                 --prefix PATH : "${lib.makeBinPath [wineWowPackages.minimal p7zip git curl wget file]}"
+                 --prefix PATH : "${
+                   lib.makeBinPath [
+                     wineWowPackages.minimal
+                     p7zip
+                     git
+                     curl
+                     wget
+                     file
+                   ]
+                 }"
 
 
     makeWrapper "$out/bin/._reshade-steam-proton.sh" \
                 "$out/bin/reshade-steam-proton.sh" \
-                 --prefix PATH : "${lib.makeBinPath [protontricks p7zip git curl wget file]}"
+                 --prefix PATH : "${
+                   lib.makeBinPath [
+                     protontricks
+                     p7zip
+                     git
+                     curl
+                     wget
+                     file
+                   ]
+                 }"
   '';
 }

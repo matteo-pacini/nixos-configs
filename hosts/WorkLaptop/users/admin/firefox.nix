@@ -4,7 +4,8 @@
   inputs,
   lib,
   ...
-}: let
+}:
+let
   passbolt = pkgs.stdenv.mkDerivation rec {
     version = "4.7.0";
     name = "passbolt-${version}";
@@ -21,13 +22,10 @@
       install -v -m644 "$src" "$dst/${addonId}.xpi"
     '';
   };
-in {
-  imports = [
-    ../../../shared/home-manager/firefox.nix
-  ];
+in
+{
+  imports = [ ../../../shared/home-manager/firefox.nix ];
 
   # Append passbolt to the list of extensions
-  programs.firefox.profiles.default.extensions = [
-    passbolt
-  ];
+  programs.firefox.profiles.default.extensions = [ passbolt ];
 }

@@ -3,7 +3,8 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+{
   imports = [
     ./hardware.nix
     ./networking.nix
@@ -17,13 +18,14 @@
     ./printer.nix
   ];
 
-  environment.systemPackages = with pkgs; [
-    sshfs
-  ];
+  environment.systemPackages = with pkgs; [ sshfs ];
 
   nixpkgs.config.allowUnfree = true;
 
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   # Timezone and locale
 

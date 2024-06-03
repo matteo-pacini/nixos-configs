@@ -1,8 +1,5 @@
+{ config, pkgs, ... }:
 {
-  config,
-  pkgs,
-  ...
-}: {
   services.flatpak.enable = true;
   services.fstrim.enable = true;
 
@@ -11,7 +8,7 @@
   services.mullvad-vpn.enable = true;
   services.mullvad-vpn.package = pkgs.unstable.mullvad-vpn;
 
-  services.xserver.videoDrivers = ["nvidia"];
+  services.xserver.videoDrivers = [ "nvidia" ];
 
   services.thermald.enable = true;
 }

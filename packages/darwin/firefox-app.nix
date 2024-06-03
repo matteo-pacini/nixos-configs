@@ -8,7 +8,7 @@ stdenvNoCC.mkDerivation rec {
   pname = "Firefox";
   version = "126.0.1";
 
-  buildInputs = [undmg];
+  buildInputs = [ undmg ];
 
   sourceRoot = ".";
 
@@ -18,7 +18,10 @@ stdenvNoCC.mkDerivation rec {
     hash = "sha256-eOAK82zNpmH1zhneUEtNPwmgJ+X9DKq1eAkP4cHA6pA=";
   };
 
-  phases = ["unpackPhase" "installPhase"];
+  phases = [
+    "unpackPhase"
+    "installPhase"
+  ];
 
   installPhase = ''
     runHook preInstall

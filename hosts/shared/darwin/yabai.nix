@@ -3,7 +3,8 @@
   pkgs,
   lib,
   ...
-}: {
+}:
+{
   services.skhd = {
     enable = true;
     package = pkgs.unstable.skhd;

@@ -3,7 +3,8 @@
   pkgs,
   inputs,
   ...
-}: {
+}:
+{
   home.file."scripts/setup_flatpak.sh".text = ''
     #!/usr/bin/env bash
 

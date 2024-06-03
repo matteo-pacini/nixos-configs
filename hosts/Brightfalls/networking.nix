@@ -3,7 +3,8 @@
   pkgs,
   lib,
   ...
-}: {
+}:
+{
   networking.hostName = "BrightFalls";
 
   networking.firewall.enable = false;

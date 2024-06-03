@@ -3,7 +3,8 @@
   pkgs,
   inputs,
   ...
-}: {
+}:
+{
   systemd.user.tmpfiles.rules = [
     "d /home/matteo/Mounts/Games 0700 matteo users -"
     "d /home/matteo/Mounts/Music 0700 matteo users -"
@@ -12,15 +13,13 @@
   systemd.user.mounts.home-matteo-Mounts-Games = {
     Unit = {
       Description = "Games folder on nexus";
-      After = [
-        "network-online.target"
-      ];
-      Wants = [
-        "network-online.target"
-      ];
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
     };
 
-    Install = {WantedBy = ["default.target"];};
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
 
     Mount = {
       What = "matteo@192.168.7.7:/diskpool/games";
@@ -34,15 +33,13 @@
   systemd.user.mounts.home-matteo-Mounts-Music = {
     Unit = {
       Description = "Music folder on nexus";
-      After = [
-        "network-online.target"
-      ];
-      Wants = [
-        "network-online.target"
-      ];
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
     };
 
-    Install = {WantedBy = ["default.target"];};
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
 
     Mount = {
       What = "matteo@192.168.7.7:/diskpool/music";

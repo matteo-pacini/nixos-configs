@@ -4,20 +4,19 @@
   inputs,
   lib,
   ...
-}: let
+}:
+let
   isDarwin = pkgs.stdenv.isDarwin;
   isLinux = pkgs.stdenv.isLinux;
-in {
+in
+{
   home.file = lib.optionalAttrs isLinux {
     ".mozilla/firefox/default/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
   };
 
   programs.firefox = {
     enable = true;
-    package =
-      if pkgs.stdenv.isDarwin
-      then pkgs.firefox-app
-      else pkgs.unstable.firefox;
+    package = if pkgs.stdenv.isDarwin then pkgs.firefox-app else pkgs.unstable.firefox;
     profiles = {
       default = {
         id = 0;
@@ -44,20 +43,16 @@ in {
                 }
               ];
               icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
-              definedAliases = ["@np"];
+              definedAliases = [ "@np" ];
             };
           };
         };
-        userChrome =
-          lib.optionalString isLinux
-          ''
-            @import "firefox-gnome-theme/userChrome.css";
-          '';
-        userContent =
-          lib.optionalString isLinux
-          ''
-            @import "firefox-gnome-theme/userContent.css";
-          '';
+        userChrome = lib.optionalString isLinux ''
+          @import "firefox-gnome-theme/userChrome.css";
+        '';
+        userContent = lib.optionalString isLinux ''
+          @import "firefox-gnome-theme/userContent.css";
+        '';
         settings = lib.mkMerge [
           (lib.mkIf isLinux {
             #########################
@@ -71,16 +66,15 @@ in {
         ];
 
         # https://github.com/nix-community/nur-combined/blob/master/repos/rycee/pkgs/firefox-addons/generated-firefox-addons.nix
-        extensions = with pkgs.nur.repos.rycee.firefox-addons;
+        extensions =
+          with pkgs.nur.repos.rycee.firefox-addons;
           [
             ublock-origin
             darkreader
             onepassword-password-manager
             istilldontcareaboutcookies
           ]
-          ++ lib.optionals isDarwin [
-            dracula-dark-colorscheme
-          ];
+          ++ lib.optionals isDarwin [ dracula-dark-colorscheme ];
       };
     };
   };

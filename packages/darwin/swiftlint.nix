@@ -17,7 +17,7 @@ stdenvNoCC.mkDerivation rec {
   dontConfigure = true;
   dontBuild = true;
 
-  nativeBuildInputs = [unzip];
+  nativeBuildInputs = [ unzip ];
 
   unpackPhase = ''
     runHook preUnpack

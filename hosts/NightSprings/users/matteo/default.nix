@@ -4,7 +4,8 @@
   inputs,
   lib,
   ...
-}: {
+}:
+{
   imports = [
     ../../../../modules/home-manager/dracula.nix
     ../../../../modules/home-manager/darwin/xcodes.nix
@@ -36,8 +37,6 @@
     unstable.yt-dlp
     # Music
     cmus
-    # Mine
-    radiogogo
   ];
 
   home.stateVersion = "23.11";

@@ -3,7 +3,8 @@
   pkgs,
   inputs,
   ...
-}: {
+}:
+{
   programs.ssh = {
     enable = true;
     compression = true;

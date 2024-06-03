@@ -4,7 +4,8 @@
   inputs,
   lib,
   ...
-}: {
+}:
+{
   programs.ssh = {
     enable = true;
     compression = true;
@@ -48,8 +49,6 @@
       mergetool.vscode.cmd = "code --wait --merge $REMOTE $LOCAL $BASE $MERGED";
       core.sshCommand = "ssh -i ~/.ssh/github_personal";
     };
-    ignores = [
-      ".DS_Store"
-    ];
+    ignores = [ ".DS_Store" ];
   };
 }

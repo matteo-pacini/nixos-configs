@@ -62,11 +62,6 @@
       url = "github:rafaelmardojai/firefox-gnome-theme";
       flake = false;
     };
-    ########
-    # Mine #
-    ########
-    radiogogo.url = "github:matteo-pacini/radiogogo";
-    radiogogo.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };
 
   outputs = inputs: {
@@ -78,15 +73,9 @@
       modules = [
         {
           nixpkgs.overlays = [
-            (import ./overlays/unstable.nix {inherit inputs;})
+            (import ./overlays/unstable.nix { inherit inputs; })
             (import ./overlays/unstable-mesa.nix)
             (import ./overlays/reshade-steam-proton.nix)
-            (import ./overlays/fixed-unstable-mangohud.nix)
-            (
-              final: prev: {
-                radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
-              }
-            )
             inputs.nur.overlay
           ];
         }
@@ -96,7 +85,9 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.matteo = import ./hosts/Brightfalls/users/matteo;
-          home-manager.extraSpecialArgs = {inherit inputs;};
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
         }
       ];
     };
@@ -108,7 +99,7 @@
       modules = [
         {
           nixpkgs.overlays = [
-            (import ./overlays/unstable.nix {inherit inputs;})
+            (import ./overlays/unstable.nix { inherit inputs; })
             inputs.nur.overlay
           ];
         }
@@ -118,7 +109,9 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.debora = import ./hosts/CauldronLake/users/debora;
-          home-manager.extraSpecialArgs = {inherit inputs;};
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
         }
       ];
     };
@@ -130,13 +123,8 @@
       modules = [
         {
           nixpkgs.overlays = [
-            (import ./overlays/unstable.nix {inherit inputs;})
+            (import ./overlays/unstable.nix { inherit inputs; })
             (import ./overlays/darwin)
-            (
-              final: prev: {
-                radiogogo = inputs.radiogogo.packages.${system}.radiogogo;
-              }
-            )
             inputs.nur.overlay
           ];
         }
@@ -146,7 +134,9 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.matteo = import ./hosts/NightSprings/users/matteo;
-          home-manager.extraSpecialArgs = {inherit inputs;};
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
         }
         inputs.nix-homebrew.darwinModules.nix-homebrew
         {
@@ -171,7 +161,7 @@
       modules = [
         {
           nixpkgs.overlays = [
-            (import ./overlays/unstable.nix {inherit inputs;})
+            (import ./overlays/unstable.nix { inherit inputs; })
             (import ./overlays/darwin)
             inputs.nur.overlay
           ];
@@ -182,7 +172,9 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users.admin = import ./hosts/WorkLaptop/users/admin;
-          home-manager.extraSpecialArgs = {inherit inputs;};
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
         }
         inputs.nix-homebrew.darwinModules.nix-homebrew
         {

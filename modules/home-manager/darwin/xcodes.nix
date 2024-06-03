@@ -4,9 +4,11 @@
   pkgs,
   ...
 }:
-with lib; let
+with lib;
+let
   cfg = config.programs.xcodes;
-in {
+in
+{
   options.programs.xcodes = {
     enable = mkEnableOption "Manages multiple Xcode installations on macOS";
     enableAria = mkOption {
@@ -16,7 +18,7 @@ in {
     };
     versions = mkOption {
       type = types.listOf types.str;
-      default = ["15.4"];
+      default = [ "15.4" ];
       description = "List of Xcode versions to be installed.";
     };
     active = mkOption {
@@ -33,31 +35,36 @@ in {
         message = "Xcodes is only available on macOS.";
       }
       {
-        assertion = cfg.versions == [] || lib.elem cfg.active cfg.versions;
+        assertion = cfg.versions == [ ] || lib.elem cfg.active cfg.versions;
         message = "Active Xcode version must be one of the requested versions.";
       }
     ];
 
-    home.packages = with pkgs; [
-      xcodes
-    ];
+    home.packages = with pkgs; [ xcodes ];
 
-    home.activation.xcodes = lib.hm.dag.entryAfter ["writeBoundary"] (''
+    home.activation.xcodes = lib.hm.dag.entryAfter [ "writeBoundary" ] (
+      ''
 
-        export PATH="${lib.makeBinPath (with pkgs; [xcodes nawk] ++ lib.optionals cfg.enableAria [aria])}:$PATH"
+        export PATH="${
+          lib.makeBinPath (
+            with pkgs;
+            [
+              xcodes
+              nawk
+            ]
+            ++ lib.optionals cfg.enableAria [ aria ]
+          )
+        }:$PATH"
 
         xcodes update 2>&1 > /dev/null
 
       ''
-      + lib.concatMapStringsSep "\n" (
-        version: ''
-          xcodes install \
-            --empty-trash \
-            --no-superuser \
-            --directory "${config.home.homeDirectory}/Applications" "${version}"
-        ''
-      )
-      cfg.versions
+      + lib.concatMapStringsSep "\n" (version: ''
+        xcodes install \
+          --empty-trash \
+          --no-superuser \
+          --directory "${config.home.homeDirectory}/Applications" "${version}"
+      '') cfg.versions
       + ''
 
         xcodes select --directory "${config.home.homeDirectory}/Applications" "${cfg.active}"
@@ -81,6 +88,7 @@ in {
             --directory "${config.home.homeDirectory}/Applications" "$version"
         done <<< "$TO_REMOVE"
 
-      '');
+      ''
+    );
   };
 }

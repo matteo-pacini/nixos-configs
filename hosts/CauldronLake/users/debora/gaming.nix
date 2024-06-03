@@ -1,8 +1,5 @@
+{ config, pkgs, ... }:
 {
-  config,
-  pkgs,
-  ...
-}: {
   home.file."scripts/steam_disable_http2.sh".text = ''
     #!/usr/bin/env bash
     echo "@nClientDownloadEnableHTTP2PlatformLinux 0" > \

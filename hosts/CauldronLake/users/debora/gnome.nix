@@ -5,7 +5,8 @@
   lib,
   ...
 }:
-with lib.hm.gvariant; {
+with lib.hm.gvariant;
+{
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
@@ -13,9 +14,7 @@ with lib.hm.gvariant; {
       #gtk-theme = "Adwaita-dark";
     };
     "org/gnome/shell" = {
-      enabled-extensions = [
-        "appindicatorsupport@rgcjonas.gmail.com"
-      ];
+      enabled-extensions = [ "appindicatorsupport@rgcjonas.gmail.com" ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
         "firefox.desktop"
@@ -28,7 +27,7 @@ with lib.hm.gvariant; {
     };
     "org/gnome/mutter" = {
       check-alive-timeout = mkUint32 10000;
-      experimental-features = ["variable-refresh-rate"];
+      experimental-features = [ "variable-refresh-rate" ];
     };
   };
 
