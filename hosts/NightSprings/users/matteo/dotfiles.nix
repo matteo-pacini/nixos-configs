@@ -24,6 +24,7 @@
     cask 'sf-symbols'
     cask 'logitune', args: { require_sha: false }
     cask 'vlc'
+    cask 'virtualbuddy'
   '';
 
   home.activation.brewUpdate =
