@@ -36,9 +36,6 @@
     gh
     # Music
     cmus
-    # Other
-    asciinema
-    asciinema-agg
   ];
 
   home.stateVersion = "23.11";
