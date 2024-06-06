@@ -4,8 +4,7 @@
   inputs,
   lib,
   ...
-}:
-{
+}: {
   home.file."Brewfile".text = ''
 
     tap "homebrew/bundle"
@@ -21,22 +20,23 @@
     cask 'sf-symbols'
     cask 'figma'
     cask 'logitune', args: { require_sha: false }
+    cask 'gitify'
   '';
 
   home.activation.brewUpdate =
     lib.hm.dag.entryAfter
-      [
-        "linkGeneration"
-        "writeBoundary"
-      ]
-      ''
-        export PATH="$PATH:/opt/homebrew/bin"
-        $DRY_RUN_CMD brew bundle --file="$HOME/Brewfile" \
-          --no-lock \
-          --cleanup --zap \
-          --verbose \
-          install
-      '';
+    [
+      "linkGeneration"
+      "writeBoundary"
+    ]
+    ''
+      export PATH="$PATH:/opt/homebrew/bin"
+      $DRY_RUN_CMD brew bundle --file="$HOME/Brewfile" \
+        --no-lock \
+        --cleanup --zap \
+        --verbose \
+        install
+    '';
 
   home.file.".config/asciinema/config".text = ''
     [record]
