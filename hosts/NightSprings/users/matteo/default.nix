@@ -4,8 +4,7 @@
   inputs,
   lib,
   ...
-}:
-{
+}: {
   imports = [
     ../../../../modules/home-manager/dracula.nix
     ../../../../modules/home-manager/darwin/xcodes.nix
@@ -35,6 +34,8 @@
     colorls
     tree
     unstable.yt-dlp
+    # Development
+    gh
     # Music
     cmus
   ];
