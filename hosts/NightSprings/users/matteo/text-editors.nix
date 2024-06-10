@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}:
+{ pkgs, ... }:
 {
   programs.vscode = {
     enable = true;
@@ -20,6 +15,7 @@
         vscext.usernamehw.errorlens
         vscext.timonwong.shellcheck
         vscext.golang.go
+        vscext.eamodio.gitlens
       ];
     mutableExtensionsDir = false;
     userSettings = {

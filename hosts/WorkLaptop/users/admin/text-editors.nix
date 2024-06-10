@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}:
+{ pkgs, ... }:
 {
   programs.vscode = {
     enable = true;
@@ -24,7 +19,21 @@
       ];
     mutableExtensionsDir = false;
     userSettings = {
-      "nix.formatterPath" = "alejandra";
+      "nix.enableLanguageServer" = true;
+      "nix.formatterPath" = "${pkgs.nixfmt-rfc-style}/bin/nixfmt";
+      "nix.serverPath" = "${pkgs.nil}/bin/nil";
+      "nix.serverSettings" = {
+        "nil" = {
+          "formatting" = {
+            "command" = [ "${pkgs.nixfmt-rfc-style}/bin/nixfmt" ];
+          };
+        };
+      };
+      "[nix]" = {
+        "editor.tabSize" = 2;
+        "editor.detectIndentation" = true;
+        "editor.formatOnSave" = true;
+      };
       "editor.fontSize" = 16;
       "editor.fontFamily" = "FiraCode Nerd Font";
     };
