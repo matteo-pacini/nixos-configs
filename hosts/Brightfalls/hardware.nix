@@ -4,9 +4,8 @@
   pkgs,
   modulesPath,
   ...
-}:
-{
-  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
+}: {
+  imports = [(modulesPath + "/installer/scan/not-detected.nix")];
 
   boot.initrd.availableKernelModules = [
     "xhci_pci"
@@ -14,10 +13,10 @@
     "usbhid"
     "sd_mod"
   ];
-  boot.initrd.kernelModules = [ "dm-snapshot" ];
-  boot.kernelModules = [ "kvm-amd" ];
-  boot.extraModulePackages = [ ];
-  boot.kernelPackages = pkgs.linuxPackages_6_8;
+  boot.initrd.kernelModules = ["dm-snapshot"];
+  boot.kernelModules = ["kvm-amd"];
+  boot.extraModulePackages = [];
+  boot.kernelPackages = pkgs.linuxPackages_6_9;
 
   boot.kernelParams = [
     "initcall_blacklist=acpi_cpufreq_init"
@@ -58,9 +57,6 @@
       e2fsprogs
     ];
     overrideStrategy = "asDropin";
-    serviceConfig = {
-      ExecStartPost = [ "${pkgs.systemd}/sbin/udevadm trigger /dev/mapper/%i" ];
-    };
   };
 
   environment.etc.crypttab.text = ''
@@ -97,7 +93,7 @@
     device = "/dev/mapper/swap";
     fsType = "swap";
     mountPoint = "none";
-    options = [ "sw" ];
+    options = ["sw"];
   };
 
   fileSystems."/tmp" = {
@@ -105,7 +101,7 @@
     device = "/dev/mapper/tmp";
     fsType = "tmpfs";
     mountPoint = "/tmp";
-    options = [ "defaults" ];
+    options = ["defaults"];
   };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";

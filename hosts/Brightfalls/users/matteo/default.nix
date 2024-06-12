@@ -3,8 +3,7 @@
   pkgs,
   inputs,
   ...
-}:
-{
+}: {
   imports = [
     ./gaming.nix
     ./gnome.nix
@@ -22,7 +21,6 @@
   home.packages = with pkgs; [
     #Gnome
     gnomeExtensions.appindicator
-    pkgs.unstable.gnomeExtensions.pop-shell
     gnome.gnome-tweaks
     # Downloads
     aria
@@ -34,7 +32,7 @@
     # Custom packages
     reshade-steam-proton
     # Gaming
-    fixed-unstable-mangohud
+    unstable.mangohud
     vulkan-tools
     mesa-demos
     unstable.bottles

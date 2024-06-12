@@ -5,8 +5,7 @@
   lib,
   ...
 }:
-with lib.hm.gvariant;
-{
+with lib.hm.gvariant; {
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
@@ -14,7 +13,6 @@ with lib.hm.gvariant;
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
-        "pop-shell@system76.com"
       ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
@@ -35,7 +33,7 @@ with lib.hm.gvariant;
     };
     "org/gnome/mutter" = {
       check-alive-timeout = mkUint32 10000;
-      experimental-features = [ "variable-refresh-rate" ];
+      experimental-features = ["variable-refresh-rate"];
       edge-tiling = false;
     };
     "org/gnome/shell/extensions/pop-shell" = {
@@ -79,7 +77,7 @@ with lib.hm.gvariant;
 
   qt = {
     enable = true;
-    platformTheme = "gnome";
+    platformTheme.name = "adwaita";
     style.name = "adwaita-dark";
   };
 }
