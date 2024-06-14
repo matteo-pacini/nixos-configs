@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ ... }:
 {
   imports = [
     ./fonts.nix
@@ -17,7 +17,7 @@
 
   services.nix-daemon.enable = true;
 
-  environment.systemPackages = with pkgs; [ ];
+  environment.systemPackages = [ ];
 
   users.users."matteo" = {
     home = "/Users/matteo";
