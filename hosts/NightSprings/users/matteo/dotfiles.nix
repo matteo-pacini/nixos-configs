@@ -26,6 +26,7 @@
     cask 'vlc'
     cask 'virtualbuddy'
     cask 'wwdc'
+    cask 'element'
   '';
 
   home.activation.brewUpdate =

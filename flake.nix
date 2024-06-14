@@ -68,7 +68,7 @@
     #############
     # Gaming PC #
     #############
-    nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem rec {
+    nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         {
@@ -118,7 +118,7 @@
     ######################
     # Macbook Pro M1 Max #
     ######################
-    darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem rec {
+    darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [
         {
@@ -156,7 +156,7 @@
     #########################
     # Macbook Pro M1 (Work) #
     #########################
-    darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem rec {
+    darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [
         {
