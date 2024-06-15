@@ -37,7 +37,4 @@
     ]);
 
   programs.dconf.enable = true;
-
-  # For copy/paste to work
-  services.spice-vdagentd.enable = true;
 }

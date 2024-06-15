@@ -8,10 +8,17 @@
     ./services.nix
     ./fonts.nix
     (modulesPath + "/profiles/qemu-guest.nix")
-    (modulesPath + "/virtualisation/qemu-vm.nix")
+    /etc/nixos/hardware-configuration.nix
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_6_9;
+
+  boot.loader.grub = {
+    enable = true;
+    efiSupport = true;
+    device = "nodev";
+  };
+  boot.loader.efi.canTouchEfiVariables = true;
 
   environment.systemPackages = [ ];
 

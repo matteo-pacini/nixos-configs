@@ -29,13 +29,6 @@ with lib.hm.gvariant;
       experimental-features = [ "variable-refresh-rate" ];
       edge-tiling = false;
     };
-    "org/gnome/shell/extensions/pop-shell" = {
-      tile-by-default = true;
-      active-hint = true;
-      active-hint-border-radius = mkUint32 4;
-      gap-inner = mkUint32 8;
-      gap-outer = mkUint32 8;
-    };
     "org/gnome/desktop/notifications" = {
       show-banners = false;
     };

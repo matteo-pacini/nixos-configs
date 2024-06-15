@@ -5,15 +5,14 @@
   lib,
   ...
 }:
-with lib.hm.gvariant; {
+with lib.hm.gvariant;
+{
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
     };
     "org/gnome/shell" = {
-      enabled-extensions = [
-        "appindicatorsupport@rgcjonas.gmail.com"
-      ];
+      enabled-extensions = [ "appindicatorsupport@rgcjonas.gmail.com" ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
         "firefox.desktop"
@@ -33,15 +32,8 @@ with lib.hm.gvariant; {
     };
     "org/gnome/mutter" = {
       check-alive-timeout = mkUint32 10000;
-      experimental-features = ["variable-refresh-rate"];
+      experimental-features = [ "variable-refresh-rate" ];
       edge-tiling = false;
-    };
-    "org/gnome/shell/extensions/pop-shell" = {
-      tile-by-default = true;
-      active-hint = true;
-      active-hint-border-radius = mkUint32 4;
-      gap-inner = mkUint32 8;
-      gap-outer = mkUint32 8;
     };
     "org/gnome/desktop/notifications" = {
       show-banners = false;
