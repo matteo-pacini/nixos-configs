@@ -8,7 +8,7 @@
     ./services.nix
     ./fonts.nix
     (modulesPath + "/profiles/qemu-guest.nix")
-    /etc/nixos/hardware-configuration.nix
+    ./hardware-configuration.nix
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_6_9;
