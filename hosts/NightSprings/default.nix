@@ -13,6 +13,9 @@
       "nix-command"
       "flakes"
     ];
+    extraOptions = ''
+      extra-platforms = x86_64-darwin aarch64-darwin
+    '';
   };
 
   services.nix-daemon.enable = true;
