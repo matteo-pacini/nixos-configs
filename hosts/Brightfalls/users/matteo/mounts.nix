@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}:
+{ ... }:
 {
   systemd.user.tmpfiles.rules = [
     "d /home/matteo/Mounts/Games 0700 matteo users -"

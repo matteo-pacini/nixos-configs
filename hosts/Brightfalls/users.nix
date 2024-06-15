@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  isVM,
+  pkgs,
+  lib,
+  ...
+}:
 {
   programs.zsh.enable = true;
 
@@ -16,5 +21,6 @@
       "docker"
     ];
     shell = pkgs.zsh;
+    initialPassword = lib.optionalString (isVM) "ziosasso";
   };
 }

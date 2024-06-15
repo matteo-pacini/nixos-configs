@@ -1,8 +1,7 @@
 {
-  config,
   pkgs,
-  inputs,
   lib,
+  isVM,
   ...
 }:
 with lib.hm.gvariant;
@@ -13,15 +12,17 @@ with lib.hm.gvariant;
     };
     "org/gnome/shell" = {
       enabled-extensions = [ "appindicatorsupport@rgcjonas.gmail.com" ];
-      favorite-apps = [
-        "org.gnome.Nautilus.desktop"
-        "firefox.desktop"
-        "org.corectrl.corectrl.desktop"
-        "org.gnome.Console.desktop"
-        "com.obsproject.Studio.desktop"
-        "steam.desktop"
-        "com.usebottles.bottles.desktop"
-      ];
+      favorite-apps =
+        [
+          "org.gnome.Nautilus.desktop"
+          "firefox.desktop"
+          "org.gnome.Console.desktop"
+        ]
+        ++ lib.optionals (!isVM) [
+          "org.corectrl.corectrl.desktop"
+          "steam.desktop"
+          "com.usebottles.bottles.desktop"
+        ];
     };
     "org/gnome/desktop/session" = {
       idle-delay = mkUint32 0;

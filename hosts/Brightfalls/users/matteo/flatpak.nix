@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}:
+{ ... }:
 {
   home.file."scripts/setup_flatpak.sh".text = ''
     #!/usr/bin/env bash
@@ -13,11 +8,11 @@
     # Flatseal
     flatpak --user install -y --noninteractive com.github.tchx84.Flatseal
 
-    # Discord
-    flatpak --user install -y --noninteractive com.discordapp.Discord
-
     # Telegram
     flatpak --user install -y --noninteractive org.telegram.desktop
+
+    # Discord
+    flatpak --user install -y --noninteractive com.discordapp.Discord
   '';
 
   home.file."scripts/setup_flatpak.sh".executable = true;

@@ -1,19 +1,22 @@
-{pkgs, ...}: {
+{ pkgs, ... }:
+{
   programs.vscode = {
     enable = true;
     package = pkgs.unstable.vscode;
     enableUpdateCheck = false;
     enableExtensionUpdateCheck = false;
-    extensions = let
-      vscext = pkgs.unstable.vscode-extensions;
-    in [
-      vscext.jnoortheen.nix-ide
-      vscext.github.copilot
-      vscext.usernamehw.errorlens
-      vscext.timonwong.shellcheck
-      vscext.golang.go
-      vscext.eamodio.gitlens
-    ];
+    extensions =
+      let
+        vscext = pkgs.unstable.vscode-extensions;
+      in
+      [
+        vscext.jnoortheen.nix-ide
+        vscext.github.copilot
+        vscext.usernamehw.errorlens
+        vscext.timonwong.shellcheck
+        vscext.golang.go
+        vscext.eamodio.gitlens
+      ];
     mutableExtensionsDir = false;
     userSettings = {
       "nix.enableLanguageServer" = true;
@@ -22,7 +25,7 @@
       "nix.serverSettings" = {
         "nil" = {
           "formatting" = {
-            "command" = ["${pkgs.nixfmt-rfc-style}/bin/nixfmt"];
+            "command" = [ "${pkgs.nixfmt-rfc-style}/bin/nixfmt" ];
           };
         };
       };

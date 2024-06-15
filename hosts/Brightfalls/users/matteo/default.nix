@@ -1,47 +1,57 @@
 {
-  config,
   pkgs,
-  inputs,
+  lib,
+  isVM,
   ...
-}: {
-  imports = [
-    ./gaming.nix
-    ./gnome.nix
-    ../../../shared/home-manager/firefox.nix
-    ./flatpak.nix
-    ./git.nix
-    ./text-editors.nix
-    ./mounts.nix
-    ./zsh.nix
-  ];
+}:
+{
+  imports =
+    [
+
+      ./gnome.nix
+      ../../../shared/home-manager/firefox.nix
+      ./git.nix
+      ./text-editors.nix
+      ./zsh.nix
+    ]
+    ++ lib.optionals (!isVM) [
+      ./flatpak.nix
+      ./gaming.nix
+      ./mounts.nix
+    ];
 
   home.username = "matteo";
   home.homeDirectory = "/home/matteo";
 
-  home.packages = with pkgs; [
-    #Gnome
-    gnomeExtensions.appindicator
-    gnome.gnome-tweaks
-    # Downloads
-    aria
-    # Security
-    _1password-gui
-    # Virtualisation
-    qemu
-    quickemu
-    # Custom packages
-    reshade-steam-proton
-    # Gaming
-    unstable.mangohud
-    vulkan-tools
-    mesa-demos
-    unstable.bottles
-    # Music
-    cmus
-    # Social
-    # Other
-    nix-output-monitor
-  ];
+  home.packages =
+    with pkgs;
+    [
+      #Gnome
+      gnomeExtensions.appindicator
+      gnome.gnome-tweaks
+      # Downloads
+      aria
+      # Security
+      _1password-gui
+      # Music
+      # Social
+      # Other
+      nix-output-monitor
+    ]
+    ++ lib.optionals (!isVM) [
+      # No need for these in a VM
+      # Music
+      cmus
+      qemu
+      # Virtualisation
+      quickemu
+      # Gaming
+      reshade-steam-proton
+      unstable.mangohud
+      vulkan-tools
+      mesa-demos
+      unstable.bottles
+    ];
 
   home.stateVersion = "23.11";
 

@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 {
   home.file."scripts/steam_disable_http2.sh".text = ''
     #!/usr/bin/env bash

@@ -1,24 +1,44 @@
 {
-  config,
+  isVM,
   lib,
   pkgs,
   ...
 }:
 {
-  imports = [
-    ./hardware.nix
-    ./networking.nix
-    ./users.nix
-    ./desktop.nix
-    ./audio.nix
-    ./services.nix
-    ./gaming.nix
-    ./fonts.nix
-    ../shared/bluetooth.nix
-    ./printer.nix
-  ];
+  imports =
+    [
+      ./networking.nix
+      ./users.nix
+      ./desktop.nix
+      ./audio.nix
+      ./services.nix
+      ./graphics.nix
+      ./fonts.nix
+    ]
+    ++ lib.optionals (!isVM) [
+      ./gaming
+      ./hardware.nix
+      ./printer.nix
+      ../shared/bluetooth.nix
+    ]
+    ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
 
-  environment.systemPackages = with pkgs; [ sshfs ];
+  boot.kernelPackages = pkgs.linuxPackages_6_9;
+
+  boot.loader.grub = {
+    enable = true;
+    efiSupport = true;
+    device = "nodev";
+    memtest86.enable = pkgs.stdenv.hostPlatform.isx86;
+  };
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  environment.systemPackages =
+    with pkgs;
+    [
+
+    ]
+    ++ lib.optionals (!isVM) [ sshfs ];
 
   nixpkgs.config.allowUnfree = true;
 

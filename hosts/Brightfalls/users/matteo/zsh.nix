@@ -1,9 +1,5 @@
+{ pkgs, ... }:
 {
-  config,
-  pkgs,
-  inputs,
-  ...
-}: {
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;

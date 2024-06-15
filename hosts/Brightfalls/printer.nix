@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}:
+{ pkgs, ... }:
 {
   services.printing.enable = true;
   services.printing.drivers = [ pkgs.brlaser ];

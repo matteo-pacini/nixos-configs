@@ -1,11 +1,11 @@
 {
-  config,
   lib,
   pkgs,
   modulesPath,
   ...
-}: {
-  imports = [(modulesPath + "/installer/scan/not-detected.nix")];
+}:
+{
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
   boot.initrd.availableKernelModules = [
     "xhci_pci"
@@ -13,10 +13,9 @@
     "usbhid"
     "sd_mod"
   ];
-  boot.initrd.kernelModules = ["dm-snapshot"];
-  boot.kernelModules = ["kvm-amd"];
-  boot.extraModulePackages = [];
-  boot.kernelPackages = pkgs.linuxPackages_6_9;
+  boot.initrd.kernelModules = [ "dm-snapshot" ];
+  boot.kernelModules = [ "kvm-amd" ];
+  boot.extraModulePackages = [ ];
 
   boot.kernelParams = [
     "initcall_blacklist=acpi_cpufreq_init"
@@ -24,14 +23,6 @@
   ];
 
   hardware.cpu.amd.updateMicrocode = true;
-
-  boot.loader.grub = {
-    enable = true;
-    efiSupport = true;
-    device = "nodev";
-    memtest86.enable = true;
-  };
-  boot.loader.efi.canTouchEfiVariables = true;
 
   fileSystems."/" = {
     device = "/dev/disk/by-uuid/cfeb4539-1275-4bed-8713-637c6194e01a";
@@ -93,7 +84,7 @@
     device = "/dev/mapper/swap";
     fsType = "swap";
     mountPoint = "none";
-    options = ["sw"];
+    options = [ "sw" ];
   };
 
   fileSystems."/tmp" = {
@@ -101,7 +92,7 @@
     device = "/dev/mapper/tmp";
     fsType = "tmpfs";
     mountPoint = "/tmp";
-    options = ["defaults"];
+    options = [ "defaults" ];
   };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
