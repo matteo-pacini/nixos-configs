@@ -91,8 +91,29 @@
         }
       ];
     };
-    nixosConfigurations."BrightFallsAarch64" = inputs.nixpkgs.lib.nixosSystem {
+    nixosConfigurations."BrightFallsVM-aarch64" = inputs.nixpkgs.lib.nixosSystem {
       system = "aarch64-linux";
+      modules = [
+        {
+          nixpkgs.overlays = [
+            (import ./overlays/unstable.nix { inherit inputs; })
+            inputs.nur.overlay
+          ];
+        }
+        ./hosts/BrightfallsVM
+        inputs.home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.matteo = import ./hosts/BrightfallsVM/users/matteo;
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
+        }
+      ];
+    };
+    nixosConfigurations."BrightFallsVM-x86_64" = inputs.nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
       modules = [
         {
           nixpkgs.overlays = [
