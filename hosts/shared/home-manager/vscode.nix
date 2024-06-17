@@ -2,20 +2,28 @@
 {
   programs.vscode = {
     enable = true;
-    package = pkgs.unstable.vscode;
+    package = pkgs.unstable.vscodium;
     enableUpdateCheck = false;
     enableExtensionUpdateCheck = false;
     extensions =
       let
         vscext = pkgs.unstable.vscode-extensions;
       in
+      with vscext;
       [
-        vscext.jnoortheen.nix-ide
-        vscext.github.copilot
-        vscext.usernamehw.errorlens
-        vscext.timonwong.shellcheck
-        vscext.golang.go
+        # Editor
+        editorconfig.editorconfig
+        mhutchie.git-graph
+        usernamehw.errorlens
         vscext.eamodio.gitlens
+        # Copilot
+        github.copilot
+        # Nix
+        jnoortheen.nix-ide
+        # Go
+        golang.go
+        # Shell
+        vscext.timonwong.shellcheck
       ];
     mutableExtensionsDir = false;
     userSettings = {
@@ -36,8 +44,6 @@
       };
       "editor.fontSize" = 16;
       "editor.fontFamily" = "FiraCode Nerd Font";
-      "telemetry.telemetryLevel" = "off";
-      "redhat.telemetry.enabled" = false;
     };
   };
 }

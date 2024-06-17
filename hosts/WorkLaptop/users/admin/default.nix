@@ -6,12 +6,12 @@
 
     ../../../shared/home-manager/vscode.nix
     ../../../shared/home-manager/darwin/starship.nix
+    ../../../shared/home-manager/darwin/terminal.nix
 
     ./dotfiles.nix
     ./git.nix
     ./text-editors.nix
     ./xcodes.nix
-    ./terminal.nix
     ./zsh.nix
     ./firefox.nix
   ];
