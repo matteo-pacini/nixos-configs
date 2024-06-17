@@ -1,5 +1,4 @@
-{ pkgs, ... }:
-{
+{pkgs, ...}: {
   imports = [
     ../../../../modules/home-manager/dracula.nix
     ../../../../modules/home-manager/darwin/xcodes.nix
@@ -10,7 +9,6 @@
 
     ./dotfiles.nix
     ./git.nix
-    ./text-editors.nix
     ./xcodes.nix
     ./zsh.nix
     ./firefox.nix
