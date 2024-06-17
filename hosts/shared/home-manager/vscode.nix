@@ -36,6 +36,8 @@
       };
       "editor.fontSize" = 16;
       "editor.fontFamily" = "FiraCode Nerd Font";
+      "telemetry.telemetryLevel" = "off";
+      "redhat.telemetry.enabled" = false;
     };
   };
 }

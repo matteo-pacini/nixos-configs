@@ -1,9 +1,5 @@
+{ config, ... }:
 {
-  config,
-  pkgs,
-  inputs,
-  ...
-}: {
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
@@ -18,7 +14,7 @@
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
-    defaultOptions = ["--preview 'bat --color=always {}'"];
+    defaultOptions = [ "--preview 'bat --color=always {}'" ];
   };
 
   programs.bat = {

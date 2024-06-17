@@ -1,10 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  lib,
-  ...
-}:
+{ config, pkgs, ... }:
 {
   programs.ssh = {
     enable = true;
@@ -48,7 +42,7 @@
           core.excludesfile = pkgs.writeText ".gitignore" ''
             .direnv
             .envrc
-            nix/xcode.sh
+            nix
           '';
         };
         condition = "gitdir:${config.home.homeDirectory}/Work/";

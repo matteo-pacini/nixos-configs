@@ -1,10 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  lib,
-  ...
-}:
+{ lib, ... }:
 {
   home.file."Brewfile".text = ''
 
@@ -24,8 +18,6 @@
     cask 'sf-symbols'
     cask 'logitune', args: { require_sha: false }
     cask 'vlc'
-    cask 'virtualbuddy'
-    cask 'wwdc'
     cask 'element'
   '';
 

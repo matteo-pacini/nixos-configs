@@ -1,10 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  lib,
-  ...
-}:
+{ ... }:
 {
   programs.xcodes = {
     enable = true;

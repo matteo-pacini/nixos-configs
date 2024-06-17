@@ -171,6 +171,7 @@
             home-manager.extraSpecialArgs = {
               inherit inputs;
             };
+            home-manager.backupFileExtension = "backup";
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
           {
@@ -209,6 +210,7 @@
             home-manager.extraSpecialArgs = {
               inherit inputs;
             };
+            home-manager.backupFileExtension = "backup";
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
           {

@@ -11,7 +11,7 @@
       ./gnome.nix
       ../../../shared/home-manager/firefox.nix
       ./git.nix
-      ./text-editors.nix
+      ../../../shared/home-manager/vscode.nix
       ./zsh.nix
     ]
     ++ lib.optionals (!isVM) [

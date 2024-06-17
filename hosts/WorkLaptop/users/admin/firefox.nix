@@ -1,19 +1,13 @@
-{
-  config,
-  pkgs,
-  inputs,
-  lib,
-  ...
-}:
+{ pkgs, ... }:
 let
   passbolt = pkgs.stdenv.mkDerivation rec {
-    version = "4.7.0";
-    name = "passbolt-${version}";
+    version = "4.8.1";
+    pname = "passbolt";
     addonId = "passbolt@passbolt.com";
 
     src = pkgs.fetchurl {
-      url = "https://addons.mozilla.org/firefox/downloads/file/4280147/passbolt-4.7.0.xpi";
-      hash = "sha256-mEXxapAIC/GKdQHGaZi8YQKGlLDsRnMoMTnRy1VaA2Y=";
+      url = "https://addons.mozilla.org/firefox/downloads/file/4291859/passbolt-4.8.1.xpi";
+      hash = "sha256-mEExapAIC/GKdQHGaZi8YQKGlLDsRnMoMTnRy1VaA2Y=";
     };
 
     buildCommand = ''
