@@ -1,4 +1,7 @@
 { config, pkgs, ... }:
+let
+  codeCommand = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram}";
+in
 {
   programs.ssh = {
     enable = true;
@@ -18,11 +21,11 @@
     userEmail = "matteo.pacini@transreport.co.uk";
     extraConfig = {
       init.defaultBranch = "master";
-      core.editor = "code --wait";
+      core.editor = "${codeCommand} --wait";
       diff.tool = "vscode";
-      difftool.vscode.cmd = "code --wait --diff $LOCAL $REMOTE";
+      difftool.vscode.cmd = "${codeCommand} --wait --diff $LOCAL $REMOTE";
       merge.tool = "vscode";
-      mergetool.vscode.cmd = "code --wait --merge $REMOTE $LOCAL $BASE $MERGED";
+      mergetool.vscode.cmd = "${codeCommand} --wait --merge $REMOTE $LOCAL $BASE $MERGED";
       core.sshCommand = "ssh -i ~/.ssh/github_work";
     };
     includes = [
