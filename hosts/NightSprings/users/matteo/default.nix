@@ -8,11 +8,11 @@
     ../../../shared/home-manager/vscode.nix
     ../../../shared/home-manager/darwin/starship.nix
     ../../../shared/home-manager/darwin/terminal.nix
+    ../../../shared/home-manager/darwin/zsh.nix
 
     ./dotfiles.nix
     ./git.nix
     ./xcodes.nix
-    ./zsh.nix
   ];
 
   home.username = "matteo";
@@ -26,7 +26,6 @@
     docker
     unstable.qemu
     # Extra
-    colorls
     tree
     unstable.yt-dlp
     # Development

@@ -38,7 +38,7 @@
 
   dracula = {
     wallpaper.enable = true;
-    colorls.enable = true;
+    eza.enable = true;
     vscode.enable = true;
     xcode.enable = true;
     fzf.enable = true;

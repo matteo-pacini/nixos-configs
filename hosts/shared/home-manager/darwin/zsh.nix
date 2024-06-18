@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, config, ... }:
 {
   programs.direnv = {
     enable = true;
@@ -32,7 +32,11 @@
     syntaxHighlighting.enable = true;
     historySubstringSearch.enable = true;
     shellAliases = {
-      ls = "colorls --dark";
+      ls = "${pkgs.eza}/bin/${pkgs.eza.meta.mainProgram} --icons --color=always";
+      c = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram}";
+      cr = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram} -r";
+      suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
+      suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
       reloadDock = ''
         defaults write com.apple.dock ResetLaunchPad -bool true;
         killall Dock;

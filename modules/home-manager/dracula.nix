@@ -13,7 +13,7 @@ in
 {
   options.dracula = {
     wallpaper.enable = mkEnableOption "Activates the Dracula wallpaper on the first monitor";
-    colorls.enable = mkEnableOption "Activates the Dracula color scheme for colorls";
+    eza.enable = mkEnableOption "Activates the Dracula color scheme for eza";
     vscode.enable = mkEnableOption "Activates the Dracula theme for Visual Studio Code";
     xcode.enable = mkEnableOption "Activates the Dracula theme for Xcode";
     fzf.enable = mkEnableOption "Activates the Dracula theme for fzf";
@@ -28,8 +28,28 @@ in
         else
           "${inputs.dracula-wallpaper}/first-collection/nixos.png";
     })
-    (lib.mkIf cfg.colorls.enable {
-      home.file.".config/colorls/dark_colors.yaml".source = "${inputs.colorls-dracula-theme}/dark_colors.yaml";
+    (lib.mkIf cfg.eza.enable {
+      programs.zsh.initExtra = ''
+        #### ------------------------------
+        #### eza - Color Scheme Definitions
+        #### ------------------------------
+        export EZA_COLORS="\
+        uu=36:\
+        gu=37:\
+        sn=32:\
+        sb=32:\
+        da=34:\
+        ur=34:\
+        uw=35:\
+        ux=36:\
+        ue=36:\
+        gr=34:\
+        gw=35:\
+        gx=36:\
+        tr=34:\
+        tw=35:\
+        tx=36:"
+      '';
     })
     (lib.mkIf (cfg.vscode.enable && config.programs.vscode.enable) {
       programs.vscode.extensions =
