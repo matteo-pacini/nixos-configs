@@ -43,6 +43,7 @@
     extraConfig = ''
       yabai -m rule --add app='System Settings' manage=off
       yabai -m rule --add app='Finder' manage=off
+      yabai -m rule --add app='qemu-system-aarch64' manage=off
     '';
   };
 }
