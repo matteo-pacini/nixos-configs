@@ -16,7 +16,7 @@
       ./fonts.nix
     ]
     ++ lib.optionals (!isVM) [
-      ./gaming
+      ./gaming.nix
       ./hardware.nix
       ./printer.nix
       ../shared/bluetooth.nix
