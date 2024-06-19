@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 {
   boot.kernel.sysctl = {
     "vm.max_map_count" = "1048576";
@@ -6,7 +6,10 @@
 
   hardware.steam-hardware.enable = true;
 
-  programs.steam.enable = true;
+  programs.steam = {
+    enable = true;
+    package = pkgs.unstable.steam;
+  };
 
   security.polkit.enable = true;
 

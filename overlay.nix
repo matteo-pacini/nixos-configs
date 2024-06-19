@@ -5,9 +5,6 @@ final: prev: rec {
     config.allowUnfree = true;
   };
 
-  unstable-mesa = unstable.mesa;
-  unstable-steam = unstable.steam;
-
   _thisFlakePkgs = import ./packages {
     stdenv = prev.stdenv;
     pkgs = prev;
