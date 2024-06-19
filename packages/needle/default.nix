@@ -45,5 +45,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/uber/needle";
     platforms = platforms.darwin;
     license = licenses.asl20;
+    mainProgram = "needle";
   };
 }

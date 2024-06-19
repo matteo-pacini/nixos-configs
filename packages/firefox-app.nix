@@ -18,10 +18,9 @@ stdenvNoCC.mkDerivation rec {
     hash = "sha256-GiMAu6c220gUbnZsgkeVa7W49/7+ckYsJ4hIemLjmag=";
   };
 
-  phases = [
-    "unpackPhase"
-    "installPhase"
-  ];
+  doNotPatch = true;
+  doNotBuild = true;
+  doNotConfigure = true;
 
   installPhase = ''
     runHook preInstall
@@ -35,5 +34,6 @@ stdenvNoCC.mkDerivation rec {
     homepage = "https://www.mozilla.org/en-US/firefox/";
     platforms = platforms.darwin;
     license = lib.licenses.mpl20;
+    mainProgram = "firefox";
   };
 }

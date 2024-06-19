@@ -8,11 +8,13 @@
   git,
   curl,
   wget,
-  protontricks,
   file,
 }:
+
 stdenv.mkDerivation {
-  name = "reshade-steam-proton";
+
+  pname = "reshade-steam-proton";
+  version = "unstable-2023-04-22";
 
   src = fetchFromGitHub {
     owner = "kevinlekiller";
@@ -55,18 +57,12 @@ stdenv.mkDerivation {
                    ]
                  }"
 
-
-    makeWrapper "$out/bin/._reshade-steam-proton.sh" \
-                "$out/bin/reshade-steam-proton.sh" \
-                 --prefix PATH : "${
-                   lib.makeBinPath [
-                     protontricks
-                     p7zip
-                     git
-                     curl
-                     wget
-                     file
-                   ]
-                 }"
   '';
+
+  meta = with lib; {
+    description = "Easy setup and updating of ReShade on Linux for games using wine or proton";
+    homepage = "https://github.com/kevinlekiller/reshade-steam-proton";
+    platforms = [ "x86_64-linux" ];
+    license = licenses.gpl2;
+  };
 }

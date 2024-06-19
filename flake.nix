@@ -69,8 +69,7 @@
 
     let
       baseOverlays = [
-        (import ./overlays/unstable.nix { inherit inputs; })
-        (import ./overlays/unstable-mesa.nix)
+        (import ./overlay.nix { inherit inputs; })
         inputs.nur.overlay
       ];
       mkBrightFalls =
@@ -109,13 +108,13 @@
         system = "x86_64-linux";
         hostPath = ./hosts/Brightfalls;
         userPath = ./hosts/Brightfalls/users/matteo;
-        extraOverlays = [ (import ./overlays/reshade-steam-proton.nix) ];
+        extraOverlays = [ ];
       };
       nixosConfigurations."BrightFallsVM-x86_64-linux" = mkBrightFalls {
         system = "x86_64-linux";
         hostPath = ./hosts/Brightfalls;
         userPath = ./hosts/Brightfalls/users/matteo;
-        extraOverlays = [ (import ./overlays/reshade-steam-proton.nix) ];
+        extraOverlays = [ ];
         isVM = true;
       };
       nixosConfigurations."BrightFallsVM-aarch64-linux" = mkBrightFalls {
@@ -133,7 +132,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlays/unstable.nix { inherit inputs; })
+              (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
             ];
           }
@@ -157,8 +156,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlays/unstable.nix { inherit inputs; })
-              (import ./overlays/darwin)
+              (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
             ];
           }
@@ -196,8 +194,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlays/unstable.nix { inherit inputs; })
-              (import ./overlays/darwin)
+              (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
             ];
           }
