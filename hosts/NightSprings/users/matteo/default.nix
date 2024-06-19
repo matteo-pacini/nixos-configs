@@ -32,8 +32,6 @@
     gh
     # Music
     cmus
-    # Test
-    zed-app
   ];
 
   home.stateVersion = "23.11";

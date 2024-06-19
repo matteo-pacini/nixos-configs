@@ -1,7 +1,10 @@
-{ pkgs, config, ... }:
-let
-  codeCommand = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram}";
-in
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
+
 {
   programs.direnv = {
     enable = true;
@@ -36,8 +39,9 @@ in
     historySubstringSearch.enable = true;
     shellAliases = {
       ls = "${pkgs.eza}/bin/${pkgs.eza.meta.mainProgram} --icons --color=always";
-      c = "${codeCommand}";
-      cr = "${codeCommand} -r";
+      c = "${lib.getExe config.programs.vscode.package}";
+      cr = "${lib.getExe config.programs.vscode.package} -r";
+      z = "${lib.getExe pkgs.zed-app}";
       suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
       suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
       reloadDock = ''

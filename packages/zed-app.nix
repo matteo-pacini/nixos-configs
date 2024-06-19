@@ -2,6 +2,8 @@
   stdenvNoCC,
   lib,
   fetchurl,
+  git,
+  makeWrapper,
 }:
 stdenvNoCC.mkDerivation rec {
   pname = "zed";
@@ -13,6 +15,8 @@ stdenvNoCC.mkDerivation rec {
     url = "https://github.com/zed-industries/zed/releases/download/v${version}/Zed.dmg";
     hash = "sha256-+D7SEywQtGML8405i4YUkl0Ir3RSgS0dledSvyLFYhk=";
   };
+
+  nativeBuildInputs = [ makeWrapper ];
 
   unpackCmd = ''
     echo "Creating temp directory"
@@ -38,8 +42,11 @@ stdenvNoCC.mkDerivation rec {
 
   installPhase = ''
     runHook preInstall
-    mkdir -p $out/Applications
+    mkdir -p $out/{bin,Applications}
     cp -r Zed.app $out/Applications/
+    wrapProgram $out/Applications/Zed.app/Contents/MacOS/zed \
+      --prefix PATH : ${lib.makeBinPath [ git ]}
+    ln -s $out/Applications/Zed.app/Contents/MacOS/zed $out/bin/zed
     runHook postInstall
   '';
 
