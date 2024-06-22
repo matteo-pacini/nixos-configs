@@ -26,6 +26,7 @@
     mergerfs-tools
     snapraid
     htop
+    nom
   ];
 
   nixpkgs.config.allowUnfree = true;
