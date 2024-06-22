@@ -35,7 +35,7 @@ in
             email = "matteo@codecraft.it";
           };
           core = {
-            sshCommand = "ssh -i ~/.ssh/github";
+            sshCommand = "ssh -i ~/.ssh/github_personal";
           };
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/";

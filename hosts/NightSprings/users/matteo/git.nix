@@ -44,7 +44,7 @@ in
       difftool.vscode.cmd = "${codeCommand} --wait --diff $LOCAL $REMOTE";
       merge.tool = "vscode";
       mergetool.vscode.cmd = "${codeCommand} --wait --merge $REMOTE $LOCAL $BASE $MERGED";
-      core.sshCommand = "ssh -i ~/.ssh/github_personal";
+      core.sshCommand = "ssh -i ~/.ssh/github";
     };
     ignores = [ ".DS_Store" ];
   };
