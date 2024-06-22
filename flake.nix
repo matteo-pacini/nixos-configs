@@ -152,7 +152,19 @@
             };
           }
           inputs.agenix.nixosModules.default
-          { age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ]; }
+          {
+            age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ];
+            age.secrets."nexus/disk0".file = ./secrets/nexus/disk0.age;
+            age.secrets."nexus/disk1".file = ./secrets/nexus/disk1.age;
+            age.secrets."nexus/disk2".file = ./secrets/nexus/disk2.age;
+            age.secrets."nexus/disk3".file = ./secrets/nexus/disk3.age;
+            age.secrets."nexus/disk4".file = ./secrets/nexus/disk4.age;
+            age.secrets."nexus/disk5".file = ./secrets/nexus/disk5.age;
+            age.secrets."nexus/disk6".file = ./secrets/nexus/disk6.age;
+            age.secrets."nexus/disk7".file = ./secrets/nexus/disk7.age;
+            age.secrets."nexus/disk8".file = ./secrets/nexus/disk8.age;
+            age.secrets."nexus/disk9".file = ./secrets/nexus/disk9.age;
+          }
         ];
       };
       ################
