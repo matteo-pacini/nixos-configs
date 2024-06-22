@@ -17,6 +17,11 @@
     ################
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
+    ##########
+    # Agenix #
+    ##########
+    agenix.url = "github:ryantm/agenix";
+    agenix.inputs.nixpkgs.follows = "nixpkgs";
     #######
     # NUR #
     #######
@@ -124,6 +129,23 @@
         extraOverlays = [ ];
         isVM = true;
       };
+      #########
+      # Nexus #
+      #########
+      nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          {
+            nixpkgs.overlays = [
+              (import ./overlay.nix { inherit inputs; })
+              inputs.nur.overlay
+            ];
+          }
+          ./hosts/Nexus
+          inputs.agenix.nixosModules.default
+          { age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ]; }
+        ];
+      };
       ################
       # Razer Laptop #
       ################
@@ -184,6 +206,8 @@
               mutableTaps = false;
             };
           }
+          inputs.agenix.nixosModules.default
+          { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
         ];
       };
       #########################
