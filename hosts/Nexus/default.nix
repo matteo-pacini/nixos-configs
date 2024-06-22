@@ -19,6 +19,7 @@
   };
 
   environment.systemPackages = with pkgs; [
+    terminus_font
     mergerfs
     mergerfs-tools
     snapraid
