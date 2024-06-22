@@ -6,6 +6,7 @@
     ./gpu.nix
     ./hardware.nix
     ./hardware-extra.nix
+    ./services.nix
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_6_9;
