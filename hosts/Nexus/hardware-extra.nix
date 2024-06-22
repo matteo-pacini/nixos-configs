@@ -5,6 +5,29 @@
   modulesPath,
   ...
 }:
+let
+  diskNumbers = lib.lists.range 0 9;
+  listOfMountPoints = builtins.map (i: "/mnt/disk${toString i}") diskNumbers;
+  mkMountPoints =
+    listOfMountPoints:
+    lib.genAttrs (listOfMountPoints) (
+      mp:
+      let
+        # Get back disk number from /mnt/diskX 
+        diskNumberAsString = lib.strings.removePrefix "/mnt/disk" mp;
+      in
+      {
+        device = "/dev/mapper/disk${diskNumberAsString}";
+        fsType = "ext4";
+        mountPoint = mp;
+        options = [
+          "defaults"
+          "noatime"
+        ];
+        neededForBoot = false;
+      }
+    );
+in
 {
 
   boot.swraid = {
@@ -26,4 +49,25 @@
     disk8   UUID=58caf63b-4142-45ab-8392-ba02cc4a86f3   ${config.age.secrets."nexus/disk8".path}
     disk9   UUID=293952af-363d-4ca1-bb74-23e22d67b393   ${config.age.secrets."nexus/disk9".path}
   '';
+
+  fileSystems = mkMountPoints listOfMountPoints // {
+    "/diskpool" =
+      let
+        device = lib.concatMapStringsSep ":" (i: "/mnt/disk${toString i}") diskNumbers;
+      in
+      {
+        device = device;
+        fsType = "mergerfs";
+        options = [
+          "defaults"
+          "allow_other"
+          "cache.files=partial"
+          "dropcacheonclose=true"
+          "category.create=mfs"
+          "posix_acl=true"
+        ];
+        neededForBoot = false;
+        depends = listOfMountPoints;
+      };
+  };
 }
