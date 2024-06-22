@@ -7,6 +7,7 @@
     ./hardware.nix
     ./hardware-extra.nix
     ./services.nix
+    ./snapraid.nix
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_6_9;

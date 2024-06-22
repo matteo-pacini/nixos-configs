@@ -50,24 +50,46 @@ in
     disk9   UUID=293952af-363d-4ca1-bb74-23e22d67b393   ${config.age.secrets."nexus/disk9".path}
   '';
 
-  fileSystems = mkMountPoints listOfMountPoints // {
-    "/diskpool" =
-      let
-        device = lib.concatMapStringsSep ":" (i: "/mnt/disk${toString i}") diskNumbers;
-      in
-      {
-        device = device;
-        fsType = "mergerfs";
+  fileSystems =
+    mkMountPoints listOfMountPoints
+    // {
+      "/diskpool" =
+        let
+          device = lib.concatMapStringsSep ":" (i: "/mnt/disk${toString i}") diskNumbers;
+        in
+        {
+          device = device;
+          fsType = "mergerfs";
+          options = [
+            "defaults"
+            "allow_other"
+            "cache.files=partial"
+            "dropcacheonclose=true"
+            "category.create=mfs"
+            "posix_acl=true"
+          ];
+          neededForBoot = false;
+          depends = listOfMountPoints;
+        };
+    }
+    // {
+      "/mnt/parity1" = {
+        device = "/dev/disk/by-uuid/1a81ffca-7112-49de-bce6-804e9657e4ed";
+        fsType = "ext4";
         options = [
           "defaults"
-          "allow_other"
-          "cache.files=partial"
-          "dropcacheonclose=true"
-          "category.create=mfs"
-          "posix_acl=true"
+          "noatime"
         ];
         neededForBoot = false;
-        depends = listOfMountPoints;
       };
-  };
+      "/mnt/parity2" = {
+        device = "/dev/disk/by-uuid/eaeeac6a-40ae-4088-8680-1a6e0146cecd";
+        fsType = "ext4";
+        options = [
+          "defaults"
+          "noatime"
+        ];
+        neededForBoot = false;
+      };
+    };
 }
