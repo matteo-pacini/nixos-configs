@@ -13,7 +13,7 @@
     lfs.enable = true;
     package = pkgs.gitAndTools.gitFull;
     userName = "Matteo Pacini";
-    userEmail = "matteo@codecraft.it";
+    userEmail = "m+github@matteopacini.me";
     extraConfig = {
       init.defaultBranch = "master";
       core.editor = "code --wait";
