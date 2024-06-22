@@ -28,8 +28,8 @@
         "writeBoundary"
       ]
       ''
-        export PATH="$PATH:/opt/homebrew/bin"
-        $DRY_RUN_CMD brew bundle --file="$HOME/Brewfile" \
+        $DRY_RUN_CMD /run/current-system/sw/bin/brew bundle \
+          --file="$HOME/Brewfile" \
           --no-lock \
           --cleanup --zap \
           --verbose \
