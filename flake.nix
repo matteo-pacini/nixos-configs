@@ -99,43 +99,6 @@
             }
           ];
         };
-      mkNightSprings =
-        {
-          system,
-          hostPath,
-          userPath,
-          extraOverlays ? [ ],
-        }:
-        inputs.nix-darwin.lib.darwinSystem {
-          inherit system;
-          modules = [
-            { nixpkgs.overlays = baseOverlays ++ extraOverlays; }
-            hostPath
-            inputs.home-manager.darwinModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.users.matteo = import userPath;
-              home-manager.extraSpecialArgs = {
-                inherit inputs;
-              };
-              home-manager.backupFileExtension = "backup";
-            }
-            inputs.nix-homebrew.darwinModules.nix-homebrew
-            {
-              nix-homebrew = {
-                enable = true;
-                user = "matteo";
-                taps = {
-                  "homebrew/homebrew-core" = inputs.homebrew-core;
-                  "homebrew/homebrew-cask" = inputs.homebrew-cask;
-                  "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
-                };
-                mutableTaps = false;
-              };
-            }
-          ];
-        };
     in
     {
       ############
@@ -188,18 +151,40 @@
       ######################
       # Macbook Pro M1 Max #
       ######################
-      darwinConfigurations."NightSprings" = mkNightSprings {
+      darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
-        hostPath = ./hosts/NightSprings;
-        userPath = ./hosts/NightSprings/users/matteo;
-        extraOverlays = [ ];
-      };
-      # Old Intel Macbook Pro (2012) reusing the same configuration
-      darwinConfigurations."Dusk" = mkNightSprings {
-        system = "x86_64-darwin";
-        hostPath = ./hosts/NightSprings;
-        userPath = ./hosts/NightSprings/users/matteo;
-        extraOverlays = [ ];
+        modules = [
+          {
+            nixpkgs.overlays = [
+              (import ./overlay.nix { inherit inputs; })
+              inputs.nur.overlay
+            ];
+          }
+          ./hosts/NightSprings
+          inputs.home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.matteo = import ./hosts/NightSprings/users/matteo;
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+            home-manager.backupFileExtension = "backup";
+          }
+          inputs.nix-homebrew.darwinModules.nix-homebrew
+          {
+            nix-homebrew = {
+              enable = true;
+              user = "matteo";
+              taps = {
+                "homebrew/homebrew-core" = inputs.homebrew-core;
+                "homebrew/homebrew-cask" = inputs.homebrew-cask;
+                "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
+              };
+              mutableTaps = false;
+            };
+          }
+        ];
       };
       #########################
       # Macbook Pro M1 (Work) #
@@ -229,6 +214,44 @@
             nix-homebrew = {
               enable = true;
               user = "admin";
+              taps = {
+                "homebrew/homebrew-core" = inputs.homebrew-core;
+                "homebrew/homebrew-cask" = inputs.homebrew-cask;
+                "homebrew/homebrew-bundle" = inputs.homebrew-bundle;
+              };
+              mutableTaps = false;
+            };
+          }
+        ];
+      };
+      ############################
+      # Macbook Pro 2012 (Intel) #
+      ############################
+      darwinConfigurations."Dusk" = inputs.nix-darwin.lib.darwinSystem {
+        system = "x86_64-darwin";
+        modules = [
+          {
+            nixpkgs.overlays = [
+              (import ./overlay.nix { inherit inputs; })
+              inputs.nur.overlay
+            ];
+          }
+          ./hosts/Dusk
+          inputs.home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.matteo = import ./hosts/Dusk/users/matteo;
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+            home-manager.backupFileExtension = "backup";
+          }
+          inputs.nix-homebrew.darwinModules.nix-homebrew
+          {
+            nix-homebrew = {
+              enable = true;
+              user = "matteo";
               taps = {
                 "homebrew/homebrew-core" = inputs.homebrew-core;
                 "homebrew/homebrew-cask" = inputs.homebrew-cask;

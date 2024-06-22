@@ -66,18 +66,14 @@ in
 
         # https://github.com/nix-community/nur-combined/blob/master/repos/rycee/pkgs/firefox-addons/generated-firefox-addons.nix
         extensions =
-          if pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
-            # TODO: Investigate why the NUR doesn't evaluate on Intel Macs
-            [ ]
-          else
-            with pkgs.nur.repos.rycee.firefox-addons;
-            [
-              ublock-origin
-              darkreader
-              onepassword-password-manager
-              istilldontcareaboutcookies
-            ]
-            ++ lib.optionals isDarwin [ dracula-dark-colorscheme ];
+          with pkgs.nur.repos.rycee.firefox-addons;
+          [
+            ublock-origin
+            darkreader
+            onepassword-password-manager
+            istilldontcareaboutcookies
+          ]
+          ++ lib.optionals isDarwin [ dracula-dark-colorscheme ];
       };
     };
   };
