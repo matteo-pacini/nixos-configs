@@ -1,6 +1,6 @@
 { pkgs, config, ... }:
 let
-  codeCommand = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram}";
+  codeCommand = "${pkgs.lib.getExe config.programs.vscode.package}";
 in
 {
   programs.ssh = {
