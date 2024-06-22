@@ -1,6 +1,6 @@
 { config, ... }:
 {
-  hardware.graphics = {
+  hardware.opengl = {
     enable = true;
   };
 
