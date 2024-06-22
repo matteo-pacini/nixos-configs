@@ -7,7 +7,8 @@
     ../../../shared/home-manager/firefox.nix
     ../../../shared/home-manager/vscode.nix
     ../../../shared/home-manager/darwin/starship.nix
-    ../../../shared/home-manager/darwin/terminal.nix
+    # Wezterm fails on x86_64-darwin (#239384)
+    #../../../shared/home-manager/darwin/terminal.nix
     ../../../shared/home-manager/darwin/zsh.nix
 
     ./dotfiles.nix
