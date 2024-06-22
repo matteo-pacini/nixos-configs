@@ -13,7 +13,8 @@
   boot.loader.grub = {
     enable = true;
     efiSupport = false;
-    device = "/dev/disk/by-uuid/2f76e63a-859a-4721-9101-b278008d6f71";
+    # First SSD
+    device = "/dev/disk/by-id/ata-CT2000MX500SSD1_2308E6B0D773";
     memtest86.enable = true;
   };
 
