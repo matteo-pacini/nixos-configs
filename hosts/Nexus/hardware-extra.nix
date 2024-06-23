@@ -1,10 +1,4 @@
-{
-  lib,
-  config,
-  pkgs,
-  modulesPath,
-  ...
-}:
+{ lib, config, ... }:
 let
   diskNumbers = lib.lists.range 0 9;
   listOfMountPoints = builtins.map (i: "/mnt/disk${toString i}") diskNumbers;

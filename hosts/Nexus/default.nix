@@ -6,7 +6,7 @@
     ./gpu.nix
     ./hardware.nix
     ./hardware-extra.nix
-    ./services.nix
+    ./services
     ./snapraid.nix
   ];
 

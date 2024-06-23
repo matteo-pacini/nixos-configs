@@ -1,19 +1,5 @@
+{ pkgs, config, ... }:
 {
-  pkgs,
-  lib,
-  config,
-  ...
-}:
-{
-  services.openssh = {
-    enable = true;
-    settings = {
-      PermitRootLogin = "no";
-      PasswordAuthentication = false;
-    };
-    ports = [ 1788 ];
-  };
-
   services.smartd =
     let
       mailer = pkgs.writeShellScriptBin "janitor_tell_smartd" ''
