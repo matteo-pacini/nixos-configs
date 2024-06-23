@@ -37,6 +37,11 @@ in
     '';
   };
 
+  zramSwap = {
+    enable = true;
+    swapDevices = 1;
+  };
+
   environment.etc.crypttab.text = ''
     disk0   UUID=acc41b71-316b-45d8-8f0b-7451f07704e5   ${config.age.secrets."nexus/disk0".path}
     disk1   UUID=10b7a53d-00d7-44b8-a939-81e5e97cb39b   ${config.age.secrets."nexus/disk1".path}
