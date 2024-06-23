@@ -164,6 +164,7 @@
             age.secrets."nexus/disk7".file = ./secrets/nexus/disk7.age;
             age.secrets."nexus/disk8".file = ./secrets/nexus/disk8.age;
             age.secrets."nexus/disk9".file = ./secrets/nexus/disk9.age;
+            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
           }
         ];
       };
