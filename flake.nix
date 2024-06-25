@@ -26,6 +26,10 @@
     # NUR #
     #######
     nur.url = "github:nix-community/NUR";
+    ##########################
+    # nixpkgs-firefox-darwin #
+    ##########################
+    nixpkgs-firefox-darwin.url = "github:bandithedoge/nixpkgs-firefox-darwin";
     #################
     # Homebrew Taps #
     #################
@@ -202,6 +206,7 @@
             nixpkgs.overlays = [
               (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
+              inputs.nixpkgs-firefox-darwin.overlay
             ];
           }
           ./hosts/NightSprings
@@ -242,6 +247,7 @@
             nixpkgs.overlays = [
               (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
+              inputs.nixpkgs-firefox-darwin.overlay
             ];
           }
           ./hosts/WorkLaptop
@@ -280,6 +286,7 @@
             nixpkgs.overlays = [
               (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
+              inputs.nixpkgs-firefox-darwin.overlay
             ];
           }
           ./hosts/Dusk
