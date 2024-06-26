@@ -10,9 +10,5 @@ final: prev: rec {
     pkgs = prev;
   };
 
-  firefox-app = _thisFlakePkgs.firefox-app;
-  needle = _thisFlakePkgs.needle;
   reshade-steam-proton = _thisFlakePkgs.reshade-steam-proton;
-  swiftlint = _thisFlakePkgs.swiftlint;
-  zed-app = _thisFlakePkgs.zed-app;
 }

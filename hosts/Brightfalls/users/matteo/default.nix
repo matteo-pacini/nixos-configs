@@ -12,6 +12,7 @@
       ../../../shared/home-manager/firefox.nix
       ./git.nix
       ../../../shared/home-manager/vscode.nix
+      ../../../shared/home-manager/emacs
       ./zsh.nix
     ]
     ++ lib.optionals (!isVM) [
