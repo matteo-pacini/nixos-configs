@@ -52,6 +52,9 @@
         (setq tab-width 4)          ; and 4 char wide for TAB
         (setq indent-tabs-mode nil) ; And force use of spaces
 
+        ;; Revert buffers automatically when underlying files change
+        (global-auto-revert-mode t)
+
         ;; UTF-8
         (prefer-coding-system 'utf-8)
         (set-language-environment 'utf-8)
