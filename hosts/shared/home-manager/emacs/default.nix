@@ -12,6 +12,7 @@
     ./fzf.nix
     ./general.nix
     ./reformatter.nix
+    ./swift.nix
   ];
 
   programs.emacs =
