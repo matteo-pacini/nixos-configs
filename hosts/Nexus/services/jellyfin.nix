@@ -14,13 +14,12 @@ let
 in
 {
   users.users."jellyfin" = {
-    createHome = false;
-    shell = "/sbin/nologin";
     extraGroups = [ "media" ];
   };
 
   services.jellyfin = {
     enable = true;
     package = jellyfin;
+    group = "media";
   };
 }

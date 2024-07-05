@@ -6,8 +6,11 @@
 }:
 let
   backupDestination = "/diskpool/configuration";
-  affectedServices = [ "jellyfin" ];
-  backupJob = pkgs.writeShellScriptBin "backupJob" ''
+  affectedServices = [
+    "jellyfin"
+    "nzbget"
+  ];
+  backupJob = pkgs.writeShellScriptBin "backupJob2" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -28,6 +31,8 @@ let
 
     # Jellyfin
     ''${RSYNC_CMD} ${config.services.jellyfin.dataDir} ${backupDestination}/
+    # NZBGet
+    ''${RSYNC_CMD} /var/lib/nzbget ${backupDestination}/
 
     # Restart all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
