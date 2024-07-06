@@ -6,6 +6,7 @@
     ./jellyfin.nix
     ./backup.nix
     ./nzbget.nix
+    ./nzbhydra.nix
   ];
 
   systemd.tmpfiles.rules = [

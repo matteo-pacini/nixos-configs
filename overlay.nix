@@ -11,4 +11,7 @@ final: prev: rec {
   };
 
   reshade-steam-proton = _thisFlakePkgs.reshade-steam-proton;
+  # Overwrite the nzbhydra2 package with the one from the flake
+  # Until PR #325062 is merged
+  nzbhydra2 = _thisFlakePkgs.nzbhydra2;
 }

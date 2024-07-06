@@ -9,8 +9,9 @@ let
   affectedServices = [
     "jellyfin"
     "nzbget"
+    "nzbhydra2"
   ];
-  backupJob = pkgs.writeShellScriptBin "backupJob2" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob3" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -33,6 +34,8 @@ let
     ''${RSYNC_CMD} ${config.services.jellyfin.dataDir} ${backupDestination}/
     # NZBGet
     ''${RSYNC_CMD} /var/lib/nzbget ${backupDestination}/
+    # nzbhydra2
+    ''${RSYNC_CMD} ${config.services.nzbhydra2.dataDir} ${backupDestination}/
 
     # Restart all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
