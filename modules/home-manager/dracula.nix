@@ -8,7 +8,11 @@
 let
   inherit (lib) mkEnableOption;
   cfg = config.dracula;
-  isDarwin = pkgs.stdenv.isDarwin;
+  wallpaper =
+    if pkgs.stdenv.isDarwin then
+      "${inputs.dracula-wallpaper}/first-collection/macos.png"
+    else
+      "${inputs.dracula-wallpaper}/first-collection/nixos.png";
 in
 {
   options.dracula = {
@@ -22,11 +26,9 @@ in
 
   config = lib.mkMerge [
     (lib.mkIf cfg.wallpaper.enable {
-      home.file."Pictures/wallpaper.png".source =
-        if isDarwin then
-          "${inputs.dracula-wallpaper}/first-collection/macos.png"
-        else
-          "${inputs.dracula-wallpaper}/first-collection/nixos.png";
+      home.activation.draculaTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        $DRY_RUN_CMD cp ${wallpaper} ${config.home.homeDirectory}/Pictures/wallpaper.png
+      '';
     })
     (lib.mkIf cfg.eza.enable {
       programs.zsh.initExtra = ''
