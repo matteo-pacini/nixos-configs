@@ -7,6 +7,7 @@
     ./backup.nix
     ./nzbget.nix
     ./nzbhydra.nix
+    ./radarr.nix
   ];
 
   systemd.tmpfiles.rules = [
