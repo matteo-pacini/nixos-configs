@@ -9,12 +9,11 @@
   nixpkgs.config.allowUnfree = true;
 
   nix = {
-    linux-builder.enable = true;
     settings.experimental-features = [
       "nix-command"
       "flakes"
     ];
-    settings.trusted-users = [ "@admin" ];
+    settings.trusted-users = [ "@matteo" ];
     extraOptions = ''
       extra-platforms = x86_64-darwin aarch64-darwin
     '';
