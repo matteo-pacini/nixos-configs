@@ -43,8 +43,8 @@
       # No need for these in a VM
       # Music
       cmus
-      qemu
       # Virtualisation
+      qemu
       quickemu
       # Gaming
       reshade-steam-proton
@@ -52,6 +52,8 @@
       vulkan-tools
       mesa-demos
       unstable.bottles
+      # Other
+      miru
     ];
 
   home.stateVersion = "23.11";
