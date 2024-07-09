@@ -18,7 +18,6 @@
         vscext.eamodio.gitlens
         # Copilot
         github.copilot
-        github.copilot-chat
         # Nix
         jnoortheen.nix-ide
         # Go
