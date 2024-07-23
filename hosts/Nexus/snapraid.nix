@@ -19,4 +19,16 @@ in
     ];
     touchBeforeSync = true;
   };
+
+  systemd.services = {
+    "snapraid-scrub" = {
+      wantedBy = lib.mkForce [ ];
+      startAt = lib.mkForce [ ];
+    };
+    "snapraid-sync" = {
+      wantedBy = lib.mkForce [ ];
+      startAt = lib.mkForce [ ];
+    };
+  };
+
 }
