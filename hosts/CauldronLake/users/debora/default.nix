@@ -17,6 +17,8 @@
     #Gnome
     gnomeExtensions.appindicator
     gnome.gnome-tweaks
+    # Browsers
+    chromium
     # Security
     _1password-gui
     # Gaming
