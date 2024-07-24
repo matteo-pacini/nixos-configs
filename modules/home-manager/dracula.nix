@@ -27,7 +27,9 @@ in
   config = lib.mkMerge [
     (lib.mkIf cfg.wallpaper.enable {
       home.activation.draculaTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        $DRY_RUN_CMD cp ${wallpaper} ${config.home.homeDirectory}/Pictures/wallpaper.png
+        if [ ! -f "${config.home.homeDirectory}/Pictures/wallpaper.png" ]; then
+          $DRY_RUN_CMD cp ${wallpaper} ${config.home.homeDirectory}/Pictures/wallpaper.png
+        fi
       '';
     })
     (lib.mkIf cfg.eza.enable {
