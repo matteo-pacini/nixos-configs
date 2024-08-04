@@ -8,7 +8,6 @@
 
   programs.steam = {
     enable = true;
-    package = pkgs.unstable.steam;
   };
 
   security.polkit.enable = true;

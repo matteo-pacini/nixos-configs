@@ -23,7 +23,7 @@
     ]
     ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
 
-  boot.kernelPackages = pkgs.linuxPackages_6_9;
+  boot.kernelPackages = pkgs.linuxPackages_6_10;
 
   boot.loader.grub = {
     enable = true;

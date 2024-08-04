@@ -48,10 +48,10 @@
       quickemu
       # Gaming
       reshade-steam-proton
-      unstable.mangohud
+      mangohud
       vulkan-tools
       mesa-demos
-      unstable.bottles
+      bottles
       # Other
       miru
     ];

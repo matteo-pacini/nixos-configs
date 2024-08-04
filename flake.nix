@@ -7,6 +7,8 @@
     ################
     home-manager.url = "github:nix-community/home-manager/release-24.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    home-manager-unstable.url = "github:nix-community/home-manager";
+    home-manager-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     ##############
     # Nix Darwin #
     ##############
@@ -89,7 +91,7 @@
           extraOverlays ? [ ],
           isVM ? false,
         }:
-        inputs.nixpkgs.lib.nixosSystem {
+        inputs.nixpkgs-unstable.lib.nixosSystem {
           inherit system;
           specialArgs = {
             inherit isVM;
@@ -97,7 +99,7 @@
           modules = [
             { nixpkgs.overlays = baseOverlays ++ extraOverlays; }
             hostPath
-            inputs.home-manager.nixosModules.home-manager
+            inputs.home-manager-unstable.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
