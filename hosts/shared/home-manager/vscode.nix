@@ -1,4 +1,13 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
+let
+  vscode-utils = pkgs.vscode-utils;
+  perlnavigator = vscode-utils.extensionFromVscodeMarketplace {
+    name = "perlnavigator";
+    publisher = "bscan";
+    version = "0.8.12";
+    hash = "sha256-LozWG8ZfAkYr55aIzYldQDDe2rUM95l76EeJPCaGOCM=";
+  };
+in
 {
   programs.vscode = {
     enable = true;
@@ -24,6 +33,12 @@
         golang.go
         # Shell
         vscext.timonwong.shellcheck
+        # Rust
+        vscext.rust-lang.rust-analyzer
+        vscext.tamasfe.even-better-toml
+        vscext.serayuzgur.crates
+        # Perl
+        perlnavigator
       ];
     mutableExtensionsDir = false;
     userSettings = {
