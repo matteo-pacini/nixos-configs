@@ -48,16 +48,6 @@
         killall Dock;
         defaults write com.apple.dock ResetLaunchPad -bool false
       '';
-      reloadSkhd = ''
-        launchctl unload /Users/${config.home.username}/Library/LaunchAgents/org.nixos.skhd.plist;
-        sleep 1;
-        launchctl load /Users/${config.home.username}/Library/LaunchAgents/org.nixos.skhd.plist;
-      '';
-      reloadYabai = ''
-        launchctl unload /Users/${config.home.username}/Library/LaunchAgents/org.nixos.yabai.plist;
-        sleep 1;
-        launchctl load /Users/${config.home.username}/Library/LaunchAgents/org.nixos.yabai.plist;
-      '';
       nix-gc = ''
         nix-collect-garbage --delete-old;
         sudo nix-collect-garbage --delete-old;

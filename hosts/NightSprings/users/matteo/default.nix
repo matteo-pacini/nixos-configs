@@ -29,6 +29,7 @@
     # Extra
     tree
     unstable.yt-dlp
+    loopwm
     # Development
     gh
     # Music

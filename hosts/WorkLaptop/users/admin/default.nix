@@ -28,6 +28,7 @@
     # Extra
     colorls
     tree
+    loopwm
     # Development
     gh
     # Music
