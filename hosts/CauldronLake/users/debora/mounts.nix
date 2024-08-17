@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}:
+{ ... }:
 {
   systemd.user.tmpfiles.rules = [ "d /home/debora/Mounts/Debora 0700 debora users -" ];
 
@@ -22,8 +17,9 @@
       What = "debora@192.168.7.7:/diskpool/debora";
       Where = "/home/debora/Mounts/Debora";
       Type = "fuse.sshfs";
-      Options = "port=1788,idmap=user,_netdev,IdentityFile=/home/debora/.ssh/nexus,x-systemd.automount";
+      Options = "port=1788,idmap=user,_netdev,IdentityFile=/home/debora/.ssh/id_ed25519,x-systemd.automount";
       TimeoutSec = 60;
     };
   };
+
 }
