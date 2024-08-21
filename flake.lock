@@ -318,11 +318,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1724115021,
-        "narHash": "sha256-lZwaoyGBKK7QZMWqV40JaEoy0a6ydn65fpfOK/u6Ixs=",
+        "lastModified": 1724201420,
+        "narHash": "sha256-L3gituExI0zmzaBA/qUafi/YLHTrxIqiNXuK1OoZnRk=",
         "owner": "bandithedoge",
         "repo": "nixpkgs-firefox-darwin",
-        "rev": "7171576a1092c2acf09c0563dd97148c89c4c445",
+        "rev": "2bc815e08f2acfe58617de3e746c70a665ee4bae",
         "type": "github"
       },
       "original": {
