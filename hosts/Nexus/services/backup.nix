@@ -12,7 +12,7 @@ let
     "nzbhydra2"
     "radarr"
   ];
-  backupJob = pkgs.writeShellScriptBin "backupJob4" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob5" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -39,6 +39,9 @@ let
     ''${RSYNC_CMD} ${config.services.nzbhydra2.dataDir} ${backupDestination}/
     # radarr
     ''${RSYNC_CMD} ${config.services.radarr.dataDir} ${backupDestination}/
+
+    # Sync SnapRAID
+    ${pkgs.snapraid}/bin/snapraid sync
 
     # Restart all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
