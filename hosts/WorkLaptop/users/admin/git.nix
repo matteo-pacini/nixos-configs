@@ -26,16 +26,13 @@ in
       difftool.vscode.cmd = "${codeCommand} --wait --diff $LOCAL $REMOTE";
       merge.tool = "vscode";
       mergetool.vscode.cmd = "${codeCommand} --wait --merge $REMOTE $LOCAL $BASE $MERGED";
-      core.sshCommand = "ssh -i ~/.ssh/github_work";
+      core.sshCommand = "ssh -i ~/.ssh/github";
     };
     includes = [
       {
         contents = {
           user = {
-            email = "matteo@codecraft.it";
-          };
-          core = {
-            sshCommand = "ssh -i ~/.ssh/github_personal";
+            email = "m@matteopacini.me";
           };
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/";
