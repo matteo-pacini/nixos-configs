@@ -1,12 +1,13 @@
-{pkgs, ...}: let
+{ pkgs, ... }:
+let
   passbolt = pkgs.stdenv.mkDerivation rec {
-    version = "4.8.1";
+    version = "4.9.1";
     pname = "passbolt";
     addonId = "passbolt@passbolt.com";
 
     src = pkgs.fetchurl {
-      url = "https://addons.mozilla.org/firefox/downloads/file/4291859/passbolt-4.8.1.xpi";
-      hash = "sha256-mtGWzWBN3gXgwdpG2Efv7frlHFzYSPqFNAKUdAhXvyY=";
+      url = "https://addons.mozilla.org/firefox/downloads/file/4325047/passbolt-4.9.1.xpi";
+      hash = "sha256-QChZOB7sm+IFnl7mAD8vji0hUM8OO2E7UVACWJ4U9Qk=";
     };
 
     buildCommand = ''
@@ -15,9 +16,10 @@
       install -v -m644 "$src" "$dst/${addonId}.xpi"
     '';
   };
-in {
-  imports = [../../../shared/home-manager/firefox.nix];
+in
+{
+  imports = [ ../../../shared/home-manager/firefox.nix ];
 
   # Append passbolt to the list of extensions
-  programs.firefox.profiles.default.extensions = [passbolt];
+  programs.firefox.profiles.default.extensions = [ passbolt ];
 }
