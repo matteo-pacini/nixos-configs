@@ -209,11 +209,11 @@
     "homebrew-cask": {
       "flake": false,
       "locked": {
-        "lastModified": 1724828283,
-        "narHash": "sha256-34k9D8f/KtK4CBkw3fAbLlBqJlIlDRaSZikcFeWuTM0=",
+        "lastModified": 1724850727,
+        "narHash": "sha256-VR7j8sjxmhdW5FHuOfQSyhYddGjKXY7n5HGM5G4NAHc=",
         "owner": "homebrew",
         "repo": "homebrew-cask",
-        "rev": "d970e2b5792aa47548e738a1e4bff159c27e2135",
+        "rev": "f4e0deff4c04397fedbd4e5e307875e92c0b7379",
         "type": "github"
       },
       "original": {
@@ -225,11 +225,11 @@
     "homebrew-core": {
       "flake": false,
       "locked": {
-        "lastModified": 1724828452,
-        "narHash": "sha256-QElF5lLw865jhO/7T+d4QlOFk5M/xfYfYh7UNwCdDAg=",
+        "lastModified": 1724854724,
+        "narHash": "sha256-RPd02j44Ru1/7ovGmBqkZPCis4sOCINae/cYgp7DOvo=",
         "owner": "homebrew",
         "repo": "homebrew-core",
-        "rev": "3a653415a549055f261215e32464e5e4b5ee5e51",
+        "rev": "871bd17e419c5ab322a2d55e21ad791c713e8e7f",
         "type": "github"
       },
       "original": {
@@ -313,6 +313,22 @@
         "type": "indirect"
       }
     },
+    "nixpkgs-6_9-kernel": {
+      "locked": {
+        "lastModified": 1722634242,
+        "narHash": "sha256-rB1oxAy8IT+L81DIqtLK3NvUMXrjACh5Nl7D7wv2t/g=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3bfeae1428eac1e60a304268bf7dc218f152b145",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3bfeae1428eac1e60a304268bf7dc218f152b145",
+        "type": "github"
+      }
+    },
     "nixpkgs-firefox-darwin": {
       "inputs": {
         "nixpkgs": "nixpkgs_3"
@@ -381,11 +397,11 @@
     },
     "nur": {
       "locked": {
-        "lastModified": 1724824747,
-        "narHash": "sha256-9GVSnxZOvHF33U0Isl8UtBYrc1FNvEClWxXrTshoWQU=",
+        "lastModified": 1724835691,
+        "narHash": "sha256-4JJ63iKOl/bhCITdMJZnIJCxqgOvuChFxIiJTfM2zao=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "06605674b842d0894a587b300643c4fdd92e3d8f",
+        "rev": "7d4b08bf7adb669925255535564cc7807e106801",
         "type": "github"
       },
       "original": {
@@ -408,6 +424,7 @@
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs_2",
+        "nixpkgs-6_9-kernel": "nixpkgs-6_9-kernel",
         "nixpkgs-firefox-darwin": "nixpkgs-firefox-darwin",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nur": "nur",

@@ -28,7 +28,7 @@
     # Extra
     colorls
     tree
-    loopwm
+    unstable.loopwm
     # Development
     gh
     # Music

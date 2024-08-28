@@ -10,7 +10,7 @@
     ./snapraid.nix
   ];
 
-  boot.kernelPackages = pkgs.linuxPackages_6_10;
+  boot.kernelPackages = pkgs.linuxPackages_6_9;
 
   boot.loader.grub = {
     enable = true;
