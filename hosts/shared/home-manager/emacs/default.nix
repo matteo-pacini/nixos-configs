@@ -13,6 +13,7 @@
     ./general.nix
     ./reformatter.nix
     ./swift.nix
+    ./nasm.nix
   ];
 
   programs.emacs =
