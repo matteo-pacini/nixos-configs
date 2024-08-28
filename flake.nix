@@ -146,9 +146,14 @@
             nixpkgs.overlays = [
               (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
-              (self: super: {
+              (self: super: rec {
+
+                __6_9_pkgs = import inputs.nixpkgs-6_9-kernel {
+                  system = "x86_64-linux";
+                  config.allowUnfree = true;
+                };
                 # https://github.com/NixOS/nixpkgs/issues/332350#issuecomment-2312704717
-                linuxPackages_6_9 = inputs.nixpkgs-6_9-kernel.legacyPackages.${system}.linuxPackages_6_9;
+                linuxPackages_6_9 = __6_9_pkgs.linuxPackages_6_9;
               })
             ];
           }
