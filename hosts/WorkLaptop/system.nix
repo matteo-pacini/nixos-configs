@@ -8,7 +8,7 @@
   system.defaults.dock.autohide-time-modifier = 0.0;
   system.defaults.dock.autohide-delay = 0.0;
 
-  system.defaults.finder.CreateDesktop = false;
+  system.defaults.finder.CreateDesktop = true;
   system.defaults.finder.AppleShowAllExtensions = true;
 
   security.pam.enableSudoTouchIdAuth = true;

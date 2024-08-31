@@ -20,7 +20,7 @@
 
   services.nix-daemon.enable = true;
 
-  environment.systemPackages = with pkgs; [ ];
+  environment.systemPackages = with pkgs; [ nix-output-monitor ];
 
   users.users."admin" = {
     home = "/Users/admin";

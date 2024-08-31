@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, ... }:
 let
   vscode-utils = pkgs.vscode-utils;
   perlnavigator = vscode-utils.extensionFromVscodeMarketplace {
@@ -11,12 +11,12 @@ in
 {
   programs.vscode = {
     enable = true;
-    package = pkgs.unstable.vscodium;
+    package = pkgs.vscodium;
     enableUpdateCheck = false;
     enableExtensionUpdateCheck = false;
     extensions =
       let
-        vscext = pkgs.unstable.vscode-extensions;
+        vscext = pkgs.vscode-extensions;
       in
       with vscext;
       [
@@ -32,11 +32,11 @@ in
         # Go
         golang.go
         # Shell
-        vscext.timonwong.shellcheck
+        timonwong.shellcheck
         # Rust
-        vscext.rust-lang.rust-analyzer
-        vscext.tamasfe.even-better-toml
-        vscext.serayuzgur.crates
+        rust-lang.rust-analyzer
+        tamasfe.even-better-toml
+        serayuzgur.crates
         # Perl
         perlnavigator
       ];

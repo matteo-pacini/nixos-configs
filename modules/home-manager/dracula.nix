@@ -58,7 +58,7 @@ in
     (lib.mkIf (cfg.vscode.enable && config.programs.vscode.enable) {
       programs.vscode.extensions =
         let
-          vscext = pkgs.unstable.vscode-extensions;
+          vscext = pkgs.vscode-extensions;
         in
         [ vscext.dracula-theme.theme-dracula ];
       programs.vscode.userSettings = {

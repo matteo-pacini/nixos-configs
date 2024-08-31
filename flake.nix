@@ -15,6 +15,8 @@
     ##############
     nix-darwin.url = "github:lnl7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    nix-darwin-unstable.url = "github:lnl7/nix-darwin/master";
+    nix-darwin-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     ################
     # Nix Homebrew #
     ################
@@ -139,7 +141,7 @@
       #########
       # Nexus #
       #########
-      nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem rec {
+      nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           {
@@ -252,18 +254,17 @@
       #########################
       # Macbook Pro M1 (Work) #
       #########################
-      darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem {
+      darwinConfigurations."WorkLaptop" = inputs.nix-darwin-unstable.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
               inputs.nixpkgs-firefox-darwin.overlay
             ];
           }
           ./hosts/WorkLaptop
-          inputs.home-manager.darwinModules.home-manager
+          inputs.home-manager-unstable.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;

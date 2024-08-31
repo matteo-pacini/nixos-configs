@@ -11,7 +11,9 @@
           font_size = 18.0,
           color_scheme = "Dracula (Official)",
           window_decorations = "RESIZE",
-          window_close_confirmation = "NeverPrompt"
+          window_close_confirmation = "NeverPrompt",
+          -- https://github.com/NixOS/nixpkgs/issues/336069
+          front_end = "WebGpu",
         }
     '';
   };

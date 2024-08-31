@@ -3,7 +3,7 @@
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
-    package = pkgs.unstable.starship;
+    package = pkgs.starship;
     settings = {
       scan_timeout = 10;
       format = builtins.concatStringsSep "" [
