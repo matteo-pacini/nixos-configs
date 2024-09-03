@@ -214,7 +214,7 @@
       ######################
       # Macbook Pro M1 Max #
       ######################
-      darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
+      darwinConfigurations."NightSprings" = inputs.nix-darwin-unstable.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
           {
@@ -225,7 +225,7 @@
             ];
           }
           ./hosts/NightSprings
-          inputs.home-manager.darwinModules.home-manager
+          inputs.home-manager-unstable.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;

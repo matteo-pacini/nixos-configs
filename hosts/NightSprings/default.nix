@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 {
   imports = [
     ./fonts.nix
@@ -20,7 +20,7 @@
 
   services.nix-daemon.enable = true;
 
-  environment.systemPackages = [ ];
+  environment.systemPackages = [ pkgs.nix-output-monitor ];
 
   users.users."matteo" = {
     home = "/Users/matteo";

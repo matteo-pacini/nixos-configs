@@ -25,10 +25,10 @@
     # Virtualization
     colima
     docker
-    unstable.qemu
+    qemu
     # Extra
     tree
-    unstable.yt-dlp
+    yt-dlp
     loopwm
     # Development
     gh
