@@ -8,7 +8,8 @@
     ################
     home-manager.url = "github:nix-community/home-manager/release-24.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    home-manager-unstable.url = "github:nix-community/home-manager";
+    # https://github.com/nix-community/home-manager/issues/5717
+    home-manager-unstable.url = "github:nix-community/home-manager?rev=587fcca66e9d11c8e2357053c096a8a727c120ab";
     home-manager-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     ##############
     # Nix Darwin #
