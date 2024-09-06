@@ -4,8 +4,8 @@ let
   perlnavigator = vscode-utils.extensionFromVscodeMarketplace {
     name = "perlnavigator";
     publisher = "bscan";
-    version = "0.8.12";
-    hash = "sha256-LozWG8ZfAkYr55aIzYldQDDe2rUM95l76EeJPCaGOCM=";
+    version = "0.8.15";
+    hash = "sha256-IClcFvP86NdCtAhwkPgwG4pbGGEou4h2YVul+AAuZow=";
   };
 in
 {
