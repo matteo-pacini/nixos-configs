@@ -6,6 +6,7 @@
 }:
 {
   services.flatpak.enable = true;
+
   services.fstrim.enable = lib.mkIf (!isVM) true;
 
   virtualisation.docker = {

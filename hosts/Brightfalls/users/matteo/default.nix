@@ -29,7 +29,7 @@
     [
       #Gnome
       gnomeExtensions.appindicator
-      gnome.gnome-tweaks
+      gnome-tweaks
       # Downloads
       aria
       # Security

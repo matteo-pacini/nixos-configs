@@ -1,5 +1,4 @@
 {
-  lib,
   pkgs,
   modulesPath,
   ...
@@ -24,6 +23,7 @@
 
   hardware.cpu.amd.updateMicrocode = true;
   hardware.firmware = [ pkgs.linux-firmware ];
+  hardware.enableRedistributableFirmware = true;
 
   fileSystems."/" = {
     device = "/dev/disk/by-uuid/cfeb4539-1275-4bed-8713-637c6194e01a";
@@ -96,5 +96,4 @@
     options = [ "defaults" ];
   };
 
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }

@@ -49,11 +49,11 @@ with lib.hm.gvariant;
     enable = true;
     cursorTheme = {
       name = "Adwaita";
-      package = pkgs.gnome.gnome-themes-extra;
+      package = pkgs.gnome-themes-extra;
     };
     theme = {
       name = "Adwaita-dark";
-      package = pkgs.gnome.gnome-themes-extra;
+      package = pkgs.gnome-themes-extra;
     };
     gtk3.extraConfig = {
       Settings = ''

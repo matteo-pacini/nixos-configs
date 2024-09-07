@@ -10,15 +10,14 @@
 
   services.xserver.excludePackages = [ pkgs.xterm ];
 
-  environment.gnome.excludePackages =
-    (with pkgs; [
+  environment.gnome.excludePackages = (
+    with pkgs;
+    [
       gnome-photos
       gnome-tour
       snapshot
       gnome-text-editor
       simple-scan
-    ])
-    ++ (with pkgs.gnome; [
       cheese
       gnome-music
       epiphany
@@ -34,7 +33,8 @@
       gnome-maps
       gnome-weather
       totem
-    ]);
+    ]
+  );
 
   programs.dconf.enable = true;
 }

@@ -84,7 +84,6 @@
 
     let
       baseOverlays = [
-        (import ./overlay.nix { inherit inputs; })
         inputs.nur.overlay
       ];
       mkBrightFalls =
@@ -123,7 +122,9 @@
         system = "x86_64-linux";
         hostPath = ./hosts/Brightfalls;
         userPath = ./hosts/Brightfalls/users/matteo;
-        extraOverlays = [ ];
+        extraOverlays = [
+          (import ./overlays/brightfalls.nix)
+        ];
       };
       nixosConfigurations."BrightFallsVM-x86_64-linux" = mkBrightFalls {
         system = "x86_64-linux";

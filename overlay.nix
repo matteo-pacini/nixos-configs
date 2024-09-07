@@ -5,6 +5,5 @@ final: prev: rec {
     config.allowUnfree = true;
   };
 
-  reshade-steam-proton = prev.callPackage ./packages/reshade-steam-proton.nix { };
   nzbhydra2 = unstable.nzbhydra2;
 }

@@ -23,7 +23,28 @@
     ]
     ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
 
+  # Nix & Nixpkgs
+
+  nix = {
+    package = pkgs.nixVersions.nix_2_24;
+    settings = {
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      extra-platforms = [ "aarch64-linux" ];
+    };
+  };
+
+  nixpkgs.config.allowUnfree = true;
+
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+
+  # Kernel
+
   boot.kernelPackages = pkgs.linuxPackages_6_10;
+
+  # Boot loader
 
   boot.loader.grub = {
     enable = true;
@@ -33,19 +54,14 @@
   };
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # System Packages
+
   environment.systemPackages =
     with pkgs;
     [
 
     ]
     ++ lib.optionals (!isVM) [ sshfs ];
-
-  nixpkgs.config.allowUnfree = true;
-
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
 
   # Timezone and locale
 
