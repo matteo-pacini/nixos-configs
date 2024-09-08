@@ -6,13 +6,17 @@
       pkg.overrideAttrs (oldAttrs: {
         env = (oldAttrs.env or { }) // {
           NIX_CFLAGS_COMPILE =
-            (oldAttrs.env.NIX_CFLAGS_COMPILE or "") + " -O2 -march=sandybridge -mtune=sandybridge";
+            (oldAttrs.env.NIX_CFLAGS_COMPILE or "")
+            + " -O2 -ftree-vectorize -march=sandybridge -mtune=sandybridge";
           NIX_CXXFLAGS_COMPILE =
-            (oldAttrs.env.NIX_CFLAGS_COMPILE or "") + " -O2 -march=sandybridge -mtune=sandybridge";
+            (oldAttrs.env.NIX_CFLAGS_COMPILE or "")
+            + " -O2 -ftree-vectorize -march=sandybridge -mtune=sandybridge";
         };
       });
   in
   {
-
+    jellyfin-ffmpeg = optimizedForNexus super.jellyfin-ffmpeg;
+    snapraid = optimizedForNexus super.snapraid;
+    mergerfs = optimizedForNexus super.mergerfs;
   }
 )
