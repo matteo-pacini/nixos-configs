@@ -28,6 +28,8 @@
     ##########
     agenix.url = "github:ryantm/agenix";
     agenix.inputs.nixpkgs.follows = "nixpkgs";
+    agenix-unstable.url = "github:ryantm/agenix";
+    agenix-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     #######
     # NUR #
     #######
@@ -143,26 +145,25 @@
       #########
       # Nexus #
       #########
-      nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem {
+      nixosConfigurations."Nexus" = inputs.nixpkgs-unstable.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlay.nix { inherit inputs; })
+              (import ./overlays/nexus.nix)
               inputs.nur.overlay
-              (self: super: rec {
-
-                __6_9_pkgs = import inputs.nixpkgs-6_9-kernel {
-                  system = "x86_64-linux";
-                  config.allowUnfree = true;
-                };
+              (self: super: {
                 # https://github.com/NixOS/nixpkgs/issues/332350#issuecomment-2312704717
-                linuxPackages_6_9 = __6_9_pkgs.linuxPackages_6_9;
+                linuxPackages_6_9 =
+                  (import inputs.nixpkgs-6_9-kernel {
+                    system = "x86_64-linux";
+                    config.allowUnfree = true;
+                  }).linuxPackages_6_9;
               })
             ];
           }
           ./hosts/Nexus
-          inputs.home-manager.nixosModules.home-manager
+          inputs.home-manager-unstable.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -171,7 +172,7 @@
               inherit inputs;
             };
           }
-          inputs.agenix.nixosModules.default
+          inputs.agenix-unstable.nixosModules.default
           {
             age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ];
             age.secrets."nexus/disk0".file = ./secrets/nexus/disk0.age;
@@ -263,6 +264,7 @@
             nixpkgs.overlays = [
               inputs.nur.overlay
               inputs.nixpkgs-firefox-darwin.overlay
+              (import ./overlays/worklaptop.nix)
             ];
           }
           ./hosts/WorkLaptop
