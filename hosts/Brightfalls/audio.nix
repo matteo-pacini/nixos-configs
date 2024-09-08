@@ -12,7 +12,6 @@
   services.pipewire = {
     enable = true;
     alsa.enable = true;
-    alsa.support32Bit = pkgs.stdenv.hostPlatform == "x86_64-linux";
     pulse.enable = true;
   };
 
