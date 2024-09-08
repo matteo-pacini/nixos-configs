@@ -10,6 +10,8 @@
     ./snapraid.nix
   ];
 
+  nix.package = pkgs.nixVersions.nix_2_24;
+
   boot.kernelPackages = pkgs.linuxPackages_6_9;
 
   boot.loader.grub = {
