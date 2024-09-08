@@ -22,12 +22,10 @@
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
-    # Virtualization
-    colima
-    docker
     # Extra
     colorls
     tree
+    # Window Manager
     loopwm
     # Development
     gh
