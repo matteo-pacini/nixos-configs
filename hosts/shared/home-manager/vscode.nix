@@ -7,6 +7,12 @@ let
     version = "0.8.15";
     hash = "sha256-IClcFvP86NdCtAhwkPgwG4pbGGEou4h2YVul+AAuZow=";
   };
+  dependi = vscode-utils.extensionFromVscodeMarketplace {
+    name = "dependi";
+    publisher = "fill-labs";
+    version = "0.7.9";
+    hash = "sha256-VsjISVDZGGh6/pf3Fd5g8pYDvWXA1+0oZKlQEGLBp4M=";
+  };
 in
 {
   programs.vscode = {
@@ -36,7 +42,7 @@ in
         # Rust
         rust-lang.rust-analyzer
         tamasfe.even-better-toml
-        serayuzgur.crates
+        dependi
         # Perl
         perlnavigator
       ];
