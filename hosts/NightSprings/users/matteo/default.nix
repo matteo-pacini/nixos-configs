@@ -22,10 +22,6 @@
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
-    # Virtualization
-    colima
-    docker
-    qemu
     # Extra
     tree
     yt-dlp
