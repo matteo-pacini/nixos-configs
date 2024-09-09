@@ -16,5 +16,15 @@
     mesa = optimizedForBrightFalls super.mesa;
     mangohud = optimizedForBrightFalls super.mangohud;
 
+    qemu = optimizedForBrightFalls (
+      super.qemu.override ({
+        hostCpuTargets = [
+          "i386-softmmu"
+          "x86_64-softmmu"
+          "aarch64-softmmu"
+        ];
+      })
+    );
+
   }
 )
