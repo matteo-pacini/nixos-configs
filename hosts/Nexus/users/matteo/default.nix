@@ -10,7 +10,7 @@
   home.homeDirectory = "/home/matteo";
 
   home.packages = with pkgs; [
-
+    cachix
   ];
 
   home.stateVersion = "23.11";
