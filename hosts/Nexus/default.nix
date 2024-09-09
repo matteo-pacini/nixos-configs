@@ -12,6 +12,10 @@
 
   nix.package = pkgs.nixVersions.nix_2_24;
 
+  nix.settings.trusted-users = [
+    "matteo"
+  ];
+
   boot.kernelPackages = pkgs.linuxPackages_6_9;
 
   boot.loader.grub = {
