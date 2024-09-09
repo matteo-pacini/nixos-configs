@@ -9,6 +9,16 @@ in
     extraConfig = ''
       IdentitiesOnly yes
     '';
+    matchBlocks = {
+      "nexus" = {
+        extraOptions = {
+          HostName = "192.168.7.7";
+          User = "matteo";
+          IdentityFile = "~/.ssh/nexus";
+          Port = "1788";
+        };
+      };
+    };
   };
 
   programs.git = {
