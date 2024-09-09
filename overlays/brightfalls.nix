@@ -13,5 +13,8 @@
   {
     reshade-steam-proton = super.callPackage ../packages/reshade-steam-proton.nix { };
 
+    mesa = optimizedForBrightFalls super.mesa;
+    mangohud = optimizedForBrightFalls super.mangohud;
+
   }
 )
