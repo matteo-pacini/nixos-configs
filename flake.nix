@@ -297,18 +297,17 @@
       ############################
       # Macbook Pro 2012 (Intel) #
       ############################
-      darwinConfigurations."Dusk" = inputs.nix-darwin.lib.darwinSystem {
+      darwinConfigurations."Dusk" = inputs.nix-darwin-unstable.lib.darwinSystem {
         system = "x86_64-darwin";
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
               inputs.nixpkgs-firefox-darwin.overlay
             ];
           }
           ./hosts/Dusk
-          inputs.home-manager.darwinModules.home-manager
+          inputs.home-manager-unstable.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
