@@ -1,10 +1,4 @@
 {
-  nixConfig.extra-substituters = [
-    "https://matteo-pacini.cachix.org"
-  ];
-  nixConfig.extra-trusted-public-keys = [
-    "matteo-pacini.cachix.org-1:ZXQEdjKEo3Bgy9Ea4LpqETZYIzoOUwY9VDmJE4oTCMI="
-  ];
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";

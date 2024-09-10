@@ -30,6 +30,8 @@
     gh
     # Music
     cmus
+    # Nix cache management
+    attic-client
   ];
 
   home.stateVersion = "23.11";
