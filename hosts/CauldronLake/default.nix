@@ -30,6 +30,7 @@
     "nix-command"
     "flakes"
   ];
+  nix.settings.trusted-users = [ "debora" ];
 
   # Timezone and locale
 
