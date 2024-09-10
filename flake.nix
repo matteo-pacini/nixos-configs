@@ -193,17 +193,17 @@
       ################
       # Razer Laptop #
       ################
-      nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
+      nixosConfigurations."CauldronLake" = inputs.nixpkgs-unstable.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlay.nix { inherit inputs; })
+              (import ./overlays/cauldronlake.nix)
               inputs.nur.overlay
             ];
           }
           ./hosts/CauldronLake
-          inputs.home-manager.nixosModules.home-manager
+          inputs.home-manager-unstable.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;

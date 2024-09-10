@@ -11,7 +11,7 @@
 
   hardware.steam-hardware.enable = true;
 
-  hardware.opengl = with pkgs; {
+  hardware.graphics = {
     enable = true;
     driSupport = true;
     driSupport32Bit = true;

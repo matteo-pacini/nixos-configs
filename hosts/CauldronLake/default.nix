@@ -18,6 +18,10 @@
     ./printer.nix
   ];
 
+  # Kernel
+
+  boot.kernelPackages = pkgs.linuxPackages_6_10;
+
   environment.systemPackages = with pkgs; [ sshfs ];
 
   nixpkgs.config.allowUnfree = true;

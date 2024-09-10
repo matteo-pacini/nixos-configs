@@ -16,16 +16,18 @@
   home.packages = with pkgs; [
     #Gnome
     gnomeExtensions.appindicator
-    gnome.gnome-tweaks
+    gnome-tweaks
     # Browsers
     chromium
     # Security
     _1password-gui
     # Gaming
-    unstable.mangohud
+    mangohud
     vulkan-tools
     mesa-demos
-    unstable.bottles
+    bottles
+    # Attic
+    attic-client
   ];
 
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
