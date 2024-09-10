@@ -17,12 +17,6 @@
         "flakes"
       ];
       trusted-users = [ "matteo" ];
-      substituters = [
-        "http://192.168.7.7:8080/darwin"
-      ];
-      trusted-public-keys = [
-        "darwin:OayisVmwq18dibr9PDU5g6FROl9IGxxmNF/wlWncLgY="
-      ];
     };
   };
 

@@ -11,6 +11,7 @@
 
   home.packages = with pkgs; [
     attic-server
+    attic-client
   ];
 
   home.stateVersion = "23.11";
