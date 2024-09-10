@@ -12,5 +12,16 @@
   in
   {
 
+    qemu = optimizedForWorkLaptop (
+      super.qemu.override ({
+        hostCpuTargets = [
+          "aarch64-softmmu"
+        ];
+      })
+    );
+
+    docker = optimizedForWorkLaptop super.docker;
+    colima = optimizedForWorkLaptop super.colima;
+
   }
 )
