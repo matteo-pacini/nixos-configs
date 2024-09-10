@@ -18,10 +18,10 @@
       ];
       trusted-users = [ "matteo" ];
       substituters = [
-        "http://192.168.7.7:8080/nightsprings"
+        "http://192.168.7.7:8080/darwin"
       ];
       trusted-public-keys = [
-        "nightsprings:C2Hb0XVONkApIjR9uJZsAmmB2HXAuLJT/XxQUqFt5us="
+        "darwin:OayisVmwq18dibr9PDU5g6FROl9IGxxmNF/wlWncLgY="
       ];
     };
   };

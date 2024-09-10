@@ -33,6 +33,7 @@
     snapraid
     htop
     nix-output-monitor
+    screen
   ];
 
   nixpkgs.config.allowUnfree = true;
