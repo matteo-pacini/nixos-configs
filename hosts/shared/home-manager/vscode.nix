@@ -17,7 +17,7 @@ in
 {
   programs.vscode = {
     enable = true;
-    package = pkgs.vscodium;
+    package = pkgs.vscode;
     enableUpdateCheck = false;
     enableExtensionUpdateCheck = false;
     extensions =
@@ -31,8 +31,11 @@ in
         mhutchie.git-graph
         usernamehw.errorlens
         vscext.eamodio.gitlens
+        # Live share
+        ms-vsliveshare.vsliveshare
         # Copilot
         github.copilot
+        github.copilot-chat
         # Nix
         jnoortheen.nix-ide
         # Go
@@ -45,6 +48,8 @@ in
         dependi
         # Perl
         perlnavigator
+        # Yaml
+        redhat.vscode-yaml
       ];
     mutableExtensionsDir = false;
     userSettings = {
@@ -65,6 +70,15 @@ in
       };
       "editor.fontSize" = 16;
       "editor.fontFamily" = "FiraCode Nerd Font";
+      "[yaml]" = {
+        "editor.defaultFormatter" = "redhat.vscode-yaml";
+        "editor.tabSize" = 2;
+        "editor.detectIndentation" = true;
+        "editor.formatOnSave" = true;
+      };
+      # Telemetry
+      "telemetry.telemetryLevel" = "off";
+      "redhat.telemetry.enabled" = false;
     };
   };
 }
