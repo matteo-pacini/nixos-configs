@@ -26,6 +26,7 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  nix.package = pkgs.nixVersions.nix_2_22;
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"

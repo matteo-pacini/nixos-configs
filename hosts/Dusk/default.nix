@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 {
   imports = [
     ./fonts.nix
@@ -8,6 +8,7 @@
   nixpkgs.config.allowUnfree = true;
 
   nix = {
+    package = pkgs.nixVersions.nix_2_22;
     settings = {
       experimental-features = [
         "nix-command"
