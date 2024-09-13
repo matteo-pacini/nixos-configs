@@ -1,16 +1,4 @@
 {
-
-  nixConfig = {
-    extra-substituters = [
-      "https://nix-community.cachix.org"
-      "http://192.168.7.7:8080/darwin"
-    ];
-    extra-trusted-public-keys = [
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      "darwin:BDXQLJiVpsjGwjIlnrdhst4ErSFYr9c3D9gqsSmN3X0="
-    ];
-  };
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     nixpkgs-6_9-kernel.url = "github:NixOS/nixpkgs?rev=3bfeae1428eac1e60a304268bf7dc218f152b145";
