@@ -19,7 +19,7 @@
     cask 'logitune', args: { require_sha: false }
     cask 'vlc'
     cask 'element'
-    cask 'virtualbuddy'
+    cask 'utm'
   '';
 
   home.activation.brewUpdate =
