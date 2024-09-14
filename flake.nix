@@ -221,9 +221,9 @@
         modules = [
           {
             nixpkgs.overlays = [
-              (import ./overlay.nix { inherit inputs; })
               inputs.nur.overlay
               inputs.nixpkgs-firefox-darwin.overlay
+              (import ./overlays/nightsprings.nix)
             ];
           }
           ./hosts/NightSprings
