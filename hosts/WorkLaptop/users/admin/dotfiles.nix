@@ -15,7 +15,7 @@
     cask 'sf-symbols'
     cask 'figma'
     cask 'logitune', args: { require_sha: false }
-    cask 'virtualbuddy'
+    cask 'utm'
   '';
 
   home.activation.brewUpdate =
