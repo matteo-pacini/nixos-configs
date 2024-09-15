@@ -401,22 +401,6 @@
         "type": "indirect"
       }
     },
-    "nixpkgs-6_9-kernel": {
-      "locked": {
-        "lastModified": 1722634242,
-        "narHash": "sha256-rB1oxAy8IT+L81DIqtLK3NvUMXrjACh5Nl7D7wv2t/g=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "3bfeae1428eac1e60a304268bf7dc218f152b145",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "3bfeae1428eac1e60a304268bf7dc218f152b145",
-        "type": "github"
-      }
-    },
     "nixpkgs-firefox-darwin": {
       "inputs": {
         "nixpkgs": "nixpkgs_3"
@@ -514,7 +498,6 @@
         "nix-darwin-unstable": "nix-darwin-unstable",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs_2",
-        "nixpkgs-6_9-kernel": "nixpkgs-6_9-kernel",
         "nixpkgs-firefox-darwin": "nixpkgs-firefox-darwin",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nur": "nur",

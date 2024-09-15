@@ -1,7 +1,6 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-    nixpkgs-6_9-kernel.url = "github:NixOS/nixpkgs?rev=3bfeae1428eac1e60a304268bf7dc218f152b145";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     ################
     # Home Manager #
@@ -152,14 +151,6 @@
             nixpkgs.overlays = [
               (import ./overlays/nexus.nix)
               inputs.nur.overlay
-              (self: super: {
-                # https://github.com/NixOS/nixpkgs/issues/332350#issuecomment-2312704717
-                linuxPackages_6_9 =
-                  (import inputs.nixpkgs-6_9-kernel {
-                    system = "x86_64-linux";
-                    config.allowUnfree = true;
-                  }).linuxPackages_6_9;
-              })
             ];
           }
           ./hosts/Nexus

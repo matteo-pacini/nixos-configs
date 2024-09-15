@@ -19,7 +19,7 @@
   ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-intel" ];
-  boot.extraModulePackages = [ config.boot.kernelPackages.nvidiaPackages.stable ];
+  boot.extraModulePackages = [ config.hardware.nvidia.package ];
   boot.blacklistedKernelModules = [ "nouveau" ];
 
   fileSystems."/" = {
