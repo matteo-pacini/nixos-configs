@@ -5,7 +5,7 @@
     enableAria = true;
     versions = [
       "15.4"
-      "16.0 Release Candidate"
+      "16.0"
     ];
     active = "15.4";
   };

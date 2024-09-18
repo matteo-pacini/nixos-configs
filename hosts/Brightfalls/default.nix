@@ -33,7 +33,10 @@
         "flakes"
       ];
       extra-platforms = [ "aarch64-linux" ];
-      trusted-users = [ "matteo" ];
+      trusted-users = [
+        "matteo"
+        "root"
+      ];
     };
   };
 
