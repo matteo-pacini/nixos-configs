@@ -20,7 +20,7 @@
 
   # Kernel
 
-  boot.kernelPackages = pkgs.linuxPackages_6_10;
+  boot.kernelPackages = pkgs.linuxPackages_6_11;
 
   environment.systemPackages = with pkgs; [ sshfs ];
 

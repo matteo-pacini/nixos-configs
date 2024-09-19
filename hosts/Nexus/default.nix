@@ -16,7 +16,7 @@
     "matteo"
   ];
 
-  boot.kernelPackages = pkgs.linuxPackages_6_10;
+  boot.kernelPackages = pkgs.linuxPackages_6_11;
 
   boot.loader.grub = {
     enable = true;
