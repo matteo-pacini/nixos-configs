@@ -26,12 +26,14 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  nix.package = pkgs.nixVersions.nix_2_22;
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
   ];
-  nix.settings.trusted-users = [ "debora" ];
+  nix.settings.trusted-users = [
+    "debora"
+    "root"
+  ];
 
   # Timezone and locale
 

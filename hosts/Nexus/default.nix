@@ -10,8 +10,6 @@
     ./snapraid.nix
   ];
 
-  nix.package = pkgs.nixVersions.nix_2_23;
-
   nix.settings.trusted-users = [
     "matteo"
   ];
