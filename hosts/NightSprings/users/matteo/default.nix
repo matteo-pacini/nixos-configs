@@ -25,13 +25,18 @@
     # Extra
     tree
     yt-dlp
-    loopwm
+    # Encription
+    age
     # Development
     gh
+    # DevOps
+    flyctl
     # Music
     cmus
     # Nix cache management
     attic-client
+    # macOS Apps
+    loopwm
   ];
 
   home.stateVersion = "23.11";

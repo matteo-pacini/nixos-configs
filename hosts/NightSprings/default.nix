@@ -16,7 +16,10 @@
         "nix-command"
         "flakes"
       ];
-      trusted-users = [ "matteo" ];
+      trusted-users = [
+        "root"
+        "matteo"
+      ];
     };
   };
 
