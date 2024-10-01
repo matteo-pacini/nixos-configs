@@ -52,6 +52,7 @@
       vulkan-tools
       mesa-demos
       bottles
+      heroic
       # Other
       miru
       # Binary cache
