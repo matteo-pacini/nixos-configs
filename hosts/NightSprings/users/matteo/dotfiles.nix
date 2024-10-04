@@ -21,6 +21,7 @@
     cask 'element'
     cask 'utm'
     cask 'virtualbuddy'
+    cask 'steam', args: { require_sha: false }
   '';
 
   home.activation.brewUpdate =
