@@ -31,7 +31,6 @@
         "nix-command"
         "flakes"
       ];
-      extra-platforms = [ "aarch64-linux" ];
       trusted-users = [
         "matteo"
         "root"
@@ -40,8 +39,6 @@
   };
 
   nixpkgs.config.allowUnfree = true;
-
-  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
   # Kernel
 
