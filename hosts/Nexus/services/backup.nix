@@ -75,4 +75,31 @@ in
       };
     };
   };
+
+  services.restic.backups = {
+    matteo = {
+      user = "root";
+      repository = "s3:s3.eu-central-003.backblazeb2.com/matteo-nexus-backup";
+      environmentFile = config.age.secrets."nexus/restic-env".path;
+      passwordFile = config.age.secrets."nexus/restic-password".path;
+      paths = [
+        "/diskpool/matteo"
+      ];
+      timerConfig = {
+        OnCalendar = "daily";
+      };
+    };
+    debora = {
+      user = "root";
+      repository = "s3:s3.eu-central-003.backblazeb2.com/debora-nexus-backup";
+      environmentFile = config.age.secrets."nexus/restic-env".path;
+      passwordFile = config.age.secrets."nexus/restic-password".path;
+      paths = [
+        "/diskpool/debora"
+      ];
+      timerConfig = {
+        OnCalendar = "daily";
+      };
+    };
+  };
 }

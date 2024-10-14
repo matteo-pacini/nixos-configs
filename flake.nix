@@ -176,6 +176,8 @@
             age.secrets."nexus/disk8".file = ./secrets/nexus/disk8.age;
             age.secrets."nexus/disk9".file = ./secrets/nexus/disk9.age;
             age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
+            age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
+            age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
           }
         ];
       };
