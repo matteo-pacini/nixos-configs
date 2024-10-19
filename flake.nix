@@ -181,6 +181,29 @@
           }
         ];
       };
+      ##########
+      # Router #
+      ##########
+      nixosConfigurations."Router" = inputs.nixpkgs-unstable.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          {
+            nixpkgs.overlays = [
+              inputs.nur.overlay
+            ];
+          }
+          ./hosts/Router
+          inputs.home-manager-unstable.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.matteo = import ./hosts/Router/users/matteo;
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+          }
+        ];
+      };
       ################
       # Razer Laptop #
       ################
