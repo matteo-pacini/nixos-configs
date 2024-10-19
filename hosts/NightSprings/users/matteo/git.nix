@@ -23,7 +23,7 @@ in
       "router" = {
         extraOptions = {
           HostName = "192.168.7.1";
-          User = "router";
+          User = "matteo";
           IdentityFile = "~/.ssh/router";
           Port = "1788";
         };
