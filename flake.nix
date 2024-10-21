@@ -202,6 +202,11 @@
               inherit inputs;
             };
           }
+          inputs.agenix-unstable.nixosModules.default
+          {
+            age.identityPaths = [ "/home/matteo/.age/Router.txt" ];
+            age.secrets."router/route53-env".file = ./secrets/router/route53-env.age;
+          }
         ];
       };
       ################

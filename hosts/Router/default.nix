@@ -5,6 +5,7 @@
     ./hardware.nix
     ./users.nix
     ./openssh.nix
+    ./services
   ];
 
   nix.settings.trusted-users = [
@@ -32,6 +33,7 @@
     nix-output-monitor
     screen
     restic
+    age
   ];
 
   nixpkgs.config.allowUnfree = true;
