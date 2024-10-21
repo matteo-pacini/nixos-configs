@@ -1,4 +1,53 @@
-{ ... }:
+{ pkgs, lib, ... }:
+let
+  jellyfinAllowedHostsUpdateScript = (
+    pkgs.writeShellScriptBin "jellyfin-allowed-hosts-update-script-3" ''
+      set -eo pipefail
+      PATH=${pkgs.nftables}/bin:${pkgs.dig}/bin:$PATH
+
+      echo "Flushing jellyfin-allowed ipset..."
+      nft flush set inet filter jellyfin-allowed
+
+      add() {
+        echo "Processing IP entry '$1'..."
+        if [ -n "$1" ]; then  # Check if IP is not empty
+          nft add element inet filter jellyfin-allowed { $1 } 
+          echo "Added IP '$1'"
+        else
+          echo "No valid IP provided."
+        fi
+      }
+
+      dig_and_add() {
+        echo "Processing DIG entry '$1'..."
+        local IP=$(dig +short "$1" 2> /dev/null)
+
+        if [ -n "$IP" ]; then  # Check if DIG found an IP
+          echo "Found IP $IP - whitelisting..."
+          nft add element inet filter jellyfin-allowed { $IP } 
+        else
+          echo "No IP found for '$1', skipping entry..."
+        fi
+      }
+
+      # EDIT HERE
+
+      add "93.56.135.241"                   # Medic
+      add "93.51.34.207"                    # Roma
+      add "2.196.211.180"                   # Sondalo
+      dig_and_add "rollie.synology.me"
+      dig_and_add "vipah88182.duckdns.org"
+
+      # END EDIT
+
+      echo "State:"
+      nft list set inet filter jellyfin-allowed
+
+      echo "Done!"
+
+    ''
+  );
+in
 {
   networking.hostName = "Router";
 
@@ -10,67 +59,72 @@
     firewall.enable = false;
     nftables = {
       enable = true;
-    };
+      ruleset = ''
 
-    nftables.ruleset = ''
-      table inet filter {
+        table inet filter {
 
-          chain output {
-            type filter hook output priority 100; policy accept;
+            set jellyfin-allowed {
+              type ipv4_addr;
+              flags dynamic;
+            }
+
+            chain output {
+              type filter hook output priority 0; policy accept;
+            }
+
+            chain input {
+              type filter hook input priority 0; policy drop;
+
+              # Localhost
+              ip saddr 127.0.0.1 accept
+              ip daddr 127.0.0.1 accept
+
+              # Allow trusted networks to access the router
+              iifname {
+                "eno4",
+              } counter accept
+
+              # Allow 443 and 80 from jellyfin-allowed hosts (WAN)
+              iifname "enp6s0f0" ip saddr @jellyfin-allowed tcp dport { 443, 80 } counter accept
+
+              # Allow returning traffic from WAN and drop everthing else
+              iifname "enp6s0f0" ct state { established, related } counter accept
+              iifname "enp6s0f0" drop
           }
 
-          chain input {
-            type filter hook input priority filter; policy drop;
+          chain forward {
+            type filter hook forward priority 0; policy drop;
 
-            # Localhost
-            ip saddr 127.0.0.1 accept
-            ip daddr 127.0.0.1 accept
-
-            # Allow trusted networks to access the router
+            # Allow trusted network WAN access
             iifname {
               "eno4",
-            } counter accept
+            } oifname {
+              "enp6s0f0",
+            } counter accept comment "Allow trusted LAN to WAN"
 
-            # Allow 443 and 80 from WAN
-            iifname "enp6s0f0" tcp dport { 443, 80 } counter accept
-
-            # Allow returning traffic from WAN and drop everthing else
-            iifname "enp6s0f0" ct state { established, related } counter accept
-            iifname "enp6s0f0" drop
+            # Allow established WAN to return
+            iifname {
+              "enp6s0f0",
+            } oifname {
+              "eno4",
+            } ct state established,related counter accept comment "Allow established back to LANs"
+          }
         }
+          
+        table ip nat {
 
-        chain forward {
-          type filter hook forward priority filter; policy drop;
+          chain prerouting {
+            type nat hook prerouting priority 0; policy accept;
+          }
 
-          # Allow trusted network WAN access
-          iifname {
-            "eno4",
-          } oifname {
-            "enp6s0f0",
-          } counter accept comment "Allow trusted LAN to WAN"
-
-          # Allow established WAN to return
-          iifname {
-            "enp6s0f0",
-          } oifname {
-            "eno4",
-          } ct state established,related counter accept comment "Allow established back to LANs"
+          # Setup NAT masquerading on the WAN interface
+          chain postrouting {
+            type nat hook postrouting priority 0; policy accept;
+            oifname "enp6s0f0" masquerade
+          }
         }
-      }
-        
-      table ip nat {
-
-        chain prerouting {
-          type nat hook prerouting priority filter; policy accept;
-        }
-
-        # Setup NAT masquerading on the WAN interface
-        chain postrouting {
-          type nat hook postrouting priority filter; policy accept;
-          oifname "enp6s0f0" masquerade
-        }
-      }
-    '';
+      '';
+    };
 
     useDHCP = false;
 
@@ -104,6 +158,27 @@
       ];
       domain-needed = true;
       bogus-priv = true;
+    };
+  };
+
+  systemd.timers."update-jellyfin-ipset" = {
+    description = "Update jellyfin allowed hosts ipset (timer)";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1min";
+      OnUnitActiveSec = "30min";
+      Unit = "update-jellyfin-ipset.service";
+    };
+  };
+
+  systemd.services = {
+    "update-jellyfin-ipset" = {
+      description = " Update jellyfin allowed hosts ipset";
+      serviceConfig = {
+        User = "root";
+        Type = "oneshot";
+        ExecStart = "${lib.getExe jellyfinAllowedHostsUpdateScript}";
+      };
     };
   };
 
