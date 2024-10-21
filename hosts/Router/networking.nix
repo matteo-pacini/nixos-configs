@@ -31,6 +31,9 @@
               "eno4",
             } counter accept
 
+            # Allow 443 and 80 from WAN
+            iifname "enp6s0f0" tcp dport { 443, 80 } counter accept
+
             # Allow returning traffic from WAN and drop everthing else
             iifname "enp6s0f0" ct state { established, related } counter accept
             iifname "enp6s0f0" drop

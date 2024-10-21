@@ -2,9 +2,7 @@
 {
   imports = [
     ./acme.nix
+    ./nginx.nix
   ];
-
-  # To control LE certificates access
-  users.groups.acme = { };
 
 }
