@@ -1,8 +1,8 @@
 { ... }:
 {
   imports = [
-    ./ddns.nix
     ./acme.nix
+    ./ddns.nix
     ./nginx.nix
   ];
 
