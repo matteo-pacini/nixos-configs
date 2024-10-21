@@ -24,7 +24,7 @@
       add_header Content-Security-Policy "default-src https: data: blob
     '';
     virtualHosts = {
-      "jellyfin.codecraft.it" = {
+      "gateway.codecraft.it" = {
         forceSSL = true;
         enableACME = true;
         locations."/".extraConfig = ''
