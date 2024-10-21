@@ -9,6 +9,7 @@
       isNormalUser = true;
       extraGroups = [
         "wheel"
+        "acme"
       ];
       shell = pkgs.zsh;
       openssh.authorizedKeys.keys = [
