@@ -2,7 +2,7 @@
 {
   services.nginx = {
     enable = true;
-    appendHttpconfig = ''
+    appendHttpConfig = ''
       client_max_body_size 20M;
 
       # Allow modern TLS protocols only
