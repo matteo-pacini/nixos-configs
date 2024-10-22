@@ -1,7 +1,7 @@
 { pkgs, lib, ... }:
 let
   jellyfinAllowedHostsUpdateScript = (
-    pkgs.writeShellScriptBin "jellyfin-allowed-hosts-update-script-3" ''
+    pkgs.writeShellScriptBin "jellyfin-allowed-hosts-update-script-4" ''
       set -eo pipefail
       PATH=${pkgs.nftables}/bin:${pkgs.dig}/bin:$PATH
 
@@ -35,7 +35,7 @@ let
       add "93.56.135.241"                   # Medic
       add "93.51.34.207"                    # Roma
       add "2.196.211.180"                   # Sondalo
-      dig_and_add "rollie.synology.me"
+      dig_and_add "vpn.jetos.com"
       dig_and_add "vipah88182.duckdns.org"
 
       # END EDIT
