@@ -76,38 +76,27 @@ in
               type filter hook input priority 0; policy drop;
 
               # Localhost
-              ip saddr 127.0.0.1 accept
-              ip daddr 127.0.0.1 accept
+              iifname "lo" accept
 
-              # Allow trusted networks to access the router
-              iifname {
-                "eno4",
-              } counter accept
+              # Allow LAN traffic
+              iifname "eno4" counter accept
 
               # Allow 443 and 80 from jellyfin-allowed hosts (WAN)
               iifname "enp6s0f0" ip saddr @jellyfin-allowed tcp dport { 443, 80 } counter accept
 
               # Allow returning traffic from WAN and drop everthing else
               iifname "enp6s0f0" ct state { established, related } counter accept
-              iifname "enp6s0f0" drop
+              iifname "enp6s0f0" log prefix "Dropped from WAN: " counter drop
           }
 
           chain forward {
             type filter hook forward priority 0; policy drop;
 
-            # Allow trusted network WAN access
-            iifname {
-              "eno4",
-            } oifname {
-              "enp6s0f0",
-            } counter accept comment "Allow trusted LAN to WAN"
+            # Allow LAN to WAN traffic
+            iifname "eno4" oifname "enp6s0f0" counter accept
 
-            # Allow established WAN to return
-            iifname {
-              "enp6s0f0",
-            } oifname {
-              "eno4",
-            } ct state established,related counter accept comment "Allow established back to LANs"
+            # Allow established WAN to LAN traffic
+            iifname "enp6s0f0" oifname "eno4" ct state established,related counter accept
           }
         }
           
@@ -117,9 +106,10 @@ in
             type nat hook prerouting priority 0; policy accept;
           }
 
-          # Setup NAT masquerading on the WAN interface
           chain postrouting {
             type nat hook postrouting priority 0; policy accept;
+
+            # Setup NAT masquerading on the WAN interface
             oifname "enp6s0f0" masquerade
           }
         }
