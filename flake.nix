@@ -1,21 +1,16 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     ################
     # Home Manager #
     ################
-    home-manager.url = "github:nix-community/home-manager/release-24.05";
+    home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    home-manager-unstable.url = "github:nix-community/home-manager";
-    home-manager-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     ##############
     # Nix Darwin #
     ##############
     nix-darwin.url = "github:lnl7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
-    nix-darwin-unstable.url = "github:lnl7/nix-darwin/master";
-    nix-darwin-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     ################
     # Nix Homebrew #
     ################
@@ -26,8 +21,6 @@
     ##########
     agenix.url = "github:ryantm/agenix";
     agenix.inputs.nixpkgs.follows = "nixpkgs";
-    agenix-unstable.url = "github:ryantm/agenix";
-    agenix-unstable.inputs.nixpkgs.follows = "nixpkgs-unstable";
     #######
     # NUR #
     #######
@@ -94,7 +87,7 @@
           extraOverlays ? [ ],
           isVM ? false,
         }:
-        inputs.nixpkgs-unstable.lib.nixosSystem {
+        inputs.nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
             inherit isVM;
@@ -102,7 +95,7 @@
           modules = [
             { nixpkgs.overlays = baseOverlays ++ extraOverlays; }
             hostPath
-            inputs.home-manager-unstable.nixosModules.home-manager
+            inputs.home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
@@ -143,7 +136,7 @@
       #########
       # Nexus #
       #########
-      nixosConfigurations."Nexus" = inputs.nixpkgs-unstable.lib.nixosSystem {
+      nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           {
@@ -153,7 +146,7 @@
             ];
           }
           ./hosts/Nexus
-          inputs.home-manager-unstable.nixosModules.home-manager
+          inputs.home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -162,7 +155,7 @@
               inherit inputs;
             };
           }
-          inputs.agenix-unstable.nixosModules.default
+          inputs.agenix.nixosModules.default
           {
             age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ];
             age.secrets."nexus/disk0".file = ./secrets/nexus/disk0.age;
@@ -184,7 +177,7 @@
       ##########
       # Router #
       ##########
-      nixosConfigurations."Router" = inputs.nixpkgs-unstable.lib.nixosSystem {
+      nixosConfigurations."Router" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           {
@@ -193,7 +186,7 @@
             ];
           }
           ./hosts/Router
-          inputs.home-manager-unstable.nixosModules.home-manager
+          inputs.home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -202,7 +195,7 @@
               inherit inputs;
             };
           }
-          inputs.agenix-unstable.nixosModules.default
+          inputs.agenix.nixosModules.default
           {
             age.identityPaths = [ "/home/matteo/.age/Router.txt" ];
             age.secrets."router/route53-env".file = ./secrets/router/route53-env.age;
@@ -212,7 +205,7 @@
       ################
       # Razer Laptop #
       ################
-      nixosConfigurations."CauldronLake" = inputs.nixpkgs-unstable.lib.nixosSystem {
+      nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           {
@@ -222,7 +215,7 @@
             ];
           }
           ./hosts/CauldronLake
-          inputs.home-manager-unstable.nixosModules.home-manager
+          inputs.home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -236,7 +229,7 @@
       ######################
       # Macbook Pro M1 Max #
       ######################
-      darwinConfigurations."NightSprings" = inputs.nix-darwin-unstable.lib.darwinSystem {
+      darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
           {
@@ -247,7 +240,7 @@
             ];
           }
           ./hosts/NightSprings
-          inputs.home-manager-unstable.darwinModules.home-manager
+          inputs.home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -277,7 +270,7 @@
       #########################
       # Macbook Pro M1 (Work) #
       #########################
-      darwinConfigurations."WorkLaptop" = inputs.nix-darwin-unstable.lib.darwinSystem {
+      darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
           {
@@ -288,7 +281,7 @@
             ];
           }
           ./hosts/WorkLaptop
-          inputs.home-manager-unstable.darwinModules.home-manager
+          inputs.home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -316,7 +309,7 @@
       ############################
       # Macbook Pro 2012 (Intel) #
       ############################
-      darwinConfigurations."Dusk" = inputs.nix-darwin-unstable.lib.darwinSystem {
+      darwinConfigurations."Dusk" = inputs.nix-darwin.lib.darwinSystem {
         system = "x86_64-darwin";
         modules = [
           {
@@ -326,7 +319,7 @@
             ];
           }
           ./hosts/Dusk
-          inputs.home-manager-unstable.darwinModules.home-manager
+          inputs.home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
