@@ -86,7 +86,7 @@ in
 
               # Allow returning traffic from WAN and drop everthing else
               iifname "enp6s0f0" ct state { established, related } counter accept
-              iifname "enp6s0f0" log prefix "Dropped from WAN: " limit rate 2/minute counter drop
+              iifname "enp6s0f0" counter drop
           }
 
           chain forward {
