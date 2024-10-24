@@ -73,7 +73,7 @@
   };
 
   outputs =
-    inputs:
+    inputs@{ self, ... }:
 
     let
       baseOverlays = [
@@ -231,6 +231,10 @@
       ######################
       darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
+        specialArgs = {
+          inherit inputs;
+          flake = self;
+        };
         modules = [
           {
             nixpkgs.overlays = [
@@ -274,6 +278,7 @@
         system = "aarch64-darwin";
         specialArgs = {
           inherit inputs;
+          flake = self;
         };
         modules = [
           {

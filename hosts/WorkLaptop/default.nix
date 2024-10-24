@@ -3,6 +3,7 @@
   lib,
   inputs,
   config,
+  flake,
   ...
 }:
 {
@@ -46,4 +47,6 @@
   system.stateVersion = 4;
 
   nixpkgs.hostPlatform = "aarch64-darwin";
+
+  system.configurationRevision = flake.rev or flake.dirtyRev or null;
 }
