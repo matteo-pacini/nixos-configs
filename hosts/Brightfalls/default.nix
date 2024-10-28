@@ -10,7 +10,7 @@
       ./networking.nix
       ./users.nix
       ./desktop.nix
-      ./audio.nix
+      ./audio
       ./services.nix
       ./graphics.nix
       ./fonts.nix
