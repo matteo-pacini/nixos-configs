@@ -43,6 +43,8 @@
       # No need for these in a VM
       # Music
       cmus
+      # Movies
+      jellyfin-media-player
       # Virtualisation
       qemu
       quickemu
