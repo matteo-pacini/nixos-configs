@@ -11,6 +11,6 @@
       });
   in
   {
-
+    xcodes = super.callPackage ../packages/xcodes-bin.nix { };
   }
 )
