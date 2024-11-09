@@ -3,7 +3,7 @@
 let
   nativeJellyfinFfmpeg =
     (pkgs.jellyfin-ffmpeg.override {
-      ffmpeg_6-full = pkgs.ffmpeg_6-full.override ({
+      ffmpeg_7-full = pkgs.ffmpeg_7-full.override ({
         withHeadlessDeps = true;
         withNvcodec = true;
       });
