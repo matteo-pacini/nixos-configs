@@ -11,8 +11,9 @@ let
     "nzbget"
     "nzbhydra2"
     "radarr"
+    "sonarr"
   ];
-  backupJob = pkgs.writeShellScriptBin "backupJob5" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob6" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -39,6 +40,8 @@ let
     ''${RSYNC_CMD} ${config.services.nzbhydra2.dataDir} ${backupDestination}/
     # radarr
     ''${RSYNC_CMD} ${config.services.radarr.dataDir} ${backupDestination}/
+    # sonarr
+    ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid sync
