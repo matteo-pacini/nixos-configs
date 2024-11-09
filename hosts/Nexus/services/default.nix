@@ -8,6 +8,7 @@
     ./nzbget.nix
     ./nzbhydra.nix
     ./radarr.nix
+    ./sonarr.nix
   ];
 
   systemd.tmpfiles.rules = [
