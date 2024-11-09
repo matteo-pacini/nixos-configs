@@ -29,6 +29,7 @@
     loopwm
     # Development
     gh
+    element-desktop
     # Music
     cmus
     # Nix
