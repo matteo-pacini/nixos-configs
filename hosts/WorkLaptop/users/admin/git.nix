@@ -55,16 +55,6 @@ in
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/";
       }
-      {
-        contents = {
-          core.excludesfile = pkgs.writeText ".gitignore" ''
-            .direnv
-            .envrc
-            nix
-          '';
-        };
-        condition = "gitdir:${config.home.homeDirectory}/Work/";
-      }
     ];
   };
 }
