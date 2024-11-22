@@ -69,9 +69,8 @@ in
           with pkgs.nur.repos.rycee.firefox-addons;
           [
             ublock-origin
-            darkreader
             onepassword-password-manager
-            istilldontcareaboutcookies
+            metamask
           ]
           ++ lib.optionals isDarwin [ dracula-dark-colorscheme ];
       };
