@@ -16,6 +16,7 @@
     ./fonts.nix
     ../shared/bluetooth.nix
     ./printer.nix
+    ./iphone.nix
   ];
 
   # Kernel
