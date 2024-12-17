@@ -77,7 +77,7 @@
 
     let
       baseOverlays = [
-        inputs.nur.overlay
+        inputs.nur.overlays.default
       ];
       mkBrightFalls =
         {
@@ -142,7 +142,7 @@
           {
             nixpkgs.overlays = [
               (import ./overlays/nexus.nix)
-              inputs.nur.overlay
+              inputs.nur.overlays.default
             ];
           }
           ./hosts/Nexus
@@ -182,7 +182,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              inputs.nur.overlay
+              inputs.nur.overlays.default
             ];
           }
           ./hosts/Router
@@ -211,7 +211,7 @@
           {
             nixpkgs.overlays = [
               (import ./overlays/cauldronlake.nix)
-              inputs.nur.overlay
+              inputs.nur.overlays.default
             ];
           }
           ./hosts/CauldronLake
@@ -238,7 +238,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              inputs.nur.overlay
+              inputs.nur.overlays.default
               inputs.nixpkgs-firefox-darwin.overlay
               (import ./overlays/nightsprings.nix)
             ];
@@ -283,7 +283,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              inputs.nur.overlay
+              inputs.nur.overlays.default
               inputs.nixpkgs-firefox-darwin.overlay
               (import ./overlays/worklaptop.nix)
             ];
@@ -322,7 +322,7 @@
         modules = [
           {
             nixpkgs.overlays = [
-              inputs.nur.overlay
+              inputs.nur.overlays.default
               inputs.nixpkgs-firefox-darwin.overlay
             ];
           }
