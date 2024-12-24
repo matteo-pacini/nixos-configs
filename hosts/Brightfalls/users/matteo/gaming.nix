@@ -14,8 +14,7 @@
     package = pkgs.obs-studio;
     plugins = with pkgs.obs-studio-plugins; [
       obs-vaapi
-      # https://github.com/NixOS/nixpkgs/issues/349053
-      # obs-vkcapture
+      obs-vkcapture
     ];
   };
 }
