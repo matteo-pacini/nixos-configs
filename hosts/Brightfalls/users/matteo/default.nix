@@ -34,8 +34,8 @@
       aria
       # Security
       _1password-gui
-      # Music
-      # Social
+      # Development
+      gh
       # Other
       nix-output-monitor
     ]
