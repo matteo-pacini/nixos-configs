@@ -57,8 +57,6 @@
       heroic
       # Other
       miru
-      # Binary cache
-      attic-client
     ];
 
   home.stateVersion = "23.11";
