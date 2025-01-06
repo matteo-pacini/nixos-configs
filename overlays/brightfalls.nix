@@ -16,6 +16,11 @@
     mesa = optimizedForBrightFalls super.mesa;
     mangohud = optimizedForBrightFalls super.mangohud;
 
+    qemu_full = self.qemu.override ({
+      # https://github.com/NixOS/nixpkgs/pull/370304
+      ceph = false;
+    });
+
     qemu = optimizedForBrightFalls (
       super.qemu.override ({
         hostCpuTargets = [
