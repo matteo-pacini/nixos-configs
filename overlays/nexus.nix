@@ -15,8 +15,6 @@
       });
   in
   {
-    jellyfin-ffmpeg = optimizedForNexus super.jellyfin-ffmpeg;
-    snapraid = optimizedForNexus super.snapraid;
-    mergerfs = optimizedForNexus super.mergerfs;
+
   }
 )
