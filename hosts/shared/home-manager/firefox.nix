@@ -70,7 +70,6 @@ in
           [
             ublock-origin
             onepassword-password-manager
-            metamask
           ]
           ++ lib.optionals isDarwin [ dracula-dark-colorscheme ];
       };

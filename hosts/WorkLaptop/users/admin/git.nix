@@ -50,7 +50,7 @@ in
       {
         contents = {
           user = {
-            email = "m@matteopacini.me";
+            email = "m+github@matteopacini.me";
           };
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/";
