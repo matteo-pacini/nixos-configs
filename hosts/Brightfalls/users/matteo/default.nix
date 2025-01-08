@@ -16,7 +16,6 @@
       ./zsh.nix
     ]
     ++ lib.optionals (!isVM) [
-      ./flatpak.nix
       ./gaming.nix
       ./mounts.nix
     ];
@@ -57,6 +56,8 @@
       heroic
       # Other
       miru
+      discord
+      telegram-desktop
     ];
 
   home.stateVersion = "23.11";
