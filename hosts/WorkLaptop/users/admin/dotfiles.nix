@@ -14,7 +14,6 @@
     cask 'slack'
     cask 'sf-symbols'
     cask 'figma'
-    cask 'logitune', args: { require_sha: false }
     cask 'utm'
     cask 'android-studio'
     cask 'jellyfin-media-player'
