@@ -19,14 +19,16 @@
   home.username = "admin";
   home.homeDirectory = "/Users/admin";
 
+  home.sessionVariables = {
+    LOOP_SKIP_UPDATE_CHECK = 1;
+  };
+
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
     # Extra
     colorls
     tree
-    # Window Manager
-    loopwm
     # Development
     gh
     element-desktop

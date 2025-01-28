@@ -16,12 +16,8 @@
     cask 'zerotier-one'
     cask 'jellyfin-media-player'
     cask 'sf-symbols'
-    cask 'logitune', args: { require_sha: false }
-    cask 'vlc'
     cask 'element'
-    cask 'utm'
-    cask 'virtualbuddy'
-    cask 'steam', args: { require_sha: false }
+    cask 'loop'
   '';
 
   home.activation.brewUpdate =

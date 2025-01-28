@@ -19,6 +19,10 @@
   home.username = "matteo";
   home.homeDirectory = "/Users/matteo";
 
+  home.sessionVariables = {
+    LOOP_SKIP_UPDATE_CHECK = 1;
+  };
+
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
@@ -35,8 +39,6 @@
     cmus
     # Nix cache management
     attic-client
-    # macOS Apps
-    loopwm
   ];
 
   home.stateVersion = "23.11";

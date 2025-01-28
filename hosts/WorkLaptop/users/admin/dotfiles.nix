@@ -14,9 +14,8 @@
     cask 'slack'
     cask 'sf-symbols'
     cask 'figma'
-    cask 'utm'
-    cask 'android-studio'
     cask 'jellyfin-media-player'
+    cask 'loop'
   '';
 
   home.activation.brewUpdate =
