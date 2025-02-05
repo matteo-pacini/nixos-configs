@@ -36,12 +36,6 @@
         ]
         ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
           {
-            name = "copilot";
-            publisher = "GitHub";
-            version = "1.246.1230";
-            sha256 = "sha256-eABmfNQGQJKz2zizsk+ThOVOrqXb0jaWooki9LWEKws=";
-          }
-          {
             name = "perlnavigator";
             publisher = "bscan";
             version = "0.8.15";
@@ -52,6 +46,12 @@
             publisher = "fill-labs";
             version = "0.7.13";
             hash = "sha256-Xn2KEZDQ11LDfUKbIrJtQNQXkcusyrL/grDyQxUmTbc=";
+          }
+          {
+            name = "claude-dev";
+            publisher = "saoudrizwan";
+            version = "3.2.12";
+            hash = "sha256-nSYdW9Bfa89dh+hrXjoRsTidJEegVccymvScxlbCwlo=";
           }
         ]
       );
