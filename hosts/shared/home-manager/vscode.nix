@@ -31,8 +31,6 @@
           tamasfe.even-better-toml
           # Yaml
           redhat.vscode-yaml
-          # Python
-          ms-python.python
         ]
         ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
           {
@@ -50,8 +48,8 @@
           {
             name = "claude-dev";
             publisher = "saoudrizwan";
-            version = "3.2.12";
-            hash = "sha256-nSYdW9Bfa89dh+hrXjoRsTidJEegVccymvScxlbCwlo=";
+            version = "3.3.1";
+            hash = "sha256-9TltcgehgOi3kCYwSlYg6h2lhsEj0DmhrArf/eD59YM=";
           }
         ]
       );

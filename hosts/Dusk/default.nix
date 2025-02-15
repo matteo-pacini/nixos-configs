@@ -17,8 +17,6 @@
     };
   };
 
-  services.nix-daemon.enable = true;
-
   environment.systemPackages = [ ];
 
   users.users."matteo" = {

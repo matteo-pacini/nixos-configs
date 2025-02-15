@@ -34,8 +34,6 @@
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
   };
 
-  services.nix-daemon.enable = true;
-
   environment.systemPackages = with pkgs; [ nix-output-monitor ];
 
   users.users."admin" = {

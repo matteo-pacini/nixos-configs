@@ -23,8 +23,6 @@
     };
   };
 
-  services.nix-daemon.enable = true;
-
   environment.systemPackages = [ pkgs.nix-output-monitor ];
 
   users.users."matteo" = {
