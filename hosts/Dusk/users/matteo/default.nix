@@ -22,8 +22,6 @@
     coreutils
     # Extra
     tree
-    # Attic
-    attic-client
   ];
 
   home.stateVersion = "23.11";

@@ -21,5 +21,5 @@ in
   imports = [ ../../../shared/home-manager/firefox.nix ];
 
   # Append passbolt to the list of extensions
-  programs.firefox.profiles.default.extensions = [ passbolt ];
+  programs.firefox.profiles.default.extensions.packages = [ passbolt ];
 }

@@ -9,10 +9,7 @@
   home.username = "matteo";
   home.homeDirectory = "/home/matteo";
 
-  home.packages = with pkgs; [
-    attic-server
-    attic-client
-  ];
+  home.packages = [ ];
 
   home.stateVersion = "23.11";
 

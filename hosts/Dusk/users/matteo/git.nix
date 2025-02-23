@@ -34,7 +34,7 @@ in
   programs.git = {
     enable = true;
     lfs.enable = true;
-    package = pkgs.gitAndTools.gitFull;
+    # package = pkgs.gitAndTools.gitFull;
     userName = "matteo-pacini";
     userEmail = "m+github@matteopacini.me";
     extraConfig = {

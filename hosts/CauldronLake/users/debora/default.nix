@@ -26,15 +26,13 @@
     vulkan-tools
     mesa-demos
     bottles
-    # Attic
-    attic-client
   ];
 
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
 
   programs.git = {
     enable = true;
-    package = pkgs.gitAndTools.gitFull;
+    # package = pkgs.gitAndTools.gitFull;
   };
 
   home.stateVersion = "23.11";

@@ -56,12 +56,12 @@ in
       '';
     })
     (lib.mkIf (cfg.vscode.enable && config.programs.vscode.enable) {
-      programs.vscode.extensions =
+      programs.vscode.profiles.default.extensions =
         let
           vscext = pkgs.vscode-extensions;
         in
         [ vscext.dracula-theme.theme-dracula ];
-      programs.vscode.userSettings = {
+      programs.vscode.profiles.default.userSettings = {
         "workbench.colorTheme" = "Dracula";
       };
     })
