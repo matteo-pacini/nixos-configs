@@ -28,6 +28,13 @@ in
           Port = "1788";
         };
       };
+      "github.com" = {
+        extraOptions = {
+          HostName = "github.com";
+          User = "git";
+          IdentityFile = "~/.ssh/github";
+        };
+      };
     };
   };
 
