@@ -7,5 +7,5 @@
   system.defaults.finder.CreateDesktop = true;
   system.defaults.finder.AppleShowAllExtensions = true;
 
-  security.pam.enableSudoTouchIdAuth = true;
+  ecurity.pam.services.sudo_local.touchIdAuth = true;
 }
