@@ -16,6 +16,7 @@
     cask 'figma'
     cask 'jellyfin-media-player'
     cask 'loop'
+    cask 'element'
   '';
 
   home.activation.brewUpdate =

@@ -31,7 +31,6 @@
     tree
     # Development
     gh
-    element-desktop
     # Music
     cmus
   ];
