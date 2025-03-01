@@ -2,7 +2,6 @@
 {
   programs.xcodes = {
     enable = true;
-    enableAria = true;
     versions = [
       "16.2"
     ];

@@ -11,11 +11,6 @@ in
 {
   options.programs.xcodes = {
     enable = mkEnableOption "Manages multiple Xcode installations on macOS";
-    enableAria = mkOption {
-      type = types.bool;
-      default = true;
-      description = "Use aria2 to download Xcode archives.";
-    };
     versions = mkOption {
       type = types.listOf types.str;
       default = [ "15.4" ];
@@ -52,7 +47,6 @@ in
               xcodes
               nawk
             ]
-            ++ lib.optionals cfg.enableAria [ aria ]
           )
         }:$PATH"
 
