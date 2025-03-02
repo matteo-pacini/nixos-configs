@@ -30,6 +30,7 @@
               # Shell
               timonwong.shellcheck
               # Rust
+              rust-lang.rust-analyzer
               # rust-lang.rust-analyzer
               tamasfe.even-better-toml
               # Yaml
