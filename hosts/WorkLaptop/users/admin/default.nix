@@ -31,8 +31,11 @@
     tree
     # Development
     gh
+    element-desktop
     # Music
     cmus
+    # Other
+    loopwm
   ];
 
   home.stateVersion = "23.11";

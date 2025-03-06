@@ -18,7 +18,7 @@
 
   programs.emacs =
     let
-      emacs = if pkgs.stdenv.isDarwin then pkgs.emacs-macport else pkgs.emacs;
+      emacs = pkgs.emacs;
     in
     {
       enable = true;

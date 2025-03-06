@@ -15,8 +15,6 @@
     cask 'sf-symbols'
     cask 'figma'
     cask 'jellyfin-media-player'
-    cask 'loop'
-    cask 'element'
   '';
 
   home.activation.brewUpdate =
@@ -28,7 +26,6 @@
       ''
         $DRY_RUN_CMD /run/current-system/sw/bin/brew bundle \
           --file="$HOME/Brewfile" \
-          --no-lock \
           --cleanup --zap \
           --verbose \
           install
