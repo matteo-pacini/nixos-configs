@@ -26,5 +26,9 @@
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6nOm/5SEJUywMWrIH+afYX5vduEJMkfF+7y5Ue9FUY debora@CauldronLake"
       ];
     };
+    "fabrizio" = {
+      isNormalUser = true;
+      shell = pkgs.zsh;
+    };
   };
 }

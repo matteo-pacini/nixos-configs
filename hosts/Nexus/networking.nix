@@ -17,4 +17,18 @@
   networking.nameservers = [ "192.168.7.1" ];
 
   services.tailscale.enable = true;
+
+  services.rsyncd = {
+    enable = true;
+    settings = {
+      fabrizio = {
+        path = "/diskpool/fabrizio";
+        comment = "Fabrizio";
+        "read only" = false;
+        list = true;
+        uid = "fabrizio";
+        gid = "fabrizio";
+      };
+    };
+  };
 }
