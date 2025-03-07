@@ -27,7 +27,7 @@
         "read only" = false;
         list = true;
         uid = "fabrizio";
-        gid = "fabrizio";
+        gid = "users";
       };
     };
   };
