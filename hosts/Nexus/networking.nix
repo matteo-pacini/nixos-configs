@@ -18,17 +18,4 @@
 
   services.tailscale.enable = true;
 
-  services.rsyncd = {
-    enable = true;
-    settings = {
-      fabrizio = {
-        path = "/diskpool/fabrizio";
-        comment = "Fabrizio";
-        "read only" = false;
-        list = true;
-        uid = "fabrizio";
-        gid = "users";
-      };
-    };
-  };
 }
