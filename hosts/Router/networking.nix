@@ -97,4 +97,6 @@
     };
   };
 
+  services.tailscale.enable = true;
+
 }

@@ -15,4 +15,6 @@
 
   networking.defaultGateway = "192.168.7.1";
   networking.nameservers = [ "192.168.7.1" ];
+
+  services.tailscale.enable = true;
 }
