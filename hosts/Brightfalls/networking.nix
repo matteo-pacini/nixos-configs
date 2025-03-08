@@ -10,4 +10,6 @@
 
   networking.enableIPv6 = false;
 
+  services.tailscale.enable = true;
+
 }
