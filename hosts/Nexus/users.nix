@@ -4,6 +4,8 @@
 
   programs.command-not-found.enable = true;
 
+  users.groups.poccelli = { };
+
   users.users = {
     "matteo" = {
       isNormalUser = true;
@@ -11,6 +13,7 @@
         "wheel"
         "media"
         "downloads"
+        "poccelli"
       ];
       shell = pkgs.zsh;
       openssh.authorizedKeys.keys = [
@@ -21,6 +24,9 @@
     };
     "debora" = {
       isNormalUser = true;
+      extraGroups = [
+        "poccelli"
+      ];
       shell = pkgs.zsh;
       openssh.authorizedKeys.keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6nOm/5SEJUywMWrIH+afYX5vduEJMkfF+7y5Ue9FUY debora@CauldronLake"
