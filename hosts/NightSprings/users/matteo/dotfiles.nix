@@ -13,11 +13,8 @@
     cask 'dash'
     cask 'telegram'
     cask 'whatsapp'
-    cask 'zerotier-one'
     cask 'jellyfin-media-player'
     cask 'sf-symbols'
-    cask 'element'
-    cask 'loop'
   '';
 
   home.activation.brewUpdate =
@@ -29,7 +26,6 @@
       ''
         $DRY_RUN_CMD /run/current-system/sw/bin/brew bundle \
           --file="$HOME/Brewfile" \
-          --no-lock \
           --cleanup --zap \
           --verbose \
           install

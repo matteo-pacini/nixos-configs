@@ -19,13 +19,10 @@
   home.username = "matteo";
   home.homeDirectory = "/Users/matteo";
 
-  home.sessionVariables = {
-    LOOP_SKIP_UPDATE_CHECK = 1;
-  };
-
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
+    rsync
     # Extra
     tree
     yt-dlp
@@ -33,10 +30,12 @@
     age
     # Development
     gh
-    # DevOps
-    flyctl
     # Music
     cmus
+    # Social
+    element-desktop
+    # Window management
+    loopwm
   ];
 
   home.stateVersion = "23.11";
