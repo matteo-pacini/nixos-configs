@@ -62,7 +62,7 @@ in
         in
         [ vscext.dracula-theme.theme-dracula ];
       programs.vscode.profiles.default.userSettings = {
-        "workbench.colorTheme" = "Dracula";
+        "workbench.colorTheme" = "Dracula Theme";
       };
     })
     (lib.mkIf (cfg.xcode.enable && config.programs.xcodes.enable) {
