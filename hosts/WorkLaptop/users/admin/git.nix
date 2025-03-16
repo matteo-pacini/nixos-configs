@@ -38,6 +38,10 @@ in
     };
   };
 
+  home.file.".ssh/allowed_signers".text = ''
+    * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOv/Mfpgg5EbZPnQGldoTHsYQWOt4cYUqVyZkUVOzv44
+  '';
+
   programs.git = {
     enable = true;
     lfs.enable = true;
@@ -52,6 +56,10 @@ in
       merge.tool = "vscode";
       mergetool.vscode.cmd = "${codeCommand} --wait --merge $REMOTE $LOCAL $BASE $MERGED";
       core.sshCommand = "ssh -i ~/.ssh/github";
+      commit.gpgsign = true;
+      gpg.format = "ssh";
+      gpg.ssh.allowedSignersFile = "~/.ssh/allowed_signers";
+      user.signingkey = "~/.ssh/github.pub";
     };
     includes = [
       {
