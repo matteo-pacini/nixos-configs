@@ -2,7 +2,6 @@
 {
   home.file."Brewfile".text = ''
 
-    tap "homebrew/bundle"
     tap "homebrew/cask"
     tap "homebrew/core"
 
