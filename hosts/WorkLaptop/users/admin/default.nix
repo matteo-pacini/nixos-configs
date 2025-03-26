@@ -29,6 +29,7 @@
     # Extra
     colorls
     tree
+    mosh
     # Development
     gh
     element-desktop

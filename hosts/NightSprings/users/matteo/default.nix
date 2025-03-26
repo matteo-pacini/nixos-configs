@@ -26,6 +26,7 @@
     # Extra
     tree
     yt-dlp
+    mosh
     # Encription
     age
     # Development
