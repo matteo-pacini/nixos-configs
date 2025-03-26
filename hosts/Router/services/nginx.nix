@@ -102,7 +102,7 @@ in
     recommendedTlsSettings = true;
     recommendedOptimisation = true;
     virtualHosts = {
-      "gateway.codecraft.it" = {
+      "gateway.matteopacini.me" = {
         enableACME = true;
         forceSSL = true;
         locations."/".extraConfig = ''

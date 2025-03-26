@@ -2,9 +2,9 @@
 {
   services.r53-ddns = {
     enable = true;
-    zoneID = "Z1SET0B5O77EHQ";
+    zoneID = "Z2W1U3HFCO6M27";
     hostname = "gateway";
-    domain = "codecraft.it";
+    domain = "matteopacini.me";
     interval = "1day";
     environmentFile = config.age.secrets."router/route53-env".path;
   };
