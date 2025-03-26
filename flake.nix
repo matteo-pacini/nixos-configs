@@ -14,7 +14,7 @@
     ################
     # Nix Homebrew #
     ################
-    nix-homebrew.url = "git+https://github.com/zhaofengli/nix-homebrew?ref=refs/pull/71/merge";
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
     ##########
     # Agenix #
