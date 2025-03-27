@@ -15,6 +15,15 @@
       });
   in
   {
-
+    jellyfin = super.jellyfin.override ({
+      jellyfin-ffmpeg = optimizedForNexus (
+        super.jellyfin-ffmpeg.override ({
+          withHeadlessDeps = true;
+          withNvcodec = true;
+        })
+      );
+    });
+    mergerfs = optimizedForNexus super.mergerfs;
+    snapraid = optimizedForNexus super.snapraid;
   }
 )

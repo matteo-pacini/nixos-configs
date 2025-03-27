@@ -32,7 +32,6 @@
     htop
     nix-output-monitor
     screen
-    restic
   ];
 
   nixpkgs.config.allowUnfree = true;
