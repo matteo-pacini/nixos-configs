@@ -3,7 +3,7 @@ let
   jellyfinAllowedIpsFile = "/run/jellyfin-allowed/allowed-ips.conf";
   # This script, once built, will be in the Nix store (read-only).
   # But when it runs, it writes to /run/jellyfin-allowed/allowed-ips.conf, which is mutable.
-  updateAllowedIpsScript = pkgs.writeShellScriptBin "update-allowed-ips-4" ''
+  updateAllowedIpsScript = pkgs.writeShellScriptBin "update-allowed-ips-5" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -14,25 +14,51 @@ let
 
     echo "Generating Nginx IP allowlist in: $OUT_FILE"
 
+    # Helper function to validate if a string is a valid IPv4 address
+    is_valid_ipv4() {
+      [[ $1 =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])$ ]]
+    }
+
     # Helper function to add a single IP
     allow_ip() {
       local ip="$1"
-      echo "allow $ip;" >> "$TMP_FILE"
+      if is_valid_ipv4 "$ip"; then
+        echo "allow $ip;" >> "$TMP_FILE"
+        return 0
+      else
+        echo "WARNING: Invalid IP address: $ip - skipping"
+        return 1
+      fi
     }
 
     # Helper that uses dig for a hostname and adds all resolved IPs
     dig_and_allow() {
       local host="$1"
       echo "Resolving $host ..."
+      
+      # Get all results from dig
       local resolved
       resolved="$(dig +short "$host" A 2>/dev/null || true)"
+      
       if [ -n "$resolved" ]; then
+        local added=0
         for ip in $resolved; do
-          echo "  Found IP: $ip"
-          allow_ip "$ip"
+          if is_valid_ipv4 "$ip"; then
+            echo "  Found valid IP: $ip"
+            allow_ip "$ip"
+            added=$((added + 1))
+          else
+            echo "  Found invalid IP: $ip - skipping"
+          fi
         done
+        
+        if [ $added -eq 0 ]; then
+          echo "  WARNING: No valid IPs found for $host"
+        else
+          echo "  Successfully added $added IP(s) for $host"
+        fi
       else
-        echo "  No IP found for $host"
+        echo "  WARNING: DNS resolution failed for $host"
       fi
     }
 
