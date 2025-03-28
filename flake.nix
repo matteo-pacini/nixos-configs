@@ -222,6 +222,29 @@
           }
         ];
       };
+      #########
+      # Queen #
+      #########
+      nixosConfigurations."Queen" = inputs.nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          {
+            nixpkgs.overlays = [
+              inputs.nur.overlays.default
+            ];
+          }
+          ./hosts/Queen
+          inputs.home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.antonella = import ./hosts/Queen/users/antonella;
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+          }
+        ];
+      };
       ######################
       # Macbook Pro M1 Max #
       ######################
