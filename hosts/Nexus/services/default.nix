@@ -9,11 +9,11 @@
     ./nzbhydra.nix
     ./radarr.nix
     ./sonarr.nix
+    ./qbittorrent
   ];
 
   systemd.tmpfiles.rules = [
     "d /downloads        2770 matteo downloads"
-    "d /downloads/usenet 2770 nzbget downloads"
   ];
 
   # To control /diskpool/media access
