@@ -108,12 +108,26 @@ in
       };
     };
     debora = {
+      initialize = true;
       user = "root";
       repository = "s3:s3.eu-central-003.backblazeb2.com/debora-nexus-backup";
       environmentFile = config.age.secrets."nexus/restic-env".path;
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
         "/diskpool/debora"
+      ];
+      timerConfig = {
+        OnCalendar = "daily";
+      };
+    };
+    fabrizio = {
+      initialize = true;
+      user = "root";
+      repository = "s3:s3.eu-central-003.backblazeb2.com/fabrizio-nexus-backup";
+      environmentFile = config.age.secrets."nexus/restic-env".path;
+      passwordFile = config.age.secrets."nexus/restic-password".path;
+      paths = [
+        "/diskpool/fabrizio"
       ];
       timerConfig = {
         OnCalendar = "daily";
