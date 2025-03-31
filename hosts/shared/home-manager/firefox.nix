@@ -22,7 +22,7 @@ in
         name = "Default";
         isDefault = true;
         search = {
-          default = "DuckDuckGo";
+          default = "ddg";
           force = true;
           engines = {
             "Nix Packages" = {
@@ -35,6 +35,10 @@ in
                       value = "packages";
                     }
                     {
+                      name = "channel";
+                      value = "unstable";
+                    }
+                    {
                       name = "query";
                       value = "{searchTerms}";
                     }
@@ -43,6 +47,29 @@ in
               ];
               icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
               definedAliases = [ "@np" ];
+            };
+            "Nix Options" = {
+              urls = [
+                {
+                  template = "https://search.nixos.org/options";
+                  params = [
+                    {
+                      name = "type";
+                      value = "packages";
+                    }
+                    {
+                      name = "channel";
+                      value = "unstable";
+                    }
+                    {
+                      name = "query";
+                      value = "{searchTerms}";
+                    }
+                  ];
+                }
+              ];
+              icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
+              definedAliases = [ "@o" ];
             };
           };
         };
