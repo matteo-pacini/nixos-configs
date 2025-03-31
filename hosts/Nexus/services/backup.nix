@@ -13,7 +13,11 @@ let
     "radarr"
     "sonarr"
   ];
-  backupJob = pkgs.writeShellScriptBin "backupJob6" ''
+  affectedComposeTargets = [
+    "nexus-qbittorrent"
+  ];
+  fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
+  backupJob = pkgs.writeShellScriptBin "backupJob8" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -30,6 +34,11 @@ let
     # Stop all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl stop ${service}") affectedServices}
 
+    # Stop all compose targets
+    ${lib.concatMapStringsSep "\n" (
+      service: "systemctl stop ${fullComposeTargetName service}"
+    ) affectedComposeTargets}
+
     RSYNC_CMD="${pkgs.rsync}/bin/rsync -avh --delete"
 
     # Jellyfin
@@ -42,12 +51,18 @@ let
     ''${RSYNC_CMD} ${config.services.radarr.dataDir} ${backupDestination}/
     # sonarr
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
+    # qbittorrent
+    ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid sync
 
     # Restart all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
+
+    ${lib.concatMapStringsSep "\n" (
+      service: "systemctl start ${fullComposeTargetName service}"
+    ) affectedComposeTargets}
 
     # Notify on Telegram
     MESSAGE="Nexus is back online."

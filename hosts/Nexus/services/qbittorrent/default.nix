@@ -2,6 +2,9 @@
 let
   downloadDir = "/downloads/torrent";
   configDir = "/var/lib/qbittorrent";
+  qbittorrentUser = config.users.users.qbittorrent.name;
+  qbittorrentGroup = config.users.groups.qbittorrent.name;
+  downloadsGroup = config.users.groups.downloads.name;
 in
 {
   imports = [
@@ -22,8 +25,8 @@ in
   };
 
   systemd.tmpfiles.rules = [
-    "d ${downloadDir} 2770 qbittorrent downloads"
-    "d ${configDir}   0700 qbittorrent qbittorrent"
+    "d ${downloadDir} 2770 ${qbittorrentUser} ${downloadsGroup}"
+    "d ${configDir}   0700 ${qbittorrentUser} ${qbittorrentGroup}"
   ];
 
   # Overrides
