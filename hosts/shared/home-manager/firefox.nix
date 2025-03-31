@@ -22,7 +22,8 @@ in
         name = "Default";
         isDefault = true;
         search = {
-          default = "ddg";
+          default = "Kagi";
+          privateDefault = "ddg";
           force = true;
           engines = {
             "Nix Packages" = {
@@ -69,7 +70,22 @@ in
                 }
               ];
               icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
-              definedAliases = [ "@o" ];
+              definedAliases = [ "@no" ];
+            };
+            "Kagi" = {
+              urls = [
+                {
+                  template = "https://kagi.com/search";
+                  params = [
+                    {
+                      name = "q";
+                      value = "{searchTerms}";
+                    }
+                  ];
+                }
+              ];
+              icon = "https://kagi.com/asset/v2/favicon-16x16.png";
+              definedAliases = [ "@k" ];
             };
           };
         };
