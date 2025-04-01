@@ -6,7 +6,6 @@
   imports = [
 
     ./gnome.nix
-    ../../../shared/home-manager/firefox.nix
     ./zsh.nix
   ];
 
@@ -25,7 +24,34 @@
 
   home.stateVersion = "23.11";
 
+  # Firefox configuration
   programs.firefox.languagePacks = [ "it" ];
+
+  # Enable Firefox customization module
+  programs.firefox.customization = {
+    enable = true;
+
+    # Enable GNOME theme on Linux
+    gnomeTheme.enable = pkgs.stdenv.isLinux;
+
+    # Enable search engines
+    search = {
+      nixPackages.enable = true;
+      nixOptions.enable = true;
+      kagi = {
+        enable = true;
+        setAsDefault = true;
+      };
+    };
+
+    # Enable extensions
+    extensions = {
+      enable = true;
+      ublock.enable = true;
+      onepassword.enable = true;
+      dracula.enable = pkgs.stdenv.isDarwin;
+    };
+  };
 
   programs.home-manager.enable = true;
 }

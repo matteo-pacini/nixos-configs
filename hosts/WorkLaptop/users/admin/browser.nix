@@ -18,7 +18,28 @@ let
   };
 in
 {
-  imports = [ ../../../shared/home-manager/firefox.nix ];
+  # Enable Firefox customization module
+  programs.firefox.customization = {
+    enable = true;
+
+    # Enable search engines
+    search = {
+      nixPackages.enable = true;
+      nixOptions.enable = true;
+      kagi = {
+        enable = true;
+        setAsDefault = true;
+      };
+    };
+
+    # Enable extensions
+    extensions = {
+      enable = true;
+      ublock.enable = true;
+      onepassword.enable = true;
+      dracula.enable = true;
+    };
+  };
 
   # Append passbolt to the list of extensions
   programs.firefox.profiles.default.extensions.packages = [ passbolt ];

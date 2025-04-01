@@ -14,6 +14,7 @@
     cask 'whatsapp'
     cask 'jellyfin-media-player'
     cask 'sf-symbols'
+    cask 'vlc'
   '';
 
   home.activation.brewUpdate =

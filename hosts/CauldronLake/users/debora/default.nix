@@ -1,13 +1,14 @@
 { pkgs, ... }:
 {
   imports = [
-    ../../../shared/home-manager/firefox.nix
+    ../../../../modules/home-manager/firefox.nix
 
     ./gaming.nix
     ./gnome.nix
     ./flatpak.nix
     ./mounts.nix
     ./zsh.nix
+    ./browser.nix
   ];
 
   home.username = "debora";

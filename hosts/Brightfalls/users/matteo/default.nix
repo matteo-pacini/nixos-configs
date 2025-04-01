@@ -8,12 +8,14 @@
   imports =
     [
 
+      ../../../../modules/home-manager/firefox.nix
+
       ./gnome.nix
-      ../../../shared/home-manager/firefox.nix
       ./git.nix
       ../../../shared/home-manager/vscode.nix
       ../../../shared/home-manager/emacs
       ./zsh.nix
+      ./browser.nix
     ]
     ++ lib.optionals (!isVM) [
       ./gaming.nix
