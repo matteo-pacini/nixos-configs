@@ -70,7 +70,7 @@ in
             isDefault = true;
             search = {
               force = true;
-              privateDefault = "ddg";
+              default = "ddg";
             };
           };
         };
@@ -180,7 +180,8 @@ in
 
     # Set Kagi as default search engine if enabled
     (mkIf (cfg.search.kagi.enable && cfg.search.kagi.setAsDefault) {
-      programs.firefox.profiles.default.search.default = "Kagi";
+      programs.firefox.profiles.default.search.default = lib.mkForce "Kagi";
+      programs.firefox.profiles.default.search.privateDefault = "ddg";
     })
 
     # Extensions

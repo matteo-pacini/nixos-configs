@@ -18,6 +18,8 @@ let
   };
 in
 {
+  programs.firefox.profiles.default.extensions.packages = [ passbolt ];
+
   # Enable Firefox customization module
   programs.firefox.customization = {
     enable = true;
@@ -41,6 +43,4 @@ in
     };
   };
 
-  # Append passbolt to the list of extensions
-  programs.firefox.profiles.default.extensions.packages = [ passbolt ];
 }
