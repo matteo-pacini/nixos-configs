@@ -27,6 +27,7 @@
   home.packages = with pkgs; [
     # Basic utilities
     coreutils
+    macmon
     # Extra
     colorls
     tree

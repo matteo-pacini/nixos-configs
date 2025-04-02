@@ -31,6 +31,31 @@
     enable = true;
   };
 
+  programs.tmux = {
+    shell = "${pkgs.zsh}/bin/zsh";
+    enable = true;
+    clock24 = true;
+    terminal = "tmux-256color";
+    plugins = with pkgs.tmuxPlugins; [
+      sensible
+      yank
+      {
+        plugin = dracula;
+        extraConfig = ''
+          set -g @dracula-show-battery false
+          set -g @dracula-show-powerline true
+          set -g @dracula-refresh-rate 10
+        '';
+      }
+    ];
+
+    extraConfig = ''
+      set -g mouse on
+      set-option -g default-command ''${SHELL}
+      set-option -g default-shell ''${SHELL}
+    '';
+  };
+
   programs.zsh = {
     enable = true;
     enableCompletion = true;
