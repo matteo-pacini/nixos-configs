@@ -31,16 +31,18 @@
   programs.firefox.customization = {
     enable = true;
 
+    history.enable = true;
+
     # Enable GNOME theme on Linux
-    gnomeTheme.enable = pkgs.stdenv.isLinux;
+    gnomeTheme.enable = true;
 
     # Enable search engines
     search = {
-      nixPackages.enable = true;
-      nixOptions.enable = true;
+      nixPackages.enable = false;
+      nixOptions.enable = false;
       kagi = {
-        enable = true;
-        setAsDefault = true;
+        enable = false;
+        setAsDefault = false;
       };
     };
 
@@ -48,8 +50,8 @@
     extensions = {
       enable = true;
       ublock.enable = true;
-      onepassword.enable = true;
-      dracula.enable = pkgs.stdenv.isDarwin;
+      onepassword.enable = false;
+      dracula.enable = false;
     };
   };
 

@@ -5,6 +5,8 @@
 
     gnomeTheme.enable = true;
 
+    history.enable = true;
+
     # Enable search engines
     search = {
       nixPackages.enable = true;

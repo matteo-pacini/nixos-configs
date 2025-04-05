@@ -24,6 +24,8 @@ in
   programs.firefox.customization = {
     enable = true;
 
+    history.enable = false;
+
     # Enable search engines
     search = {
       nixPackages.enable = true;

@@ -10,8 +10,6 @@ let
     mkEnableOption
     mkIf
     mkMerge
-    mkOption
-    types
     ;
   cfg = config.programs.firefox.customization;
   isDarwin = pkgs.stdenv.isDarwin;
@@ -23,6 +21,10 @@ in
 
     gnomeTheme = {
       enable = mkEnableOption "GNOME theme integration for Firefox";
+    };
+
+    history = {
+      enable = mkEnableOption "Enables history tracking";
     };
 
     search = {
@@ -71,6 +73,9 @@ in
             search = {
               force = true;
               default = "ddg";
+            };
+            settings = {
+              "places.history.enabled" = cfg.history.enable;
             };
           };
         };
