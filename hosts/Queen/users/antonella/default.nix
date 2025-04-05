@@ -51,7 +51,6 @@
       enable = true;
       ublock.enable = true;
       onepassword.enable = false;
-      dracula.enable = false;
     };
   };
 

@@ -38,5 +38,6 @@
     xcode.enable = true;
     fzf.enable = true;
     bat.enable = true;
+    firefox.enable = true;
   };
 }

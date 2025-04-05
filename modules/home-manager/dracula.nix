@@ -22,6 +22,7 @@ in
     xcode.enable = mkEnableOption "Activates the Dracula theme for Xcode";
     fzf.enable = mkEnableOption "Activates the Dracula theme for fzf";
     bat.enable = mkEnableOption "Activates the Dracula theme for bat";
+    firefox.enable = mkEnableOption "Activates the Dracula extension for Firefox";
   };
 
   config = lib.mkMerge [
@@ -96,6 +97,11 @@ in
           theme = "Dracula";
         };
       };
+    })
+    (lib.mkIf (cfg.firefox.enable && config.programs.firefox.enable) {
+      programs.firefox.profiles.default.extensions.packages = [
+        pkgs.nur.repos.rycee.firefox-addons.dracula-dark-colorscheme
+      ];
     })
   ];
 }

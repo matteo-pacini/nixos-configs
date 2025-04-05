@@ -45,10 +45,6 @@ in
     extensions = {
       enable = mkEnableOption "Firefox extensions";
 
-      dracula = {
-        enable = mkEnableOption "Dracula theme for Firefox (Darwin only)";
-      };
-
       ublock = {
         enable = mkEnableOption "uBlock Origin extension";
       };
@@ -195,9 +191,6 @@ in
         (mkIf cfg.extensions.ublock.enable [ pkgs.nur.repos.rycee.firefox-addons.ublock-origin ])
         (mkIf cfg.extensions.onepassword.enable [
           pkgs.nur.repos.rycee.firefox-addons.onepassword-password-manager
-        ])
-        (mkIf (cfg.extensions.dracula.enable && isDarwin) [
-          pkgs.nur.repos.rycee.firefox-addons.dracula-dark-colorscheme
         ])
       ];
     })

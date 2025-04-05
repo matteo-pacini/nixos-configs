@@ -20,7 +20,6 @@
       enable = true;
       ublock.enable = true;
       onepassword.enable = true;
-      dracula.enable = true;
     };
   };
 }
