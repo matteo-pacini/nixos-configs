@@ -42,9 +42,11 @@
       {
         plugin = dracula;
         extraConfig = ''
-          set -g @dracula-show-battery false
+          set -g @dracula-show-battery true
           set -g @dracula-show-powerline true
           set -g @dracula-refresh-rate 10
+          set -g @dracula-show-fahrenheit false
+          set -g @dracula-fixed-location "Royal Tunbridge Wells"
         '';
       }
     ];
