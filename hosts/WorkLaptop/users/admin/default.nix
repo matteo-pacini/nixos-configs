@@ -9,7 +9,6 @@
     ../../../shared/home-manager/darwin/starship.nix
     ../../../shared/home-manager/darwin/terminal.nix
     ../../../shared/home-manager/darwin/zsh.nix
-    ../../../shared/home-manager/emacs
 
     ./dotfiles.nix
     ./git.nix
