@@ -10,7 +10,6 @@
     ../../../shared/home-manager/darwin/terminal.nix
     ../../../shared/home-manager/darwin/zsh.nix
 
-    ./dotfiles.nix
     ./git.nix
     ./xcodes.nix
     ./browser.nix
@@ -39,6 +38,16 @@
     # Other
     loopwm
   ];
+
+  dracula = {
+    wallpaper.enable = true;
+    eza.enable = true;
+    vscode.enable = true;
+    xcode.enable = true;
+    fzf.enable = true;
+    bat.enable = true;
+    firefox.enable = true;
+  };
 
   home.stateVersion = "23.11";
 

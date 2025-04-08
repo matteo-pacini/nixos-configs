@@ -18,4 +18,24 @@
     doCheck = false;
   });
 
+  homebrew = {
+    enable = true;
+    global = {
+      autoUpdate = false;
+    };
+    onActivation = {
+      autoUpdate = true;
+      upgrade = true;
+    };
+    casks = [
+      "1password"
+      "microsoft-teams"
+      "microsoft-outlook"
+      "slack"
+      "sf-symbols"
+      "figma"
+      "jellyfin-media-player"
+    ];
+  };
+
 }
