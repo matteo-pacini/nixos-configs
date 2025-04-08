@@ -3,7 +3,7 @@ let
   jellyfinAllowedIpsFile = "/run/jellyfin-allowed/allowed-ips.conf";
   # This script, once built, will be in the Nix store (read-only).
   # But when it runs, it writes to /run/jellyfin-allowed/allowed-ips.conf, which is mutable.
-  updateAllowedIpsScript = pkgs.writeShellScriptBin "update-allowed-ips-5" ''
+  updateAllowedIpsScript = pkgs.writeShellScriptBin "update-allowed-ips-6" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -70,9 +70,8 @@ let
     echo "" >> "$TMP_FILE"
 
     # Manually allow specific IPs
-    allow_ip "93.56.135.241"
-    allow_ip "93.51.34.207"
-    allow_ip "2.196.211.180"
+    # Rome, Iliad
+    allow_ip "81.56.209.87"
 
     # Dynamically allow IPs from DNS lookups
     dig_and_allow "vpn.jetos.com"
