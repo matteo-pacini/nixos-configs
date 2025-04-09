@@ -10,7 +10,6 @@
 
     ../../../shared/home-manager/darwin/zsh.nix
 
-    ./dotfiles.nix
     ./git.nix
     ./browser.nix
   ];
@@ -28,4 +27,14 @@
   home.stateVersion = "23.11";
 
   programs.home-manager.enable = true;
+
+  dracula = {
+    wallpaper.enable = true;
+    eza.enable = true;
+    vscode.enable = true;
+    xcode.enable = true;
+    fzf.enable = true;
+    bat.enable = true;
+    firefox.enable = true;
+  };
 }

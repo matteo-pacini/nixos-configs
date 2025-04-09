@@ -13,4 +13,25 @@
   services.tailscale.package = pkgs.tailscale.overrideAttrs (oldAttrs: {
     doCheck = false;
   });
+
+  homebrew = {
+    enable = true;
+    global = {
+      autoUpdate = false;
+    };
+    onActivation = {
+      autoUpdate = true;
+      upgrade = true;
+    };
+    casks = [
+      "1password"
+      "mullvadvpn"
+      "dash"
+      "telegram"
+      "whatsapp"
+      "jellyfin-media-player"
+      "sf-symbols"
+      "vlc"
+    ];
+  };
 }
