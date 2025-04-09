@@ -36,6 +36,10 @@ in
         enable = mkEnableOption "Nix Options search engine";
       };
 
+      nixCodeSearch = {
+        enable = mkEnableOption "Nix Code Search on GitHub";
+      };
+
       kagi = {
         enable = mkEnableOption "Kagi search engine";
         setAsDefault = mkEnableOption "Set Kagi as the default search engine";
@@ -154,6 +158,31 @@ in
           ];
           icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
           definedAliases = [ "@no" ];
+        };
+      };
+    })
+
+    # Nix Code Search engine
+    (mkIf cfg.search.nixCodeSearch.enable {
+      programs.firefox.profiles.default.search.engines = {
+        "Nix Code Search" = {
+          urls = [
+            {
+              template = "https://github.com/search";
+              params = [
+                {
+                  name = "q";
+                  value = "repo:nixos/nixpkgs language:nix {searchTerms}";
+                }
+                {
+                  name = "type";
+                  value = "code";
+                }
+              ];
+            }
+          ];
+          icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
+          definedAliases = [ "@ncs" ];
         };
       };
     })
