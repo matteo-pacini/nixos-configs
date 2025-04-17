@@ -35,6 +35,8 @@
               tamasfe.even-better-toml
               # Yaml
               redhat.vscode-yaml
+              # Copilot
+              github.copilot
             ]
             ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
               {
