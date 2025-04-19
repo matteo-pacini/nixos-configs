@@ -61,7 +61,10 @@
     [
 
     ]
-    ++ lib.optionals (!isVM) [ sshfs ];
+    ++ lib.optionals (!isVM) [
+      sshfs
+      steamtinkerlaunch
+    ];
 
   # Timezone and locale
 

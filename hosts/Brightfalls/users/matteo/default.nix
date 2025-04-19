@@ -2,6 +2,7 @@
   pkgs,
   lib,
   isVM,
+  config,
   ...
 }:
 {
@@ -24,6 +25,11 @@
 
   home.username = "matteo";
   home.homeDirectory = "/home/matteo";
+
+  home.sessionVariables = {
+    STEAM_EXTRA_COMPAT_TOOL_PATHS = "${config.home.homeDirectory}/.steam/root/compatibilitytools.d";
+    NIXOS_OZONE_WL = "1";
+  };
 
   home.packages =
     with pkgs;
