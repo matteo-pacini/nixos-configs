@@ -14,7 +14,6 @@
       ./gnome.nix
       ./git.nix
       ../../../shared/home-manager/vscode.nix
-      ../../../shared/home-manager/emacs
       ./zsh.nix
       ./browser.nix
     ]
@@ -36,6 +35,7 @@
     [
       #Gnome
       gnomeExtensions.appindicator
+      gnomeExtensions.dash-to-dock
       gnome-tweaks
       # Downloads
       aria

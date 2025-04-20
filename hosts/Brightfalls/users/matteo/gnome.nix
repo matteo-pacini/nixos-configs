@@ -10,17 +10,26 @@ with lib.hm.gvariant;
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
     };
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      dash-max-icon-size = 64;
+      show-mounts = true;
+    };
     "org/gnome/shell" = {
-      enabled-extensions = [ "appindicatorsupport@rgcjonas.gmail.com" ];
+      enabled-extensions = [
+        "appindicatorsupport@rgcjonas.gmail.com"
+        "dash-to-dock@micxgx.gmail.com"
+      ];
       favorite-apps =
         [
           "org.gnome.Nautilus.desktop"
-          "firefox.desktop"
           "org.gnome.Console.desktop"
+          "codium.desktop"
+          "org.telegram.desktop.desktop"
+          "firefox.desktop"
         ]
         ++ lib.optionals (!isVM) [
-          "org.corectrl.corectrl.desktop"
           "steam.desktop"
+          "org.corectrl.corectrl.desktop"
           "com.usebottles.bottles.desktop"
         ];
     };
