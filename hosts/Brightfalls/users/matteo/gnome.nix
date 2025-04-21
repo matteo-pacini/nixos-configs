@@ -29,7 +29,7 @@ with lib.hm.gvariant;
         ]
         ++ lib.optionals (!isVM) [
           "steam.desktop"
-          "org.corectrl.corectrl.desktop"
+          "org.corectrl.CoreCtrl.desktop"
           "com.usebottles.bottles.desktop"
         ];
     };
