@@ -35,7 +35,9 @@ in
       }
     ];
 
-    home.packages = with pkgs; [ xcodes ];
+    home.packages = with pkgs; [
+      xcodes
+    ];
 
     home.activation.xcodes = lib.hm.dag.entryAfter [ "writeBoundary" ] (
       ''

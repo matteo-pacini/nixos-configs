@@ -15,6 +15,7 @@
   nixpkgs.config.allowUnfree = true;
 
   nix = {
+
     extraOptions = ''
       extra-platforms = x86_64-darwin aarch64-darwin
     '';
@@ -24,6 +25,7 @@
         "flakes"
       ];
       trusted-users = [ "admin" ];
+      sandbox = "relaxed";
     };
     # This will add each flake input as a registry
     # To make nix3 commands consistent with your flake

@@ -20,8 +20,6 @@
       })
     );
 
-    xcodes = super.callPackage ../packages/xcodes-bin.nix { };
-
     docker = optimizedForWorkLaptop super.docker;
     colima = optimizedForWorkLaptop super.colima;
 
