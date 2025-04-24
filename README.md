@@ -3,7 +3,7 @@
 <div align="center">
 </div>
 
-## 🖥️ Hosts
+## ️ Hosts
 
 ### BrightFalls
 
@@ -117,3 +117,74 @@
   - ACME for SSL certificates
   - NGINX web server
   - Dynamic DNS
+
+## 📦 Modules
+
+### Xcodes (homeManagerModules.xcodes)
+
+This module manages multiple Xcode installations on macOS environments using the [xcodes](https://github.com/XcodesOrg/xcodes) CLI tool.
+
+#### Requirements
+
+- macOS only (Darwin)
+- Home Manager
+
+#### Usage
+
+To use this module in your flake:
+
+1. Add it to your `home-manager.sharedModules` in your Darwin system configuration:
+
+```nix
+# In your flake.nix for Darwin systems
+darwinConfigurations."YourMacName" = inputs.nix-darwin.lib.darwinSystem {
+  # ... other configuration
+  modules = [
+    # ... other modules
+    inputs.home-manager.darwinModules.home-manager
+    {
+      home-manager.useGlobalPkgs = true;
+      home-manager.useUserPackages = true;
+      home-manager.users.yourusername = import ./path/to/user/config;
+      home-manager.sharedModules = [
+        self.homeManagerModules.xcodes  # Add the xcodes module here
+      ];
+    }
+    # ... other modules
+  ];
+};
+```
+
+2. Then in your user's configuration, enable and configure it:
+
+```nix
+# In your user's home-manager configuration
+{ ... }:
+{
+  programs.xcodes = {
+    enable = true;
+    versions = [
+      "16.2"
+      "16.3"
+    ];
+    active = "16.2";
+  };
+}
+```
+
+#### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | boolean | `false` | Whether to enable the xcodes module |
+| `versions` | list of strings | `[ "15.4" ]` | List of Xcode versions to install |
+| `active` | string | `"15.4"` | Version to set as the active Xcode |
+
+#### How It Works
+
+The module:
+
+1. Installs the `xcodes` CLI tool
+2. Automatically installs specified Xcode versions into `~/Applications`
+3. Sets the active Xcode version
+4. Removes any Xcode versions not listed in the `versions` option
