@@ -133,7 +133,17 @@ This module manages multiple Xcode installations on macOS environments using the
 
 To use this module in your flake:
 
-1. Add it to your `home-manager.sharedModules` in your Darwin system configuration:
+1. First, add this repository as a flake input:
+
+```nix
+# In your flake.nix inputs
+inputs = {
+  # ... your other inputs
+  nixos-configs.url = "github:matteo-pacini/nixos-configs";
+};
+```
+
+2. Add the module to your `home-manager.sharedModules` in your Darwin system configuration:
 
 ```nix
 # In your flake.nix for Darwin systems
@@ -147,7 +157,7 @@ darwinConfigurations."YourMacName" = inputs.nix-darwin.lib.darwinSystem {
       home-manager.useUserPackages = true;
       home-manager.users.yourusername = import ./path/to/user/config;
       home-manager.sharedModules = [
-        self.homeManagerModules.xcodes  # Add the xcodes module here
+        inputs.nixos-configs.homeManagerModules.xcodes  # Add the xcodes module here
       ];
     }
     # ... other modules
@@ -155,7 +165,7 @@ darwinConfigurations."YourMacName" = inputs.nix-darwin.lib.darwinSystem {
 };
 ```
 
-2. Then in your user's configuration, enable and configure it:
+3. Then in your user's configuration, enable and configure it:
 
 ```nix
 # In your user's home-manager configuration
