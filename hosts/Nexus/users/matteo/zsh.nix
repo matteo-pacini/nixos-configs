@@ -19,7 +19,7 @@
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
 
   programs.zsh = {
-    initExtra = ''
+    initContent = ''
       source ~/.p10k.zsh
     '';
     enable = true;

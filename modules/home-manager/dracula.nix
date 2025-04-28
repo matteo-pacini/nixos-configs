@@ -34,7 +34,7 @@ in
       '';
     })
     (lib.mkIf cfg.eza.enable {
-      programs.zsh.initExtra = ''
+      programs.zsh.initContent = ''
         #### ------------------------------
         #### eza - Color Scheme Definitions
         #### ------------------------------

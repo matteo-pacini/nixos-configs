@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   programs.zsh = {
-    initExtra = ''
+    initContent = ''
       source ~/.p10k.zsh
     '';
     enable = true;

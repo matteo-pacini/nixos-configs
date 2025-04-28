@@ -64,7 +64,7 @@ in
     {
       programs.firefox = {
         enable = true;
-        package = if isDarwin then pkgs.firefox-bin else pkgs.firefox;
+        package = pkgs.firefox;
         profiles = {
           default = {
             id = 0;
