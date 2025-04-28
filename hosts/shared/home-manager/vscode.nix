@@ -20,7 +20,7 @@
               editorconfig.editorconfig
               mhutchie.git-graph
               usernamehw.errorlens
-              vscext.eamodio.gitlens
+              eamodio.gitlens
               # Live share
               ms-vsliveshare.vsliveshare
               # Nix
@@ -37,6 +37,9 @@
               redhat.vscode-yaml
               # Copilot
               github.copilot
+              # JS/TS
+              esbenp.prettier-vscode
+              dbaeumer.vscode-eslint
             ]
             ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
               {
