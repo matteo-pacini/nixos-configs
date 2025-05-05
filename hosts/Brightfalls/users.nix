@@ -19,6 +19,7 @@
       "input"
       "corectrl"
       "docker"
+      "kvm"
     ];
     shell = pkgs.zsh;
     initialPassword = lib.optionalString (isVM) "ziosasso";

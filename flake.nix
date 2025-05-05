@@ -25,6 +25,7 @@
     # NUR #
     #######
     nur.url = "github:nix-community/NUR";
+    nur.inputs.nixpkgs.follows = "nixpkgs";
     #################
     # Homebrew Taps #
     #################
