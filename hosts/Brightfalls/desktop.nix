@@ -32,7 +32,6 @@
       gnome-initial-setup
       gnome-maps
       gnome-weather
-      totem
     ]
   );
 
