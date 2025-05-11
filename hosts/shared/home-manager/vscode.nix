@@ -51,14 +51,14 @@
               {
                 name = "dependi";
                 publisher = "fill-labs";
-                version = "0.7.13";
-                hash = "sha256-Xn2KEZDQ11LDfUKbIrJtQNQXkcusyrL/grDyQxUmTbc=";
+                version = "0.7.14";
+                hash = "sha256-iLF2kxhSw39JBIs5K6hVmrEKueS8C22rnKCs+CiphwY=";
               }
               {
                 name = "claude-dev";
                 publisher = "saoudrizwan";
-                version = "3.14.0";
-                hash = "sha256-Eel+kU8WxCeKDaQvO8fVlmGiDBF0/bqiFrNWvmA0DbQ=";
+                version = "3.15.0";
+                hash = "sha256-uRBPXy+zQjBPftwiHHMHxguA/cYkXIagT7FO12CS5fY=";
               }
             ]
           );

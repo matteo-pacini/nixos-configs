@@ -14,8 +14,9 @@
     ################
     # Nix Homebrew #
     ################
-    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
-    nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
+    # https://github.com/zhaofengli/nix-homebrew/issues/87#issuecomment-2869520481
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew/4945f477bc346d6cd432c67642621f33e6a9b201";
+    #nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
     ##########
     # Agenix #
     ##########
