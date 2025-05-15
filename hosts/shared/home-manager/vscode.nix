@@ -1,5 +1,10 @@
-{ pkgs, ... }:
-
+{
+  pkgs,
+  ...
+}:
+let
+  clineSettings = "Library/Application Support/VSCodium/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
+in
 {
   programs.vscode = {
     enable = true;
@@ -93,4 +98,17 @@
       };
     };
   };
+
+  home.file."${clineSettings}".text = ''
+    {
+      "mcpServers": {
+        "github.com/upstash/context7-mcp": {
+          "command": "${pkgs.nodejs}/bin/npx",
+          "args": ["-y", "@upstash/context7-mcp@latest"],
+          "disabled": false,
+          "autoApprove": []
+        }
+      }
+    }
+  '';
 }
