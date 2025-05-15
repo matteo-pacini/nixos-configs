@@ -57,8 +57,8 @@
               {
                 name = "claude-dev";
                 publisher = "saoudrizwan";
-                version = "3.15.0";
-                hash = "sha256-uRBPXy+zQjBPftwiHHMHxguA/cYkXIagT7FO12CS5fY=";
+                version = "3.15.5";
+                hash = "sha256-J6TQnAfgjsg5bWKchsbBRfIK+2XCrYaVsOgYZFiLASA=";
               }
             ]
           );
