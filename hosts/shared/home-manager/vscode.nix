@@ -1,9 +1,14 @@
 {
   pkgs,
+
   ...
 }:
 let
-  clineSettings = "Library/Application Support/VSCodium/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
+  clineSettings =
+    if pkgs.stdenv.hostPlatform.isDarwin then
+      "Library/Application Support/VSCodium/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
+    else
+      ".config/VSCodium/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
 in
 {
   programs.vscode = {
