@@ -1,19 +1,20 @@
 {
   pkgs,
-
+  config,
   ...
 }:
 let
+  targetFolder = if config.programs.vscode.package == pkgs.vscode then "Code" else "VSCodium";
   clineSettings =
     if pkgs.stdenv.hostPlatform.isDarwin then
-      "Library/Application Support/VSCodium/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
+      "Library/Application Support/${targetFolder}/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
     else
-      ".config/VSCodium/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
+      ".config/${targetFolder}/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
 in
 {
   programs.vscode = {
     enable = true;
-    package = pkgs.vscodium;
+    package = pkgs.vscode;
     mutableExtensionsDir = false;
     profiles = {
       default = {
@@ -47,6 +48,7 @@ in
               redhat.vscode-yaml
               # Copilot
               github.copilot
+              github.copilot-chat
               # JS/TS
               esbenp.prettier-vscode
               dbaeumer.vscode-eslint
@@ -67,8 +69,8 @@ in
               {
                 name = "claude-dev";
                 publisher = "saoudrizwan";
-                version = "3.15.5";
-                hash = "sha256-J6TQnAfgjsg5bWKchsbBRfIK+2XCrYaVsOgYZFiLASA=";
+                version = "3.17.4";
+                hash = "sha256-LPhLnL4Luff9BD0ksQ0OwrSpBjx1RM5+POtegar4svU=";
               }
             ]
           );
