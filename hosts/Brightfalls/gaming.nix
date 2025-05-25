@@ -11,6 +11,18 @@
     extraPackages = with pkgs; [ gamescope ];
   };
 
+  services.ananicy = {
+    enable = true;
+    package = pkgs.ananicy-cpp;
+    rulesProvider = pkgs.ananicy-cpp;
+    extraRules = [
+      {
+        "name" = "gamescope";
+        "nice" = -20;
+      }
+    ];
+  };
+
   security.polkit.enable = true;
 
   security.polkit.extraConfig = ''
