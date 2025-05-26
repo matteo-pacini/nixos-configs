@@ -20,6 +20,7 @@
         "root"
         "matteo"
       ];
+      sandbox = "relaxed";
     };
   };
 
@@ -28,6 +29,8 @@
   users.users."matteo" = {
     home = "/Users/matteo";
   };
+
+  system.primaryUser = "matteo";
 
   programs.zsh.enable = true;
 

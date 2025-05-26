@@ -5,6 +5,8 @@
     ./system.nix
   ];
 
+  system.primaryUser = "matteo";
+
   nixpkgs.config.allowUnfree = true;
 
   nix = {

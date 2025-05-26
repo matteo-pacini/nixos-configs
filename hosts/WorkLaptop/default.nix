@@ -12,6 +12,8 @@
     ./system.nix
   ];
 
+  system.primaryUser = "admin";
+
   nixpkgs.config.allowUnfree = true;
 
   nix = {
