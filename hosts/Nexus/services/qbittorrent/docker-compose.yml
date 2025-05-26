@@ -1,7 +1,6 @@
 services:
 
   gluetun:
-    container_name: gluetun
     image: qmcgaw/gluetun:v3.40.0
     cap_add:
       - NET_ADMIN
@@ -15,7 +14,6 @@ services:
     restart: unless-stopped
 
   torrent:
-    container_name: "torrent"
     image: linuxserver/qbittorrent:5.0.4-libtorrentv1
     depends_on:
       - gluetun

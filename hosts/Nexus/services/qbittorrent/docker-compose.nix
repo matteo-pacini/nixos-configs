@@ -20,7 +20,7 @@
   virtualisation.oci-containers.backend = "podman";
 
   # Containers
-  virtualisation.oci-containers.containers."gluetun" = {
+  virtualisation.oci-containers.containers."nexus-qbittorrent-gluetun" = {
     image = "qmcgaw/gluetun:v3.40.0";
     environment = {
       "VPN_SERVICE_PROVIDER" = "mullvad";
@@ -37,7 +37,7 @@
       "--network=nexus-qbittorrent_default"
     ];
   };
-  systemd.services."podman-gluetun" = {
+  systemd.services."podman-nexus-qbittorrent-gluetun" = {
     serviceConfig = {
       Restart = lib.mkOverride 90 "always";
     };
@@ -54,20 +54,20 @@
       "podman-compose-nexus-qbittorrent-root.target"
     ];
   };
-  virtualisation.oci-containers.containers."torrent" = {
+  virtualisation.oci-containers.containers."nexus-qbittorrent-torrent" = {
     image = "linuxserver/qbittorrent:5.0.4-libtorrentv1";
     environment = {
       "WEBUI_PORT" = "7777";
     };
     dependsOn = [
-      "gluetun"
+      "nexus-qbittorrent-gluetun"
     ];
     log-driver = "journald";
     extraOptions = [
-      "--network=container:gluetun"
+      "--network=container:nexus-qbittorrent-gluetun"
     ];
   };
-  systemd.services."podman-torrent" = {
+  systemd.services."podman-nexus-qbittorrent-torrent" = {
     serviceConfig = {
       Restart = lib.mkOverride 90 "always";
     };

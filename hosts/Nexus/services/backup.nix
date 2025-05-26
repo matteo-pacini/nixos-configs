@@ -15,9 +15,10 @@ let
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
+    "nexus-n8n"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
-  backupJob = pkgs.writeShellScriptBin "backupJob8" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_11" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -60,6 +61,7 @@ let
     # Restart all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
 
+    # Restart all compose targets
     ${lib.concatMapStringsSep "\n" (
       service: "systemctl start ${fullComposeTargetName service}"
     ) affectedComposeTargets}

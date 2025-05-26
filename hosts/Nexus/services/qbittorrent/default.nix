@@ -30,7 +30,7 @@ in
 
   # Overrides
 
-  virtualisation.oci-containers.containers."gluetun" = {
+  virtualisation.oci-containers.containers."nexus-qbittorrent-gluetun" = {
     environment = {
       "SERVER_CITIES" = "London";
     };
@@ -39,7 +39,7 @@ in
     ];
   };
 
-  virtualisation.oci-containers.containers."torrent" = {
+  virtualisation.oci-containers.containers."nexus-qbittorrent-torrent" = {
     environment = {
       "WEBUI_PORT" = "7777";
       "TZ" = config.time.timeZone;
@@ -54,7 +54,7 @@ in
     ];
   };
 
-  systemd.services."podman-torrent".script = lib.mkBefore ''
+  systemd.services."podman-nexus-qbittorrent-torrent".script = lib.mkBefore ''
     export PUID="$(${pkgs.coreutils}/bin/id -u qbittorrent)"
     export PGID="$(${pkgs.getent}/bin/getent group downloads | cut -d: -f3)"
   '';

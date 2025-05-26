@@ -77,12 +77,6 @@ let
     dig_and_allow "vpn.jetos.com"
     dig_and_allow "vipah88182.duckdns.org"
 
-    # Final deny
-    echo "" >> "$TMP_FILE"
-    echo "deny all;" >> "$TMP_FILE"
-    echo "" >> "$TMP_FILE"
-    echo "# End of file" >> "$TMP_FILE"
-
     # Atomic replace
     mv "$TMP_FILE" "$OUT_FILE"
 
@@ -127,12 +121,42 @@ in
     recommendedTlsSettings = true;
     recommendedOptimisation = true;
     virtualHosts = {
-      "gateway.matteopacini.me" = {
+      "n8n.matteopacini.me" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/".extraConfig = ''
+          allow 192.168.7.0/24;
+          deny all;
+
+          proxy_pass http://192.168.7.7:5678;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Protocol $scheme;
+          proxy_set_header X-Forwarded-Host $http_host;
+        '';
+        locations."~ ^/(webhook|webhook-test)(/|$)" = {
+          extraConfig = ''
+            proxy_pass       http://192.168.7.7:5678$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header  Host              $host;
+            proxy_set_header  X-Real-IP         $remote_addr;
+            proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header  X-Forwarded-Proto $scheme;
+            client_max_body_size 16M;
+          '';
+
+        };
+      };
+      "jellyfin.matteopacini.me" = {
         enableACME = true;
         forceSSL = true;
         locations."/".extraConfig = ''
 
+          allow 192.168.7.0/24;
           include ${jellyfinAllowedIpsFile};
+          deny all;
 
           # Proxy main Jellyfin traffic
           proxy_pass http://192.168.7.7:8096;
