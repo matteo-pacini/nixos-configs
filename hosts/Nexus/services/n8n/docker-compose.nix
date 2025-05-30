@@ -30,16 +30,15 @@
       "DB_POSTGRESDB_USER" = "user";
       "DB_TYPE" = "postgresdb";
       "GENERIC_TIMEZONE" = "Europe/London";
-      "N8N_EDITOR_BASE_URL" = "http://192.168.7.7:5678";
+      "N8N_HOST" = "n8n.matteopacini.me";
       "N8N_PORT" = "5678";
       "N8N_PROTOCOL" = "http";
       "N8N_SECURE_COOKIE" = "false";
       "NODE_ENV" = "production";
       "TZ" = "Europe/London";
-      "WEBHOOK_URL" = "https://gateway.matteopacini.me";
+      "WEBHOOK_URL" = "https://n8n.matteopacini.me";
     };
     volumes = [
-      "/diskpool/limbo:/host:rw"
       "nexus-n8n_n8n_storage:/home/node/.n8n:rw"
     ];
     ports = [
