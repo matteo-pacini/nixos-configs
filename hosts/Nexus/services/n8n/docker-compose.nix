@@ -36,6 +36,7 @@
       "N8N_PROTOCOL" = "http";
       "N8N_SECURE_COOKIE" = "false";
       "NODE_ENV" = "production";
+      "NODE_FUNCTION_ALLOW_EXTERNAL" = "*";
       "TZ" = "Europe/London";
       "WEBHOOK_URL" = "https://n8n.matteopacini.me";
     };
