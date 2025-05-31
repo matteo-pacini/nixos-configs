@@ -30,6 +30,7 @@
       "DB_POSTGRESDB_USER" = "user";
       "DB_TYPE" = "postgresdb";
       "GENERIC_TIMEZONE" = "Europe/London";
+      "N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE" = "true";
       "N8N_HOST" = "n8n.matteopacini.me";
       "N8N_PORT" = "5678";
       "N8N_PROTOCOL" = "http";

@@ -24,6 +24,7 @@ services:
       - N8N_SECURE_COOKIE=false
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
       - NODE_ENV=production
       - GENERIC_TIMEZONE=Europe/London
       - TZ=Europe/London
