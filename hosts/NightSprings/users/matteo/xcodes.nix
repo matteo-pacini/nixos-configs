@@ -3,8 +3,8 @@
   programs.xcodes = {
     enable = true;
     versions = [
-      "16.3"
+      "16.4"
     ];
-    active = "16.3";
+    active = "16.4";
   };
 }
