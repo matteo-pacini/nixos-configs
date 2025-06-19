@@ -290,50 +290,6 @@
           { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
         ];
       };
-      #########################
-      # Macbook Pro M1 (Work) #
-      #########################
-      darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
-        specialArgs = {
-          inherit inputs;
-          flake = self;
-        };
-        modules = [
-          {
-            nixpkgs.overlays = [
-              inputs.nur.overlays.default
-              (import ./overlays/worklaptop.nix)
-            ];
-          }
-          ./hosts/WorkLaptop
-          inputs.home-manager.darwinModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.users.admin = import ./hosts/WorkLaptop/users/admin;
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-            };
-            home-manager.backupFileExtension = "backup";
-            home-manager.sharedModules = [
-              self.homeManagerModules.xcodes
-            ];
-          }
-          inputs.nix-homebrew.darwinModules.nix-homebrew
-          {
-            nix-homebrew = {
-              enable = true;
-              user = "admin";
-              taps = {
-                "homebrew/homebrew-core" = inputs.homebrew-core;
-                "homebrew/homebrew-cask" = inputs.homebrew-cask;
-              };
-              mutableTaps = false;
-            };
-          }
-        ];
-      };
       ############################
       # Macbook Pro 2012 (Intel) #
       ############################
