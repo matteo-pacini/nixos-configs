@@ -44,4 +44,11 @@
       ppfeaturemask = "0xffffffff";
     };
   };
+
+  services.sunshine = {
+    enable = true;
+    autoStart = true;
+    capSysAdmin = true;
+  };
+
 }
