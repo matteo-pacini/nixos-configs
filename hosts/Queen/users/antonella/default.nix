@@ -41,10 +41,6 @@
       nixPackages.enable = false;
       nixOptions.enable = false;
       nixCodeSearch.enable = false;
-      kagi = {
-        enable = false;
-        setAsDefault = false;
-      };
     };
 
     # Enable extensions

@@ -40,10 +40,6 @@ in
         enable = mkEnableOption "Nix Code Search on GitHub";
       };
 
-      kagi = {
-        enable = mkEnableOption "Kagi search engine";
-        setAsDefault = mkEnableOption "Set Kagi as the default search engine";
-      };
     };
 
     extensions = {
@@ -185,33 +181,6 @@ in
           definedAliases = [ "@ncs" ];
         };
       };
-    })
-
-    # Kagi search engine
-    (mkIf cfg.search.kagi.enable {
-      programs.firefox.profiles.default.search.engines = {
-        "Kagi" = {
-          urls = [
-            {
-              template = "https://kagi.com/search";
-              params = [
-                {
-                  name = "q";
-                  value = "{searchTerms}";
-                }
-              ];
-            }
-          ];
-          icon = "https://kagi.com/asset/v2/favicon-16x16.png";
-          definedAliases = [ "@k" ];
-        };
-      };
-    })
-
-    # Set Kagi as default search engine if enabled
-    (mkIf (cfg.search.kagi.enable && cfg.search.kagi.setAsDefault) {
-      programs.firefox.profiles.default.search.default = lib.mkForce "Kagi";
-      programs.firefox.profiles.default.search.privateDefault = "ddg";
     })
 
     # Extensions
