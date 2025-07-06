@@ -3,6 +3,9 @@
   modulesPath,
   ...
 }:
+let
+  usbPartID = "usb-Kingston_DataTraveler_2.0_408D5CBF949DB471D95A0D4C-0:0-part1";
+in
 {
   imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
@@ -12,7 +15,15 @@
     "usbhid"
     "sd_mod"
   ];
-  boot.initrd.kernelModules = [ "dm-snapshot" ];
+  boot.initrd.kernelModules = [
+    "dm-snapshot"
+    "usb_storage"
+    "uas"
+    "usbcore"
+    "vfat"
+    "nls_cp437"
+    "nls_iso8859_1"
+  ];
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
 
@@ -34,9 +45,28 @@
     ];
   };
 
-  boot.initrd.luks.devices."root".device = "/dev/disk/by-uuid/5c7a8b8e-ed65-4820-a85e-0fb3cbe8a198";
-  boot.initrd.luks.devices."root".preLVM = false;
-  boot.initrd.luks.devices."root".allowDiscards = true;
+  boot.initrd.luks.devices."root" = {
+    device = "/dev/disk/by-uuid/5c7a8b8e-ed65-4820-a85e-0fb3cbe8a198";
+    preLVM = false;
+    allowDiscards = true;
+    keyFile = "/key/brightfalls.bin";
+    keyFileSize = 4096;
+    fallbackToPassword = true;
+    preOpenCommands = ''
+      mkdir -m 0755 -p /key
+      echo "Waiting for USB devices to settle..."
+      sleep 5
+      echo "Attempting to mount magic key..."
+      mount -n -t vfat -o ro /dev/disk/by-id/${usbPartID} /key || {
+        echo "No magic key found, continuing without it."
+      }
+    '';
+    postOpenCommands = ''
+      echo "Unmounting magic key..."
+      umount /key
+      rm -rf /key
+    '';
+  };
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/EF95-E69F";
