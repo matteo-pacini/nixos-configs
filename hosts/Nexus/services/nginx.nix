@@ -121,6 +121,17 @@ in
     recommendedTlsSettings = true;
     recommendedOptimisation = true;
     virtualHosts = {
+      "home.matteopacini.me" = {
+        enableACME = true;
+        forceSSL = true;
+        extraConfig = ''
+          proxy_buffering off;
+        '';
+        locations."/" = {
+          proxyPass = "http://127.0.0.1:8123";
+          proxyWebsockets = true;
+        };
+      };
       "jellyfin.matteopacini.me" = {
         enableACME = true;
         forceSSL = true;

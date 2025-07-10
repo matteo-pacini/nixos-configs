@@ -13,6 +13,9 @@
     ./acme.nix
     ./ddns.nix
     ./nginx.nix
+    ./zigbee2mqtt.nix
+    ./mosquitto.nix
+    ./home-assistant.nix
   ];
 
   systemd.tmpfiles.rules = [
