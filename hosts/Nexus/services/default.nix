@@ -13,6 +13,8 @@
     ./acme.nix
     ./ddns.nix
     ./nginx.nix
+    ./zigbee2mqtt.nix
+    ./mosquitto.nix
   ];
 
   systemd.tmpfiles.rules = [
