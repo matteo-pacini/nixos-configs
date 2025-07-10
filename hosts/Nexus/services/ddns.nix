@@ -6,6 +6,6 @@
     hostname = "gateway";
     domain = "matteopacini.me";
     interval = "1day";
-    environmentFile = config.age.secrets."router/route53-env".path;
+    environmentFile = config.age.secrets."nexus/route53-env".path;
   };
 }

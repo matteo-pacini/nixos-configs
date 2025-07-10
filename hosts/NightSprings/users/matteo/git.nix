@@ -14,17 +14,9 @@ in
     matchBlocks = {
       "nexus" = {
         extraOptions = {
-          HostName = "192.168.7.7";
+          HostName = "nexus";
           User = "matteo";
           IdentityFile = "~/.ssh/nexus";
-          Port = "1788";
-        };
-      };
-      "router" = {
-        extraOptions = {
-          HostName = "192.168.7.1";
-          User = "matteo";
-          IdentityFile = "~/.ssh/router";
           Port = "1788";
         };
       };

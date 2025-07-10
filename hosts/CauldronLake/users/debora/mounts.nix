@@ -14,7 +14,7 @@
     };
 
     Mount = {
-      What = "debora@192.168.7.7:/diskpool/debora";
+      What = "debora@nexus:/diskpool/debora";
       Where = "/home/debora/Mounts/Debora";
       Type = "fuse.sshfs";
       Options = "port=1788,idmap=user,_netdev,IdentityFile=/home/debora/.ssh/id_ed25519,x-systemd.automount";

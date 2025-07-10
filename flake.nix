@@ -165,34 +165,7 @@
             age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
             age.secrets."nexus/wireguard.env".file = ./secrets/nexus/wireguard.env.age;
-          }
-        ];
-      };
-      ##########
-      # Router #
-      ##########
-      nixosConfigurations."Router" = inputs.nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          {
-            nixpkgs.overlays = [
-              inputs.nur.overlays.default
-            ];
-          }
-          ./hosts/Router
-          inputs.home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.users.matteo = import ./hosts/Router/users/matteo;
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-            };
-          }
-          inputs.agenix.nixosModules.default
-          {
-            age.identityPaths = [ "/home/matteo/.age/Router.txt" ];
-            age.secrets."router/route53-env".file = ./secrets/router/route53-env.age;
+            age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
           }
         ];
       };
