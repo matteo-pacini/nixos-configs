@@ -121,64 +121,17 @@ in
     recommendedTlsSettings = true;
     recommendedOptimisation = true;
     virtualHosts = {
-      "n8n.matteopacini.me" = {
-        enableACME = true;
-        forceSSL = true;
-        locations."/".extraConfig = ''
-          allow 192.168.7.0/24;
-          deny all;
-
-          proxy_pass http://192.168.7.7:5678;
-          proxy_http_version 1.1;
-		      proxy_set_header Connection 'Upgrade';
-		      proxy_set_header Upgrade $http_upgrade;
-
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Protocol $scheme;
-          proxy_set_header X-Forwarded-Host $http_host;
-        '';
-        locations."~ ^/(webhook|webhook-test)(/|$)" = {
-          extraConfig = ''
-            proxy_pass        http://192.168.7.7:5678$request_uri;
-
-            proxy_set_header  Host              $host;
-            proxy_set_header  X-Real-IP         $remote_addr;
-            proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
-            proxy_set_header  X-Forwarded-Proto $scheme;
-
-            client_max_body_size 16M;
-          '';
-        };
-        locations."~ ^/(mcp|mcp-test)(/|$)" = {
-          extraConfig = ''
-            allow 192.168.7.0/24;
-            deny all;
-
-            proxy_pass        http://192.168.7.7:5678$request_uri;
-
-            proxy_set_header  Host              $host;
-            proxy_set_header  X-Real-IP         $remote_addr;
-            proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
-            proxy_set_header  X-Forwarded-Proto $scheme;
-
-            client_max_body_size 16M;
-          '';
-        };
-      };
       "jellyfin.matteopacini.me" = {
         enableACME = true;
         forceSSL = true;
         locations."/".extraConfig = ''
 
-          allow 192.168.7.0/24;
+          allow 192.168.10.0/24;
           include ${jellyfinAllowedIpsFile};
           deny all;
 
           # Proxy main Jellyfin traffic
-          proxy_pass http://192.168.7.7:8096;
+          proxy_pass http://127.0.0.1:8096;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -191,10 +144,12 @@ in
         '';
         locations."/socket".extraConfig = ''
 
+          allow 192.168.10.0/24;
           include ${jellyfinAllowedIpsFile};
+          deny all;
 
           # Proxy Jellyfin Websockets traffic
-          proxy_pass http://192.168.7.7:8096;
+          proxy_pass http://127.0.0.1:8096;
           proxy_http_version 1.1;
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection "upgrade";

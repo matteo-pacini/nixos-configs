@@ -10,7 +10,9 @@
     ./radarr.nix
     ./sonarr.nix
     ./qbittorrent
-    ./n8n
+    ./acme.nix
+    ./ddns.nix
+    ./nginx.nix
   ];
 
   systemd.tmpfiles.rules = [

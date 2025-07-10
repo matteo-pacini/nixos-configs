@@ -14,6 +14,7 @@
         "media"
         "downloads"
         "poccelli"
+        "acme"
       ];
       shell = pkgs.zsh;
       openssh.authorizedKeys.keys = [
