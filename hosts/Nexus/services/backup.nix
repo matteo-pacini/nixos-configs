@@ -12,13 +12,14 @@ let
     "nzbhydra2"
     "radarr"
     "sonarr"
+    "zigbee2mqtt"
+    "mosquitto"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
-    "nexus-n8n"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
-  backupJob = pkgs.writeShellScriptBin "backupJob_11" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_12" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
