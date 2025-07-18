@@ -7,5 +7,6 @@
     domain = "matteopacini.me";
     interval = "1day";
     environmentFile = config.age.secrets."nexus/route53-env".path;
+    ttl = 300;
   };
 }
