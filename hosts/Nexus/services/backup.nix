@@ -6,26 +6,65 @@
 }:
 let
   backupDestination = "/diskpool/configuration";
+  haServices = [
+    "zigbee2mqtt"
+    "mosquitto"
+    "home-assistant"
+  ];
   affectedServices = [
     "jellyfin"
     "nzbget"
     "nzbhydra2"
     "radarr"
     "sonarr"
-    "zigbee2mqtt"
-    "mosquitto"
-    "home-assistant"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
-  backupJob = pkgs.writeShellScriptBin "backupJob_13" ''
+  haBackupJob = pkgs.writeShellScriptBin "haBackupJob" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
     # Notify on Telegram
-    MESSAGE="Nexus will go down for maintenance in 60 seconds..."
+    MESSAGE="Home Assistant services will go down for backup in 60 seconds..."
+    ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+      --data chat_id="$CHANNEL_ID" \
+      --data parse_mode="Markdown" \
+      --data-urlencode "text=$MESSAGE"
+
+    # Wait
+    sleep 60
+
+    # Stop HA services
+    ${lib.concatMapStringsSep "\n" (service: "systemctl stop ${service}") haServices}
+
+    RSYNC_CMD="${pkgs.rsync}/bin/rsync -avh --delete"
+
+    # zigbee2mqtt
+    ''${RSYNC_CMD} ${config.services.zigbee2mqtt.dataDir} ${backupDestination}/
+    # mosquitto
+    ''${RSYNC_CMD} ${config.services.mosquitto.dataDir} ${backupDestination}/
+    # home-assistant
+    ''${RSYNC_CMD} ${config.services.home-assistant.configDir} ${backupDestination}/
+
+    # Restart HA services
+    ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") haServices}
+
+    # Notify on Telegram
+    MESSAGE="Home Assistant services back online, starting full backup..."
+    ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+      --data chat_id="$CHANNEL_ID" \
+      --data parse_mode="Markdown" \
+      --data-urlencode "text=$MESSAGE"
+  '';
+
+  backupJob = pkgs.writeShellScriptBin "backupJob_14" ''
+    set -eo pipefail
+    source ${config.age.secrets."nexus/janitor.env".path}
+
+    # Notify on Telegram
+    MESSAGE="Remaining Nexus services will go down for maintenance in 60 seconds..."
     ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
       --data chat_id="$CHANNEL_ID" \
       --data parse_mode="Markdown" \
@@ -59,12 +98,6 @@ let
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
     # qbittorrent
     ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
-    # zigbee2mqtt
-    ''${RSYNC_CMD} ${config.services.zigbee2mqtt.dataDir} ${backupDestination}/
-    # mosquitto
-    ''${RSYNC_CMD} ${config.services.mosquitto.dataDir} ${backupDestination}/
-     # home-assistant
-    ''${RSYNC_CMD} ${config.services.home-assistant.configDir} ${backupDestination}/
     # PostgreSQL (via services.postgresqlBackup)
     ''${RSYNC_CMD} ${config.services.postgresqlBackup.location} ${backupDestination}/
 
@@ -80,28 +113,48 @@ let
     ) affectedComposeTargets}
 
     # Notify on Telegram
-    MESSAGE="Nexus is back online."
+    MESSAGE="Nexus is fully back online."
     ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
       --data chat_id="$CHANNEL_ID" \
       --data parse_mode="Markdown" \
       --data-urlencode "text=$MESSAGE"
-
   '';
 in
 {
+  systemd.targets."backup" = {
+    description = "Complete backup sequence";
+    wantedBy = [ "timers.target" ];
+    wants = [
+      "ha-backup.service"
+      "backup-job.service"
+    ];
+  };
 
-  systemd.timers."backup-job" = {
-    description = "Backup of configs via RSYNC (timer)";
+  systemd.timers."backup" = {
+    description = "Backup sequence timer";
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "*-*-* 03:00:00";
-      Unit = "backup-job.service";
+      Unit = "backup.target";
     };
   };
 
   systemd.services = {
+    "ha-backup" = {
+      description = "Fast HA services backup";
+      partOf = [ "backup.target" ];
+      before = [ "backup-job.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${lib.getExe haBackupJob}";
+      };
+    };
+
     "backup-job" = {
-      description = "Backup of configs via RSYNC";
+      description = "Slow services backup";
+      partOf = [ "backup.target" ];
+      after = [ "ha-backup.service" ];
+      requires = [ "ha-backup.service" ];
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${lib.getExe backupJob}";
