@@ -14,12 +14,13 @@ let
     "sonarr"
     "zigbee2mqtt"
     "mosquitto"
+    "home-assistant"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
-  backupJob = pkgs.writeShellScriptBin "backupJob_12" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_13" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -41,6 +42,9 @@ let
       service: "systemctl stop ${fullComposeTargetName service}"
     ) affectedComposeTargets}
 
+    # This is needed to ensure that the services are fully stopped before proceeding with the backup
+    sleep 60
+
     RSYNC_CMD="${pkgs.rsync}/bin/rsync -avh --delete"
 
     # Jellyfin
@@ -55,6 +59,14 @@ let
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
     # qbittorrent
     ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
+    # zigbee2mqtt
+    ''${RSYNC_CMD} ${config.services.zigbee2mqtt.dataDir} ${backupDestination}/
+    # mosquitto
+    ''${RSYNC_CMD} ${config.services.mosquitto.dataDir} ${backupDestination}/
+     # home-assistant
+    ''${RSYNC_CMD} ${config.services.home-assistant.configDir} ${backupDestination}/
+    # PostgreSQL (via services.postgresqlBackup)
+    ''${RSYNC_CMD} ${config.services.postgresqlBackup.location} ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid sync

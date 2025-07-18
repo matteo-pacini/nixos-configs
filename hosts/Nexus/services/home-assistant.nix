@@ -1,4 +1,4 @@
-{ pkgs, config, ... }:
+{ pkgs, ... }:
 {
   services.home-assistant = {
     enable = true;
@@ -123,6 +123,6 @@
   services.postgresqlBackup = {
     enable = true;
     databases = [ "hass" ];
-    startAt = "*-*-* 02:00:00";
+    startAt = "*-*-* 01:00:00";
   };
 }
