@@ -166,6 +166,8 @@
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
             age.secrets."nexus/wireguard.env".file = ./secrets/nexus/wireguard.env.age;
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
+            age.secrets."nexus/mosquitto-brightfalls-password".file =
+              ./secrets/nexus/mosquitto-brightfalls-password.age;
           }
         ];
       };
