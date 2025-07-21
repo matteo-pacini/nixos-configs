@@ -21,6 +21,8 @@
       "unifi"
       # Wake on LAN
       "wake_on_lan"
+      # Ping
+      "ping"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule

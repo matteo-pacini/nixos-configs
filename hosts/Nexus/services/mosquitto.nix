@@ -19,8 +19,6 @@
       {
         users.brightfalls = {
           acl = [
-            "readwrite homeassistant/#"
-            "read ${config.services.zigbee2mqtt.settings.mqtt.base_topic}/#"
             "readwrite pc/brightfalls/#"
           ];
           passwordFile = config.age.secrets."nexus/mosquitto-brightfalls-password".path;
