@@ -50,6 +50,32 @@
     enable = true;
     autoStart = true;
     capSysAdmin = true;
+    applications = {
+      apps = [
+        {
+          name = "Steam";
+          output = "steam.txt";
+          detached = [
+            "/run/wrappers/bin/sudo -u matteo ${pkgs.util-linux}/bin/setsid env PULSE_SERVER=unix:/run/user/1000/pulse/native XDG_RUNTIME_DIR=/run/user/1000 ${pkgs.steam}/bin/steam steam://open/gamepadui"
+          ];
+          exclude-global-prep-cmd = "false";
+          auto-detach = "true";
+          image-path = "steam.png";
+        }
+      ];
+    };
+    settings = {
+      sunshine_name = "BrightFalls Sunshine";
+      global_prep_cmd = builtins.toJSON [
+        {
+          do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@59.961";
+          undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951 --transform 90";
+        }
+      ];
+      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.analog-stereo";
+      fec_percentage = 10;
+      qp = 10;
+    };
   };
 
 }
