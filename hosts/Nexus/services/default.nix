@@ -16,6 +16,7 @@
     ./zigbee2mqtt.nix
     ./mosquitto.nix
     ./home-assistant.nix
+    ./music-assistant.nix
   ];
 
   systemd.tmpfiles.rules = [
