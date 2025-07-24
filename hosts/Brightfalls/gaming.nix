@@ -53,6 +53,10 @@
     applications = {
       apps = [
         {
+          name = "Desktop";
+          image-path = "desktop.png";
+        }
+        {
           name = "Steam";
           output = "steam.txt";
           detached = [
@@ -68,7 +72,7 @@
       sunshine_name = "BrightFalls Sunshine";
       global_prep_cmd = builtins.toJSON [
         {
-          do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@59.961";
+          do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor HDMI-1 --mode 3840x2160@59.940";
           undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951 --transform 90";
         }
       ];
