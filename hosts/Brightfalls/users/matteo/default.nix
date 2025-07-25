@@ -6,21 +6,19 @@
   ...
 }:
 {
-  imports =
-    [
+  imports = [
 
-      ../../../../modules/home-manager/firefox.nix
+    ../../../../modules/home-manager/firefox.nix
 
-      ./gnome.nix
-      ./git.nix
-      ../../../shared/home-manager/vscode.nix
-      ./zsh.nix
-      ./browser.nix
-    ]
-    ++ lib.optionals (!isVM) [
-      ./gaming.nix
-      ./mounts.nix
-    ];
+    ./gnome.nix
+    ./git.nix
+    ../../../shared/home-manager/vscode.nix
+    ./zsh.nix
+    ./browser.nix
+  ]
+  ++ lib.optionals (!isVM) [
+    ./gaming.nix
+  ];
 
   home.username = "matteo";
   home.homeDirectory = "/home/matteo";
