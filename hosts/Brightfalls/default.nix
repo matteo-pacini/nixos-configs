@@ -5,23 +5,23 @@
   ...
 }:
 {
-  imports =
-    [
-      ./networking.nix
-      ./users.nix
-      ./desktop.nix
-      ./audio
-      ./services.nix
-      ./graphics.nix
-      ./fonts.nix
-    ]
-    ++ lib.optionals (!isVM) [
-      ./gaming.nix
-      ./hardware.nix
-      ./printer.nix
-      ../shared/bluetooth.nix
-    ]
-    ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
+  imports = [
+    ./networking.nix
+    ./users.nix
+    ./desktop.nix
+    ./audio
+    ./services.nix
+    ./graphics.nix
+    ./fonts.nix
+  ]
+  ++ lib.optionals (!isVM) [
+    ./gaming.nix
+    ./hardware.nix
+    ./printer.nix
+    ../shared/bluetooth.nix
+    ./ssh.nix
+  ]
+  ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
 
   # Nix & Nixpkgs
 
