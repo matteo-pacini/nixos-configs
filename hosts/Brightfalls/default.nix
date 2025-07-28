@@ -19,7 +19,6 @@
     ./hardware.nix
     ./printer.nix
     ../shared/bluetooth.nix
-    ./ssh.nix
   ]
   ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
 

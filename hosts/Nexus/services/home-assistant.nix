@@ -27,6 +27,8 @@
       "androidtv"
       # LG TV
       "webostv"
+      # Shell commands
+      "shell_command"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
@@ -83,6 +85,8 @@
         internal_url = "http://nexus.home.internal:8123";
       };
 
+      shell_command = { };
+
       recorder = {
         db_url = "postgresql://@/hass";
         purge_keep_days = 365;
@@ -127,23 +131,4 @@
     ];
   };
 
-  services.postgresqlBackup = {
-    enable = true;
-    databases = [ "hass" ];
-    startAt = "*-*-* 01:00:00";
-  };
-
-  # Allow the Home Assistant user to run SSH commands as "matteo" without a password
-  security.sudo.extraRules = [
-    {
-      users = [ "hass" ];
-      runAs = "matteo";
-      commands = [
-        {
-          command = "${pkgs.openssh}/bin/ssh";
-          options = [ "NOPASSWD" ];
-        }
-      ];
-    }
-  ];
 }

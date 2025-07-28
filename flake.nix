@@ -97,6 +97,12 @@
                 inherit inputs isVM;
               };
             }
+            inputs.agenix.nixosModules.default
+            {
+              age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ];
+              age.secrets."nexus/mosquitto-brightfalls-password".file =
+                ./secrets/nexus/mosquitto-brightfalls-password.age;
+            }
           ];
         };
     in

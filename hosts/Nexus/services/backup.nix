@@ -98,8 +98,6 @@ let
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
     # qbittorrent
     ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
-    # PostgreSQL (via services.postgresqlBackup)
-    ''${RSYNC_CMD} ${config.services.postgresqlBackup.location} ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid sync
