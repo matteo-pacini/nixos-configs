@@ -38,4 +38,6 @@
       fi
     '';
   };
+
+  services.fwupd.enable = true;
 }
