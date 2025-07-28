@@ -85,6 +85,7 @@
 
       recorder = {
         db_url = "postgresql://@/hass";
+        purge_keep_days = 365;
       };
 
       http = {
@@ -131,4 +132,18 @@
     databases = [ "hass" ];
     startAt = "*-*-* 01:00:00";
   };
+
+  # Allow the Home Assistant user to run SSH commands as "matteo" without a password
+  security.sudo.extraRules = [
+    {
+      users = [ "hass" ];
+      runAs = "matteo";
+      commands = [
+        {
+          command = "${pkgs.openssh}/bin/ssh";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
 }
