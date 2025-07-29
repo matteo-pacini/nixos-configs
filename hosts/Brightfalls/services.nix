@@ -16,6 +16,10 @@ let
     MQTT_USER="brightfalls"
     MQTT_PASSWORD_FILE=''${MQTT_PASSWORD_FILE: -"/tmp/password"}
 
+    BRIDGE_USER=matteo
+    BRIDGE_UID=$(id -u "$BRIDGE_USER")
+    FIFO=/run/user/$BRIDGE_UID/mqtt2brightfalls.fifo
+
     # Read password from file
     if [[ -f "$MQTT_PASSWORD_FILE" ]]; then
         MQTT_PASSWORD=$(cat "$MQTT_PASSWORD_FILE")
@@ -26,6 +30,14 @@ let
 
     echo "Starting MQTT Brightfalls script..."
 
+    if [[ ! -p $FIFO ]]; then
+        echo "Creating FIFO at $FIFO"
+        mkdir -p "$(dirname "$FIFO")"
+        mkfifo "$FIFO"
+        chown "$BRIDGE_USER:users" "$FIFO"
+        chmod 600 "$FIFO"
+    fi
+
     mosquitto_sub -h "$MQTT_HOST" -v -t "$MQTT_TOPIC/#" -u "$MQTT_USER" -P "$MQTT_PASSWORD" | while read -r message; do
         
         topic=$(echo "$message" | cut -d ' ' -f 1)
@@ -33,10 +45,16 @@ let
         
         echo "Received $topic: ''${payload}"
 
-        if [[ "$topic" == "$MQTT_TOPIC/shutdown" ]]; then
-            echo "Shutting down system..."
-            systemctl poweroff
-        fi
+        case "$topic" in
+            "$MQTT_TOPIC/shutdown")
+                echo "Shutting down system..."
+                systemctl poweroff
+                ;;
+            *)
+                echo "Writing to userland: $topic $payload"
+                printf '%s %s\n' "$topic" "$payload" > "$FIFO"
+                ;;
+        esac
 
     done 
   '';

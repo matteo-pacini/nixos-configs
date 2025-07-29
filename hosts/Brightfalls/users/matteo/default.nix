@@ -15,6 +15,7 @@
     ../../../shared/home-manager/vscode.nix
     ./zsh.nix
     ./browser.nix
+    ./services.nix
   ]
   ++ lib.optionals (!isVM) [
     ./gaming.nix
