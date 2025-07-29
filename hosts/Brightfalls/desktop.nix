@@ -4,8 +4,23 @@
     enable = true;
   };
 
-  services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
+
+  services.displayManager = {
+    # Makes sense to me as the whole system is encrypted
+    autoLogin = {
+      enable = true;
+      user = "matteo";
+    };
+    gdm = {
+      enable = true;
+    };
+  };
+
+  # autoLogin fixes
+  # https://github.com/NixOS/nixpkgs/issues/103746#issuecomment-945091229
+  systemd.services."getty@tty1".enable = false;
+  systemd.services."autovt@tty1".enable = false;
 
   services.udev.packages = with pkgs; [ gnome-settings-daemon ];
 
