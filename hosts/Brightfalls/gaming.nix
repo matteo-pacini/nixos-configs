@@ -23,22 +23,17 @@
     ];
   };
 
-  security.polkit.enable = true;
+  services.lact.enable = true;
 
-  security.polkit.extraConfig = ''
-    polkit.addRule(function(action, subject) {
-      if ((action.id == "org.corectrl.helper.init" ||
-        action.id == "org.corectrl.helperkiller.init") &&
-        subject.local == true &&
-        subject.active == true &&
-        subject.isInGroup("corectrl")) {
-          return polkit.Result.YES;
-      }
-    });
-  '';
-
-  programs.corectrl = {
+  programs.gamemode = {
     enable = true;
+    enableRenice = true;
+    settings = {
+      general = {
+        renice = 10;
+        disable_splitlock = 1;
+      };
+    };
   };
 
   hardware.amdgpu.overdrive = {
@@ -55,16 +50,6 @@
         {
           name = "Desktop";
           image-path = "desktop.png";
-        }
-        {
-          name = "Steam";
-          output = "steam.txt";
-          detached = [
-            "/run/wrappers/bin/sudo -u matteo ${pkgs.util-linux}/bin/setsid env PULSE_SERVER=unix:/run/user/1000/pulse/native XDG_RUNTIME_DIR=/run/user/1000 ${pkgs.steam}/bin/steam steam://open/gamepadui"
-          ];
-          exclude-global-prep-cmd = "false";
-          auto-detach = "true";
-          image-path = "steam.png";
         }
       ];
     };

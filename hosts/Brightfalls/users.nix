@@ -20,6 +20,7 @@
       "corectrl"
       "docker"
       "kvm"
+      "gamemode"
     ];
     shell = pkgs.zsh;
     initialPassword = lib.optionalString (isVM) "ziosasso";

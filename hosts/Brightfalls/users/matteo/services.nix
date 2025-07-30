@@ -14,15 +14,9 @@ let
 
     while read -r topic payload < "$FIFO"; do
       case "$topic" in
-        pc/brightfalls/corectrl)
-            [[ -n "$payload" ]] && {
-              echo "corectrl: applying profile \"$payload\""
-              corectrl --activate-manual-profile "$payload"
-            }
-            ;;
-        *)  # everything else: just print
-            echo "Unhandled topic received: \"$topic\" payload: \"$payload\""
-            ;;
+        *)  
+          echo "Unhandled topic received: \"$topic\" payload: \"$payload\""
+          ;;
       esac
     done
   '';
