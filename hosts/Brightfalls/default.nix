@@ -1,6 +1,4 @@
 {
-  isVM,
-  lib,
   pkgs,
   ...
 }:
@@ -13,14 +11,11 @@
     ./services.nix
     ./graphics.nix
     ./fonts.nix
-  ]
-  ++ lib.optionals (!isVM) [
     ./gaming.nix
     ./hardware.nix
     ./printer.nix
     ../shared/bluetooth.nix
-  ]
-  ++ lib.optionals (isVM) [ /etc/nixos/hardware-configuration.nix ];
+  ];
 
   # Nix & Nixpkgs
 
@@ -55,15 +50,10 @@
 
   # System Packages
 
-  environment.systemPackages =
-    with pkgs;
-    [
-
-    ]
-    ++ lib.optionals (!isVM) [
-      sshfs
-      steamtinkerlaunch
-    ];
+  environment.systemPackages = with pkgs; [
+    sshfs
+    steamtinkerlaunch
+  ];
 
   # Timezone and locale
 

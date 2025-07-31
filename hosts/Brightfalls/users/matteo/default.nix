@@ -1,7 +1,5 @@
 {
   pkgs,
-  lib,
-  isVM,
   config,
   ...
 }:
@@ -16,8 +14,6 @@
     ./zsh.nix
     ./browser.nix
     ./services.nix
-  ]
-  ++ lib.optionals (!isVM) [
     ./gaming.nix
   ];
 
@@ -29,43 +25,35 @@
     NIXOS_OZONE_WL = "1";
   };
 
-  home.packages =
-    with pkgs;
-    [
-      #Gnome
-      gnomeExtensions.appindicator
-      gnomeExtensions.dash-to-dock
-      gnome-tweaks
-      # Downloads
-      aria
-      # Security
-      _1password-gui
-      # Development
-      gh
-      # Other
-      nix-output-monitor
-    ]
-    ++ lib.optionals (!isVM) [
-      # No need for these in a VM
-      # Music
-      cmus
-      # Movies
-      jellyfin-media-player
-      # Virtualisation
-      qemu
-      quickemu
-      # Gaming
-      reshade-steam-proton
-      mangohud
-      vulkan-tools
-      mesa-demos
-      bottles
-      heroic
-      # Other
-      miru
-      discord
-      telegram-desktop
-    ];
+  home.packages = with pkgs; [
+    #Gnome
+    gnomeExtensions.appindicator
+    gnomeExtensions.dash-to-dock
+    gnome-tweaks
+    # Downloads
+    aria
+    # Security
+    _1password-gui
+    # Development
+    gh
+    # Other
+    nix-output-monitor
+    # Movies
+    jellyfin-media-player
+    # Virtualisation
+    qemu
+    quickemu
+    # Gaming
+    reshade-steam-proton
+    mangohud
+    vulkan-tools
+    mesa-demos
+    bottles
+    heroic
+    # Other
+    discord
+    telegram-desktop
+  ];
 
   home.stateVersion = "23.11";
 

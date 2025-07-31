@@ -1,7 +1,5 @@
 {
-  isVM,
   pkgs,
-  lib,
   ...
 }:
 {
@@ -23,7 +21,6 @@
       "gamemode"
     ];
     shell = pkgs.zsh;
-    initialPassword = lib.optionalString (isVM) "ziosasso";
   };
 
 }

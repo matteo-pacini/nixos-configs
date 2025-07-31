@@ -1,7 +1,6 @@
 {
   pkgs,
   lib,
-  isVM,
   ...
 }:
 with lib.hm.gvariant;
@@ -19,19 +18,16 @@ with lib.hm.gvariant;
         "appindicatorsupport@rgcjonas.gmail.com"
         "dash-to-dock@micxgx.gmail.com"
       ];
-      favorite-apps =
-        [
-          "org.gnome.Nautilus.desktop"
-          "org.gnome.Console.desktop"
-          "codium.desktop"
-          "org.telegram.desktop.desktop"
-          "firefox.desktop"
-        ]
-        ++ lib.optionals (!isVM) [
-          "steam.desktop"
-          "org.corectrl.CoreCtrl.desktop"
-          "com.usebottles.bottles.desktop"
-        ];
+      favorite-apps = [
+        "org.gnome.Nautilus.desktop"
+        "org.gnome.Console.desktop"
+        "code.desktop"
+        "org.telegram.desktop.desktop"
+        "firefox.desktop"
+        "steam.desktop"
+        "com.usebottles.bottles.desktop"
+        "io.github.ilya_zlobintsev.LACT.desktop"
+      ];
     };
     "org/gnome/desktop/session" = {
       idle-delay = mkUint32 0;

@@ -1,6 +1,4 @@
 {
-  isVM,
-  lib,
   ...
 }:
 {
@@ -14,7 +12,7 @@
     pulse.enable = true;
   };
 
-  services.pipewire.extraConfig.pipewire = lib.mkIf (!isVM) {
+  services.pipewire.extraConfig.pipewire = {
     "10-clock-rate" = {
       "context.properties" = {
         "default.clock.rate" = 44100;

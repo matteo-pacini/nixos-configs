@@ -14,6 +14,18 @@ let
 
     while read -r topic payload < "$FIFO"; do
       case "$topic" in
+        pc/brightfalls/launch_lact)
+          # Check if lact process is already running
+          if ! pgrep -f "lact gui" > /dev/null; then
+            echo "Launching lact"
+            nohup setsid lact gui >/dev/null 2>&1 </dev/null &
+          else
+            echo "lact is already running"
+          fi
+          ;;
+        pc/brightfalls/launch_steam_bigpicture)
+          xdg-open steam://open/gamepadui
+          ;;
         *)  
           echo "Unhandled topic received: \"$topic\" payload: \"$payload\""
           ;;
