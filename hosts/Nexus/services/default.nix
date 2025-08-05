@@ -17,6 +17,7 @@
     ./mosquitto.nix
     ./home-assistant.nix
     ./music-assistant.nix
+    ./ups.nix
   ];
 
   systemd.tmpfiles.rules = [
