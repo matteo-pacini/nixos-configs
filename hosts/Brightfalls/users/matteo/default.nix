@@ -15,6 +15,7 @@
     ./browser.nix
     ./services.nix
     ./gaming.nix
+    ./mounts.nix
   ];
 
   home.username = "matteo";
