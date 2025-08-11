@@ -121,7 +121,6 @@ in
 {
   systemd.targets."backup" = {
     description = "Complete backup sequence";
-    wantedBy = [ "timers.target" ];
     wants = [
       "ha-backup.service"
       "backup-job.service"
@@ -133,6 +132,7 @@ in
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "*-*-* 03:00:00";
+      Persistent = true;
       Unit = "backup.target";
     };
   };
