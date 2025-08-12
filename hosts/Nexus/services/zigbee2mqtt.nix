@@ -24,6 +24,9 @@
       advanced = {
         transmit_power = 20;
         channel = 25;
+        pan_id = "GENERATE";
+        ext_pan_id = "GENERATE";
+        network_key = "GENERATE";
       };
 
       homeassistant = {
