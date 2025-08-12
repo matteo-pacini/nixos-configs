@@ -1,5 +1,9 @@
 { pkgs, config, ... }:
 {
+  systemd.services.zigbee2mqtt.serviceConfig.EnvironmentFile = [
+    config.age.secrets."nexus/zigbee2mqtt.env".path
+  ];
+
   services.zigbee2mqtt = {
     enable = true;
     package = pkgs.zigbee2mqtt_2;
@@ -23,10 +27,6 @@
 
       advanced = {
         transmit_power = 20;
-        channel = 25;
-        pan_id = "!${config.age.secrets."nexus/zigbee2mqtt.yaml".path} pan_id";
-        ext_pan_id = "!${config.age.secrets."nexus/zigbee2mqtt.yaml".path} ext_pan_id";
-        network_key = "!${config.age.secrets."nexus/zigbee2mqtt.yaml".path} network_key";
       };
 
       homeassistant = {
