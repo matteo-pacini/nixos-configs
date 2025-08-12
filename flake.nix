@@ -141,6 +141,7 @@
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
             age.secrets."nexus/mosquitto-brightfalls-password".file =
               ./secrets/nexus/mosquitto-brightfalls-password.age;
+            age.secrets."nexus/zigbee2mqtt.yaml".file = ./secrets/nexus/zigbee2mqtt.yaml.age;
           }
         ];
       };

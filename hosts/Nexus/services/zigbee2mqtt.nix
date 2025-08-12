@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 {
   services.zigbee2mqtt = {
     enable = true;
@@ -24,9 +24,9 @@
       advanced = {
         transmit_power = 20;
         channel = 25;
-        pan_id = "GENERATE";
-        ext_pan_id = "GENERATE";
-        network_key = "GENERATE";
+        pan_id = "!${config.age.secrets."nexus/zigbee2mqtt.yaml".path} pan_id";
+        ext_pan_id = "!${config.age.secrets."nexus/zigbee2mqtt.yaml".path} ext_pan_id";
+        network_key = "!${config.age.secrets."nexus/zigbee2mqtt.yaml".path} network_key";
       };
 
       homeassistant = {
