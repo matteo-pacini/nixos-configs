@@ -36,7 +36,7 @@
 
   # Kernel
 
-  boot.kernelPackages = pkgs.linuxPackages_6_15;
+  boot.kernelPackages = pkgs.linuxPackages_6_16;
 
   # Boot loader
 
