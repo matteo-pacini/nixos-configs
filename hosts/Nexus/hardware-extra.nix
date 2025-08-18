@@ -7,7 +7,7 @@ let
     lib.genAttrs (listOfMountPoints) (
       mp:
       let
-        # Get back disk number from /mnt/diskX 
+        # Get back disk number from /mnt/diskX
         diskNumberAsString = lib.strings.removePrefix "/mnt/disk" mp;
       in
       {
@@ -23,6 +23,8 @@ let
     );
 in
 {
+
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
   boot.swraid = {
     enable = true;
