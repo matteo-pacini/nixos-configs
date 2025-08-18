@@ -119,28 +119,19 @@ let
   '';
 in
 {
-  systemd.targets."backup" = {
-    description = "Complete backup sequence";
-    wants = [
-      "ha-backup.service"
-      "backup-job.service"
-    ];
-  };
-
   systemd.timers."backup" = {
     description = "Backup sequence timer";
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "*-*-* 03:00:00";
       Persistent = true;
-      Unit = "backup.target";
+      Unit = "backup-job.service";
     };
   };
 
   systemd.services = {
     "ha-backup" = {
       description = "Fast HA services backup";
-      partOf = [ "backup.target" ];
       before = [ "backup-job.service" ];
       serviceConfig = {
         Type = "oneshot";
@@ -150,7 +141,6 @@ in
 
     "backup-job" = {
       description = "Slow services backup";
-      partOf = [ "backup.target" ];
       after = [ "ha-backup.service" ];
       requires = [ "ha-backup.service" ];
       serviceConfig = {
