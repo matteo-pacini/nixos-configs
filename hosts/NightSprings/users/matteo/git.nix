@@ -14,7 +14,7 @@ in
     matchBlocks = {
       "nexus" = {
         extraOptions = {
-          HostName = "nexus";
+          HostName = "nexus.home.internal";
           User = "matteo";
           IdentityFile = "~/.ssh/nexus";
           Port = "1788";
