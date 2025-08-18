@@ -11,6 +11,7 @@
   ];
 
   nix.settings.trusted-users = [
+    "root"
     "matteo"
   ];
 
