@@ -10,7 +10,6 @@
     ../../../shared/home-manager/darwin/zsh.nix
 
     ./git.nix
-    ./xcodes.nix
     ./browser.nix
   ];
 

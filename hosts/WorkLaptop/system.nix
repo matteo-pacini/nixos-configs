@@ -20,6 +20,7 @@
     };
     casks = [
       "1password"
+      "xcodes"
     ];
   };
 }
