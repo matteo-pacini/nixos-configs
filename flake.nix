@@ -1,6 +1,10 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nix-rosetta-builder = {
+      url = "github:cpick/nix-rosetta-builder";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     ################
     # Home Manager #
     ################
@@ -241,6 +245,15 @@
           }
           inputs.agenix.nixosModules.default
           { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
+          inputs.nix-rosetta-builder.darwinModules.default
+          {
+            nix-rosetta-builder.enable = true;
+            nix-rosetta-builder.onDemand = true;
+            nix-rosetta-builder.cores = 5;
+            nix-rosetta-builder.diskSize = "50GiB";
+            nix-rosetta-builder.memory = "16GiB";
+            nix-rosetta-builder.onDemandLingerMinutes = 30;
+          }
         ];
       };
       ############################
