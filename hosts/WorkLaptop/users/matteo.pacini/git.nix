@@ -23,14 +23,14 @@ in
   };
 
   home.file.".ssh/allowed_signers".text = ''
-    * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDrJTfkpn4k43/HcSuhM71ciHXAwjMphCxZXRR3zLhPG
+    * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO+saZuvP72LcanCjTiXxPcGDBG7of8AJ2gxw/8o1rvI
   '';
 
   programs.git = {
     enable = true;
     lfs.enable = true;
     userName = "Matteo Pacini";
-    userEmail = "matteo.pacini@thirdfort.com";
+    userEmail = "m+github@matteopacini.me";
     extraConfig = {
       init.defaultBranch = "master";
       core.editor = "${codeCommand} --wait";
