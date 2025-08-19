@@ -256,6 +256,50 @@
           }
         ];
       };
+      ##############
+      # WorkLaptop #
+      ##############
+      darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        specialArgs = {
+          inherit inputs;
+          flake = self;
+        };
+        modules = [
+          {
+            nixpkgs.overlays = [
+              inputs.nur.overlays.default
+              (import ./overlays/worklaptop.nix)
+            ];
+          }
+          ./hosts/WorkLaptop
+          inputs.home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users."matteo.pacini" = import ./hosts/WorkLaptop/users/matteo.pacini;
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+            home-manager.backupFileExtension = "backup";
+            home-manager.sharedModules = [
+              self.homeManagerModules.xcodes
+            ];
+          }
+          inputs.nix-homebrew.darwinModules.nix-homebrew
+          {
+            nix-homebrew = {
+              enable = true;
+              user = "matteo.pacini";
+              taps = {
+                "homebrew/homebrew-core" = inputs.homebrew-core;
+                "homebrew/homebrew-cask" = inputs.homebrew-cask;
+              };
+              mutableTaps = false;
+            };
+          }
+        ];
+      };
       ############################
       # Macbook Pro 2012 (Intel) #
       ############################
