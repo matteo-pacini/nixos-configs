@@ -55,6 +55,8 @@ in
             /.direnv/
             /.envrc
             /nix/
+            /.android
+            /.gradle
           '';
         };
         condition = "gitdir:${config.home.homeDirectory}/Repositories/blue-skies/";
