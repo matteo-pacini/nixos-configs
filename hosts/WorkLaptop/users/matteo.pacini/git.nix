@@ -52,22 +52,22 @@ in
       {
         contents = {
           core.excludesfile = pkgs.writeText ".gitignore" ''
-            .direnv
-            .envrc
-            nix
+            /.direnv/
+            /.envrc
+            /nix/
           '';
         };
-        condition = "gitdir:${config.home.homeDirectory}/Repositories/blue-skies";
+        condition = "gitdir:${config.home.homeDirectory}/Repositories/blue-skies/";
       }
       {
         contents = {
           core.excludesfile = pkgs.writeText ".gitignore" ''
-            .direnv
-            .envrc
-            nix
+            /.direnv/
+            /.envrc
+            /nix/
           '';
         };
-        condition = "gitdir:${config.home.homeDirectory}/Repositories/consumer-app-ios-v3";
+        condition = "gitdir:${config.home.homeDirectory}/Repositories/consumer-app-ios-v3/";
       }
     ];
   };
