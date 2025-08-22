@@ -31,6 +31,10 @@ in
     lfs.enable = true;
     userName = "Matteo Pacini";
     userEmail = "m+github@matteopacini.me";
+    aliases = {
+      clean-safe-dr = "clean -xdnf -e /.direnv/ -e /.envrc -e /nix/";
+      clean-safe = "clean -xdf -e /.direnv/ -e /.envrc -e /nix/";
+    };
     extraConfig = {
       init.defaultBranch = "master";
       core.editor = "${codeCommand} --wait";
@@ -44,5 +48,29 @@ in
       gpg.ssh.allowedSignersFile = "~/.ssh/allowed_signers";
       user.signingkey = "~/.ssh/github.pub";
     };
+    includes = [
+      {
+        contents = {
+          core.excludesfile = pkgs.writeText ".gitignore" ''
+            /.direnv/
+            /.envrc
+            /nix/
+            /.android
+            /.gradle
+          '';
+        };
+        condition = "gitdir:${config.home.homeDirectory}/Repositories/blue-skies/";
+      }
+      {
+        contents = {
+          core.excludesfile = pkgs.writeText ".gitignore" ''
+            /.direnv/
+            /.envrc
+            /nix/
+          '';
+        };
+        condition = "gitdir:${config.home.homeDirectory}/Repositories/consumer-app-ios-v3/";
+      }
+    ];
   };
 }
