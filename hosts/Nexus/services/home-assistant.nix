@@ -91,7 +91,7 @@
 
       recorder = {
         db_url = "postgresql://@/hass";
-        purge_keep_days = 365;
+        purge_keep_days = 10;
       };
 
       http = {
@@ -132,5 +132,8 @@
       }
     ];
   };
+
+  services.victoriametrics.enable = true;
+  services.victorialogs.enable = true;
 
 }
