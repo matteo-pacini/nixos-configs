@@ -57,20 +57,20 @@ in
               {
                 name = "perlnavigator";
                 publisher = "bscan";
-                version = "0.8.15";
-                hash = "sha256-IClcFvP86NdCtAhwkPgwG4pbGGEou4h2YVul+AAuZow=";
+                version = "0.8.19";
+                hash = "sha256-ID77fDLSnyRY1sYCiM9eqDDiy+Ml04lBKaPoRtujMoo=";
               }
               {
                 name = "dependi";
                 publisher = "fill-labs";
-                version = "0.7.14";
-                hash = "sha256-iLF2kxhSw39JBIs5K6hVmrEKueS8C22rnKCs+CiphwY=";
+                version = "0.7.15";
+                hash = "sha256-BXilurHO9WATC0PhT/scpZWEiRhJ9cSlq59opEM6wlE=";
               }
               {
                 name = "claude-dev";
                 publisher = "saoudrizwan";
-                version = "3.17.14";
-                hash = "sha256-pYO1uy1Xd2+74rbc0D+MwK8xvSpmDeRLAVIjAR/F23w=";
+                version = "3.27.0";
+                hash = "sha256-6sE0nwgB7FSnAlnj/2NRxPP0JdH+KKez4ifPnCcLsrQ=";
               }
             ]
           );
