@@ -18,6 +18,7 @@
     ./home-assistant.nix
     ./music-assistant.nix
     ./ups.nix
+    ./victoriametrics.nix
   ];
 
   systemd.tmpfiles.rules = [
