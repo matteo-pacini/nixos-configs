@@ -19,6 +19,8 @@
     ./music-assistant.nix
     ./ups.nix
     ./victoriametrics.nix
+    ./postgresql.nix
+    ./grafana.nix
   ];
 
   systemd.tmpfiles.rules = [

@@ -151,6 +151,12 @@
               group = "zigbee2mqtt";
               mode = "770";
             };
+            age.secrets."nexus/grafana-admin-password" = {
+              file = ./secrets/nexus/grafana-admin-password.age;
+              owner = "grafana";
+              group = "grafana";
+              mode = "770";
+            };
           }
         ];
       };
