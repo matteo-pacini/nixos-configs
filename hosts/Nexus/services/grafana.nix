@@ -11,7 +11,7 @@
       server = {
         http_addr = "0.0.0.0";
         http_port = 3000;
-        root_url = "http://nexus.home.internal:${config.services.grafana.settings.server.http_port}";
+        root_url = "http://nexus.home.internal:${toString config.services.grafana.settings.server.http_port}";
       };
       database = {
         type = "postgres";
