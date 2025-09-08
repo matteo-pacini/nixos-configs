@@ -133,10 +133,17 @@ in
         $geoip2_data_country_iso_code country iso_code;
       }
 
-      map $geoip2_data_country_iso_code $is_allowed {
+      map $geoip2_data_country_iso_code $is_country_ok {
         default 0;
         IT 1;
         GB 1;
+      }
+
+      map "$is_lan:$is_country_ok" $block_geo {
+        default 1;   # block
+        "1:0" 0;     # LAN: allow
+        "1:1" 0;     # LAN: allow
+        "0:1" 0;     # Allowed country: allow
       }
     '';
     virtualHosts = {
@@ -144,6 +151,7 @@ in
         enableACME = true;
         forceSSL = true;
         extraConfig = ''
+          if ($block_geo) { return 403; }
           proxy_buffering off;
         '';
         locations."/" = {
