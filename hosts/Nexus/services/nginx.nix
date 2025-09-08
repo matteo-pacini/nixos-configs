@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   jellyfinAllowedIpsFile = "/run/jellyfin-allowed/allowed-ips.conf";
   # This script, once built, will be in the Nix store (read-only).
@@ -120,6 +125,20 @@ in
     clientMaxBodySize = "20M";
     recommendedTlsSettings = true;
     recommendedOptimisation = true;
+    additionalModules = with pkgs.nginxModules; [
+      geoip2
+    ];
+    commonHttpConfig = ''
+      geoip2 ${config.services.geoipupdate.settings.DatabaseDirectory}/GeoLite2-Country.mmdb {
+        $geoip2_data_country_iso_code country iso_code;
+      }
+
+      map $geoip2_data_country_iso_code $is_allowed {
+        default 0;
+        IT 1;
+        GB 1;
+      }
+    '';
     virtualHosts = {
       "home.matteopacini.me" = {
         enableACME = true;

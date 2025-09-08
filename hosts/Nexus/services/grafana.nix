@@ -2,12 +2,12 @@
 {
   services.grafana = {
     enable = true;
-    users.allowSignUp = false;
     declarativePlugins = with pkgs.grafanaPlugins; [
       victoriametrics-metrics-datasource
       victoriametrics-logs-datasource
     ];
     settings = {
+      users.allow_sign_up = false;
       server = {
         http_addr = "0.0.0.0";
         http_port = 3000;
@@ -23,6 +23,7 @@
         admin_user = "matteo";
         admin_password = "$__file{${config.age.secrets."nexus/grafana-admin-password".path}}";
         admin_email = "m+grafana@matteopacini.me";
+        allow_embedding = true;
       };
     };
     provision.dashboards.settings.providers = [

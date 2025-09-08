@@ -21,6 +21,7 @@
     ./victoriametrics.nix
     ./postgresql.nix
     ./grafana.nix
+    ./geoipupdate.nix
   ];
 
   systemd.tmpfiles.rules = [

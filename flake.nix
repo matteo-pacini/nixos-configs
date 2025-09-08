@@ -157,6 +157,7 @@
               group = "grafana";
               mode = "770";
             };
+            age.secrets."nexus/geoip-license-key".file = ./secrets/nexus/geoip-license-key.age;
           }
         ];
       };
