@@ -139,6 +139,14 @@ in
         GB 1;
       }
 
+      geo $is_lan {
+        default 0;
+        127.0.0.1/32 1;
+        ::1/128      1;
+        192.168.10.0/24 1; # HOME VLAN
+        192.168.20.0/24 1; # GUEST VLAN
+      }
+
       map "$is_lan:$is_country_ok" $block_geo {
         default 1;   # block
         "1:0" 0;     # LAN: allow
