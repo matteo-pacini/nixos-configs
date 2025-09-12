@@ -1,6 +1,7 @@
 {
   pkgs,
   modulesPath,
+  config,
   ...
 }:
 let
@@ -87,6 +88,10 @@ in
     swap	/dev/Volumes/cryptswap	/dev/urandom		    swap,cipher=aes-xts-plain64,size=256,discard
     tmp		/dev/Volumes/crypttmp	  /dev/urandom		    tmp,cipher=aes-xts-plain64,size=256,discard
   '';
+
+  virtualisation.vmVariant = {
+    environment.etc.crypttab.text = pkgs.lib.mkForce "";
+  };
 
   fileSystems."/home" = {
     neededForBoot = false;
