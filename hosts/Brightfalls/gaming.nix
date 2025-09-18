@@ -10,6 +10,13 @@
     enable = true;
     extraPackages = with pkgs; [
       gamescope
+      (
+        with pkgs;
+        writeShellScriptBin "amdvlk-run" ''
+          export VK_DRIVER_FILES="${amdvlk}/share/vulkan/icd.d/amd_icd64.json:${pkgsi686Linux.amdvlk}/share/vulkan/icd.d/amd_icd32.json"
+          exec "$@"
+        ''
+      )
     ];
   };
 
