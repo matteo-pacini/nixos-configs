@@ -39,6 +39,7 @@
       smartthinq-sensors
       volvo_cars
       octopus_energy
+      localtuya
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       card-mod
