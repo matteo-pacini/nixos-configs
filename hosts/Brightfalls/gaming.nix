@@ -17,6 +17,13 @@
           exec "$@"
         ''
       )
+      (
+        with pkgs;
+        writeShellScriptBin "radv-run" ''
+          export VK_DRIVER_FILES="${mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json:${pkgsi686Linux.mesa}/share/vulkan/icd.d/radeon_icd.i686.json"
+          exec "$@"
+        ''
+      )
     ];
   };
 
