@@ -20,7 +20,7 @@
     };
     casks = [
       "1password"
-      "xcodes"
+      "xcodes-app"
       "android-studio"
     ];
   };

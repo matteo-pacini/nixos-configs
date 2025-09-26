@@ -305,6 +305,15 @@
               mutableTaps = false;
             };
           }
+          inputs.nix-rosetta-builder.darwinModules.default
+          {
+            nix-rosetta-builder.enable = true;
+            nix-rosetta-builder.onDemand = true;
+            nix-rosetta-builder.cores = 6;
+            nix-rosetta-builder.diskSize = "50GiB";
+            nix-rosetta-builder.memory = "16GiB";
+            nix-rosetta-builder.onDemandLingerMinutes = 15;
+          }
         ];
       };
       ############################
