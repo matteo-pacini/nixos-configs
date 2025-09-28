@@ -66,6 +66,13 @@
       url = "github:rafaelmardojai/firefox-gnome-theme";
       flake = false;
     };
+    ##################
+    # Bore Scheduler #
+    ##################
+    bore-scheduler-src = {
+      url = "github:firelzrd/bore-scheduler";
+      flake = false;
+    };
   };
 
   outputs =
@@ -77,6 +84,9 @@
       ###################
       nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = {
+          inherit inputs;
+        };
         modules = [
           {
             nixpkgs.overlays = [
