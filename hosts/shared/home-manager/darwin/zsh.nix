@@ -12,7 +12,7 @@
     nix-direnv.enable = true;
   };
 
-  programs.autojump = {
+  programs.zoxide = {
     enable = true;
     enableZshIntegration = true;
   };
