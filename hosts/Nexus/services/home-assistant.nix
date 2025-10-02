@@ -183,15 +183,4 @@
     touch /var/lib/hass/scripts.yaml
   '';
 
-  services.postgresql = {
-    enable = true;
-    ensureDatabases = [ "hass" ];
-    ensureUsers = [
-      {
-        name = "hass";
-        ensureDBOwnership = true;
-      }
-    ];
-  };
-
 }

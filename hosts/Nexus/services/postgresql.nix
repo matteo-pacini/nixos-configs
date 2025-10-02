@@ -17,4 +17,9 @@
       }
     ];
   };
+
+  services.postgresqlBackup = {
+    enable = true;
+    startAt = "*-*-* 02:30:00";
+  };
 }

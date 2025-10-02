@@ -10,6 +10,9 @@ let
     "zigbee2mqtt"
     "mosquitto"
     "home-assistant"
+    "victoriametrics"
+    "victorialogs"
+    "grafana"
   ];
   affectedServices = [
     "jellyfin"
@@ -22,7 +25,7 @@ let
     "nexus-qbittorrent"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
-  haBackupJob = pkgs.writeShellScriptBin "haBackupJob" ''
+  haBackupJob = pkgs.writeShellScriptBin "haBackupJob_4" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -47,6 +50,16 @@ let
     ''${RSYNC_CMD} ${config.services.mosquitto.dataDir} ${backupDestination}/
     # home-assistant
     ''${RSYNC_CMD} ${config.services.home-assistant.configDir} ${backupDestination}/
+    # victoriametrics
+    ''${RSYNC_CMD} -L /var/lib/${config.services.victoriametrics.stateDir} ${backupDestination}/
+    # victorialogs
+    ''${RSYNC_CMD} -L /var/lib/${config.services.victorialogs.stateDir} ${backupDestination}/
+    # grafana
+    ''${RSYNC_CMD} ${config.services.grafana.dataDir} ${backupDestination}/
+
+    # Special case: PostgreSQL
+    # Does not need to be stopped, just backed up
+    ''${RSYNC_CMD} ${config.services.postgresqlBackup.location} ${backupDestination}/
 
     # Restart HA services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") haServices}
@@ -59,7 +72,7 @@ let
       --data-urlencode "text=$MESSAGE"
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_14" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_15" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -184,6 +197,19 @@ in
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
         "/diskpool/fabrizio"
+      ];
+      timerConfig = {
+        OnCalendar = "daily";
+      };
+    };
+    config = {
+      initialize = true;
+      user = "root";
+      repository = "s3:s3.eu-central-003.backblazeb2.com/config-nexus-backup";
+      environmentFile = config.age.secrets."nexus/restic-env".path;
+      passwordFile = config.age.secrets."nexus/restic-password".path;
+      paths = [
+        "/diskpool/configuration"
       ];
       timerConfig = {
         OnCalendar = "daily";
