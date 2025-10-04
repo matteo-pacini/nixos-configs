@@ -10,20 +10,6 @@
     enable = true;
     extraPackages = with pkgs; [
       gamescope
-      (
-        with pkgs;
-        writeShellScriptBin "amdvlk-run" ''
-          export VK_DRIVER_FILES="${amdvlk}/share/vulkan/icd.d/amd_icd64.json:${pkgsi686Linux.amdvlk}/share/vulkan/icd.d/amd_icd32.json"
-          exec "$@"
-        ''
-      )
-      (
-        with pkgs;
-        writeShellScriptBin "radv-run" ''
-          export VK_DRIVER_FILES="${mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json:${pkgsi686Linux.mesa}/share/vulkan/icd.d/radeon_icd.i686.json"
-          exec "$@"
-        ''
-      )
     ];
   };
 
