@@ -175,11 +175,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1759550472,
-        "narHash": "sha256-JLM3D6RbnGmXR8x+3WNac9neklAxA1JtZHZscwukFYw=",
+        "lastModified": 1759711004,
+        "narHash": "sha256-B39NxeKCnK3DJlmJKIts6njcXcVVASLUChDNmRl4dxQ=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "817ace497b72b38da0c08728a683b7febaccf9cf",
+        "rev": "6f4021da5d2bb5ea7cb782ff413ecb7062066820",
         "type": "github"
       },
       "original": {
@@ -191,11 +191,11 @@
     "homebrew-cask": {
       "flake": false,
       "locked": {
-        "lastModified": 1759553667,
-        "narHash": "sha256-FfjJskhtKQ2luB4y2Clfm/mE8fGY2D/HDIU5yqdXXKU=",
+        "lastModified": 1759737216,
+        "narHash": "sha256-Ah8RJr1LFfykaFntQzypqtzrHRm2LdK6DD0r3mx1E8s=",
         "owner": "homebrew",
         "repo": "homebrew-cask",
-        "rev": "a28216f3ddc5824210c5da169f86b48a4560f8c1",
+        "rev": "4143c50a713a6afa0e8840f2439037489549111e",
         "type": "github"
       },
       "original": {
@@ -207,11 +207,11 @@
     "homebrew-core": {
       "flake": false,
       "locked": {
-        "lastModified": 1759559163,
-        "narHash": "sha256-OB39ODLqUpph5bQQd61KhMz8sJpPRxeLGW1ZXZ74OFA=",
+        "lastModified": 1759740378,
+        "narHash": "sha256-SGIx1vrn43tW5A0fKqtVGlEOzz9BpUJhxlR2/w/gVTY=",
         "owner": "homebrew",
         "repo": "homebrew-core",
-        "rev": "19686445c8611224bc78c3604c89ca71bf138367",
+        "rev": "360f1c8e29b731041ddd6a5175d593f2b221866d",
         "type": "github"
       },
       "original": {
@@ -259,64 +259,6 @@
         "type": "github"
       }
     },
-    "nix-rosetta-builder": {
-      "inputs": {
-        "nixos-generators": "nixos-generators",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1756177999,
-        "narHash": "sha256-aSbB7/jrt7ujiJ55f2uGhOo+usGxVSkqbAMVgg2jDls=",
-        "owner": "cpick",
-        "repo": "nix-rosetta-builder",
-        "rev": "ebb7162a975074fb570a2c3ac02bc543ff2e9df4",
-        "type": "github"
-      },
-      "original": {
-        "owner": "cpick",
-        "repo": "nix-rosetta-builder",
-        "type": "github"
-      }
-    },
-    "nixlib": {
-      "locked": {
-        "lastModified": 1736643958,
-        "narHash": "sha256-tmpqTSWVRJVhpvfSN9KXBvKEXplrwKnSZNAoNPf/S/s=",
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "rev": "1418bc28a52126761c02dd3d89b2d8ca0f521181",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "type": "github"
-      }
-    },
-    "nixos-generators": {
-      "inputs": {
-        "nixlib": "nixlib",
-        "nixpkgs": [
-          "nix-rosetta-builder",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1737057290,
-        "narHash": "sha256-3Pe0yKlCc7EOeq1X/aJVDH0CtNL+tIBm49vpepwL1MQ=",
-        "owner": "nix-community",
-        "repo": "nixos-generators",
-        "rev": "d002ce9b6e7eb467cd1c6bb9aef9c35d191b5453",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "nixos-generators",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1759381078,
@@ -341,11 +283,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1759562581,
-        "narHash": "sha256-Ws/2AeBPNO0rKZClWMZGHzpYYxvzipkQe0Uv0bRcYDM=",
+        "lastModified": 1759740588,
+        "narHash": "sha256-o1GhRuXPB8sc+ROBlGgS3tJ2vxfu7qxhdWFLTL4Wp+0=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "fc4bde0d1bbd11352fd7836af54e56573f6649e6",
+        "rev": "86b734d9e1439a8f343d4cb7f5e3bbbc8cc54d93",
         "type": "github"
       },
       "original": {
@@ -366,7 +308,6 @@
         "homebrew-core": "homebrew-core",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
-        "nix-rosetta-builder": "nix-rosetta-builder",
         "nixpkgs": "nixpkgs",
         "nur": "nur",
         "sublime-dracula-theme": "sublime-dracula-theme",

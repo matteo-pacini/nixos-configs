@@ -1,10 +1,6 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nix-rosetta-builder = {
-      url = "github:cpick/nix-rosetta-builder";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     ################
     # Home Manager #
     ################
@@ -262,15 +258,6 @@
           }
           inputs.agenix.nixosModules.default
           { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
-          inputs.nix-rosetta-builder.darwinModules.default
-          {
-            nix-rosetta-builder.enable = true;
-            nix-rosetta-builder.onDemand = true;
-            nix-rosetta-builder.cores = 5;
-            nix-rosetta-builder.diskSize = "50GiB";
-            nix-rosetta-builder.memory = "16GiB";
-            nix-rosetta-builder.onDemandLingerMinutes = 30;
-          }
         ];
       };
       ##############
@@ -315,54 +302,8 @@
               mutableTaps = false;
             };
           }
-          inputs.nix-rosetta-builder.darwinModules.default
-          {
-            nix-rosetta-builder.enable = true;
-            nix-rosetta-builder.onDemand = true;
-            nix-rosetta-builder.cores = 6;
-            nix-rosetta-builder.diskSize = "50GiB";
-            nix-rosetta-builder.memory = "16GiB";
-            nix-rosetta-builder.onDemandLingerMinutes = 15;
-          }
         ];
       };
-      ############################
-      # Macbook Pro 2012 (Intel) #
-      ############################
-      darwinConfigurations."Dusk" = inputs.nix-darwin.lib.darwinSystem {
-        system = "x86_64-darwin";
-        modules = [
-          {
-            nixpkgs.overlays = [
-              inputs.nur.overlays.default
-            ];
-          }
-          ./hosts/Dusk
-          inputs.home-manager.darwinModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.users.matteo = import ./hosts/Dusk/users/matteo;
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-            };
-            home-manager.backupFileExtension = "backup";
-          }
-          inputs.nix-homebrew.darwinModules.nix-homebrew
-          {
-            nix-homebrew = {
-              enable = true;
-              user = "matteo";
-              taps = {
-                "homebrew/homebrew-core" = inputs.homebrew-core;
-                "homebrew/homebrew-cask" = inputs.homebrew-cask;
-              };
-              mutableTaps = false;
-            };
-          }
-        ];
-      };
-
       homeManagerModules = {
         xcodes = import ./modules/home-manager/darwin/xcodes.nix;
       };
