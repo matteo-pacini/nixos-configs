@@ -12,9 +12,7 @@
   in
   {
     gtk3 = super.gtk3.overrideAttrs (oldAttrs: {
-      env.NIX_CFLAGS_COMPILE =
-        (oldAttrs.env.NIX_CFLAGS_COMPILE or "")
-        + super.pkgs.lib.optionalString super.stdenv.cc.isClang "-Wno-implicit-function-declaration";
+      patches = (oldAttrs.patches or [ ]) ++ [ ./patches/gtk3-sincos-fix.patch ];
     });
   }
 )
