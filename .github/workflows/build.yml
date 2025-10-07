@@ -3,7 +3,6 @@ name: build
 on:
   push:
     branches: [master]
-  workflow_dispatch:
 
 env:
   ATTIC_CACHE_NAME: ${{ secrets.ATTIC_CACHE_NAME }}
@@ -70,53 +69,9 @@ jobs:
             "${{ env.ATTIC_CACHE_NAME }}" "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
           nix run nixpkgs#attic-client -- use "${{ matrix.host }}"
 
-      - name: Fetch previous closure and link
-        run: |
-
-          PREV_SHA="$(git rev-parse HEAD~1)"
-
-          # Compose the attr we’re targeting
-          ATTR="${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}"
-
-          # Try to evaluate the derivation path; skip if it fails
-          if ! DRV="$(nix path-info --derivation \
-            "github:matteo-pacini/nixos-configs?rev=${PREV_SHA}#${ATTR}" 2>/dev/null)"; then
-            echo "⚠️ Could not evaluate previous derivation. Skipping diff."
-            exit 0
-          fi
-
-          # Try to realise from caches only (disable builds)
-          if ! OUT_PATH="$(nix-store -r "$DRV" \
-            --option builders "" \
-            --option fallback false 2>/dev/null | tail -n1)"; then
-            echo "⚠️  Could not fetch previous closure from cache. Skipping diff."
-            exit 0
-          fi
-
-          # Ensure the output path actually exists
-          if [ -z "${OUT_PATH}" ] || [ ! -e "${OUT_PATH}" ]; then
-            echo "⚠️  No previous result found. Skipping diff."
-            exit 0
-          fi
-
-          # Link it for diff comparison
-          ln -sf "$OUT_PATH" old-result
-          echo "✅ Linked previous system to: $(readlink -f old-result)"
-
       - name: Build system
         run: |
           nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}"
-
-      - name: Compare closures with dix
-        run: |
-          if [ -e old-result ]; then
-            echo "### nix store diff" >> "$GITHUB_STEP_SUMMARY"
-            echo '```diff' >> "$GITHUB_STEP_SUMMARY"
-            nix run github:faukah/dix -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "⚠️  No old-result found — skipping diff." >> "$GITHUB_STEP_SUMMARY"
-          fi
 
       - uses: nick-fields/retry@v3
         name: Push system

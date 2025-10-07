@@ -71,25 +71,30 @@ jobs:
         run: |
           ERR_LOG=$(mktemp)
 
-          nix build --max-jobs 1 "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result 2> "$ERR_LOG" || {
+          nix build --max-jobs 1 "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result 2> "$ERR_LOG"
+
+          if ! [ $? -eq 0 ]; then
             echo "## Build of latest configuration failed" >> "$GITHUB_STEP_SUMMARY
             echo '```' >> "$GITHUB_STEP_SUMMARY
             cat "$ERR_LOG" >> "$GITHUB_STEP_SUMMARY
             echo '```' >> "$GITHUB_STEP_SUMMARY
             exit 1
-          }
+          fi
 
       - name: Build new configuration
         run: |
           ERR_LOG=$(mktemp)
+          touch $GITHUB_STEP_SUMMARY
 
-          nix build --max-jobs 1 ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result 2> "$ERR_LOG" || {
+          nix build --max-jobs 1 ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result 2> "$ERR_LOG" 
+
+          if ! [ $? -eq 0 ]; then
             echo "## Build of new configuration failed" >> "$GITHUB_STEP_SUMMARY
             echo '```' >> "$GITHUB_STEP_SUMMARY
             cat "$ERR_LOG" >> "$GITHUB_STEP_SUMMARY
             echo '```' >> "$GITHUB_STEP_SUMMARY
             exit 1
-          }
+          fi
 
       - name: Compare closures with dix
         run: |
