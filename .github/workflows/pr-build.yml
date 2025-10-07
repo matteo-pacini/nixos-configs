@@ -69,15 +69,15 @@ jobs:
 
       - name: Build latest configuration
         run: |
-          ERR_LOG=$(mktemp)
+          ERR_LOG="$(mktemp)"
 
-          nix build --max-jobs 1 "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result 2> "$ERR_LOG"
-
-          if ! [ $? -eq 0 ]; then
-            echo "## Build of latest configuration failed" >> "$GITHUB_STEP_SUMMARY
-            echo '```' >> "$GITHUB_STEP_SUMMARY
-            cat "$ERR_LOG" >> "$GITHUB_STEP_SUMMARY
-            echo '```' >> "$GITHUB_STEP_SUMMARY
+          if ! nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result 2>"$ERR_LOG"; then
+            {
+              echo "## Build of latest configuration failed"
+              echo '```'
+              cat "$ERR_LOG"
+               echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -86,13 +86,14 @@ jobs:
           ERR_LOG=$(mktemp)
           touch $GITHUB_STEP_SUMMARY
 
-          nix build --max-jobs 1 ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result 2> "$ERR_LOG" 
 
-          if ! [ $? -eq 0 ]; then
-            echo "## Build of new configuration failed" >> "$GITHUB_STEP_SUMMARY
-            echo '```' >> "$GITHUB_STEP_SUMMARY
-            cat "$ERR_LOG" >> "$GITHUB_STEP_SUMMARY
-            echo '```' >> "$GITHUB_STEP_SUMMARY
+          if ! nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result 2> "$ERR_LOG"; then
+            {
+              echo "## Build of new configuration failed"
+              echo '```'
+              cat "$ERR_LOG"
+               echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
