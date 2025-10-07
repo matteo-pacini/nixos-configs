@@ -1,0 +1,100 @@
+name: pr-build
+
+on:
+  pull_request:
+    branches: [master]
+
+env:
+  ATTIC_CACHE_NAME: ${{ secrets.ATTIC_CACHE_NAME }}
+  ATTIC_CACHE_URL: ${{ secrets.ATTIC_CACHE_URL }}
+  ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        include:
+          - host: BrightFalls
+            platform: x86_64-linux
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+            build_attr: config.system.build.toplevel
+          - host: Nexus
+            platform: x86_64-linux
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+            build_attr: config.system.build.toplevel
+          - host: CauldronLake
+            platform: x86_64-linux
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+            build_attr: config.system.build.toplevel
+          - host: WorkLaptop
+            platform: aarch64-darwin
+            os: macos-latest
+            system_attr: darwinConfigurations
+            build_attr: config.system.build.toplevel
+          - host: NightSprings
+            platform: aarch64-darwin
+            os: macos-latest
+            system_attr: darwinConfigurations
+            build_attr: config.system.build.toplevel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: wimpysworld/nothing-but-nix@v6
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        with:
+          hatchet-protocol: "rampage"
+          witness-carnage: true
+          nix-permission-edict: true
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            keep-env-derivations = true
+            keep-outputs = true
+
+      - name: Configure Attic cache
+        run: |
+          nix run nixpkgs#attic-client -- login \
+            "${{ env.ATTIC_CACHE_NAME }}" "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
+          nix run nixpkgs#attic-client -- use "${{ matrix.host }}"
+
+      - name: Build latest configuration
+        run: |
+          ERR_LOG=$(mktemp)
+
+          nix build --max-jobs 1 "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result 2> "$ERR_LOG" || {
+            echo "## Build of latest configuration failed" >> "$GITHUB_STEP_SUMMARY
+            echo '```' >> "$GITHUB_STEP_SUMMARY
+            cat "$ERR_LOG" >> "$GITHUB_STEP_SUMMARY
+            echo '```' >> "$GITHUB_STEP_SUMMARY
+            exit 1
+          }
+
+      - name: Build new configuration
+        run: |
+          ERR_LOG=$(mktemp)
+
+          nix build --max-jobs 1 ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result 2> "$ERR_LOG" || {
+            echo "## Build of new configuration failed" >> "$GITHUB_STEP_SUMMARY
+            echo '```' >> "$GITHUB_STEP_SUMMARY
+            cat "$ERR_LOG" >> "$GITHUB_STEP_SUMMARY
+            echo '```' >> "$GITHUB_STEP_SUMMARY
+            exit 1
+          }
+
+      - name: Compare closures with dix
+        run: |
+
+          echo "## Diff" >> "$GITHUB_STEP_SUMMARY"
+          echo '```diff' >> "$GITHUB_STEP_SUMMARY"
+          nix run github:faukah/dix -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
