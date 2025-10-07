@@ -1,7 +1,7 @@
-name: build
+name: pr-build
 
 on:
-  push:
+  pull_request:
     branches: [master]
 
 concurrency:
@@ -18,7 +18,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
-      max-parallel: 1
       matrix:
         include:
           - host: BrightFalls
@@ -50,8 +49,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - uses: wimpysworld/nothing-but-nix@v6
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -73,14 +70,18 @@ jobs:
             "${{ env.ATTIC_CACHE_NAME }}" "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
           nix run nixpkgs#attic-client -- use "${{ matrix.host }}"
 
-      - name: Build system
+      - name: Build latest configuration
         run: |
-          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}"
+          nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result
 
-      - uses: nick-fields/retry@v3
-        name: Push system
-        with:
-          timeout_seconds: 15
-          max_attempts: 5
-          retry_on: error
-          command: nix run nixpkgs#attic-client -- push "${{ matrix.host }}" result -j 3
+      - name: Build new configuration
+        run: |
+          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result
+
+      - name: Compare configurations
+        run: |
+
+          echo "## Diff" >> "$GITHUB_STEP_SUMMARY"
+          echo '```diff' >> "$GITHUB_STEP_SUMMARY"
+          nix run github:faukah/dix -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

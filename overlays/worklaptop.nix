@@ -23,5 +23,9 @@
     docker = optimizedForWorkLaptop super.docker;
     colima = optimizedForWorkLaptop super.colima;
 
+    gtk3-x11 = super.gtk3-x11.overrideAttrs (oldAttrs: {
+      patches = (oldAttrs.patches or [ ]) ++ [ ../patches/gtk3-tests-sincos.patch ];
+    });
+
   }
 )
