@@ -72,35 +72,13 @@ jobs:
 
       - name: Build latest configuration
         run: |
-          ERR_LOG="$(mktemp)"
-
-          if ! nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result 2>"$ERR_LOG"; then
-            {
-              echo "## Build of latest configuration failed"
-              echo '```'
-              cat "$ERR_LOG"
-               echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
+          nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result
 
       - name: Build new configuration
         run: |
-          ERR_LOG=$(mktemp)
-          touch $GITHUB_STEP_SUMMARY
+          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result
 
-
-          if ! nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result 2> "$ERR_LOG"; then
-            {
-              echo "## Build of new configuration failed"
-              echo '```'
-              cat "$ERR_LOG"
-               echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-
-      - name: Compare closures with dix
+      - name: Compare configurations
         run: |
 
           echo "## Diff" >> "$GITHUB_STEP_SUMMARY"
