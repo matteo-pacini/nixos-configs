@@ -12,7 +12,7 @@
   in
   {
     gtk3 = super.gtk3.overrideAttrs (oldAttrs: {
-      patches = (oldAttrs.patches or [ ]) ++ [ ./gtk3-sincos-fix.patch ];
+      patches = (oldAttrs.patches or [ ]) ++ [ ./gtk3-tests-sincos.patch ];
     });
   }
 )
