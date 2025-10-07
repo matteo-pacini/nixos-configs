@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   ATTIC_CACHE_NAME: ${{ secrets.ATTIC_CACHE_NAME }}
   ATTIC_CACHE_URL: ${{ secrets.ATTIC_CACHE_URL }}
