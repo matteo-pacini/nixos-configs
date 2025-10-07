@@ -11,8 +11,8 @@
       });
   in
   {
-    gtk3 = super.gtk3.overrideAttrs (oldAttrs: {
-      patches = (oldAttrs.patches or [ ]) ++ [ ./gtk3-tests-sincos.patch ];
+    gtk3-x11 = super.gtk3-x11.overrideAttrs (oldAttrs: {
+      patches = (oldAttrs.patches or [ ]) ++ [ ../patches/gtk3-tests-sincos.patch ];
     });
   }
 )
