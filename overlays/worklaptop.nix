@@ -24,7 +24,7 @@
     colima = optimizedForWorkLaptop super.colima;
 
     gtk3 = super.gtk3.overrideAttrs (oldAttrs: {
-      patches = (oldAttrs.patches or [ ]) ++ [ ./gtk3-tests-sincos.patch ];
+      patches = (oldAttrs.patches or [ ]) ++ [ ../patches/gtk3-tests-sincos.patch ];
     });
 
   }
