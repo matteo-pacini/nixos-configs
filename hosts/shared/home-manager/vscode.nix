@@ -40,9 +40,7 @@ in
               golang.go
               # Shell
               timonwong.shellcheck
-              # Rust
-              rust-lang.rust-analyzer
-              # rust-lang.rust-analyzer
+              # Toml
               tamasfe.even-better-toml
               # Yaml
               redhat.vscode-yaml
