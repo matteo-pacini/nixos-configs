@@ -80,7 +80,7 @@ jobs:
       - uses: nick-fields/retry@v3
         name: Push system
         with:
-          timeout_seconds: 15
+          timeout_minutes: 7200
           max_attempts: 5
           retry_on: error
           command: nix run nixpkgs#attic-client -- push "${{ matrix.host }}" result -j 3
