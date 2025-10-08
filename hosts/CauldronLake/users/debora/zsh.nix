@@ -25,14 +25,6 @@
         sudo nix-collect-garbage --delete-old;
         nix-store --optimize -v;
       '';
-      update = ''
-        cd /etc/nixos;
-        git reset --hard;
-        git clean -xdf;
-        git pull;
-        sudo nixos-rebuild boot;
-        echo "Update complete, please reboot the computer";
-      '';
     };
   };
 }
