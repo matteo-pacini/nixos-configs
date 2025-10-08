@@ -11,7 +11,8 @@
       });
   in
   {
-    gtk3-x11 = super.gtk3-x11.overrideAttrs (oldAttrs: {
+    # https://github.com/NixOS/nixpkgs/pull/449689
+    gtk3 = super.gtk3.overrideAttrs (oldAttrs: {
       patches = (oldAttrs.patches or [ ]) ++ [ ../patches/gtk3-tests-sincos.patch ];
     });
   }

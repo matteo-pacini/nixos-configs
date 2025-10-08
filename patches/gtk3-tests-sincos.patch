@@ -12,7 +12,7 @@ index 062b611..56296d4 100644
 +static inline void
 +_sincos (double x, double *_sin, double *_cos)
  {
-+#ifdef HAVE_SINCOS
++#if defined(HAVE_SINCOS) && !defined(__clang__)
 +  sincos (x, _sin, _cos);
 +#else
    *_sin = sin (x);
