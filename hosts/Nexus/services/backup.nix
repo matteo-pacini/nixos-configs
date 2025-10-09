@@ -72,7 +72,7 @@ let
       --data-urlencode "text=$MESSAGE"
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_15" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_16" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -113,7 +113,7 @@ let
     ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
 
     # Sync SnapRAID
-    ${pkgs.snapraid}/bin/snapraid sync
+    ${pkgs.snapraid}/bin/snapraid --force-zero sync
 
     # Restart all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
