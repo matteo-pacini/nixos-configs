@@ -52,6 +52,10 @@ in
       onepassword = {
         enable = mkEnableOption "1Password extension";
       };
+
+      violentmonkey = {
+        enable = mkEnableOption "Violentmonkey extension";
+      };
     };
   };
 
@@ -189,6 +193,9 @@ in
         (mkIf cfg.extensions.ublock.enable [ pkgs.nur.repos.rycee.firefox-addons.ublock-origin ])
         (mkIf cfg.extensions.onepassword.enable [
           pkgs.nur.repos.rycee.firefox-addons.onepassword-password-manager
+        ])
+        (mkIf cfg.extensions.violentmonkey.enable [
+          pkgs.nur.repos.rycee.firefox-addons.violentmonkey
         ])
       ];
     })
