@@ -50,6 +50,8 @@ in
               # JS/TS
               esbenp.prettier-vscode
               dbaeumer.vscode-eslint
+              # LLMs
+              saoudrizwan.claude-dev
             ]
             ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
               {
@@ -63,12 +65,6 @@ in
                 publisher = "fill-labs";
                 version = "0.7.15";
                 hash = "sha256-BXilurHO9WATC0PhT/scpZWEiRhJ9cSlq59opEM6wlE=";
-              }
-              {
-                name = "claude-dev";
-                publisher = "saoudrizwan";
-                version = "3.32.6";
-                hash = "sha256-t075wSy6jyLvwPk2p0E33JkPTtt6Vy0plnlC5yHJw8k=";
               }
             ]
           );
