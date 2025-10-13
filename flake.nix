@@ -258,6 +258,7 @@
           }
           inputs.agenix.nixosModules.default
           { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
+          { nix.linux-builder.enable = true; }
         ];
       };
       ##############
@@ -302,6 +303,7 @@
               mutableTaps = false;
             };
           }
+          { nix.linux-builder.enable = true; }
         ];
       };
       homeManagerModules = {
