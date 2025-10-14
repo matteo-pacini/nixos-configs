@@ -1,10 +1,10 @@
-{ ... }:
+{ lib, isVM, ... }:
 {
-  systemd.user.tmpfiles.rules = [
+  systemd.user.tmpfiles.rules = lib.optionals (!isVM) [
     "d /home/matteo/Mounts/Games 0700 matteo users -"
   ];
 
-  systemd.user.mounts.home-matteo-Mounts-Games = {
+  systemd.user.mounts.home-matteo-Mounts-Games = lib.mkIf (!isVM) {
     Unit = {
       Description = "Games folder on nexus";
       After = [ "network-online.target" ];

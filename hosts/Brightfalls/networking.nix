@@ -1,6 +1,6 @@
-{ ... }:
+{ lib, isVM, ... }:
 {
-  networking.hostName = "BrightFalls";
+  networking.hostName = "BrightFalls${if isVM then "VM" else ""}";
 
   networking.firewall.enable = false;
 
@@ -10,6 +10,6 @@
 
   networking.enableIPv6 = false;
 
-  services.tailscale.enable = true;
+  services.tailscale.enable = lib.mkIf (!isVM) true;
 
 }

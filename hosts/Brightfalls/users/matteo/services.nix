@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  isVM,
+  ...
+}:
 let
   mqtt2brightfallsUserland = pkgs.writeShellScriptBin "mqtt2brightfalls-user" ''
     set -euo pipefail
@@ -34,7 +39,7 @@ let
   '';
 in
 {
-  systemd.user.services."mqtt2brightfalls-user" = {
+  systemd.user.services."mqtt2brightfalls-user" = lib.mkIf (!isVM) {
     Unit = {
       Description = "mqtt2brightfalls user dispatcher";
       After = [ "graphical-session.target" ];
