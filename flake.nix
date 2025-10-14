@@ -81,7 +81,6 @@
 
     let
       baseOverlays = [
-        (import ./overlays/brightfalls.nix)
         inputs.nur.overlays.default
       ];
       mkBrightFalls =
@@ -123,6 +122,9 @@
         system = "x86_64-linux";
         hostPath = ./hosts/Brightfalls;
         userPath = ./hosts/Brightfalls/users/matteo;
+        extraOverlays = [
+          (import ./overlays/brightfalls.nix { isVM = false; })
+        ];
         extraModules = [
           inputs.agenix.nixosModules.default
           {
@@ -137,6 +139,9 @@
         hostPath = ./hosts/Brightfalls;
         userPath = ./hosts/Brightfalls/users/matteo;
         isVM = true;
+        extraOverlays = [
+          (import ./overlays/brightfalls.nix { isVM = true; })
+        ];
         extraModules = [
           inputs.disko.nixosModules.disko
           ./hosts/Brightfalls/disko.nix
@@ -147,6 +152,9 @@
         hostPath = ./hosts/Brightfalls;
         userPath = ./hosts/Brightfalls/users/matteo;
         isVM = true;
+        extraOverlays = [
+          (import ./overlays/brightfalls.nix { isVM = true; })
+        ];
         extraModules = [
           inputs.disko.nixosModules.disko
           ./hosts/Brightfalls/disko.nix
