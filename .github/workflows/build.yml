@@ -25,6 +25,16 @@ jobs:
             os: ubuntu-latest
             system_attr: nixosConfigurations
             build_attr: config.system.build.toplevel
+          - host: BrightFallsVM-x86_64-linux
+            platform: x86_64-linux
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+            build_attr: config.system.build.toplevel
+          - host: BrightFallsVM-aarch64-linux
+            platform: aarch64-linux
+            os: ubuntu-24.04.arm
+            system_attr: nixosConfigurations
+            build_attr: config.system.build.toplevel
           - host: Nexus
             platform: x86_64-linux
             os: ubuntu-latest
