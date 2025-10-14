@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  isVM,
   config,
   ...
 }:
@@ -59,7 +60,7 @@ let
   '';
 in
 {
-  services.fstrim.enable = true;
+  services.fstrim.enable = lib.mkIf (!isVM) true;
 
   # https://discourse.nixos.org/t/connected-to-mullvadvpn-but-no-internet-connection/35803/8?u=lion
   services.resolved.enable = true;
@@ -67,7 +68,7 @@ in
   services.mullvad-vpn.package = pkgs.mullvad-vpn;
 
   # Fix service to activate swap at login screen
-  systemd.services.fix-swap = {
+  systemd.services.fix-swap = lib.mkIf (!isVM) {
     description = "Fix Swap Service";
 
     # Run after the graphical login screen appears
@@ -90,9 +91,9 @@ in
     '';
   };
 
-  services.fwupd.enable = true;
+  services.fwupd.enable = lib.mkIf (!isVM) true;
 
-  systemd.services.mqtt2brightfalls = {
+  systemd.services.mqtt2brightfalls = lib.mkIf (!isVM) {
     description = "MQTT to Brightfalls bridge service";
     wantedBy = [ "graphical.target" ];
     after = [

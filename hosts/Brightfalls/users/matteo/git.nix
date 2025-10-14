@@ -1,4 +1,10 @@
-{ pkgs, config, ... }:
+{
+  pkgs,
+  lib,
+  isVM,
+  config,
+  ...
+}:
 let
   codeCommand = "${pkgs.lib.getExe config.programs.vscode.package}";
 in
@@ -10,7 +16,7 @@ in
       IdentitiesOnly yes
     '';
     matchBlocks = {
-      "nexus" = {
+      "nexus" = lib.mkIf (!isVM) {
         extraOptions = {
           HostName = "nexus";
           User = "matteo";

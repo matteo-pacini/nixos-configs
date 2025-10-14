@@ -20,6 +20,11 @@
     ##########
     agenix.url = "github:ryantm/agenix";
     agenix.inputs.nixpkgs.follows = "nixpkgs";
+    #########
+    # Disko #
+    #########
+    disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs";
     #######
     # NUR #
     #######
@@ -74,39 +79,77 @@
   outputs =
     inputs@{ self, ... }:
 
+    let
+      baseOverlays = [
+        (import ./overlays/brightfalls.nix)
+        inputs.nur.overlays.default
+      ];
+      mkBrightFalls =
+        {
+          system,
+          hostPath,
+          userPath,
+          extraOverlays ? [ ],
+          extraModules ? [ ],
+          isVM ? false,
+        }:
+        inputs.nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit inputs isVM;
+          };
+          modules = [
+            { nixpkgs.overlays = baseOverlays ++ extraOverlays; }
+            hostPath
+            inputs.home-manager.nixosModules.home-manager
+            {
+              home-manager.backupFileExtension = "backup";
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.users.matteo = import userPath;
+              home-manager.extraSpecialArgs = {
+                inherit inputs isVM;
+              };
+            }
+          ]
+          ++ extraModules;
+        };
+    in
     {
       ###################
       # Linux Gaming PC #
       ###################
-      nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
+      nixosConfigurations."BrightFalls" = mkBrightFalls {
         system = "x86_64-linux";
-        specialArgs = {
-          inherit inputs;
-        };
-        modules = [
-          {
-            nixpkgs.overlays = [
-              (import ./overlays/brightfalls.nix)
-              inputs.nur.overlays.default
-            ];
-          }
-          ./hosts/Brightfalls
-          inputs.home-manager.nixosModules.home-manager
-          {
-            home-manager.backupFileExtension = "backup";
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.users.matteo = ./hosts/Brightfalls/users/matteo;
-            home-manager.extraSpecialArgs = {
-              inherit inputs;
-            };
-          }
+        hostPath = ./hosts/Brightfalls;
+        userPath = ./hosts/Brightfalls/users/matteo;
+        extraModules = [
           inputs.agenix.nixosModules.default
           {
             age.identityPaths = [ "/etc/.age/Nexus.txt" ];
             age.secrets."nexus/mosquitto-brightfalls-password".file =
               ./secrets/nexus/mosquitto-brightfalls-password.age;
           }
+        ];
+      };
+      nixosConfigurations."BrightFallsVM-x86_64-linux" = mkBrightFalls {
+        system = "x86_64-linux";
+        hostPath = ./hosts/Brightfalls;
+        userPath = ./hosts/Brightfalls/users/matteo;
+        isVM = true;
+        extraModules = [
+          inputs.disko.nixosModules.disko
+          ./hosts/Brightfalls/disko.nix
+        ];
+      };
+      nixosConfigurations."BrightFallsVM-aarch64-linux" = mkBrightFalls {
+        system = "aarch64-linux";
+        hostPath = ./hosts/Brightfalls;
+        userPath = ./hosts/Brightfalls/users/matteo;
+        isVM = true;
+        extraModules = [
+          inputs.disko.nixosModules.disko
+          ./hosts/Brightfalls/disko.nix
         ];
       };
       #########

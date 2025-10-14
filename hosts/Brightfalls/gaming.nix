@@ -1,19 +1,25 @@
-{ pkgs, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  isVM,
+  ...
+}:
 {
   boot.kernel.sysctl = {
     "vm.max_map_count" = "1048576";
   };
 
-  hardware.steam-hardware.enable = true;
+  hardware.steam-hardware.enable = pkgs.stdenv.hostPlatform == "x86_64-linux";
 
   programs.steam = {
-    enable = true;
+    enable = pkgs.stdenv.hostPlatform == "x86_64-linux";
     extraPackages = with pkgs; [
       gamescope
     ];
   };
 
-  services.ananicy = {
+  services.ananicy = lib.mkIf (config.programs.steam.enable) {
     enable = true;
     package = pkgs.ananicy-cpp;
     rulesProvider = pkgs.ananicy-cpp;
@@ -25,9 +31,9 @@
     ];
   };
 
-  services.lact.enable = true;
+  services.lact.enable = !isVM;
 
-  programs.gamemode = {
+  programs.gamemode = lib.mkIf (pkgs.stdenv.hostPlatform == "x86_64-linux") {
     enable = true;
     enableRenice = true;
     settings = {
@@ -38,12 +44,12 @@
     };
   };
 
-  hardware.amdgpu.overdrive = {
+  hardware.amdgpu.overdrive = lib.mkIf (!isVM) {
     enable = true;
     ppfeaturemask = "0xffffffff";
   };
 
-  services.sunshine = {
+  services.sunshine = lib.mkIf (!isVM) {
     enable = true;
     autoStart = true;
     capSysAdmin = true;

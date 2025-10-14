@@ -1,5 +1,6 @@
 {
   pkgs,
+  lib,
   config,
   ...
 }:
@@ -22,37 +23,46 @@
   home.homeDirectory = "/home/matteo";
 
   home.sessionVariables = {
-    STEAM_EXTRA_COMPAT_TOOL_PATHS = "${config.home.homeDirectory}/.steam/root/compatibilitytools.d";
     NIXOS_OZONE_WL = "1";
+  }
+  // lib.optionalAttrs (pkgs.stdenv.hostPlatform == "x86_64-linux") {
+    STEAM_EXTRA_COMPAT_TOOL_PATHS = "${config.home.homeDirectory}/.steam/root/compatibilitytools.d";
   };
 
-  home.packages = with pkgs; [
-    #Gnome
-    gnomeExtensions.appindicator
-    gnomeExtensions.dash-to-dock
-    gnome-tweaks
-    # Downloads
-    aria
-    # Security
-    _1password-gui
-    # Development
-    gh
-    # Other
-    nix-output-monitor
-    # Virtualisation
-    qemu
-    quickemu
-    # Gaming
-    reshade-steam-proton
-    mangohud
-    vulkan-tools
-    mesa-demos
-    bottles
-    heroic
-    # Other
-    discord
-    telegram-desktop
-  ];
+  home.packages =
+    with pkgs;
+    [
+      #Gnome
+      gnomeExtensions.appindicator
+      gnomeExtensions.dash-to-dock
+      gnome-tweaks
+      # Downloads
+      aria
+      # Security
+      _1password-gui
+      # Development
+      gh
+      # Other
+      nix-output-monitor
+      # Virtualisation
+      qemu
+      quickemu
+      # Gaming
+      mangohud
+      vulkan-tools
+      mesa-demos
+      # Other
+      telegram-desktop
+    ]
+    ++ lib.optionals (pkgs.stdenv.hostPlatform == "x86_64-linux") [
+      # Gaming
+      bottles
+
+      reshade-steam-proton
+      heroic
+      # Other
+      discord
+    ];
 
   home.stateVersion = "25.05";
 

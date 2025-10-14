@@ -67,10 +67,14 @@
 
   # System Packages
 
-  environment.systemPackages = with pkgs; [
-    sshfs
-    steamtinkerlaunch
-  ];
+  environment.systemPackages =
+    with pkgs;
+    [
+      sshfs
+    ]
+    ++ lib.optionals (pkgs.stdenv.hostPlatform == "x86_64-linux") [
+      steamtinkerlaunch
+    ];
 
   # Timezone and locale
 
@@ -82,5 +86,5 @@
     keyMap = "us";
   };
 
-  system.stateVersion = "23.11";
+  system.stateVersion = "25.05";
 }
