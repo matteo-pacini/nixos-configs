@@ -24,6 +24,14 @@ in
         controlPath = "~/.ssh/master-%r@%n:%p";
         controlPersist = "no";
       };
+      "nexus" = {
+        extraOptions = {
+          HostName = "nexus.home.internal";
+          User = "matteo";
+          IdentityFile = "~/.ssh/nexus";
+          Port = "1788";
+        };
+      };
       "github.com" = {
         extraOptions = {
           HostName = "github.com";

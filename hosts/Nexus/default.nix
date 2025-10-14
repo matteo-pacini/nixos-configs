@@ -10,10 +10,20 @@
     ./snapraid.nix
   ];
 
-  nix.settings.trusted-users = [
-    "root"
-    "matteo"
-  ];
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    trusted-users = [
+      "root"
+      "matteo"
+    ];
+    extra-platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
+  };
 
   boot.kernelPackages = pkgs.linuxPackages_6_17;
 
@@ -36,11 +46,6 @@
   ];
 
   nixpkgs.config.allowUnfree = true;
-
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
 
   # Timezone and locale
 
