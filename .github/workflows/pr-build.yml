@@ -70,8 +70,8 @@ jobs:
       - name: Reinstall Docker
         if: ${{ matrix.platform == 'aarch64-linux' }}
         run: |
-          apt update
-          apt install -y docker.io
+          sudo apt update
+          sudo apt install -y docker.io
 
       - name: Set up QEMU
         if: ${{ matrix.platform == 'aarch64-linux' }}
