@@ -23,7 +23,7 @@
       "gamemode"
     ];
     shell = pkgs.zsh;
-    initialPassword = lib.mkIf (isVM) "ziosasso";
+    initialPassword = lib.optionalString (isVM) "ziosasso";
   };
 
 }
