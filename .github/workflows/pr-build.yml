@@ -32,7 +32,7 @@ jobs:
             build_attr: config.system.build.toplevel
           - host: BrightFallsVM-aarch64-linux
             platform: aarch64-linux
-            os: ubuntu-22.04.arm
+            os: ubuntu-latest
             system_attr: nixosConfigurations
             build_attr: config.system.build.toplevel
           - host: Nexus
@@ -67,12 +67,23 @@ jobs:
           witness-carnage: true
           nix-permission-edict: true
 
+      - name: Reinstall Docker
+        if: ${{ matrix.platform == 'aarch64-linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+
+      - name: Setup QEMU binfmt
+        if: ${{ matrix.platform == 'aarch64-linux' }}
+        uses: docker/setup-qemu-action@v3
+
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: |
             keep-env-derivations = true
             keep-outputs = true
+            ${{ matrix.platform == 'aarch64-linux' && 'extra-platforms = aarch64-linux' || '' }}
 
       - name: Configure Attic cache
         run: |
