@@ -67,6 +67,12 @@ jobs:
           witness-carnage: true
           nix-permission-edict: true
 
+      - name: Reinstall Docker
+        if: ${{ matrix.platform == 'aarch64-linux' }}
+        run: |
+          apt update
+          apt install -y docker.io
+
       - name: Set up QEMU
         if: ${{ matrix.platform == 'aarch64-linux' }}
         uses: docker/setup-qemu-action@v3
