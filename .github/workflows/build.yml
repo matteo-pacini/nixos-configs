@@ -1,3 +1,5 @@
+name: Build & Push System
+
 on:
   push:
     branches: [master]

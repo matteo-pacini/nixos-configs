@@ -1,3 +1,5 @@
+name: Build & Diff PR System
+
 on:
   pull_request:
     branches: [master]
