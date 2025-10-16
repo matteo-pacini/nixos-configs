@@ -4,7 +4,7 @@
   ...
 }:
 {
-  home.file."scripts/steam_disable_http2.sh" = lib.mkIf (pkgs.stdenv.hostPlatform == "x86_64-linux") {
+  home.file."scripts/steam_disable_http2.sh" = lib.mkIf (pkgs.stdenv.hostPlatform.isx86_64) {
     executable = true;
     text = ''
       #!/usr/bin/env bash
