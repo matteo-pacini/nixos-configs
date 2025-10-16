@@ -25,7 +25,7 @@
   home.sessionVariables = {
     NIXOS_OZONE_WL = "1";
   }
-  // lib.optionalAttrs (pkgs.stdenv.hostPlatform == "x86_64-linux") {
+  // lib.optionalAttrs (pkgs.stdenv.hostPlatform.isx86_64) {
     STEAM_EXTRA_COMPAT_TOOL_PATHS = "${config.home.homeDirectory}/.steam/root/compatibilitytools.d";
   };
 
@@ -55,7 +55,7 @@
       telegram-desktop
       element-desktop
     ]
-    ++ lib.optionals (pkgs.stdenv.hostPlatform == "x86_64-linux") [
+    ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
       # Gaming
       bottles
 

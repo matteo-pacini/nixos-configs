@@ -10,10 +10,10 @@
     "vm.max_map_count" = "1048576";
   };
 
-  hardware.steam-hardware.enable = pkgs.stdenv.hostPlatform == "x86_64-linux";
+  hardware.steam-hardware.enable = pkgs.stdenv.hostPlatform.isx86_64;
 
   programs.steam = {
-    enable = pkgs.stdenv.hostPlatform == "x86_64-linux";
+    enable = pkgs.stdenv.hostPlatform.isx86_64;
     extraPackages = with pkgs; [
       gamescope
     ];
@@ -33,7 +33,7 @@
 
   services.lact.enable = !isVM;
 
-  programs.gamemode = lib.mkIf (pkgs.stdenv.hostPlatform == "x86_64-linux") {
+  programs.gamemode = lib.mkIf (pkgs.stdenv.hostPlatform.isx86_64) {
     enable = true;
     enableRenice = true;
     settings = {

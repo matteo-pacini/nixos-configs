@@ -25,7 +25,7 @@ with lib.hm.gvariant;
         "org.telegram.desktop.desktop"
         "firefox.desktop"
       ]
-      ++ lib.optionals (pkgs.stdenv.hostPlatform == "x86_64-linux") [
+      ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
         "steam.desktop"
         "com.usebottles.bottles.desktop"
         "io.github.ilya_zlobintsev.LACT.desktop"

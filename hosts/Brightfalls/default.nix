@@ -73,7 +73,7 @@
     [
       sshfs
     ]
-    ++ lib.optionals (pkgs.stdenv.hostPlatform == "x86_64-linux") [
+    ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
       steamtinkerlaunch
     ];
 
