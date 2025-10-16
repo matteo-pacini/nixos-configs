@@ -3,6 +3,7 @@
   pkgs,
   inputs,
   config,
+  isVM,
   ...
 }:
 {

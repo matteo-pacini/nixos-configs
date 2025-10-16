@@ -53,6 +53,7 @@
       mesa-demos
       # Other
       telegram-desktop
+      element-desktop
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform == "x86_64-linux") [
       # Gaming
