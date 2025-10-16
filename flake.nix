@@ -1,4 +1,25 @@
 {
+  nixConfig = {
+    extra-substituters = [
+      "https://zpnixcache.fly.dev/BrightFalls"
+      "https://zpnixcache.fly.dev/BrightFallsVM-x86_64-linux"
+      "https://zpnixcache.fly.dev/BrightFallsVM-aarch64-linux"
+      "https://zpnixcache.fly.dev/Nexus"
+      "https://zpnixcache.fly.dev/CauldronLake"
+      "https://zpnixcache.fly.dev/NightSprings"
+      "https://zpnixcache.fly.dev/WorkLaptop"
+    ];
+    extra-trusted-public-keys = [
+      "BrightFalls:gMudzNSdeCzW745O/B5VSeCLUnpoD1Vj0EbsIV0X6C4="
+      "BrightFallsVM-x86_64-linux:L798OfLl6Hcelm1lvSnoisSlUNvlQqIyyOo4UfwLjH8="
+      "BrightFallsVM-aarch64-linux:LRzMt4Uzp6sjrCC9Bo1l1ZUJkNM0K6sS8mWmTS2KWmg="
+      "Nexus:KhHzSL94AngTFwzZHLZldWY8GIdCGNx0ZsN5w1HqwS8="
+      "CauldronLake:AyKsbh7J70m93eOsZJvjtHzgrUgUrPmCY7aOSVQAVF0="
+      "NightSprings:iCflayy0sY61Irqnschj7glvKedEEY3mlODEVe61CkY="
+      "WorkLaptop:YGElmUpcb7tiuwhpX2gzsEEh4uMQeqKZVYLNF2h0Krg="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     ################
