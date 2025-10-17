@@ -10,8 +10,8 @@
           {
             name = "vscode-augment";
             publisher = "augment";
-            version = "0.561.0";
-            hash = "sha256-9vkJwZmBVLRsmnRtzLEV2hOz561y5xuibbAiQbxKYtY=";
+            version = "0.596.2";
+            hash = "sha256-T75GltdyN5/HSu/N5SvcrBypT0PV5bl4rfgYyOx388Q=";
           }
         ];
       };

@@ -2,7 +2,6 @@
 {
   imports = [
     ../../../../modules/home-manager/dracula.nix
-    ../../../../modules/home-manager/firefox.nix
 
     ../../../shared/home-manager/vscode.nix
     ./vscode.nix
@@ -12,7 +11,6 @@
     ../../../shared/home-manager/darwin/zsh.nix
 
     ./git.nix
-    ./browser.nix
   ];
 
   home.username = "matteo.pacini";
@@ -29,7 +27,7 @@
     loopwm
   ];
 
-  home.stateVersion = "23.11";
+  home.stateVersion = "25.05";
 
   programs.home-manager.enable = true;
 
@@ -40,6 +38,6 @@
     xcode.enable = true;
     fzf.enable = true;
     bat.enable = true;
-    firefox.enable = true;
+    firefox.enable = false;
   };
 }
