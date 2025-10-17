@@ -66,7 +66,7 @@ in
         "workbench.colorTheme" = "Dracula Theme";
       };
     })
-    (lib.mkIf (cfg.xcode.enable && config.programs.xcodes.enable) {
+    (lib.mkIf (cfg.xcode.enable) {
       home.activation.xcodeDraculaTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         THEMES_DIR="${config.home.homeDirectory}/Library/Developer/Xcode/UserData/FontAndColorThemes"
         [ -d "$THEMES_DIR" ] || mkdir -p "$THEMES_DIR"

@@ -358,9 +358,6 @@
               inherit inputs;
             };
             home-manager.backupFileExtension = "backup";
-            home-manager.sharedModules = [
-              self.homeManagerModules.xcodes
-            ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
           {
