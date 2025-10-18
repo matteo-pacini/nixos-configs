@@ -134,6 +134,4 @@ in
     options = [ "defaults" ];
   };
 
-  swapDevices = lib.mkIf (!isVM) [ { device = "/dev/disk/by-label/SWAP"; } ];
-
 }
