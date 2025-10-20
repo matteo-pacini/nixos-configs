@@ -58,7 +58,7 @@
     ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
       # Gaming
       bottles
-
+      pcsx2
       reshade-steam-proton
       heroic
       # Other
