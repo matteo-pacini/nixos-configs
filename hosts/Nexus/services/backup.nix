@@ -20,6 +20,7 @@ let
     "nzbhydra2"
     "radarr"
     "sonarr"
+    "paperless"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
@@ -72,7 +73,7 @@ let
       --data-urlencode "text=$MESSAGE"
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_16" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_17" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -111,6 +112,10 @@ let
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
     # qbittorrent
     ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
+    # paperless - data directory
+    ''${RSYNC_CMD} ${config.services.paperless.dataDir} ${backupDestination}/
+    # paperless - media directory
+    ''${RSYNC_CMD} ${config.services.paperless.mediaDir} ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync

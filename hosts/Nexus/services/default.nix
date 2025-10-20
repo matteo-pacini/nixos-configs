@@ -21,6 +21,7 @@
     ./postgresql.nix
     ./grafana.nix
     ./geoipupdate.nix
+    ./paperless.nix
   ];
 
   systemd.tmpfiles.rules = [
