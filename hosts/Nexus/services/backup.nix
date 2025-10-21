@@ -20,7 +20,10 @@ let
     "nzbhydra2"
     "radarr"
     "sonarr"
-    "paperless"
+    "paperless-web"
+    "paperless-scheduler"
+    "paperless-consumer"
+    "paperless-task-queue"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
@@ -73,7 +76,7 @@ let
       --data-urlencode "text=$MESSAGE"
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_17" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_18" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
