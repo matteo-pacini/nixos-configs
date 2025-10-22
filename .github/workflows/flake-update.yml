@@ -1,0 +1,95 @@
+name: Weekly Nix Flake Update
+
+on:
+  schedule:
+    - cron: '0 0 * * 5'  # Midnight UTC on Fridays
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-flake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            keep-env-derivations = true
+            keep-outputs = true
+
+      - name: Update flake inputs
+        run: nix flake update
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --exit-code flake.lock > /dev/null 2>&1; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate update summary
+        if: steps.check_changes.outputs.has_changes == 'true'
+        id: summary
+        run: |
+          {
+            echo "## Flake Inputs Updated"
+            echo ""
+            echo "The following flake inputs were updated:"
+            echo ""
+            echo '```diff'
+            git diff flake.lock
+            echo '```'
+          } > /tmp/pr_body.md
+          cat /tmp/pr_body.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Create branch and commit
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          BRANCH_NAME="automated/flake-update-$(date +%Y-%m-%d)"
+          git checkout -b "$BRANCH_NAME"
+          git add flake.lock
+          git commit -m "chore: Weekly flake update - $(date +%Y-%m-%d)"
+          git push origin "$BRANCH_NAME"
+          
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create pull request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_TITLE="chore: Weekly flake update - $(date +%Y-%m-%d)"
+          PR_BODY=$(cat /tmp/pr_body.md)
+          
+          # Check if a PR already exists for this branch
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          
+          if [ -z "$EXISTING_PR" ]; then
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --base master \
+              --head "$BRANCH_NAME"
+            echo "Created new PR for $BRANCH_NAME"
+          else
+            echo "PR #$EXISTING_PR already exists for $BRANCH_NAME"
+          fi
+
+      - name: No changes
+        if: steps.check_changes.outputs.has_changes == 'false'
+        run: |
+          echo "No flake input updates available"
+
