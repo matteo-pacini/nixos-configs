@@ -176,7 +176,7 @@ This repository contains declarative **NixOS** and **nix-darwin** configurations
 
 ### 💻 Development Laptops
 
-#### 🍎 NightSprings
+#### 💻 NightSprings
 
 **Apple MacBook Pro M1 Max** (macOS/Darwin)
 
@@ -221,7 +221,7 @@ This repository contains declarative **NixOS** and **nix-darwin** configurations
 
 </details>
 
-#### 🎮 CauldronLake
+#### 💻 CauldronLake
 
 **Razer Gaming Laptop**
 
@@ -256,8 +256,12 @@ This module manages multiple Xcode installations on macOS environments using the
 
 #### Requirements
 
-- macOS only (Darwin)
-- Home Manager
+- **macOS (Darwin)** - This module only works on macOS
+- **Home Manager** - Required for user-level configuration
+- **Apple Developer Account** - Needed to download Xcode versions
+- **Disk Space** - Approximately 15GB per Xcode version
+- **Network** - Stable internet connection (downloads are 15GB+)
+- **Time** - Initial setup takes 30+ minutes per version
 
 #### Usage
 
@@ -322,9 +326,16 @@ darwinConfigurations."YourMacName" = inputs.nix-darwin.lib.darwinSystem {
 
 #### How It Works
 
-The module:
+The module performs the following steps during Home Manager activation:
 
-1. Installs the `xcodes` CLI tool
-2. Automatically installs specified Xcode versions into `~/Applications`
-3. Sets the active Xcode version
-4. Removes any Xcode versions not listed in the `versions` option
+1. **Update Index** - Runs `xcodes update` to fetch the latest available Xcode versions
+2. **Install Versions** - Installs each version specified in the `versions` list to `~/Applications`
+   - Uses `--empty-trash` to clean up temporary files
+   - Uses `--no-superuser` to avoid privilege escalation
+3. **Set Active Version** - Sets the specified `active` version as the default Xcode
+4. **Cleanup** - Removes any Xcode versions that are installed but not in the `versions` list
+   - Compares installed vs. requested versions using `comm`
+   - Safely uninstalls with `--empty-trash` flag
+   - Logs each removal for transparency
+
+**Note:** First run may require interactive Apple ID authentication. Subsequent runs are fully automated.
