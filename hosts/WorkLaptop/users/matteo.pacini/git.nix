@@ -49,13 +49,15 @@ in
   programs.git = {
     enable = true;
     lfs.enable = true;
-    userName = "Matteo Pacini";
-    userEmail = "m+github@matteopacini.me";
-    aliases = {
-      clean-safe-dr = "clean -xdnf -e /.direnv/ -e /.envrc -e /nix/";
-      clean-safe = "clean -xdf -e /.direnv/ -e /.envrc -e /nix/";
-    };
-    extraConfig = {
+    settings = {
+      user = {
+        name = "Matteo Pacini";
+        email = "m+github@matteopacini.me";
+      };
+      alias = {
+        clean-safe-dr = "clean -xdnf -e /.direnv/ -e /.envrc -e /nix/";
+        clean-safe = "clean -xdf -e /.direnv/ -e /.envrc -e /nix/";
+      };
       init.defaultBranch = "master";
       core.editor = "${codeCommand} --wait";
       diff.tool = "vscode";
