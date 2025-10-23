@@ -12,8 +12,8 @@ let
     mkMerge
     ;
   cfg = config.programs.firefox.customization;
-  isDarwin = pkgs.stdenv.isDarwin;
-  isLinux = pkgs.stdenv.isLinux;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
 in
 {
   options.programs.firefox.customization = {
@@ -76,6 +76,8 @@ in
             };
             settings = {
               "places.history.enabled" = cfg.history.enable;
+              # FIXME: workaround for https://github.com/NixOS/nixpkgs/issues/453372
+              "browser.chrome.site_icons" = if isDarwin then false else true;
             };
           };
         };
