@@ -11,11 +11,21 @@ in
 {
   programs.ssh = {
     enable = true;
-    compression = true;
-    extraConfig = ''
-      IdentitiesOnly yes
-    '';
+    enableDefaultConfig = false;
     matchBlocks = {
+      "*" = {
+        forwardAgent = false;
+        addKeysToAgent = "no";
+        compression = true;
+        serverAliveInterval = 0;
+        serverAliveCountMax = 3;
+        hashKnownHosts = false;
+        userKnownHostsFile = "~/.ssh/known_hosts";
+        controlMaster = "no";
+        controlPath = "~/.ssh/master-%r@%n:%p";
+        controlPersist = "no";
+        identitiesOnly = true;
+      };
       "nexus" = lib.mkIf (!isVM) {
         extraOptions = {
           HostName = "nexus";
@@ -31,9 +41,11 @@ in
     enable = true;
     lfs.enable = true;
     # package = pkgs.gitAndTools.gitFull;
-    userName = "Matteo Pacini";
-    userEmail = "m+github@matteopacini.me";
-    extraConfig = {
+    settings = {
+      user = {
+        name = "Matteo Pacini";
+        email = "m+github@matteopacini.me";
+      };
       init.defaultBranch = "master";
       core.editor = "${codeCommand} --wait";
       diff.tool = "vscode";
