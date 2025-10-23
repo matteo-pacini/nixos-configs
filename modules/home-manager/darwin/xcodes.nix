@@ -7,6 +7,61 @@
 with lib;
 let
   cfg = config.programs.xcodes;
+  xcodesDir = "${config.home.homeDirectory}/Applications";
+
+  # Setup PATH with required tools
+  pathSetup = ''
+    export PATH="${
+      lib.makeBinPath (
+        with pkgs;
+        [
+          xcodes
+          nawk
+        ]
+      )
+    }:$PATH"
+  '';
+
+  # Update xcodes index to fetch latest available versions
+  updateScript = ''
+    echo "Updating Xcode versions index..."
+    xcodes update 2>&1 > /dev/null
+  '';
+
+  # Install each requested Xcode version
+  installScript = lib.concatMapStringsSep "\n" (version: ''
+    echo "Installing Xcode ${version}..."
+    xcodes install \
+      --empty-trash \
+      --no-superuser \
+      --directory "${xcodesDir}" "${version}"
+  '') cfg.versions;
+
+  # Set the active Xcode version
+  selectScript = ''
+    echo "Setting active Xcode to ${cfg.active}..."
+    xcodes select --directory "${xcodesDir}" "${cfg.active}"
+  '';
+
+  # Remove Xcode versions not in the requested list
+  cleanupScript = ''
+    echo "Cleaning up unrequested Xcode versions..."
+    REQUESTED_VERSIONS="${concatStringsSep "\n" cfg.versions}"
+    INSTALLED_VERSIONS="$(NO_COLOR=1 xcodes installed --directory "${xcodesDir}" | nawk -F ' \\(' '{print $1}')"
+
+    TO_REMOVE="$(comm -23 <(echo "$INSTALLED_VERSIONS" | sort) <(echo "$REQUESTED_VERSIONS" | sort))"
+
+    if [ -z "$TO_REMOVE" ]; then
+      echo "No Xcodes to remove."
+      exit 0
+    fi
+
+    while IFS= read -r version; do
+      echo "Removing Xcode $version..."
+      xcodes uninstall --empty-trash \
+        --directory "${xcodesDir}" "$version"
+    done <<< "$TO_REMOVE"
+  '';
 in
 {
   options.programs.xcodes = {
@@ -40,51 +95,7 @@ in
     ];
 
     home.activation.xcodes = lib.hm.dag.entryAfter [ "writeBoundary" ] (
-      ''
-
-        export PATH="${
-          lib.makeBinPath (
-            with pkgs;
-            [
-              xcodes
-              nawk
-            ]
-          )
-        }:$PATH"
-
-        xcodes update 2>&1 > /dev/null
-
-      ''
-      + lib.concatMapStringsSep "\n" (version: ''
-        xcodes install \
-          --empty-trash \
-          --no-superuser \
-          --directory "${config.home.homeDirectory}/Applications" "${version}"
-      '') cfg.versions
-      + ''
-
-        xcodes select --directory "${config.home.homeDirectory}/Applications" "${cfg.active}"
-
-      ''
-      + ''
-
-        REQUESTED_VERSIONS="${concatStringsSep "\n" cfg.versions}"
-        INSTALLED_VERSIONS="$(NO_COLOR=1 xcodes installed --directory "${config.home.homeDirectory}/Applications" | nawk -F ' \\(' '{print $1}')"
-
-        TO_REMOVE="$(comm -23 <(echo "$INSTALLED_VERSIONS" | sort) <(echo "$REQUESTED_VERSIONS" | sort))"
-
-        if [ -z "$TO_REMOVE" ]; then
-          echo "No Xcodes to remove."
-          exit 0
-        fi
-
-        while IFS= read -r version; do
-          echo "Removing Xcode $version..."
-          xcodes uninstall --empty-trash \
-            --directory "${config.home.homeDirectory}/Applications" "$version"
-        done <<< "$TO_REMOVE"
-
-      ''
+      pathSetup + "\n" + updateScript + "\n" + installScript + "\n" + selectScript + "\n" + cleanupScript
     );
   };
 }
