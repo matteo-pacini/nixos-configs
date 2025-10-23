@@ -16,6 +16,9 @@ in
     (modulesPath + "/virtualisation/qemu-guest-agent.nix")
   ];
 
+  # Enable SPICE vdagent for clipboard sharing in VM
+  services.spice-vdagentd.enable = lib.mkIf isVM true;
+
   boot.initrd.availableKernelModules = lib.optionals (!isVM) [
     "xhci_pci"
     "ahci"
