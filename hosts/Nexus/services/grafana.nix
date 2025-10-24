@@ -9,9 +9,10 @@
     settings = {
       users.allow_sign_up = false;
       server = {
-        http_addr = "0.0.0.0";
+        http_addr = "127.0.0.1";
         http_port = 3000;
-        root_url = "http://nexus.home.internal:${toString config.services.grafana.settings.server.http_port}";
+        root_url = "https://grafana.matteopacini.me";
+        serve_from_sub_path = true;
       };
       database = {
         type = "postgres";
@@ -24,6 +25,8 @@
         admin_password = "$__file{${config.age.secrets."nexus/grafana-admin-password".path}}";
         admin_email = "m+grafana@matteopacini.me";
         allow_embedding = true;
+        cookie_secure = true;
+        cookie_samesite = "Lax";
       };
     };
     provision.dashboards.settings.providers = [
