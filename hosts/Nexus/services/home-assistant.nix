@@ -33,6 +33,11 @@
       "apcupsd"
       # Timeseries database
       "influxdb"
+      # Voice
+      "whisper"
+      "piper"
+      "wake_word"
+      "wyoming"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
@@ -182,5 +187,24 @@
     touch /var/lib/hass/scenes.yaml
     touch /var/lib/hass/scripts.yaml
   '';
+
+  services = {
+    wyoming = {
+      faster-whisper = {
+        package = pkgs.wyoming-faster-whisper;
+        servers.ha = {
+          enable = true;
+          uri = "tcp://0.0.0.0:10300";
+          language = "en";
+        };
+      };
+
+      piper.servers.ha = {
+        enable = true;
+        uri = "tcp://0.0.0.0:10200";
+        voice = "en_GB-alan-medium";
+      };
+    };
+  };
 
 }
