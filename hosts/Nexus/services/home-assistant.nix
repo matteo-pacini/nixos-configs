@@ -58,7 +58,7 @@
         };
 
         dependencies = [
-          openai
+          pkgs.openai
         ];
 
         ignoreVersionRequirement = [
