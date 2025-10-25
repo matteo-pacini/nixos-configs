@@ -178,6 +178,10 @@ in
             proxy_set_header X-Forwarded-Host $http_host;
             proxy_set_header X-Forwarded-Server $hostname;
 
+            # Redirect rewriting: convert http:// to https:// for mobile app compatibility
+            # Mobile apps require this to handle redirects correctly during authentication
+            proxy_redirect http:// https://;
+
             # Connection settings for long-lived WebSocket connections
             proxy_read_timeout 86400;
             proxy_send_timeout 86400;

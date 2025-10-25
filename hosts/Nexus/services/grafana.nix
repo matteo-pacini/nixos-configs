@@ -26,7 +26,7 @@
         admin_email = "m+grafana@matteopacini.me";
         allow_embedding = true;
         cookie_secure = true;
-        cookie_samesite = "Lax";
+        cookie_samesite = "lax";
       };
     };
     provision.dashboards.settings.providers = [

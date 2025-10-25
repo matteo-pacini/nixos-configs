@@ -150,7 +150,7 @@
         currency = "GBP";
         time_zone = "Europe/London";
         external_url = "https://home.matteopacini.me";
-        internal_url = "http://nexus.home.internal:8123";
+        internal_url = "https://home.matteopacini.me";
       };
 
       shell_command = { };
