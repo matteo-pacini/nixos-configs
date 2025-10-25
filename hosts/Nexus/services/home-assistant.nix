@@ -57,9 +57,7 @@
           hash = "sha256-4Dty/kHXZNsq/QKQ+az4kaUWoYt9SWvAe9SQag4js4M=";
         };
 
-        dependencies = [
-          pkgs.openai
-        ];
+        propagatedBuildInputs = [ pkgs.openai ];
 
         ignoreVersionRequirement = [
           "openai"
