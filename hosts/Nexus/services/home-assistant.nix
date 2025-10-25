@@ -45,12 +45,12 @@
       volvo_cars
       octopus_energy
       localtuya
-      (buildHomeAssistantComponent rec {
+      (pkgs.buildHomeAssistantComponent rec {
         owner = "jekalmin";
         domain = "extended_openai_conversation";
         version = "1.0.6-beta1";
 
-        src = fetchFromGitHub {
+        src = pkgs.fetchFromGitHub {
           inherit owner;
           repo = domain;
           tag = "${version}";
