@@ -177,17 +177,6 @@ in
             # Connection settings for long-lived WebSocket connections
             proxy_read_timeout 86400;
             proxy_send_timeout 86400;
-
-            # CRITICAL FIX: Hide Upgrade header from Safari/WebKit clients
-            # Home Assistant sends "Upgrade: h2" header which violates RFC7540 when
-            # received over HTTP/2 connection. This causes Safari/WebKit browsers
-            # (including iOS Home Assistant app) to fail with timeout (error code 1).
-            # Solution: Hide the Upgrade header so Safari/WebKit don't see it.
-            # See: https://trac.nginx.org/nginx/ticket/915
-            proxy_hide_header Upgrade;
-
-            # Force HTTP/1.1 for backend connection (already set by proxyWebsockets)
-            proxy_http_version 1.1;
           '';
         };
       };
