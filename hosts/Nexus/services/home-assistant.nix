@@ -57,7 +57,7 @@
           hash = "sha256-4Dty/kHXZNsq/QKQ+az4kaUWoYt9SWvAe9SQag4js4M=";
         };
 
-        propagatedBuildInputs = [ pkgs.openai ];
+        propagatedBuildInputs = [ pkgs.python3Packages.openai ];
 
         ignoreVersionRequirement = [
           "openai"
