@@ -45,6 +45,26 @@
       volvo_cars
       octopus_energy
       localtuya
+      (buildHomeAssistantComponent rec {
+        owner = "jekalmin";
+        domain = "extended_openai_conversation";
+        version = "1.0.6-beta1";
+
+        src = fetchFromGitHub {
+          inherit owner;
+          repo = domain;
+          tag = "${version}";
+          hash = "sha256-4Dty/kHXZNsq/QKQ+az4kaUWoYt9SWvAe9SQag4js4M=";
+        };
+
+        dependencies = [
+          openai
+        ];
+
+        ignoreVersionRequirement = [
+          "openai"
+        ];
+      })
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       card-mod
