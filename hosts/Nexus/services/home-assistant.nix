@@ -52,7 +52,7 @@
 
         src = pkgs.fetchFromGitHub {
           inherit owner;
-          repo = domain;
+          repo = "home-llm";
           rev = "v${version}";
           hash = pkgs.lib.fakeHash;
         };
