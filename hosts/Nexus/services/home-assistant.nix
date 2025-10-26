@@ -72,11 +72,6 @@
           babel
           huggingface-hub
         ];
-
-        ignoreVersionRequirement = [
-          "huggingface-hub"
-          "webcolors"
-        ];
       })
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
