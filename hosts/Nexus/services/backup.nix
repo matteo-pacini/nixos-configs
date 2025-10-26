@@ -27,6 +27,7 @@ let
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
+    "nexus-n8n"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
   haBackupJob = pkgs.writeShellScriptBin "haBackupJob_4" ''
@@ -76,7 +77,7 @@ let
       --data-urlencode "text=$MESSAGE"
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_18" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_19" ''
     set -eo pipefail
     source ${config.age.secrets."nexus/janitor.env".path}
 
@@ -119,6 +120,10 @@ let
     ''${RSYNC_CMD} ${config.services.paperless.dataDir} ${backupDestination}/
     # paperless - media directory
     ''${RSYNC_CMD} ${config.services.paperless.mediaDir} ${backupDestination}/
+    # n8n - application data
+    ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
+    # n8n - PostgreSQL database
+    ''${RSYNC_CMD} /var/lib/postgresql_n8n ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync
