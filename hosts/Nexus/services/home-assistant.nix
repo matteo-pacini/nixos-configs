@@ -38,8 +38,6 @@
       "piper"
       "wake_word"
       "wyoming"
-      # LLM
-      "openai_conversation"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
@@ -47,6 +45,24 @@
       volvo_cars
       octopus_energy
       localtuya
+      (pkgs.buildHomeAssistantComponent rec {
+        owner = "jekalmin";
+        domain = "extended_openai_conversation";
+        version = "1.0.6-beta1";
+
+        src = pkgs.fetchFromGitHub {
+          inherit owner;
+          repo = domain;
+          tag = "${version}";
+          hash = "sha256-4Dty/kHXZNsq/QKQ+az4kaUWoYt9SWvAe9SQag4js4M=";
+        };
+
+        dependencies = [ pkgs.python3Packages.openai ];
+
+        ignoreVersionRequirement = [
+          "openai"
+        ];
+      })
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       card-mod
@@ -206,12 +222,6 @@
         uri = "tcp://0.0.0.0:10200";
         voice = "en_GB-alan-medium";
       };
-    };
-  };
-
-  systemd.services.home-assistant = {
-    environment = {
-      OPENAI_BASE_URL = "https://openrouter.ai/api/v1";
     };
   };
 
