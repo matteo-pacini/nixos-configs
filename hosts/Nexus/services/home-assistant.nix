@@ -46,21 +46,25 @@
       octopus_energy
       localtuya
       (pkgs.buildHomeAssistantComponent rec {
-        owner = "jekalmin";
-        domain = "extended_openai_conversation";
-        version = "1.0.6-beta1";
+        owner = "acon96";
+        domain = "home_llm";
+        version = "0.4.2";
 
         src = pkgs.fetchFromGitHub {
           inherit owner;
           repo = domain;
-          tag = "${version}";
-          hash = "sha256-4Dty/kHXZNsq/QKQ+az4kaUWoYt9SWvAe9SQag4js4M=";
+          rev = "v${version}";
+          hash = pkgs.lib.fakeHash;
         };
 
-        propagatedBuildInputs = [ pkgs.python3Packages.openai ];
+        propagatedBuildInputs = with pkgs.python3Packages; [
+          huggingface-hub
+          webcolors
+        ];
 
         ignoreVersionRequirement = [
-          "openai"
+          "huggingface-hub"
+          "webcolors"
         ];
       })
     ];
