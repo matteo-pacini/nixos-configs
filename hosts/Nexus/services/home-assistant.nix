@@ -54,7 +54,7 @@
           inherit owner;
           repo = "home-llm";
           rev = "v${version}";
-          hash = pkgs.lib.fakeHash;
+          hash = "sha256-4V49w/UXao8IdYVBqUy5IRHgZDV4onWXMXVFx88DBPo=";
         };
 
         propagatedBuildInputs = with pkgs.python3Packages; [
