@@ -47,7 +47,7 @@
       localtuya
       (pkgs.buildHomeAssistantComponent rec {
         owner = "acon96";
-        domain = "home_llm";
+        domain = "llama_conversation";
         version = "0.4.2";
 
         src = pkgs.fetchFromGitHub {
@@ -57,9 +57,20 @@
           hash = "sha256-4V49w/UXao8IdYVBqUy5IRHgZDV4onWXMXVFx88DBPo=";
         };
 
-        propagatedBuildInputs = with pkgs.python3Packages; [
-          huggingface-hub
+        dependencies = with pkgs.python3Packages; [
+          transformers
+          tensorboard
+          datasets
+          peft
+          bitsandbytes
+          trl
           webcolors
+          pandas
+          sentencepiece
+          deep-translator
+          langcodes
+          babel
+          huggingface-hub
         ];
 
         ignoreVersionRequirement = [
