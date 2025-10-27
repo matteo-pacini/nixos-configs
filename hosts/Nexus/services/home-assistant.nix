@@ -45,6 +45,23 @@
       volvo_cars
       octopus_energy
       localtuya
+      (pkgs.buildHomeAssistantComponent rec {
+        owner = "eulemitkeule";
+        domain = "webhook_conversation";
+        version = "1.10.0";
+
+        src = pkgs.fetchFromGitHub {
+          inherit owner;
+          repo = "webhook-conversation";
+          tag = "${version}";
+          hash = "sha256-6aaBhjBbGTtlnc1Qu+DuHWu0/oDgEcApksTv/8iSpKc=";
+        };
+
+        dependencies = with pkgs.python3Packages; [
+          voluptuous-openapi
+        ];
+
+      })
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       card-mod
