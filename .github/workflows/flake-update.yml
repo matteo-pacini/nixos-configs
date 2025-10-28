@@ -31,7 +31,7 @@ jobs:
       - name: Check for nixpkgs changes
         id: check_changes
         run: |
-          if git diff flake.lock | grep -q "^\+.*nixpkgs"; then
+          if git diff flake.lock | grep -A 20 '"nixpkgs"' | grep -q '^\+'; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -58,8 +58,8 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: Weekly flake update - ${{ github.event.repository.updated_at }}"
-          title: "chore: Weekly flake update - ${{ github.event.repository.updated_at }}"
+          commit-message: "chore: weekly flake update - ${{ github.event.repository.updated_at }}"
+          title: "chore: weekly flake update - ${{ github.event.repository.updated_at }}"
           body-path: /tmp/pr_body.md
           branch: automated/flake-update-${{ github.run_number }}
           base: master
