@@ -58,8 +58,8 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: Weekly flake update - ${{ github.event.repository.updated_at }}"
-          title: "chore: Weekly flake update - ${{ github.event.repository.updated_at }}"
+          commit-message: "chore: weekly flake update - ${{ github.event.repository.updated_at }}"
+          title: "chore: weekly flake update - ${{ github.event.repository.updated_at }}"
           body-path: /tmp/pr_body.md
           branch: automated/flake-update-${{ github.run_number }}
           base: master
