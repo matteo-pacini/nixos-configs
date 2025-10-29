@@ -30,21 +30,21 @@
         };
       };
 
-      # Caddy general protection
-      # Using nginx filters (compatible with Common Log Format)
+      # Caddy general protection (JSON log format)
       caddy-http-auth = {
         settings = {
           enabled = true;
-          filter = "nginx-http-auth";
+          filter = "caddy-http-auth";
           port = "http,https";
           logpath = "/var/log/caddy/access.log";
+          maxretry = 5;
         };
       };
 
       caddy-botsearch = {
         settings = {
           enabled = true;
-          filter = "nginx-botsearch";
+          filter = "caddy-botsearch";
           port = "http,https";
           logpath = "/var/log/caddy/access.log";
           maxretry = 2;
@@ -96,11 +96,30 @@
     };
   };
 
-  # Custom filter for n8n authentication failures
+  # Custom filter for Caddy HTTP authentication failures (JSON format)
+  # Matches 401 (Unauthorized) and 403 (Forbidden) responses
+  environment.etc."fail2ban/filter.d/caddy-http-auth.conf".text = ''
+    [Definition]
+    failregex = "client_ip":"<HOST>"(?:.*)"status":(?:401|403)
+    datepattern = "ts":{Epoch}
+    ignoreregex =
+  '';
+
+  # Custom filter for Caddy bot search attempts (JSON format)
+  # Matches 404 (Not Found) and 400 (Bad Request) responses
+  environment.etc."fail2ban/filter.d/caddy-botsearch.conf".text = ''
+    [Definition]
+    failregex = "client_ip":"<HOST>"(?:.*)"status":(?:404|400)
+    datepattern = "ts":{Epoch}
+    ignoreregex =
+  '';
+
+  # Custom filter for n8n authentication failures (JSON format)
   environment.etc."fail2ban/filter.d/n8n-auth.conf".text = ''
     [Definition]
-    failregex = ^<HOST> .* "(GET|POST) .*/rest/login.*" (401|403) .*$
-                ^<HOST> .* "(GET|POST) .*/rest/.*" 401 .*$
+    failregex = "client_ip":"<HOST>"(?:.*)"uri":".*/rest/login.*"(?:.*)"status":(?:401|403)
+                "client_ip":"<HOST>"(?:.*)"uri":".*/rest/.*"(?:.*)"status":401
+    datepattern = "ts":{Epoch}
     ignoreregex =
   '';
 

@@ -20,15 +20,16 @@ in
 
     # Global configuration
     globalConfig = ''
-      # Single access log in Common Log Format for fail2ban compatibility
+      # Access logging in JSON format for fail2ban compatibility
       log {
         output file /var/log/caddy/access.log
-        format transform "{common_log}"
+        format json
       }
 
       # Error logging
       log {
         output file /var/log/caddy/error.log
+        format json
         level ERROR
       }
     '';
