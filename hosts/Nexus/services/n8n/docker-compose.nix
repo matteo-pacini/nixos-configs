@@ -30,7 +30,7 @@
       "DB_TYPE" = "postgresdb";
       "GENERIC_TIMEZONE" = "Europe/London";
       "N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE" = "true";
-      "N8N_HOST" = "nexus.home.internal";
+      "N8N_HOST" = "n8n.matteopacini.me";
       "N8N_PORT" = "5678";
       "N8N_PROTOCOL" = "http";
       "N8N_SECURE_COOKIE" = "false";
@@ -38,7 +38,7 @@
       "NODE_FUNCTION_ALLOW_BUILTIN" = "*";
       "NODE_FUNCTION_ALLOW_EXTERNAL" = "*";
       "TZ" = "Europe/London";
-      "WEBHOOK_URL" = "http://nexus.home.internal:5678";
+      "WEBHOOK_URL" = "https://n8n.matteopacini.me";
     };
     volumes = [
       "/var/lib/n8n:/home/node/.n8n:rw"

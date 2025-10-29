@@ -21,8 +21,8 @@ services:
     image: docker.n8n.io/n8nio/n8n:1.117.1
     restart: always
     environment:
-      - N8N_HOST=nexus.home.internal
-      - WEBHOOK_URL=http://nexus.home.internal:5678
+      - N8N_HOST=n8n.matteopacini.me
+      - WEBHOOK_URL=https://n8n.matteopacini.me
       - N8N_SECURE_COOKIE=false
       - N8N_PORT=5678
       - N8N_PROTOCOL=http

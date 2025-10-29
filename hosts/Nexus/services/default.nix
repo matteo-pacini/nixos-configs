@@ -14,6 +14,7 @@
     ./acme.nix
     ./ddns.nix
     ./nginx.nix
+    ./fail2ban.nix
     ./zigbee2mqtt.nix
     ./mosquitto.nix
     ./home-assistant.nix
