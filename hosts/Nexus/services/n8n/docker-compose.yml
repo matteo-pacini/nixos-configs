@@ -39,7 +39,7 @@ services:
       - DB_POSTGRESDB_USER=user
       - DB_POSTGRESDB_PASSWORD=password
     ports:
-      - 5678:5678
+      - 0.0.0.0:5678:5678
     links:
       - postgres
     volumes:

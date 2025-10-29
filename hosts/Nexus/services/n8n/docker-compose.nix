@@ -44,7 +44,7 @@
       "/var/lib/n8n:/home/node/.n8n:rw"
     ];
     ports = [
-      "5678:5678/tcp"
+      "0.0.0.0:5678:5678/tcp"
     ];
     dependsOn = [
       "nexus-n8n-postgres"
