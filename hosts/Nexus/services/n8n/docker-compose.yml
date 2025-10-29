@@ -48,4 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    extra_hosts:
+      - "home.matteopacini.me:192.168.10.14"
+      - "n8n.matteopacini.me:192.168.10.14"
+      - "jellyfin.matteopacini.me:192.168.10.14"
 
