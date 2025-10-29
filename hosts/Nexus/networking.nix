@@ -2,14 +2,25 @@
 {
   networking.hostName = "Nexus";
 
-  networking.firewall.enable = false;
-
   networking = {
     useDHCP = false;
     useNetworkd = true;
     interfaces.eno1.useDHCP = true;
-  };
 
-  services.tailscale.enable = true;
+    # Enable firewall (required for fail2ban to function)
+    firewall = {
+      enable = true;
+
+      # Allow HTTP/HTTPS for nginx (ACME certificate validation and web services)
+      allowedTCPPorts = [
+        80 # HTTP (ACME challenges, redirects to HTTPS)
+        443 # HTTPS (nginx reverse proxy for all services)
+        1788 # SSH (custom port)
+      ];
+
+      # Log refused packets for debugging
+      logRefusedConnections = true;
+    };
+  };
 
 }
