@@ -30,22 +30,23 @@
         };
       };
 
-      # nginx general protection
-      nginx-http-auth = {
+      # Caddy general protection
+      # Using nginx filters (compatible with Common Log Format)
+      caddy-http-auth = {
         settings = {
           enabled = true;
           filter = "nginx-http-auth";
           port = "http,https";
-          logpath = "/var/log/nginx/error.log";
+          logpath = "/var/log/caddy/access.log";
         };
       };
 
-      nginx-botsearch = {
+      caddy-botsearch = {
         settings = {
           enabled = true;
           filter = "nginx-botsearch";
           port = "http,https";
-          logpath = "/var/log/nginx/access.log";
+          logpath = "/var/log/caddy/access.log";
           maxretry = 2;
         };
       };
@@ -56,7 +57,7 @@
           enabled = true;
           filter = "n8n-auth";
           port = "http,https";
-          logpath = "/var/log/nginx/access.log";
+          logpath = "/var/log/caddy/access.log";
           maxretry = 3;
           findtime = "43200"; # 12 hours
           bantime = "86400"; # 24 hours

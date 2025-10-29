@@ -13,7 +13,7 @@
     ./n8n
     ./acme.nix
     ./ddns.nix
-    ./nginx.nix
+    ./caddy.nix
     ./fail2ban.nix
     ./zigbee2mqtt.nix
     ./mosquitto.nix

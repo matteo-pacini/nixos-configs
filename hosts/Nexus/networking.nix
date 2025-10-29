@@ -22,10 +22,10 @@ in
     firewall = {
       enable = true;
 
-      # Allow HTTP/HTTPS for nginx (ACME certificate validation and web services)
+      # Allow HTTP/HTTPS for Caddy (ACME certificate validation and web services)
       allowedTCPPorts = [
         80 # HTTP (ACME challenges, redirects to HTTPS)
-        443 # HTTPS (nginx reverse proxy for all services)
+        443 # HTTPS (Caddy reverse proxy for all services)
       ]
       ++ config.services.openssh.ports
       ++ [
@@ -36,6 +36,11 @@ in
       ]
       ++ lib.optionals config.services.nzbhydra2.enable [ 5076 ]
       ++ lib.optionals config.services.nzbget.enable [ 6789 ];
+
+      # Allow HTTP/3 (QUIC) for Caddy
+      allowedUDPPorts = [
+        443 # HTTP/3 (QUIC)
+      ];
 
       # Log refused packets for debugging
       logRefusedConnections = true;
