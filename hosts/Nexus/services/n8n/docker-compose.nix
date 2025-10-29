@@ -33,6 +33,7 @@
       "N8N_HOST" = "n8n.matteopacini.me";
       "N8N_PORT" = "5678";
       "N8N_PROTOCOL" = "http";
+      "N8N_PROXY_HOPS" = "1";
       "N8N_SECURE_COOKIE" = "false";
       "NODE_ENV" = "production";
       "NODE_FUNCTION_ALLOW_BUILTIN" = "*";
