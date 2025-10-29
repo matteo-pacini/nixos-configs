@@ -24,7 +24,7 @@
       sshd = {
         settings = {
           enabled = true;
-          port = "1788";
+          port = builtins.toString (builtins.head config.services.openssh.ports);
           filter = "sshd";
           maxretry = 3;
         };
