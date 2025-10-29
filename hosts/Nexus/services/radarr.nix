@@ -12,6 +12,6 @@
   services.radarr = {
     enable = true;
     group = "media";
-    # openFirewall = false; # Accessed via nginx reverse proxy only
+    openFirewall = true; # Direct port access (7878)
   };
 }
