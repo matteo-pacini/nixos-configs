@@ -77,6 +77,21 @@
           bantime = "86400"; # 24 hours (as recommended by Jellyfin docs)
         };
       };
+
+      # Home Assistant specific protection
+      hass-auth = {
+        settings = {
+          enabled = true;
+          filter = "hass-auth";
+          port = "http,https";
+          # Monitor Home Assistant's log file (not nginx logs)
+          logpath = "${config.services.home-assistant.configDir}/home-assistant.log";
+          backend = "auto"; # Required when monitoring log files
+          maxretry = 3;
+          findtime = "43200"; # 12 hours
+          bantime = "86400"; # 24 hours
+        };
+      };
     };
   };
 
@@ -95,5 +110,20 @@
     [Definition]
     failregex = ^.*Authentication request for .* has been denied \(IP: "<ADDR>"\)\.
     ignoreregex =
+  '';
+
+  # Custom filter for Home Assistant authentication failures
+  # Based on official Home Assistant documentation: https://www.home-assistant.io/integrations/fail2ban/
+  # Monitors Home Assistant's log file for failed login attempts
+  environment.etc."fail2ban/filter.d/hass-auth.conf".text = ''
+    [INCLUDES]
+    before = common.conf
+
+    [Definition]
+    failregex = ^%(__prefix_line)s.*Login attempt or request with invalid authentication from <HOST>.*$
+    ignoreregex =
+
+    [Init]
+    datepattern = ^%%Y-%%m-%%d %%H:%%M:%%S
   '';
 }
