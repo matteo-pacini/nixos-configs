@@ -105,7 +105,7 @@
           '';
         };
         locations."/nzbhydra2" = {
-          proxyPass = "http://127.0.0.1:5076/nzbydra2";
+          proxyPass = "http://127.0.0.2:5076/nzbydra2";
           extraConfig = ''
             # Restrict access to local networks only (HOME and GUEST VLANs)
             allow 192.168.10.0/24; # HOME VLAN
