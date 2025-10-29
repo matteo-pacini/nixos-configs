@@ -18,8 +18,16 @@
         1788 # SSH (custom port)
       ];
 
+      # Allow DNS queries (required for Home Assistant integrations)
+      allowedUDPPorts = [
+        53 # DNS
+      ];
+
       # Log refused packets for debugging
       logRefusedConnections = true;
+
+      # Ensure outbound connections are allowed (should be default, but explicit is better)
+      checkReversePath = false;
     };
   };
 
