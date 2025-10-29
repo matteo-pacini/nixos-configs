@@ -52,9 +52,7 @@
     ];
     log-driver = "journald";
     extraOptions = [
-      "--add-host=home.matteopacini.me:192.168.10.14"
-      "--add-host=jellyfin.matteopacini.me:192.168.10.14"
-      "--add-host=n8n.matteopacini.me:192.168.10.14"
+      "--add-host=gateway.matteopacini.me:192.168.10.14"
       "--network-alias=n8n"
       "--network=nexus-n8n_default"
     ];
