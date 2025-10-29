@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 {
   services.fail2ban = {
     enable = true;
@@ -69,7 +69,9 @@
           enabled = true;
           filter = "jellyfin-auth";
           port = "http,https";
-          logpath = "/var/log/nginx/access.log";
+          # Monitor Jellyfin's native log files (not nginx logs)
+          logpath = "${config.services.jellyfin.logDir}/*.log";
+          backend = "auto"; # Required when monitoring log files
           maxretry = 3;
           findtime = "43200"; # 12 hours (as recommended by Jellyfin docs)
           bantime = "86400"; # 24 hours (as recommended by Jellyfin docs)
@@ -87,11 +89,11 @@
   '';
 
   # Custom filter for Jellyfin authentication failures
-  # Based on official Jellyfin documentation and community best practices
+  # Based on official Jellyfin documentation: https://jellyfin.org/docs/general/post-install/networking/advanced/fail2ban/
+  # Monitors Jellyfin's native log files for failed authentication attempts
   environment.etc."fail2ban/filter.d/jellyfin-auth.conf".text = ''
     [Definition]
-    failregex = ^<HOST> .* "(GET|POST) .*/Users/authenticatebyname.*" (401|403) .*$
-                ^<HOST> .* "(GET|POST) .*/Users/AuthenticateByName.*" (401|403) .*$
+    failregex = ^.*Authentication request for .* has been denied \(IP: "<ADDR>"\)\.
     ignoreregex =
   '';
 }
