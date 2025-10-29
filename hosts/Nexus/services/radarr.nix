@@ -12,6 +12,6 @@
   services.radarr = {
     enable = true;
     group = "media";
-    openFirewall = true;
+    # openFirewall = false; # Accessed via nginx reverse proxy only
   };
 }

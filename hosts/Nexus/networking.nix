@@ -33,9 +33,7 @@ in
         victoriaMetricsPort
         config.services.zigbee2mqtt.settings.frontend.port
         config.services.grafana.settings.server.http_port
-      ]
-      ++ lib.optionals config.services.nzbget.enable [ 6789 ] # NZBGet default port (no port option in module)
-      ++ lib.optionals config.services.nzbhydra2.enable [ 5076 ]; # NZBHydra2 default port (no port option in module)
+      ];
 
       # Log refused packets for debugging
       logRefusedConnections = true;

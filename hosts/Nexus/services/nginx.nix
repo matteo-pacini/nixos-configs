@@ -72,6 +72,79 @@
             proxy_send_timeout 86400;
           '';
         };
+        locations."/radarr" = {
+          proxyPass = "http://127.0.0.1:7878";
+          extraConfig = ''
+            # Restrict access to local networks only (HOME and GUEST VLANs)
+            allow 192.168.10.0/24; # HOME VLAN
+            allow 192.168.20.0/24; # GUEST VLAN
+            deny all;
+
+            # Proxy headers
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $http_host;
+          '';
+        };
+        locations."/sonarr" = {
+          proxyPass = "http://127.0.0.1:8989";
+          extraConfig = ''
+            # Restrict access to local networks only (HOME and GUEST VLANs)
+            allow 192.168.10.0/24; # HOME VLAN
+            allow 192.168.20.0/24; # GUEST VLAN
+            deny all;
+
+            # Proxy headers
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $http_host;
+          '';
+        };
+        locations."/nzbhydra2" = {
+          proxyPass = "http://127.0.0.1:5076/nzbhydra2";
+          extraConfig = ''
+            # Restrict access to local networks only (HOME and GUEST VLANs)
+            allow 192.168.10.0/24; # HOME VLAN
+            allow 192.168.20.0/24; # GUEST VLAN
+            deny all;
+
+            # Proxy headers (from NZBHydra2 documentation)
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header Scheme $scheme;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+          '';
+        };
+
+      };
+      "nzbget.matteopacini.me" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://127.0.0.1:6789";
+          extraConfig = ''
+            # Restrict access to local networks only (HOME and GUEST VLANs)
+            allow 192.168.10.0/24; # HOME VLAN
+            allow 192.168.20.0/24; # GUEST VLAN
+            deny all;
+
+            # Proxy headers
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+          '';
+        };
       };
       "jellyfin.matteopacini.me" = {
         enableACME = true;
