@@ -49,6 +49,9 @@ services:
       postgres:
         condition: service_healthy
     extra_hosts:
-      # Single entry for gateway - all CNAMEs (home, n8n, jellyfin) resolve through this
+      # Split-horizon DNS for local services (container can't rely on CNAME resolution)
       - "gateway.matteopacini.me:192.168.10.14"
+      - "home.matteopacini.me:192.168.10.14"
+      - "n8n.matteopacini.me:192.168.10.14"
+      - "jellyfin.matteopacini.me:192.168.10.14"
 
