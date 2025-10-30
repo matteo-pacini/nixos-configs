@@ -19,7 +19,28 @@ in
     ];
 
     # Use modern nftables backend instead of legacy iptables
-    nftables.enable = true;
+    nftables = {
+      enable = true;
+
+      # Flush ruleset on each reload to ensure clean state
+      flushRuleset = true;
+
+      # Define fail2ban table directly to ensure correct priority
+      # This approach is used by multiple NixOS configs to work around fail2ban's
+      # nftables integration issues
+      tables = {
+        fail2ban = {
+          family = "inet";
+          content = ''
+            # fail2ban chain with priority -200 to ensure it runs BEFORE NixOS firewall (priority 0)
+            # Lower priority number = evaluated first in nftables
+            chain input {
+              type filter hook input priority -200;
+            }
+          '';
+        };
+      };
+    };
 
     # Enable firewall (required for fail2ban to function)
     firewall = {

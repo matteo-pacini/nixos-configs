@@ -156,21 +156,16 @@
     datepattern = ^%%Y-%%m-%%d %%H:%%M:%%S
   '';
 
-  # Custom nftables action configuration
-  # Based on fail2ban's nftables.conf: https://github.com/fail2ban/fail2ban/blob/master/config/action.d/nftables.conf
-  # The parameter is "chain_priority" not "nftables_priority"
-  # Lower priority number = evaluated first in nftables
+  # Custom nftables action configuration to use the fail2ban table defined in networking.nix
+  # The fail2ban table is defined directly in networking.nix with priority -200
+  # to ensure it runs BEFORE the NixOS firewall (priority 0)
   environment.etc."fail2ban/action.d/nftables-common.local".text = ''
     [Init]
     # Use inet family to support both IPv4 and IPv6
     table_family = inet
-    table = f2b-table
 
-    # Set chain priority to -200 to ensure fail2ban rules are evaluated BEFORE NixOS firewall (priority 0)
-    # In nftables: lower priority number = evaluated first
-    # Priority order: -200 (fail2ban) -> 0 (NixOS firewall)
-    # Default is -1 which is too close to 0
-    chain_priority = -200
+    # Use the fail2ban table defined in networking.nix
+    table = fail2ban
 
     # Drop packets instead of reject (more secure, no response to attacker)
     blocktype = drop
