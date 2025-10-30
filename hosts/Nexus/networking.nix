@@ -18,6 +18,13 @@ in
       "8.8.8.8" # Google DNS (secondary)
     ];
 
+    # Use modern nftables backend instead of legacy iptables
+    nftables = {
+      enable = true;
+      # Flush ruleset on each reload to ensure clean state
+      flushRuleset = true;
+    };
+
     # Enable firewall (required for fail2ban to function)
     firewall = {
       enable = true;
