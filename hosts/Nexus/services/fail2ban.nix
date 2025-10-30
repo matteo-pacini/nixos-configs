@@ -19,6 +19,10 @@
       overalljails = true;
     };
 
+    # Use nftables backend (modern replacement for iptables)
+    banaction = "nftables-multiport";
+    banaction-allports = "nftables-allports";
+
     jails = {
       # SSH protection
       sshd = {
