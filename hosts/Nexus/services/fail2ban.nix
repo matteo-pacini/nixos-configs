@@ -1,7 +1,13 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 {
   services.fail2ban = {
     enable = true;
+
+    # Use nftables backend (modern replacement for iptables)
+    packageFirewall = pkgs.nftables;
+    banaction = "nftables-multiport";
+    banaction-allports = "nftables-allports";
+
     maxretry = 5;
     ignoreIP = [
       # Localhost
@@ -18,10 +24,6 @@
       maxtime = "1536h"; # 64 days
       overalljails = true;
     };
-
-    # Use nftables backend (modern replacement for iptables)
-    banaction = "nftables-multiport";
-    banaction-allports = "nftables-allports";
 
     jails = {
       # SSH protection
@@ -152,5 +154,14 @@
 
     [Init]
     datepattern = ^%%Y-%%m-%%d %%H:%%M:%%S
+  '';
+
+  # Custom nftables action with higher priority to ensure fail2ban rules are evaluated first
+  # Priority -200 ensures fail2ban blocks happen before NixOS firewall accepts
+  environment.etc."fail2ban/action.d/nftables-common.local".text = ''
+    [Init]
+    nftables_family = inet
+    nftables_table = f2b-table
+    nftables_priority = -200
   '';
 }
