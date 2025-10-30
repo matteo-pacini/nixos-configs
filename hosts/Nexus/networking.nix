@@ -29,7 +29,7 @@ in
       # This approach is used by multiple NixOS configs to work around fail2ban's
       # nftables integration issues
       tables = {
-        fail2ban = {
+        f2b-table = {
           family = "inet";
           content = ''
             # fail2ban chain with priority -200 to ensure it runs BEFORE NixOS firewall (priority 0)
