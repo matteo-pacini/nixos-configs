@@ -37,6 +37,7 @@
           filter = "caddy-http-auth";
           port = "http,https";
           logpath = "/var/log/caddy/access.log";
+          backend = "auto"; # Required for file-based monitoring
           maxretry = 5;
         };
       };
@@ -47,6 +48,7 @@
           filter = "caddy-botsearch";
           port = "http,https";
           logpath = "/var/log/caddy/access.log";
+          backend = "auto"; # Required for file-based monitoring
           maxretry = 2;
         };
       };
@@ -58,6 +60,7 @@
           filter = "n8n-auth";
           port = "http,https";
           logpath = "/var/log/caddy/access.log";
+          backend = "auto"; # Required for file-based monitoring
           maxretry = 3;
           findtime = "43200"; # 12 hours
           bantime = "86400"; # 24 hours
