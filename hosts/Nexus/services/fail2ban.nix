@@ -157,24 +157,22 @@
   '';
 
   # Custom nftables action configuration
-  # Based on official nftables wiki: https://wiki.nftables.org/wiki-nftables/index.php/Configuring_chains
-  # "chains with priorities -12, -1, 0, 10 would be consulted exactly in that order"
-  # Lower priority number = evaluated first
+  # Based on fail2ban's nftables.conf: https://github.com/fail2ban/fail2ban/blob/master/config/action.d/nftables.conf
+  # The parameter is "chain_priority" not "nftables_priority"
+  # Lower priority number = evaluated first in nftables
   environment.etc."fail2ban/action.d/nftables-common.local".text = ''
     [Init]
     # Use inet family to support both IPv4 and IPv6
-    nftables_family = inet
-    nftables_table = f2b-table
+    table_family = inet
+    table = f2b-table
 
-    # Set priority to -200 to ensure fail2ban rules are evaluated BEFORE NixOS firewall (priority 0)
+    # Set chain priority to -200 to ensure fail2ban rules are evaluated BEFORE NixOS firewall (priority 0)
     # In nftables: lower priority number = evaluated first
     # Priority order: -200 (fail2ban) -> 0 (NixOS firewall)
-    nftables_priority = -200
+    # Default is -1 which is too close to 0
+    chain_priority = -200
 
     # Drop packets instead of reject (more secure, no response to attacker)
     blocktype = drop
-
-    # Remove nftables prefix to keep set names short (15 char limit)
-    nftables_set_prefix =
   '';
 }
