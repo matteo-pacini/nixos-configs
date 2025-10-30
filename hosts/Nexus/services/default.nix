@@ -11,7 +11,6 @@
     ./sonarr.nix
     ./qbittorrent
     ./n8n
-    ./acme.nix
     ./ddns.nix
     ./caddy.nix
     ./fail2ban.nix

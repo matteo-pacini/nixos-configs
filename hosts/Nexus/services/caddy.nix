@@ -18,18 +18,13 @@ in
     # Email for Let's Encrypt ACME registration
     email = "m+acme@matteopacini.me";
 
-    # Global configuration
-    globalConfig = ''
-      # Combined access and error logging in JSON format for fail2ban compatibility
-      log {
-        output file /var/log/caddy/access.log
-        format json
-      }
-    '';
-
     # Virtual hosts
     virtualHosts = {
       "jellyfin.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
         extraConfig = ''
           ${securityHeaders}
 
@@ -45,6 +40,10 @@ in
       };
 
       "n8n.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
         extraConfig = ''
           ${securityHeaders}
 
@@ -61,6 +60,10 @@ in
       };
 
       "home.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
         extraConfig = ''
           ${securityHeaders}
 
