@@ -1,12 +1,7 @@
-{ config, pkgs, ... }:
+{ config, ... }:
 {
   services.fail2ban = {
     enable = true;
-
-    # Use nftables backend (modern replacement for iptables)
-    packageFirewall = pkgs.nftables;
-    banaction = "nftables-multiport";
-    banaction-allports = "nftables-allports";
 
     maxretry = 5;
     ignoreIP = [
