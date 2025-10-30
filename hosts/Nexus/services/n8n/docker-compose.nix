@@ -20,7 +20,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."nexus-n8n-n8n" = {
-    image = "docker.n8n.io/n8nio/n8n:1.117.1";
+    image = "docker.n8n.io/n8nio/n8n:1.118.1";
     environment = {
       "DB_POSTGRESDB_DATABASE" = "n8n";
       "DB_POSTGRESDB_HOST" = "postgres";
@@ -30,27 +30,32 @@
       "DB_TYPE" = "postgresdb";
       "GENERIC_TIMEZONE" = "Europe/London";
       "N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE" = "true";
-      "N8N_HOST" = "nexus.home.internal";
+      "N8N_HOST" = "n8n.matteopacini.me";
       "N8N_PORT" = "5678";
       "N8N_PROTOCOL" = "http";
+      "N8N_PROXY_HOPS" = "1";
       "N8N_SECURE_COOKIE" = "false";
       "NODE_ENV" = "production";
       "NODE_FUNCTION_ALLOW_BUILTIN" = "*";
       "NODE_FUNCTION_ALLOW_EXTERNAL" = "*";
       "TZ" = "Europe/London";
-      "WEBHOOK_URL" = "http://nexus.home.internal:5678";
+      "WEBHOOK_URL" = "https://n8n.matteopacini.me";
     };
     volumes = [
       "/var/lib/n8n:/home/node/.n8n:rw"
     ];
     ports = [
-      "5678:5678/tcp"
+      "0.0.0.0:5678:5678/tcp"
     ];
     dependsOn = [
       "nexus-n8n-postgres"
     ];
     log-driver = "journald";
     extraOptions = [
+      "--add-host=gateway.matteopacini.me:192.168.10.14"
+      "--add-host=home.matteopacini.me:192.168.10.14"
+      "--add-host=jellyfin.matteopacini.me:192.168.10.14"
+      "--add-host=n8n.matteopacini.me:192.168.10.14"
       "--network-alias=n8n"
       "--network=nexus-n8n_default"
     ];

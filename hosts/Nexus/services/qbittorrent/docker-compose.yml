@@ -1,3 +1,5 @@
+name: nexus-qbittorrent
+
 services:
 
   gluetun:
@@ -14,7 +16,7 @@ services:
     restart: unless-stopped
 
   torrent:
-    image: linuxserver/qbittorrent:5.0.4-libtorrentv1
+    image: linuxserver/qbittorrent:5.1.2-libtorrentv1
     depends_on:
       - gluetun
     network_mode: "service:gluetun"

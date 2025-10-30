@@ -12,10 +12,7 @@
   services.sonarr = {
     enable = true;
     group = "media";
+    openFirewall = true; # Direct port access (8989)
   };
 
-  # nixpkgs.config.permittedInsecurePackages = [
-  #   "dotnet-sdk-6.0.428"
-  #   "aspnetcore-runtime-6.0.36"
-  # ];
 }

@@ -18,14 +18,15 @@ services:
       retries: 10
 
   n8n:
-    image: docker.n8n.io/n8nio/n8n:1.117.1
+    image: docker.n8n.io/n8nio/n8n:1.118.1
     restart: always
     environment:
-      - N8N_HOST=nexus.home.internal
-      - WEBHOOK_URL=http://nexus.home.internal:5678
+      - N8N_HOST=n8n.matteopacini.me
+      - WEBHOOK_URL=https://n8n.matteopacini.me
       - N8N_SECURE_COOKIE=false
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
+      - N8N_PROXY_HOPS=1
       - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
       - NODE_FUNCTION_ALLOW_EXTERNAL=*
       - NODE_FUNCTION_ALLOW_BUILTIN=*
@@ -39,7 +40,7 @@ services:
       - DB_POSTGRESDB_USER=user
       - DB_POSTGRESDB_PASSWORD=password
     ports:
-      - 5678:5678
+      - 0.0.0.0:5678:5678
     links:
       - postgres
     volumes:
@@ -47,4 +48,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    extra_hosts:
+      # Split-horizon DNS for local services (container can't rely on CNAME resolution)
+      - "gateway.matteopacini.me:192.168.10.14"
+      - "home.matteopacini.me:192.168.10.14"
+      - "n8n.matteopacini.me:192.168.10.14"
+      - "jellyfin.matteopacini.me:192.168.10.14"
 

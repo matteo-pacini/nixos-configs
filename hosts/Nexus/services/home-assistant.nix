@@ -2,6 +2,7 @@
 {
   services.home-assistant = {
     enable = true;
+    openFirewall = true;
     extraComponents = [
       # Components required to complete the onboarding
       "analytics"
@@ -172,6 +173,11 @@
 
       shell_command = { };
 
+      logger = {
+        default = "info";
+        logs."homeassistant.components.http.ban" = "warning";
+      };
+
       recorder = {
         db_url = "postgresql://@/hass";
         purge_keep_days = 10;
@@ -182,8 +188,8 @@
         server_host = "0.0.0.0";
         server_port = 8123;
         trusted_proxies = [ "127.0.0.1" ];
-        ip_ban_enabled = true;
-        login_attempts_threshold = 5;
+        # Disable built-in IP banning - handled by fail2ban instead
+        ip_ban_enabled = false;
       };
 
       frontend = {
