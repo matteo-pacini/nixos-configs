@@ -1,7 +1,12 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 {
   services.fail2ban = {
     enable = true;
+
+    # Use iptables backend (legacy but reliable)
+    packageFirewall = pkgs.iptables;
+    banaction = "iptables-multiport";
+    banaction-allports = "iptables-allports";
 
     maxretry = 5;
     ignoreIP = [
