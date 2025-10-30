@@ -34,7 +34,7 @@ in
           content = ''
             # fail2ban chain with priority -200 to ensure it runs BEFORE NixOS firewall (priority 0)
             # Lower priority number = evaluated first in nftables
-            chain input {
+            chain f2b-chain {
               type filter hook input priority -200;
             }
           '';

@@ -155,19 +155,4 @@
     [Init]
     datepattern = ^%%Y-%%m-%%d %%H:%%M:%%S
   '';
-
-  # Custom nftables action configuration to use the fail2ban table defined in networking.nix
-  # The fail2ban table is defined directly in networking.nix with priority -200
-  # to ensure it runs BEFORE the NixOS firewall (priority 0)
-  environment.etc."fail2ban/action.d/nftables-common.local".text = ''
-    [Init]
-    # Use inet family to support both IPv4 and IPv6
-    table_family = inet
-
-    # Use the fail2ban table defined in networking.nix
-    table = fail2ban
-
-    # Drop packets instead of reject (more secure, no response to attacker)
-    blocktype = drop
-  '';
 }
