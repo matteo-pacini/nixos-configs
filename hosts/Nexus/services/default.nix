@@ -14,6 +14,7 @@
     ./ddns.nix
     ./caddy.nix
     ./fail2ban.nix
+    ./tailscale.nix
     ./zigbee2mqtt.nix
     ./mosquitto.nix
     ./home-assistant.nix
