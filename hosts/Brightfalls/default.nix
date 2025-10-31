@@ -2,7 +2,6 @@
   lib,
   pkgs,
   inputs,
-  config,
   isVM,
   ...
 }:
@@ -49,7 +48,10 @@
 
   boot.kernelPatches =
     let
-      patchesDir = "${inputs.bore-scheduler-src}/patches/stable/linux-${lib.versions.majorMinor config.boot.kernelPackages.kernel.version}-bore";
+      # Use pkgs.linuxPackages_6_17.kernel.version instead of config.boot.kernelPackages.kernel.version
+      # to avoid infinite recursion (boot.kernelPatches affects boot.kernelPackages)
+      kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_6_17.kernel.version;
+      patchesDir = "${inputs.bore-scheduler-src}/patches/stable/linux-${kernelVersion}-bore";
     in
     lib.mapAttrsToList (name: _: {
       name = "bore-${name}";
