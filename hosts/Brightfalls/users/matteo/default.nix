@@ -37,7 +37,7 @@
       gnomeExtensions.dash-to-dock
       gnome-tweaks
       # Downloads
-      aria
+      aria2
       # Security
       _1password-gui
       # Development
