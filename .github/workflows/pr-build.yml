@@ -17,7 +17,7 @@ jobs:
   pr-build:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - host: BrightFalls
@@ -95,3 +95,12 @@ jobs:
           echo '```diff' >> "$GITHUB_STEP_SUMMARY"
           nix run github:faukah/dix -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: nick-fields/retry@v3
+        name: Push to cache
+        if: success()
+        with:
+          timeout_minutes: 7200
+          max_attempts: 5
+          retry_on: error
+          command: nix run nixpkgs#attic-client -- push "${{ matrix.host }}" result -j 3
