@@ -42,7 +42,8 @@ in
         config.services.grafana.settings.server.http_port
       ]
       ++ lib.optionals config.services.nzbhydra2.enable [ 5076 ]
-      ++ lib.optionals config.services.nzbget.enable [ 6789 ];
+      ++ lib.optionals config.services.nzbget.enable [ 6789 ]
+      ++ lib.unique (map (l: l.port) config.services.mosquitto.listeners);
 
       # Allow HTTP/3 (QUIC) for Caddy
       allowedUDPPorts = [
