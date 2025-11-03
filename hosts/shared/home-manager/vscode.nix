@@ -52,6 +52,8 @@ in
               dbaeumer.vscode-eslint
               # LLMs
               saoudrizwan.claude-dev
+              # GHA
+              github.vscode-github-actions
             ]
             ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
               {
