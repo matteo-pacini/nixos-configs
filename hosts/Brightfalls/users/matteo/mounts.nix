@@ -1,8 +1,14 @@
 { lib, isVM, ... }:
 {
-  systemd.user.tmpfiles.rules = lib.optionals (!isVM) [
-    "d /home/matteo/Mounts/Games 0700 matteo users -"
-  ];
+  systemd.user.tmpfiles.settings = lib.mkIf (!isVM) {
+    "10-mounts".rules = {
+      "/home/matteo/Mounts/Games".d = {
+        mode = "0700";
+        user = "matteo";
+        group = "users";
+      };
+    };
+  };
 
   systemd.user.mounts.home-matteo-Mounts-Games = lib.mkIf (!isVM) {
     Unit = {
