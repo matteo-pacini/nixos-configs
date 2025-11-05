@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 {
@@ -27,14 +28,22 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
-  nix.settings.trusted-users = [
-    "debora"
-    "root"
-  ];
+  nix = {
+    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
+    registry = {
+      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
+    };
+    settings = {
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      trusted-users = [
+        "debora"
+        "root"
+      ];
+    };
+  };
 
   # Timezone and locale
 

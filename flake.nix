@@ -186,6 +186,9 @@
       #########
       nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = {
+          inherit inputs;
+        };
         modules = [
           {
             nixpkgs.overlays = [
@@ -244,6 +247,9 @@
       ################
       nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = {
+          inherit inputs;
+        };
         modules = [
           {
             nixpkgs.overlays = [

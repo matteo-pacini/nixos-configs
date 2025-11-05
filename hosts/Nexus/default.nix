@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 {
   imports = [
     ./networking.nix
@@ -10,19 +10,25 @@
     ./snapraid.nix
   ];
 
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    trusted-users = [
-      "root"
-      "matteo"
-    ];
-    extra-platforms = [
-      "x86_64-linux"
-      "aarch64-linux"
-    ];
+  nix = {
+    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
+    registry = {
+      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
+    };
+    settings = {
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      trusted-users = [
+        "root"
+        "matteo"
+      ];
+      extra-platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
   };
 
   boot.kernelPackages = pkgs.linuxPackages_6_17;

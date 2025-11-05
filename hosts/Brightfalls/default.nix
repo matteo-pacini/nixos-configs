@@ -23,6 +23,10 @@
   # Nix & Nixpkgs
 
   nix = {
+    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
+    registry = {
+      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
+    };
     settings = {
       experimental-features = [
         "nix-command"
