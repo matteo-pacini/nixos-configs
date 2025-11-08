@@ -1,14 +1,8 @@
 { ... }:
 {
-  systemd.user.tmpfiles.settings = {
-    "10-mounts".rules = {
-      "/home/debora/Mounts/Debora".d = {
-        mode = "0700";
-        user = "debora";
-        group = "users";
-      };
-    };
-  };
+  systemd.user.tmpfiles.rules = [
+    "d /home/debora/Mounts/Debora 0700 debora users"
+  ];
 
   systemd.user.mounts.home-debora-Mounts-Debora = {
     Unit = {
