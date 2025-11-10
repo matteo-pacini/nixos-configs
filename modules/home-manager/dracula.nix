@@ -71,7 +71,7 @@ in
         THEMES_DIR="${config.home.homeDirectory}/Library/Developer/Xcode/UserData/FontAndColorThemes"
         [ -d "$THEMES_DIR" ] || mkdir -p "$THEMES_DIR"
         cd "$THEMES_DIR"
-        [ -f Dracula.xccolortheme ] && unlink Dracula.xccolortheme
+        $DRY_RUN_CMD rm -f Dracula.xccolortheme
         $DRY_RUN_CMD ln -s "${inputs.xcode-dracula-theme}/Dracula.xccolortheme" .
       '';
     })
