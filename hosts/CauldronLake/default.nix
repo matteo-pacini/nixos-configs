@@ -1,6 +1,4 @@
 {
-  config,
-  lib,
   pkgs,
   inputs,
   ...
@@ -18,11 +16,11 @@
     ../shared/bluetooth.nix
     ./printer.nix
     ./iphone.nix
+    ../shared/linux/kernel.nix
   ];
 
-  # Kernel
-
-  boot.kernelPackages = pkgs.linuxPackages_6_17;
+  # Shared kernel configuration (no BORE patches)
+  shared.kernel.enable = true;
 
   environment.systemPackages = with pkgs; [ sshfs ];
 

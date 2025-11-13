@@ -8,7 +8,11 @@
     ./hardware-extra.nix
     ./services
     ./snapraid.nix
+    ../shared/linux/kernel.nix
   ];
+
+  # Shared kernel configuration (no BORE patches)
+  shared.kernel.enable = true;
 
   nix = {
     nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
@@ -30,8 +34,6 @@
       ];
     };
   };
-
-  boot.kernelPackages = pkgs.linuxPackages_6_17;
 
   boot.loader.grub = {
     enable = true;
