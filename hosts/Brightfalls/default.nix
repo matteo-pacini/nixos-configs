@@ -18,7 +18,14 @@
     ./hardware.nix
     ./printer.nix
     ../shared/bluetooth.nix
+    ../shared/linux/kernel.nix
   ];
+
+  # Shared kernel configuration with BORE patches
+  shared.kernel = {
+    enable = true;
+    useBorePatches = true;
+  };
 
   # Nix & Nixpkgs
 
@@ -45,22 +52,6 @@
       "qtwebengine-5.15.19"
     ];
   };
-
-  # Kernel
-
-  boot.kernelPackages = pkgs.linuxPackages_6_17;
-
-  boot.kernelPatches =
-    let
-      # Use pkgs.linuxPackages_6_17.kernel.version instead of config.boot.kernelPackages.kernel.version
-      # to avoid infinite recursion (boot.kernelPatches affects boot.kernelPackages)
-      kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_6_17.kernel.version;
-      patchesDir = "${inputs.bore-scheduler-src}/patches/stable/linux-${kernelVersion}-bore";
-    in
-    lib.mapAttrsToList (name: _: {
-      name = "bore-${name}";
-      patch = "${patchesDir}/${name}";
-    }) (builtins.readDir patchesDir);
 
   # Boot loader
 
