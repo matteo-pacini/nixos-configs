@@ -66,6 +66,7 @@
             # Uses paranoid security settings: Serpent cipher, SHA512, high iteration time
             vault = {
               size = "48M";
+              priority = 100; # Create vault first (lower priority = created first)
               content = {
                 type = "luks";
                 name = "cryptvault";
@@ -133,6 +134,7 @@
             # LUKS encrypted, auto-unlocked with keyfile from vault
             root = {
               size = "100%";
+              priority = 1000; # Create after vault (default priority)
               content = {
                 type = "luks";
                 name = "cryptroot";
@@ -243,6 +245,7 @@
           partitions = {
             games1 = {
               size = "100%";
+              priority = 1000; # Create after vault (default priority)
               content = {
                 type = "luks";
                 name = "cryptgames1";
@@ -293,6 +296,7 @@
           partitions = {
             games2 = {
               size = "100%";
+              priority = 1000; # Create after vault (default priority)
               content = {
                 type = "luks";
                 name = "cryptgames2";
