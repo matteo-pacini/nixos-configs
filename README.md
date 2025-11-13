@@ -112,17 +112,19 @@ echo -n "your-vault-password" > /tmp/vault.passwordFile
 # 2. Generate keyfile for other volumes (used during disko format)
 dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
 
-# 3. Run disko (formats all disks and mounts to /mnt)
+# 3. Run disko (formats all disks, mounts to /mnt, and copies keyfile to vault)
 sudo nix run github:nix-community/disko/latest -- \
   --mode destroy,format,mount \
   --flake github:matteo-pacini/nixos-configs#BrightFalls
 
-# 4. Copy keyfile to vault (for boot-time auto-unlock)
-cp /tmp/luks.key /mnt/vault/luks.key && chmod 400 /mnt/vault/luks.key
-
-# 5. Install NixOS
+# 4. Install NixOS
 sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
 ```
+
+**Boot sequence:**
+1. Enter vault password → vault unlocks and mounts at `/vault`
+2. Root/games volumes auto-unlock using `/vault/luks.key`
+3. System boots normally
 
 </details>
 

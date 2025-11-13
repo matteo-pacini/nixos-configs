@@ -111,6 +111,11 @@
                     "noatime"
                     "errors=remount-ro"
                   ];
+                  # Copy keyfile to vault after mounting (for boot-time auto-unlock of other volumes)
+                  postMountHook = ''
+                    cp /tmp/luks.key $DISKO_MOUNTPOINT/vault/luks.key
+                    chmod 400 $DISKO_MOUNTPOINT/vault/luks.key
+                  '';
                 };
               };
             };
