@@ -106,18 +106,22 @@ This repository contains declarative **NixOS** and **nix-darwin** configurations
 
 **Installation:**
 ```bash
-# 1. Create password file for vault
-echo -n "password" > /tmp/vault.passwordFile
+# 1. Create password file for vault (used during disko format)
+echo -n "your-vault-password" > /tmp/vault.passwordFile
 
-# 2. Generate keyfile for other volumes
+# 2. Generate keyfile for other volumes (used during disko format)
 dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
 
-# 3. Run disko
+# 3. Run disko (formats all disks and mounts to /mnt)
+sudo nix run github:nix-community/disko/latest -- \
+  --mode destroy,format,mount \
+  --flake github:matteo-pacini/nixos-configs#BrightFalls
 
-# 4. Copy keyfile to vault
-sudo cp /tmp/luks.key /mnt/vault/luks.key && sudo chmod 400 /mnt/vault/luks.key
+# 4. Copy keyfile to vault (for boot-time auto-unlock)
+cp /tmp/luks.key /mnt/vault/luks.key && chmod 400 /mnt/vault/luks.key
 
 # 5. Install NixOS
+sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
 ```
 
 </details>
