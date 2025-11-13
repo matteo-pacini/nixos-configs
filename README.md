@@ -80,13 +80,45 @@ This repository contains declarative **NixOS** and **nix-darwin** configurations
 - **Desktop Environment:** GNOME
 - **Kernel:** Linux 6.17 with **BORE scheduler patches**
 - **Bootloader:** GRUB2 with EFI support
-- **Filesystems:** XFS (root, home, data), encrypted with LUKS
-- **Encryption:** USB key-based LUKS unlock with fallback to password
+- **Filesystems:** Btrfs (root with subvolumes), ext4 (games), encrypted with LUKS
+- **Encryption:** Vault partition pattern with keyfile auto-unlock
 - **Timezone:** Europe/London (en_GB.UTF-8)
 - **Virtualization:** KVM/QEMU support enabled
 - **GPU Control:** LACT for AMD GPU overclocking
 - **Game Streaming:** Sunshine server
 - **Process Management:** Ananicy-cpp for process prioritization
+
+</details>
+
+<details>
+<summary><b>💾 Disk Layout (Disko)</b></summary>
+
+**OS Disk (1TB Samsung 860 EVO):**
+- `/boot` - 512MB EFI partition (unencrypted)
+- `/vault` - 48MB LUKS2 encrypted (Serpent-XTS, password-unlocked)
+- `swap` - 32GB random encryption (ephemeral key per boot)
+- `/` - ~899GB LUKS2 encrypted Btrfs (keyfile auto-unlock)
+  - Subvolumes: `@`, `@home`, `@nix`, `@log`, `@cache`, `@snapshots`
+
+**Games Disks:**
+- 512GB Samsung 850 PRO - LUKS2 encrypted ext4 (keyfile auto-unlock)
+- 256GB Samsung 840 PRO - LUKS2 encrypted ext4 (keyfile auto-unlock)
+
+**Installation:**
+```bash
+# 1. Create password file for vault
+echo -n "password" > /tmp/vault.passwordFile
+
+# 2. Generate keyfile for other volumes
+dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
+
+# 3. Run disko
+
+# 4. Copy keyfile to vault
+sudo cp /tmp/luks.key /mnt/vault/luks.key && sudo chmod 400 /mnt/vault/luks.key
+
+# 5. Install NixOS
+```
 
 </details>
 

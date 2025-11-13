@@ -69,7 +69,8 @@
               content = {
                 type = "luks";
                 name = "cryptvault";
-                # This will prompt for password during boot
+                # Password file for disko installation (will prompt for password at boot)
+                passwordFile = "/tmp/vault.passwordFile";
                 settings = {
                   allowDiscards = true;
                 };
