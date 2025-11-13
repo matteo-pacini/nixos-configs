@@ -111,8 +111,9 @@
                     "noatime"
                     "errors=remount-ro"
                   ];
-                  # Copy keyfile to vault after mounting (for boot-time auto-unlock of other volumes)
-                  postMountHook = ''
+                  postCreateHook = ''
+                    echo "Copying keyfile to vault..."
+                    mount $DISKO_DEVICE $DISKO_MOUNTPOINT
                     cp /tmp/luks.key $DISKO_MOUNTPOINT/vault/luks.key
                     chmod 400 $DISKO_MOUNTPOINT/vault/luks.key
                   '';
@@ -136,11 +137,8 @@
               content = {
                 type = "luks";
                 name = "cryptroot";
-                # Keyfile for disko formatting (must exist before running disko)
-                passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
-                  # Keyfile for boot-time unlock (will be copied to /vault after disko)
                   keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
@@ -246,7 +244,6 @@
               content = {
                 type = "luks";
                 name = "cryptgames1";
-                passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
                   keyFile = "/vault/luks.key";
@@ -296,7 +293,6 @@
               content = {
                 type = "luks";
                 name = "cryptgames2";
-                passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
                   keyFile = "/vault/luks.key";
