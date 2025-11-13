@@ -43,7 +43,7 @@
       # ============================================================================
       # OS Disk - 1TB Samsung 860 EVO (S4X6NJ0N406662R)
       # ============================================================================
-      os-disk = {
+      a-os-disk = {
         type = "disk";
         device = "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R";
         content = {
@@ -66,7 +66,6 @@
             # Uses paranoid security settings: Serpent cipher, SHA512, high iteration time
             vault = {
               size = "48M";
-              priority = 100; # Create vault first (lower priority = created first)
               content = {
                 type = "luks";
                 name = "cryptvault";
@@ -134,7 +133,6 @@
             # LUKS encrypted, auto-unlocked with keyfile from vault
             root = {
               size = "100%";
-              priority = 1000; # Create after vault (default priority)
               content = {
                 type = "luks";
                 name = "cryptroot";
@@ -237,7 +235,7 @@
       # ============================================================================
       # Games Disk 1 - 512GB Samsung 850 PRO (S250NXAG978494H)
       # ============================================================================
-      games-disk-1 = {
+      b-games-disk-1 = {
         type = "disk";
         device = "/dev/disk/by-id/ata-Samsung_SSD_850_PRO_512GB_S250NXAG978494H";
         content = {
@@ -245,7 +243,6 @@
           partitions = {
             games1 = {
               size = "100%";
-              priority = 1000; # Create after vault (default priority)
               content = {
                 type = "luks";
                 name = "cryptgames1";
@@ -288,7 +285,7 @@
       # ============================================================================
       # Games Disk 2 - 256GB Samsung 840 PRO (S1ATNSADA34160X)
       # ============================================================================
-      games-disk-2 = {
+      c-games-disk-2 = {
         type = "disk";
         device = "/dev/disk/by-id/ata-Samsung_SSD_840_PRO_Series_S1ATNSADA34160X";
         content = {
@@ -296,7 +293,6 @@
           partitions = {
             games2 = {
               size = "100%";
-              priority = 1000; # Create after vault (default priority)
               content = {
                 type = "luks";
                 name = "cryptgames2";
