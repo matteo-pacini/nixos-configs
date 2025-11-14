@@ -51,37 +51,14 @@ in
 
   boot.initrd.luks.devices = lib.mkIf (!isVM) {
     cryptroot = {
-      keyFile = lib.mkForce "/vault/luks.key";
-      fallbackToPassword = lib.mkForce false;
+      keyFile = lib.mkForce "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R-part2:/luks.key";
     };
     cryptgames1 = {
-      keyFile = lib.mkForce "/vault/luks.key";
-      fallbackToPassword = lib.mkForce false;
+      keyFile = lib.mkForce "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R-part2:/luks.key";
     };
     cryptgames2 = {
-      keyFile = lib.mkForce "/vault/luks.key";
-      fallbackToPassword = lib.mkForce false;
+      keyFile = lib.mkForce "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R-part2:/luks.key";
     };
   };
-
-  boot.initrd.systemd.mounts = lib.optionals (!isVM) [
-    {
-      what = "/dev/mapper/cryptvault";
-      where = "/vault";
-      type = "ext2";
-      options = "ro";
-      requiredBy = [
-        "systemd-cryptsetup@cryptroot.service"
-        "systemd-cryptsetup@cryptgames1.service"
-        "systemd-cryptsetup@cryptgames2.service"
-      ];
-      after = [ "systemd-cryptsetup@cryptvault.service" ];
-      before = [
-        "systemd-cryptsetup@cryptroot.service"
-        "systemd-cryptsetup@cryptgames1.service"
-        "systemd-cryptsetup@cryptgames2.service"
-      ];
-    }
-  ];
 
 }
