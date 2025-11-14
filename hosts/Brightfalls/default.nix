@@ -65,14 +65,9 @@
 
   # System Packages
 
-  environment.systemPackages =
-    with pkgs;
-    [
-      sshfs
-    ]
-    ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
-      steamtinkerlaunch
-    ];
+  environment.systemPackages = with pkgs; [
+    sshfs
+  ];
 
   # Timezone and locale
 
