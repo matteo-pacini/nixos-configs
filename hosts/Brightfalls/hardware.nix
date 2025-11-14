@@ -61,6 +61,26 @@ in
     };
   };
 
+  boot.initrd.systemd.mounts = lib.optionals (!isVM) [
+    {
+      what = "/dev/mapper/cryptvault";
+      where = "/vault";
+      type = "ext2";
+      options = "ro";
+      requiredBy = [
+        "systemd-cryptsetup@cryptroot.service"
+        "systemd-cryptsetup@cryptgames1.service"
+        "systemd-cryptsetup@cryptgames2.service"
+      ];
+      after = [ "systemd-cryptsetup@cryptvault.service" ];
+      before = [
+        "systemd-cryptsetup@cryptroot.service"
+        "systemd-cryptsetup@cryptgames1.service"
+        "systemd-cryptsetup@cryptgames2.service"
+      ];
+    }
+  ];
+
   fileSystems = lib.mkIf (!isVM) {
     "/vault".neededForBoot = true;
   };
