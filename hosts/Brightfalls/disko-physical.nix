@@ -71,6 +71,7 @@
                 name = "cryptvault";
                 # Password file for disko installation (will prompt for password at boot)
                 passwordFile = "/tmp/vault.passwordFile";
+                initrdUnlock = true;
                 settings = {
                   allowDiscards = true;
                   # No keyFile - will prompt for password during boot
@@ -142,7 +143,9 @@
                 type = "luks";
                 name = "cryptroot";
                 passwordFile = "/tmp/luks.key";
+                initrdUnlock = true;
                 # Settings passed to boot.initrd.luks.devices.cryptroot
+                # Note: keyFile is set in hardware.nix, not here, to avoid overriding passwordFile during formatting
                 settings = {
                   allowDiscards = true;
                 };
@@ -250,7 +253,9 @@
                 type = "luks";
                 name = "cryptgames1";
                 passwordFile = "/tmp/luks.key";
-                # Settings passed to boot.initrd.luks.devices.cryptgames1
+                initrdUnlock = false;
+                # Settings for systemd-cryptsetup (unlocked after boot)
+                # Note: keyFile will be read from /etc/crypttab which references /vault/luks.key
                 settings = {
                   allowDiscards = true;
                 };
@@ -300,7 +305,9 @@
                 type = "luks";
                 name = "cryptgames2";
                 passwordFile = "/tmp/luks.key";
-                # Settings passed to boot.initrd.luks.devices.cryptgames2
+                initrdUnlock = false;
+                # Settings for systemd-cryptsetup (unlocked after boot)
+                # Note: keyFile will be read from /etc/crypttab which references /vault/luks.key
                 settings = {
                   allowDiscards = true;
                 };

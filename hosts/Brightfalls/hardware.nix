@@ -5,19 +5,6 @@
   isVM,
   ...
 }:
-let
-  # Hook to mount vault before unlocking devices that use the keyfile
-  mountVaultHook = ''
-    mkdir -p /vault
-    mount /dev/mapper/cryptvault /vault
-  '';
-
-  # Hook to unmount vault after unlocking
-  unmountVaultHook = ''
-    umount /vault
-    rmdir /vault
-  '';
-in
 {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
@@ -48,29 +35,38 @@ in
   hardware.enableRedistributableFirmware = true;
 
   boot.supportedFilesystems = [ "btrfs" ];
+  boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
 
-  # Mount vault before trying to decrypt root filesystem
-  boot.initrd.postDeviceCommands = pkgs.lib.mkBefore (
-    lib.optionalString (!isVM) ''
-      echo "Mounting vault..."
-      mkdir -m 0755 -p /vault
-      mount -t ext2 -o ro /dev/mapper/cryptvault /vault
-      echo "Vault mounted at /vault"
-    ''
-  );
+  # Use keyfile from vault to unlock the root filesystem in initrd
+  # The vault must be unlocked first (with password), then its keyfile is used for root
+  boot.initrd.luks.devices.cryptroot = lib.mkIf (!isVM) {
+    keyFile = lib.mkForce "/vault/luks.key";
+  };
 
-  boot.initrd.luks.devices = lib.mkIf (!isVM) {
-    cryptroot = {
-      keyFile = lib.mkForce "/vault/luks.key";
-      # If this is true the decryption is attempted before the postDeviceCommands can run
-      preLVM = false;
+  # Mount the vault in the initrd so /vault/luks.key is available to unlock root
+  # This service runs after cryptvault is unlocked and before cryptroot needs the keyfile
+  boot.initrd.systemd.services.mount-vault = lib.mkIf (!isVM) {
+    description = "Mount vault partition to access LUKS keyfile";
+    wantedBy = [ "initrd.target" ];
+    before = [ "systemd-cryptsetup@cryptroot.service" ];
+    after = [ "systemd-cryptsetup@cryptvault.service" ];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
     };
-    cryptgames1 = {
-      keyFile = lib.mkForce "/vault/luks.key";
-    };
-    cryptgames2 = {
-      keyFile = lib.mkForce "/vault/luks.key";
-    };
+    script = ''
+      mkdir -p /vault
+      mount -t ext2 /dev/mapper/cryptvault /vault
+    '';
+  };
+
+  # Configure post-boot unlocking of games disks using the same keyfile
+  environment.etc."crypttab" = lib.mkIf (!isVM) {
+    text = ''
+      cryptgames1 /dev/disk/by-id/ata-Samsung_SSD_850_PRO_512GB_S250NXAG978494H-part1 /vault/luks.key luks,discard
+      cryptgames2 /dev/disk/by-id/ata-Samsung_SSD_840_PRO_Series_S1ATNSADA34160X-part1 /vault/luks.key luks,discard
+    '';
   };
 
 }
