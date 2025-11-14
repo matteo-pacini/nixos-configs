@@ -34,6 +34,10 @@
   hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableRedistributableFirmware = true;
 
+  # Enable systemd in initrd for proper LUKS dependency ordering
+  # This ensures vault is unlocked and mounted before other devices try to access the keyfile
+  boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
+
   # Vault must be mounted during initrd before other LUKS devices can access the keyfile
   fileSystems."/vault".neededForBoot = lib.mkIf (!isVM) true;
 
