@@ -50,10 +50,7 @@
       what = "/dev/mapper/cryptvault";
       where = "/vault";
       type = "ext2";
-      options = [
-        "noatime"
-        "errors=remount-ro"
-      ];
+      options = "noatime,errors=remount-ro";
       wantedBy = [ "initrd.target" ];
       after = [ "systemd-cryptsetup@cryptvault.service" ];
     }
