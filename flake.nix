@@ -147,6 +147,8 @@
           (import ./overlays/brightfalls.nix { isVM = false; })
         ];
         extraModules = [
+          inputs.disko.nixosModules.disko
+          ./hosts/Brightfalls/disko-physical.nix
           inputs.agenix.nixosModules.default
           {
             age.identityPaths = [ "/etc/.age/Nexus.txt" ];

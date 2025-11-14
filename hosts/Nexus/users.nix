@@ -18,9 +18,9 @@
       ];
       shell = pkgs.zsh;
       openssh.authorizedKeys.keys = [
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIID8wJBTqQWKLy0RxQDuw8PAvD/KwYxSBcWHS434E3ar NightSprings"
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFPfaTw8AYPvjul32mIt64juaOn8wjmlJoplWxCzCZhi WorkLaptop"
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEDKbjllwk/2outyoF+hB1SrDmQD7X1ywrt17hvL5w6p BrightFalls"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIID8wJBTqQWKLy0RxQDuw8PAvD/KwYxSBcWHS434E3ar matteo@NightSprings"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFPfaTw8AYPvjul32mIt64juaOn8wjmlJoplWxCzCZhi matteo.pacini@WorkLaptop"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPo7MktJS6OQ1UDcXKXTcN3HPJm2jc6XDLvGJ3flYgTK matteo@BrightFalls"
       ];
     };
     "debora" = {
