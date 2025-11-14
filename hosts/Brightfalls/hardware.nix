@@ -23,6 +23,7 @@
     "sd_mod"
   ];
   boot.initrd.kernelModules = lib.optionals (!isVM) [ "dm-snapshot" ];
+  boot.initrd.supportedFilesystems = lib.optionals (!isVM) [ "ext2" ];
   boot.kernelModules = lib.optionals (!isVM) [ "kvm-amd" ];
 
   boot.kernelParams = lib.optionals (!isVM) [
@@ -54,10 +55,37 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
+      StandardOutput = "journal";
+      StandardError = "journal";
+      SyslogIdentifier = "mount-vault";
     };
     script = ''
+      set -x
+      echo "mount-vault: Starting vault mount service"
       mkdir -p /vault
-      mount -t ext2 /dev/mapper/cryptvault /vault
+      echo "mount-vault: Waiting for /dev/mapper/cryptvault to appear..."
+      # Wait for device to be ready (should be immediate after cryptvault unlock)
+      for i in {1..10}; do
+        if [ -e /dev/mapper/cryptvault ]; then
+          echo "mount-vault: Device /dev/mapper/cryptvault found"
+          break
+        fi
+        echo "mount-vault: Attempt $i/10 - device not ready, waiting..."
+        sleep 0.5
+      done
+      if [ ! -e /dev/mapper/cryptvault ]; then
+        echo "mount-vault: ERROR - /dev/mapper/cryptvault not found after timeout" >&2
+        ls -la /dev/mapper/ >&2
+        exit 1
+      fi
+      echo "mount-vault: Mounting /dev/mapper/cryptvault at /vault..."
+      if mount -t ext2 -o noatime,errors=remount-ro /dev/mapper/cryptvault /vault; then
+        echo "mount-vault: Successfully mounted vault"
+        ls -la /vault/
+      else
+        echo "mount-vault: ERROR - Failed to mount vault" >&2
+        exit 1
+      fi
     '';
   };
 
