@@ -71,8 +71,10 @@
                 name = "cryptvault";
                 # Password file for disko installation (will prompt for password at boot)
                 passwordFile = "/tmp/vault.passwordFile";
+                # Settings passed to boot.initrd.luks.devices.cryptvault
                 settings = {
                   allowDiscards = true;
+                  # No keyFile - will prompt for password during boot
                 };
                 extraFormatArgs = [
                   "--type"
@@ -141,8 +143,13 @@
                 type = "luks";
                 name = "cryptroot";
                 passwordFile = "/tmp/luks.key";
+                # Settings passed to boot.initrd.luks.devices.cryptroot
                 settings = {
                   allowDiscards = true;
+                  # Unlock using keyfile from vault
+                  # The colon syntax tells systemd-cryptsetup-generator that the keyfile
+                  # is on /dev/mapper/cryptvault, creating automatic dependencies
+                  keyFile = "/vault/luks.key:/dev/mapper/cryptvault";
                 };
                 extraFormatArgs = [
                   "--type"
@@ -248,8 +255,11 @@
                 type = "luks";
                 name = "cryptgames1";
                 passwordFile = "/tmp/luks.key";
+                # Settings passed to boot.initrd.luks.devices.cryptgames1
                 settings = {
                   allowDiscards = true;
+                  # Unlock using keyfile from vault
+                  keyFile = "/vault/luks.key:/dev/mapper/cryptvault";
                 };
                 extraFormatArgs = [
                   "--type"
@@ -297,8 +307,11 @@
                 type = "luks";
                 name = "cryptgames2";
                 passwordFile = "/tmp/luks.key";
+                # Settings passed to boot.initrd.luks.devices.cryptgames2
                 settings = {
                   allowDiscards = true;
+                  # Unlock using keyfile from vault
+                  keyFile = "/vault/luks.key:/dev/mapper/cryptvault";
                 };
                 extraFormatArgs = [
                   "--type"
