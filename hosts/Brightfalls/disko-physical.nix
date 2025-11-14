@@ -111,12 +111,6 @@
                     "noatime"
                     "errors=remount-ro"
                   ];
-                  postCreateHook = ''
-                    echo "Copying keyfile to vault..."
-                    mount $DISKO_DEVICE $DISKO_MOUNTPOINT
-                    cp /tmp/luks.key $DISKO_MOUNTPOINT/vault/luks.key
-                    chmod 400 $DISKO_MOUNTPOINT/vault/luks.key
-                  '';
                 };
               };
             };
@@ -137,6 +131,7 @@
               content = {
                 type = "luks";
                 name = "cryptroot";
+                passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
                   keyFile = "/vault/luks.key";
@@ -244,6 +239,7 @@
               content = {
                 type = "luks";
                 name = "cryptgames1";
+                passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
                   keyFile = "/vault/luks.key";
@@ -293,6 +289,7 @@
               content = {
                 type = "luks";
                 name = "cryptgames2";
+                passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
                   keyFile = "/vault/luks.key";
