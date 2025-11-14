@@ -33,8 +33,12 @@
   ];
 
   # LUKS encryption configuration for physical machine
-  # Vault partition is unlocked with password at boot
+  # Vault partition is unlocked with password at boot and must be available before other LUKS devices
   # All other LUKS volumes (root, games1, games2) are auto-unlocked using keyfile from vault
+
+  # Ensure vault is mounted during initrd before other LUKS devices try to unlock
+  fileSystems."/vault".neededForBoot = lib.mkIf (!isVM) true;
+
   boot.initrd.luks.devices = lib.mkIf (!isVM) {
     cryptroot = {
       device = "/dev/disk/by-partlabel/disk-a-os-disk-root";
