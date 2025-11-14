@@ -28,7 +28,7 @@ in
       };
       "nexus" = lib.mkIf (!isVM) {
         extraOptions = {
-          HostName = "nexus";
+          HostName = "nexus.home.internal";
           User = "matteo";
           IdentityFile = "~/.ssh/nexus";
           Port = "1788";

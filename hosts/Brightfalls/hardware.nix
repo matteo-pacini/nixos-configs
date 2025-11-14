@@ -29,6 +29,8 @@
   boot.kernelParams = lib.optionals (!isVM) [
     "initcall_blacklist=acpi_cpufreq_init"
     "amd_pstate=active"
+    # Disable broken SSDs until removed from system
+    "libata.force=13:disable"
   ];
 
   hardware.cpu.amd.updateMicrocode = lib.mkIf (!isVM) true;
@@ -40,7 +42,6 @@
   boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
 
   boot.initrd.luks.devices = lib.mkIf (!isVM) {
-
     cryptroot.keyFile = lib.mkForce "/vault/luks.key";
   };
 
@@ -60,18 +61,11 @@
     "/vault" = {
       neededForBoot = true;
     };
-    "/mnt/games1" = {
-      neededForBoot = false;
-    };
-    "/mnt/games2" = {
-      neededForBoot = false;
-    };
   };
 
   environment.etc."crypttab" = lib.mkIf (!isVM) {
     text = ''
       cryptgames1 /dev/disk/by-id/ata-Samsung_SSD_850_PRO_512GB_S250NXAG978494H-part1 /vault/luks.key luks,discard
-      cryptgames2 /dev/disk/by-id/ata-Samsung_SSD_840_PRO_Series_S1ATNSADA34160X-part1 /vault/luks.key luks,discard
     '';
   };
 

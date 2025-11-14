@@ -18,9 +18,6 @@
 #   games-disk-1 (512GB Samsung 850 PRO): Games storage
 #     - part1: LUKS encrypted ext4, auto-unlocked with keyfile from vault
 #
-#   games-disk-2 (256GB Samsung 840 PRO): Games storage
-#     - part1: LUKS encrypted ext4, auto-unlocked with keyfile from vault
-#
 # Boot sequence:
 #   1. Swap gets random encryption key (ephemeral, no password needed)
 #   2. User enters password to unlock vault (os-disk part2)
@@ -266,56 +263,6 @@
                   type = "filesystem";
                   format = "ext4";
                   mountpoint = "/mnt/games1";
-                  mountOptions = [
-                    "defaults"
-                    "noatime"
-                  ];
-                };
-              };
-            };
-          };
-        };
-      };
-
-      # ============================================================================
-      # Games Disk 2 - 256GB Samsung 840 PRO (S1ATNSADA34160X)
-      # ============================================================================
-      c-games-disk-2 = {
-        type = "disk";
-        device = "/dev/disk/by-id/ata-Samsung_SSD_840_PRO_Series_S1ATNSADA34160X";
-        content = {
-          type = "gpt";
-          partitions = {
-            games2 = {
-              size = "100%";
-              content = {
-                type = "luks";
-                name = "cryptgames2";
-                initrdUnlock = false;
-                settings = {
-                  allowDiscards = true;
-                  keyFile = "/tmp/luks.key";
-                };
-                extraFormatArgs = [
-                  "--type"
-                  "luks2"
-                  "--cipher"
-                  "aes-xts-plain64"
-                  "--hash"
-                  "sha256"
-                  "--iter-time"
-                  "1000"
-                  "--key-size"
-                  "512"
-                  "--pbkdf"
-                  "argon2id"
-                  "--sector-size"
-                  "4096"
-                ];
-                content = {
-                  type = "filesystem";
-                  format = "ext4";
-                  mountpoint = "/mnt/games2";
                   mountOptions = [
                     "defaults"
                     "noatime"
