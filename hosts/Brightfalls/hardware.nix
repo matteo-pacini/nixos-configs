@@ -51,35 +51,18 @@ in
 
   boot.initrd.luks.devices = lib.mkIf (!isVM) {
     cryptroot = {
-      keyFile = lib.mkForce "/vault/luks.key:/dev/mapper/cryptvault";
+      keyFile = lib.mkForce "/vault/luks.key";
+      fallbackToPassword = lib.mkForce false;
     };
     cryptgames1 = {
-      keyFile = lib.mkForce "/vault/luks.key:/dev/mapper/cryptvault";
+      keyFile = lib.mkForce "/vault/luks.key";
+      fallbackToPassword = lib.mkForce false;
     };
     cryptgames2 = {
-      keyFile = lib.mkForce "/vault/luks.key:/dev/mapper/cryptvault";
+      keyFile = lib.mkForce "/vault/luks.key";
+      fallbackToPassword = lib.mkForce false;
     };
   };
-
-  boot.initrd.systemd.mounts = lib.optionals (!isVM) [
-    {
-      what = "/dev/mapper/cryptvault";
-      where = "/vault";
-      type = "ext2";
-      options = "ro";
-      requiredBy = [
-        "systemd-cryptsetup@cryptroot.service"
-        "systemd-cryptsetup@cryptgames1.service"
-        "systemd-cryptsetup@cryptgames2.service"
-      ];
-      after = [ "systemd-cryptsetup@cryptvault.service" ];
-      before = [
-        "systemd-cryptsetup@cryptroot.service"
-        "systemd-cryptsetup@cryptgames1.service"
-        "systemd-cryptsetup@cryptgames2.service"
-      ];
-    }
-  ];
 
   fileSystems = lib.mkIf (!isVM) {
     "/vault".neededForBoot = true;
