@@ -62,9 +62,21 @@
     };
     "/mnt/games1" = {
       neededForBoot = false;
+      options = [
+        "uid=1000"
+        "gid=100"
+        "umask=0002"
+        "nofail"
+      ];
     };
     "/mnt/games2" = {
       neededForBoot = false;
+      options = [
+        "uid=1000"
+        "gid=100"
+        "umask=0002"
+        "nofail"
+      ];
     };
   };
 
