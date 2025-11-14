@@ -40,6 +40,7 @@
 
   # Mount vault filesystem in initrd so keyfile is available for unlocking other LUKS devices
   # systemd-cryptsetup will automatically create dependencies on this mount for devices using keyFile
+  # The "before" ensures the mount happens before cryptsetup attempts to unlock devices
   boot.initrd.systemd.mounts = lib.optionals (!isVM) [
     {
       what = "/dev/mapper/cryptvault";
@@ -47,6 +48,7 @@
       type = "ext2";
       options = "ro";
       wantedBy = [ "initrd.target" ];
+      before = [ "cryptsetup.target" ];
     }
   ];
 
@@ -58,21 +60,23 @@
     allowDiscards = true;
   };
 
+  # Use explicit device reference syntax for keyFile: /path/to/key:/dev/mapper/device
+  # This tells systemd-cryptsetup that the keyfile is on the cryptvault filesystem
   boot.initrd.luks.devices."cryptroot" = lib.mkIf (!isVM) {
     device = "/dev/disk/by-partlabel/disk-a-os-disk-root";
-    keyFile = "/vault/luks.key";
+    keyFile = "/vault/luks.key:/dev/mapper/cryptvault";
     allowDiscards = true;
   };
 
   boot.initrd.luks.devices."cryptgames1" = lib.mkIf (!isVM) {
     device = "/dev/disk/by-partlabel/disk-b-games-disk-1-games1";
-    keyFile = "/vault/luks.key";
+    keyFile = "/vault/luks.key:/dev/mapper/cryptvault";
     allowDiscards = true;
   };
 
   boot.initrd.luks.devices."cryptgames2" = lib.mkIf (!isVM) {
     device = "/dev/disk/by-partlabel/disk-c-games-disk-2-games2";
-    keyFile = "/vault/luks.key";
+    keyFile = "/vault/luks.key:/dev/mapper/cryptvault";
     allowDiscards = true;
   };
 
