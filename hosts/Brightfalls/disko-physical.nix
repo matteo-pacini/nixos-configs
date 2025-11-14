@@ -111,6 +111,15 @@
                     "noatime"
                     "errors=remount-ro"
                   ];
+                  postCreateHook = ''
+                    echo "Copying keyfile to vault..."
+                    MNTPOINT=$(mktemp -d)
+                    mount /dev/mapper/cryptvault $MNTPOINT
+                    cp /tmp/luks.key $MNTPOINT/luks.key
+                    chmod 400 $MNTPOINT/luks.key
+                    umount $MNTPOINT
+                    rmdir $MNTPOINT
+                  '';
                 };
               };
             };
@@ -134,7 +143,6 @@
                 passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
-                  keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
                   "--type"
@@ -242,7 +250,6 @@
                 passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
-                  keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
                   "--type"
@@ -292,7 +299,6 @@
                 passwordFile = "/tmp/luks.key";
                 settings = {
                   allowDiscards = true;
-                  keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
                   "--type"

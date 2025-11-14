@@ -31,6 +31,27 @@
     "nls_cp437"
     "nls_iso8859_1"
   ];
+
+  # LUKS encryption configuration for physical machine
+  # Vault partition is unlocked with password at boot
+  # All other LUKS volumes (root, games1, games2) are auto-unlocked using keyfile from vault
+  boot.initrd.luks.devices = lib.mkIf (!isVM) {
+    cryptroot = {
+      device = "/dev/disk/by-partlabel/disk-a-os-disk-root";
+      keyFile = "/vault/luks.key";
+      allowDiscards = true;
+    };
+    cryptgames1 = {
+      device = "/dev/disk/by-partlabel/disk-b-games-disk-1-games1";
+      keyFile = "/vault/luks.key";
+      allowDiscards = true;
+    };
+    cryptgames2 = {
+      device = "/dev/disk/by-partlabel/disk-c-games-disk-2-games2";
+      keyFile = "/vault/luks.key";
+      allowDiscards = true;
+    };
+  };
   boot.kernelModules = lib.optionals (!isVM) [ "kvm-amd" ];
 
   boot.kernelParams = lib.optionals (!isVM) [
