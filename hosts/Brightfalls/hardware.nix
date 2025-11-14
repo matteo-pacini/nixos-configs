@@ -38,6 +38,18 @@
   # This ensures vault is unlocked and mounted before other devices try to access the keyfile
   boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
 
+  # Mount vault filesystem in initrd so keyfile is available for unlocking other LUKS devices
+  # systemd-cryptsetup will automatically create dependencies on this mount for devices using keyFile
+  boot.initrd.systemd.mounts = lib.optionals (!isVM) [
+    {
+      what = "/dev/mapper/cryptvault";
+      where = "/vault";
+      type = "ext2";
+      options = "ro";
+      wantedBy = [ "initrd.target" ];
+    }
+  ];
+
   # Vault must be mounted during initrd before other LUKS devices can access the keyfile
   fileSystems."/vault".neededForBoot = lib.mkIf (!isVM) true;
 
