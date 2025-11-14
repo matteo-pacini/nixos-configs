@@ -47,17 +47,29 @@ in
   hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableRedistributableFirmware = true;
 
-  boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
+  boot.supportedFilesystems = [ "btrfs" ];
+
+  # Mount vault before trying to decrypt root filesystem
+  boot.initrd.postDeviceCommands = pkgs.lib.mkBefore (
+    lib.optionalString (!isVM) ''
+      echo "Mounting vault..."
+      mkdir -m 0755 -p /vault
+      mount -t ext2 -o ro /dev/mapper/cryptvault /vault
+      echo "Vault mounted at /vault"
+    ''
+  );
 
   boot.initrd.luks.devices = lib.mkIf (!isVM) {
     cryptroot = {
-      keyFile = lib.mkForce "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R-part2:/luks.key";
+      keyFile = lib.mkForce "/vault/luks.key";
+      # If this is true the decryption is attempted before the postDeviceCommands can run
+      preLVM = false;
     };
     cryptgames1 = {
-      keyFile = lib.mkForce "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R-part2:/luks.key";
+      keyFile = lib.mkForce "/vault/luks.key";
     };
     cryptgames2 = {
-      keyFile = lib.mkForce "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_1TB_S4X6NJ0N406662R-part2:/luks.key";
+      keyFile = lib.mkForce "/vault/luks.key";
     };
   };
 
