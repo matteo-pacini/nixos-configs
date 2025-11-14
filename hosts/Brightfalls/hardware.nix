@@ -5,6 +5,19 @@
   isVM,
   ...
 }:
+let
+  # Hook to mount vault before unlocking devices that use the keyfile
+  mountVaultHook = ''
+    mkdir -p /vault
+    mount /dev/mapper/cryptvault /vault
+  '';
+
+  # Hook to unmount vault after unlocking
+  unmountVaultHook = ''
+    umount /vault
+    rmdir /vault
+  '';
+in
 {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
@@ -36,8 +49,18 @@
 
   boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
 
-  # Disko doesn't set neededForBoot, so we need to override it for the vault
-  # This ensures the vault is mounted in initrd before other LUKS devices try to access the keyfile
+  boot.initrd.luks.devices = lib.mkIf (!isVM) {
+    cryptroot = {
+      keyFile = lib.mkForce "/vault/luks.key:/dev/mapper/cryptvault";
+    };
+    cryptgames1 = {
+      keyFile = lib.mkForce "/vault/luks.key:/dev/mapper/cryptvault";
+    };
+    cryptgames2 = {
+      keyFile = lib.mkForce "/vault/luks.key:/dev/mapper/cryptvault";
+    };
+  };
+
   fileSystems = lib.mkIf (!isVM) {
     "/vault".neededForBoot = true;
   };
