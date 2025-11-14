@@ -63,18 +63,15 @@
 
             # Vault partition - 48MB - LUKS encrypted with password
             # Contains the keyfile used to unlock all other LUKS volumes
-            # Uses paranoid security settings: Serpent cipher, SHA512, high iteration time
             vault = {
               size = "48M";
               content = {
                 type = "luks";
                 name = "cryptvault";
-                # Password file for disko installation (will prompt for password at boot)
                 passwordFile = "/tmp/vault.passwordFile";
                 initrdUnlock = true;
                 settings = {
                   allowDiscards = true;
-                  # No keyFile - will prompt for password during boot
                 };
                 extraFormatArgs = [
                   "--type"
@@ -142,12 +139,10 @@
               content = {
                 type = "luks";
                 name = "cryptroot";
-                passwordFile = "/tmp/luks.key";
                 initrdUnlock = true;
-                # Settings passed to boot.initrd.luks.devices.cryptroot
-                # Note: keyFile is set in hardware.nix, not here, to avoid overriding passwordFile during formatting
                 settings = {
                   allowDiscards = true;
+                  keyFile = "/tmp/luks.key";
                 };
                 extraFormatArgs = [
                   "--type"
@@ -173,7 +168,6 @@
                     "nixos"
                   ];
                   subvolumes = {
-                    # Root subvolume
                     "@" = {
                       mountpoint = "/";
                       mountOptions = [
@@ -183,7 +177,6 @@
                         "space_cache=v2"
                       ];
                     };
-                    # Home subvolume
                     "@home" = {
                       mountpoint = "/home";
                       mountOptions = [
@@ -193,7 +186,6 @@
                         "space_cache=v2"
                       ];
                     };
-                    # Nix store subvolume
                     "@nix" = {
                       mountpoint = "/nix";
                       mountOptions = [
@@ -203,7 +195,6 @@
                         "space_cache=v2"
                       ];
                     };
-                    # Log subvolume (no compression, excluded from snapshots)
                     "@log" = {
                       mountpoint = "/var/log";
                       mountOptions = [
@@ -212,7 +203,6 @@
                         "space_cache=v2"
                       ];
                     };
-                    # Cache subvolume (no compression, excluded from snapshots)
                     "@cache" = {
                       mountpoint = "/var/cache";
                       mountOptions = [
@@ -221,7 +211,6 @@
                         "space_cache=v2"
                       ];
                     };
-                    # Snapshots subvolume
                     "@snapshots" = {
                       mountpoint = "/.snapshots";
                       mountOptions = [
@@ -252,12 +241,10 @@
               content = {
                 type = "luks";
                 name = "cryptgames1";
-                passwordFile = "/tmp/luks.key";
                 initrdUnlock = false;
-                # Settings for systemd-cryptsetup (unlocked after boot)
-                # Note: keyFile will be read from /etc/crypttab which references /vault/luks.key
                 settings = {
                   allowDiscards = true;
+                  keyFile = "/tmp/luks.key";
                 };
                 extraFormatArgs = [
                   "--type"
@@ -304,12 +291,10 @@
               content = {
                 type = "luks";
                 name = "cryptgames2";
-                passwordFile = "/tmp/luks.key";
                 initrdUnlock = false;
-                # Settings for systemd-cryptsetup (unlocked after boot)
-                # Note: keyFile will be read from /etc/crypttab which references /vault/luks.key
                 settings = {
                   allowDiscards = true;
+                  keyFile = "/tmp/luks.key";
                 };
                 extraFormatArgs = [
                   "--type"
