@@ -22,6 +22,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-pr-461779.url = "github:jeafleohj/nixpkgs/fish-pexpect-fix";
     ################
     # Home Manager #
     ################
@@ -283,6 +284,15 @@
             nixpkgs.overlays = [
               inputs.nur.overlays.default
               (import ./overlays/nightsprings.nix)
+              (
+                self: super:
+                let
+                  pr441779Packages = inputs.nixpkgs-pr-461779.legacyPackages.aarch64-darwin;
+                in
+                {
+                  fish = pr441779Packages.fish;
+                }
+              )
             ];
           }
           ./hosts/NightSprings
@@ -329,6 +339,15 @@
             nixpkgs.overlays = [
               inputs.nur.overlays.default
               (import ./overlays/worklaptop.nix)
+              (
+                self: super:
+                let
+                  pr441779Packages = inputs.nixpkgs-pr-461779.legacyPackages.aarch64-darwin;
+                in
+                {
+                  fish = pr441779Packages.fish;
+                }
+              )
             ];
           }
           ./hosts/WorkLaptop
