@@ -43,7 +43,7 @@
 
   programs.zsh.enable = true;
 
-  system.stateVersion = 4;
+  system.stateVersion = 6;
 
   nixpkgs.hostPlatform = "aarch64-darwin";
 
