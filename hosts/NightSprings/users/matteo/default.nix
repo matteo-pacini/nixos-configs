@@ -29,8 +29,6 @@
     age
     # Development
     gh
-    # Music
-    cmus
     # Social
     element-desktop
     # Window management
