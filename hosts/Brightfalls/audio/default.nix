@@ -52,7 +52,7 @@
 
   # Wireplumber configuration for bit-perfect USB DAC output
   # Enforces 24-bit format (S24LE) matching Modi 2 capabilities
-  services.wireplumber.extraConfig."50-alsa-config" = lib.mkIf (!isVM) {
+  services.pipewire.wireplumber.extraConfig."50-alsa-config" = lib.mkIf (!isVM) {
     "monitor.alsa.rules" = [
       {
         matches = [
