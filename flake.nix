@@ -22,7 +22,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-pr-461779.url = "github:jeafleohj/nixpkgs/fish-pexpect-fix";
     ################
     # Home Manager #
     ################
