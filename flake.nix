@@ -299,15 +299,6 @@
             nixpkgs.overlays = [
               inputs.nur.overlays.default
               (import ./overlays/nightsprings.nix)
-              (
-                self: super:
-                let
-                  pr441779Packages = inputs.nixpkgs-pr-461779.legacyPackages.aarch64-darwin;
-                in
-                {
-                  fish = pr441779Packages.fish;
-                }
-              )
             ];
           }
           ./hosts/NightSprings
