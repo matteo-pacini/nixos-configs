@@ -22,7 +22,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-pr-461779.url = "github:jeafleohj/nixpkgs/fish-pexpect-fix";
     ################
     # Home Manager #
     ################
@@ -135,6 +134,20 @@
           ]
           ++ extraModules;
         };
+      overlayPackageFromPR =
+        pr: package: system:
+        (
+          self: super:
+          let
+            pkgsFromPR = import (fetchTarball {
+              url = "https://github.com/NixOS/nixpkgs/archive/refs/pull/${toString pr}/head.tar.gz";
+              sha256 = "0000000000000000000000000000000000000000000000000000"; # Replace with actual hash
+            }) { inherit system; };
+          in
+          {
+            ${package} = pkgsFromPR.${package};
+          }
+        );
     in
     {
       ###################
@@ -286,15 +299,6 @@
             nixpkgs.overlays = [
               inputs.nur.overlays.default
               (import ./overlays/nightsprings.nix)
-              (
-                self: super:
-                let
-                  pr441779Packages = inputs.nixpkgs-pr-461779.legacyPackages.aarch64-darwin;
-                in
-                {
-                  fish = pr441779Packages.fish;
-                }
-              )
             ];
           }
           ./hosts/NightSprings
@@ -341,15 +345,6 @@
             nixpkgs.overlays = [
               inputs.nur.overlays.default
               (import ./overlays/worklaptop.nix)
-              (
-                self: super:
-                let
-                  pr441779Packages = inputs.nixpkgs-pr-461779.legacyPackages.aarch64-darwin;
-                in
-                {
-                  fish = pr441779Packages.fish;
-                }
-              )
             ];
           }
           ./hosts/WorkLaptop

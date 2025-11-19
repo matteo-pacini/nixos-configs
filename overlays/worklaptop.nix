@@ -23,5 +23,9 @@
     docker = optimizedForWorkLaptop super.docker;
     colima = optimizedForWorkLaptop super.colima;
 
+    fish = super.fish.overrideAttrs (oldAttrs: {
+      doCheck = false;
+    });
+
   }
 )
