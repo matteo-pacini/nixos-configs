@@ -1,5 +1,6 @@
 {
   pkgs,
+  lib,
   config,
   ...
 }:
@@ -31,7 +32,27 @@ in
               editorconfig.editorconfig
               mhutchie.git-graph
               usernamehw.errorlens
-              eamodio.gitlens
+              (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+                mktplcRef = {
+                  name = "gitlens";
+                  publisher = "eamodio";
+                  version = "17.7.1";
+                  hash = "sha256-8RFsgmGIOtydML/1AEeOEbs1r1vH5tmKJZpX9lC+i/g=";
+                };
+
+                meta = {
+                  changelog = "https://marketplace.visualstudio.com/items/eamodio.gitlens/changelog";
+                  description = "Visual Studio Code extension that improves its built-in Git capabilities";
+                  longDescription = ''
+                    Supercharge the Git capabilities built into Visual Studio Code — Visualize code authorship at a glance via Git
+                    blame annotations and code lens, seamlessly navigate and explore Git repositories, gain valuable insights via
+                    powerful comparison commands, and so much more
+                  '';
+                  downloadPage = "https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens";
+                  homepage = "https://gitlens.amod.io/";
+                  license = lib.licenses.mit;
+                };
+              })
               # Live share
               ms-vsliveshare.vsliveshare
               # Nix

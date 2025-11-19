@@ -11,5 +11,8 @@
       });
   in
   {
+    fish = super.fish.overrideAttrs (oldAttrs: {
+      doCheck = false;
+    });
   }
 )
