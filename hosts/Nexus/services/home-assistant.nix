@@ -39,6 +39,8 @@
       "piper"
       "wake_word"
       "wyoming"
+      # Shelly
+      "shelly"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
