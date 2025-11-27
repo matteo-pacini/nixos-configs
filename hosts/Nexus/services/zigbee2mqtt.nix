@@ -1,8 +1,18 @@
 { pkgs, config, ... }:
 {
-  systemd.services.zigbee2mqtt.serviceConfig.EnvironmentFile = [
-    config.age.secrets."nexus/zigbee2mqtt.env".path
-  ];
+  systemd.services.zigbee2mqtt = {
+    serviceConfig = {
+      EnvironmentFile = [
+        config.age.secrets."nexus/zigbee2mqtt.env".path
+      ];
+      Restart = "on-failure";
+      RestartSec = "60";
+    };
+    unitConfig = {
+      StartLimitBurst = 3;
+      StartLimitIntervalSec = 300;
+    };
+  };
 
   services.zigbee2mqtt = {
     enable = true;
