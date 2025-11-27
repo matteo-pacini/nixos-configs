@@ -41,6 +41,8 @@
       "wyoming"
       # Shelly
       "shelly"
+      # SmartThings
+      "smartthings"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
