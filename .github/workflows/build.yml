@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build system
         run: |
-          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}"
+          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --fallback
 
       - uses: nick-fields/retry@v3
         name: Push system

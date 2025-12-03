@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: wimpysworld/nothing-but-nix@v6
         if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm' }}
@@ -82,11 +82,11 @@ jobs:
 
       - name: Build latest configuration
         run: |
-          nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result
+          nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result --fallback
 
       - name: Build new configuration
         run: |
-          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result
+          nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result --fallback
 
       - name: Compare configurations
         run: |
