@@ -11,33 +11,12 @@
 
 ## 📋 Table of Contents
 
-- [🚀 Quick Overview](#-quick-overview)
 - [🖥️ Hosts](#-hosts)
   - [🎮 Gaming Systems](#-gaming-systems)
   - [🖥️ Servers](#-servers)
   - [💻 Development Laptops](#-development-laptops)
 - [📦 Modules](#-modules)
-
----
-
-## 🚀 Quick Overview
-
-This repository contains declarative **NixOS** and **nix-darwin** configurations for 7 systems across multiple platforms:
-
-- **3 Gaming Systems** (BrightFalls desktop, BrightFallsVM, CauldronLake laptop)
-- **1 High-Performance Server** (Nexus with 82TB storage, media server, home automation)
-- **2 Apple MacBooks** (NightSprings M1 Max, WorkLaptop M1)
-
-### ✨ Key Features
-
-- 🔐 **Full Disk Encryption** - LUKS encryption on all systems
-- 🎮 **Gaming Optimized** - Custom kernel patches, GPU overclocking, VR support
-- 📡 **Home Automation** - Home Assistant, Zigbee2MQTT, MQTT broker
-- 🎬 **Media Server** - Jellyfin, Sonarr, Radarr, qBittorrent
-- 🍎 **macOS Support** - Full nix-darwin configurations
-- 🔄 **Automated Updates** - Weekly flake updates via GitHub Actions
-- 🏗️ **Modular Design** - Reusable modules and overlays
-- 🔒 **Secrets Management** - Agenix for encrypted secrets
+- [📚 Docs](#-docs)
 
 ---
 
@@ -77,16 +56,12 @@ This repository contains declarative **NixOS** and **nix-darwin** configurations
 <details>
 <summary><b>⚙️ System Configuration</b></summary>
 
-- **Desktop Environment:** GNOME
-- **Kernel:** Linux 6.17 with **BORE scheduler patches**
-- **Bootloader:** GRUB2 with EFI support
-- **Filesystems:** Btrfs (root with subvolumes), ext4 (games), encrypted with LUKS
-- **Encryption:** Vault partition pattern with keyfile auto-unlock
-- **Timezone:** Europe/London (en_GB.UTF-8)
-- **Virtualization:** KVM/QEMU support enabled
-- **GPU Control:** LACT for AMD GPU overclocking
-- **Game Streaming:** Sunshine server
-- **Process Management:** Ananicy-cpp for process prioritization
+- GNOME desktop
+- Linux 6.17 + BORE scheduler
+- GRUB2 (EFI)
+- Btrfs root (subvolumes), ext4 games, all LUKS encrypted
+- Vault partition for keyfile auto-unlock
+- KVM/QEMU, LACT (GPU OC), Sunshine, ananicy-cpp
 
 </details>
 
@@ -137,78 +112,46 @@ sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
 <details>
 <summary><b>📋 Hardware Details</b></summary>
 
-- **CPUs:** 2 x Intel Xeon E5-2697 v4 @ 2.30GHz (18-Core, 36-Threads per socket, 3.6GHz Turbo, 45MB L3 Cache)
-  - Total: 72 logical CPUs (36 cores), 2 NUMA nodes
-  - Architecture: x86_64, 46-bit physical addressing
-  - Virtualization: VT-x enabled
-  - Cache: 1.1 MiB L1d, 1.1 MiB L1i, 9 MiB L2, 90 MiB L3 (shared)
-- **RAM:** 132GB DDR4 (RDIMM)
-- **GPU:** Nvidia Quadro P2000 (5GB GDDR5)
-- **Network:**
-  - Dell I350 Quad Port 1GbE RJ45
-  - Intel Pro 1000PT Quad Port 1GbE RJ45
-  - Total: 8x 1GbE ports
-- **RAID Controller:** Dell H730p Mini Mono with 2GB cache
-- **Power:** 1100W Platinum Hot-Swap PSU
+- 2x Xeon E5-2697 v4 (36c/72t total)
+- 132GB DDR4 RDIMM
+- Quadro P2000 5GB
+- 8x 1GbE (Dell I350 + Intel Pro 1000PT)
+- H730p RAID controller (2GB cache)
+- 1100W Platinum PSU
 
 </details>
 
 <details>
 <summary><b>💾 Storage Configuration</b></summary>
 
-**OS Tier (RAID1 - Software RAID):**
-- 2x Crucial MX500 2TB SSDs (md127, 1.8TB usable)
-- Mounted: /, /nix/store, /var/lib/containers/storage/overlay
+**OS:** 2x Crucial MX500 2TB (software RAID1)
 
-**Data Tier (SnapRAID + MergerFS):**
-- **Data Disks (10x):**
-  - sda: 9.1TB Seagate Barracuda Pro (X377_HLBRE10TA07)
-  - sdb: 7.3TB WDC Red Pro (WDC WD80EFAX-68KNBN0)
-  - sdc: 9.1TB WDC Red Pro (WDC WD101EMAZ-11G7DA0)
-  - sdd: 9.1TB Seagate Barracuda Pro (X377_HLBRE10TA07)
-  - sde: 7.3TB WDC Red Pro (WDC WD80EFAX-68KNBN0)
-  - sdf: 9.1TB Seagate Barracuda Pro (X377_HLBRE10TA07)
-  - sdg: 7.3TB WDC Red Pro (WDC WD80EFAX-68LHPN0)
-  - sdh: 9.1TB WDC Red Pro (WDC WD101EDBZ-11B1DA0)
-  - sdi: 7.3TB WDC Red Pro (WDC WD80EFAX-68LHPN0)
-  - sdj: 9.1TB WDC Red Pro (WDC WD101EDBZ-11B1DA0)
-- **Parity Disks (2x):**
-  - sdk: 9.1TB WDC Red Pro (WDC WD101EMAZ-11G7DA0)
-  - sdl: 9.1TB WDC Red Pro (WDC WD101EMAZ-11G7DA0)
-- **Total Capacity:** ~82TB raw (10 data + 2 parity), ~73TB usable with single parity
-- **Encryption:** All data disks encrypted with LUKS (dm-crypt)
-- **Memory:** 62.9GB zram swap
+**Data:** 10 disks (7.3-9.1TB mix of Seagate Barracuda Pro + WDC Red Pro), LUKS encrypted, pooled via MergerFS
+
+**Parity:** 2x 9.1TB WDC Red Pro (SnapRAID dual parity)
+
+**Total:** ~82TB raw, ~73TB usable
 
 </details>
 
 <details>
 <summary><b>⚙️ System Configuration</b></summary>
 
-- **Kernel:** Linux 6.17
-- **Bootloader:** GRUB2 (legacy BIOS)
-- **Filesystems:** XFS (root), encrypted LUKS containers for data
-- **Timezone:** Europe/London (en_GB.UTF-8)
-- **Multi-platform support:** x86_64-linux and aarch64-linux (binfmt emulation)
-- **Monitoring:** S.M.A.R.T. monitoring with smartd, UPS support
+- Linux 6.17, GRUB2 (legacy BIOS)
+- XFS root, LUKS data disks
+- aarch64 binfmt emulation
+- smartd + UPS monitoring
 
 </details>
 
 <details>
 <summary><b>🚀 Services</b></summary>
 
-- 🎬 Jellyfin (media server)
-- 📺 Sonarr (TV show management)
-- 🎥 Radarr (movie management)
-- 📥 NZBGet (Usenet downloader)
-- 🔍 NZBHydra (Usenet indexer)
-- 🧲 qBittorrent (torrent client)
-- 🏠 Home Assistant (home automation)
-- 📊 Grafana + VictoriaMetrics (monitoring)
-- 🔒 ACME + NGINX (SSL certificates & web server)
-- 🌐 Dynamic DNS & Tailscale VPN
-- 🗄️ PostgreSQL (database)
-- 📡 Mosquitto (MQTT broker)
-- 🔌 Zigbee2MQTT (Zigbee gateway)
+**Media:** Jellyfin, Sonarr, Radarr, NZBGet, NZBHydra, qBittorrent
+
+**Home Automation:** Home Assistant, Zigbee2MQTT, Mosquitto
+
+**Infra:** Grafana, VictoriaMetrics, PostgreSQL, NGINX, Tailscale
 
 </details>
 
@@ -216,164 +159,69 @@ sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
 
 #### 💻 NightSprings
 
-**Apple MacBook Pro M1 Max** (macOS/Darwin)
-
-<details>
-<summary><b>📋 Hardware & Configuration</b></summary>
-
-**Hardware:**
-- **CPU:** Apple M1 Max (10-core CPU, 16-core GPU)
-- **Architecture:** aarch64-darwin
-- **OS:** macOS (Darwin)
-
-**System Configuration:**
-- **Kernel:** aarch64-darwin
-- **Shell:** Zsh
-- **Primary User:** matteo
-- **Nix:** Flakes support, relaxed sandbox
-- **Package Management:** Homebrew, Nix
-- **Development:** Xcodes, Tailscale VPN
-
-</details>
+**Apple MacBook Pro M1 Max** — Personal laptop, nix-darwin + Homebrew, Xcodes, Tailscale.
 
 #### 💻 WorkLaptop
 
-**Apple MacBook Pro M1** (macOS/Darwin)
-
-<details>
-<summary><b>📋 Hardware & Configuration</b></summary>
-
-**Hardware:**
-- **CPU:** Apple M1 (8-core CPU, 8-core GPU)
-- **Architecture:** aarch64-darwin
-- **OS:** macOS (Darwin)
-
-**System Configuration:**
-- **Kernel:** aarch64-darwin
-- **Shell:** Zsh
-- **Primary User:** matteo.pacini
-- **Nix:** Flakes support, relaxed sandbox
-- **Package Management:** Homebrew, Nix
-- **Virtualization:** Docker + Colima
-- **Development:** Xcodes, Tailscale VPN
-
-</details>
+**Apple MacBook Pro M1** — Work laptop, nix-darwin + Homebrew, Docker/Colima, Xcodes, Tailscale.
 
 #### 💻 CauldronLake
 
-**Razer Gaming Laptop**
-
-<details>
-<summary><b>📋 Hardware & Configuration</b></summary>
-
-**Hardware:**
-- **CPU:** Intel (x86_64)
-- **GPU:** NVIDIA (hybrid/Optimus configuration with Intel iGPU)
-- **Storage:** NVMe SSD (XFS)
-- **Swap:** Dedicated swap partition
-
-**System Configuration:**
-- **Desktop Environment:** GNOME
-- **Kernel:** Linux 6.17
-- **Bootloader:** GRUB2 with EFI support
-- **Filesystems:** XFS (root, /boot)
-- **Timezone:** Europe/London (en_GB.UTF-8)
-- **Keyboard:** UK layout
-- **GPU Driver:** NVIDIA Beta driver with Prime offload mode
-- **Virtualization:** KVM support
-- **Gaming:** Steam with hardware acceleration
-- **Peripherals:** Audio, printer, iPhone integration
-
-</details>
+**Razer Gaming Laptop** — Intel/NVIDIA Optimus, GNOME, Linux 6.17, NVIDIA Prime offload, Steam.
 
 ## 📦 Modules
 
 ### Xcodes (homeManagerModules.xcodes)
 
-This module manages multiple Xcode installations on macOS environments using the [xcodes](https://github.com/XcodesOrg/xcodes) CLI tool.
+Home Manager module for managing multiple Xcode versions via [xcodes](https://github.com/XcodesOrg/xcodes). macOS only.
 
 #### Requirements
 
-- **macOS (Darwin)** - This module only works on macOS
-- **Home Manager** - Required for user-level configuration
-- **Apple Developer Account** - Needed to download Xcode versions
-- **Disk Space** - Approximately 15GB per Xcode version
-- **Network** - Stable internet connection (downloads are 15GB+)
-- **Time** - Initial setup takes 30+ minutes per version
+- macOS + Home Manager
+- Apple Developer account
+- ~15GB disk per Xcode version
 
 #### Usage
 
-To use this module in your flake:
-
-1. First, add this repository as a flake input:
+Add to your flake inputs:
 
 ```nix
-# In your flake.nix inputs
-inputs = {
-  # ... your other inputs
-  nixos-configs.url = "github:matteo-pacini/nixos-configs";
+inputs.nixos-configs.url = "github:matteo-pacini/nixos-configs";
+```
+
+Add to `home-manager.sharedModules`:
+
+```nix
+home-manager.sharedModules = [
+  inputs.nixos-configs.homeManagerModules.xcodes
+];
+```
+
+Configure in your Home Manager config:
+
+```nix
+programs.xcodes = {
+  enable = true;
+  versions = [ "16.2" "16.3" ];
+  active = "16.2";
 };
 ```
 
-2. Add the module to your `home-manager.sharedModules` in your Darwin system configuration:
-
-```nix
-# In your flake.nix for Darwin systems
-darwinConfigurations."YourMacName" = inputs.nix-darwin.lib.darwinSystem {
-  # ... other configuration
-  modules = [
-    # ... other modules
-    inputs.home-manager.darwinModules.home-manager
-    {
-      home-manager.useGlobalPkgs = true;
-      home-manager.useUserPackages = true;
-      home-manager.users.yourusername = import ./path/to/user/config;
-      home-manager.sharedModules = [
-        inputs.nixos-configs.homeManagerModules.xcodes  # Add the xcodes module here
-      ];
-    }
-    # ... other modules
-  ];
-};
-```
-
-3. Then in your user's configuration, enable and configure it:
-
-```nix
-# In your user's home-manager configuration
-{ ... }:
-{
-  programs.xcodes = {
-    enable = true;
-    versions = [
-      "16.2"
-      "16.3"
-    ];
-    active = "16.2";
-  };
-}
-```
-
-#### Configuration Options
+#### Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enable` | boolean | `false` | Whether to enable the xcodes module |
-| `versions` | list of strings | `[ "15.4" ]` | List of Xcode versions to install |
-| `active` | string | `"15.4"` | Version to set as the active Xcode |
+| `enable` | bool | `false` | Enable the module |
+| `versions` | list | `[ "15.4" ]` | Xcode versions to install |
+| `active` | string | `"15.4"` | Active Xcode version |
 
-#### How It Works
+On activation: updates index, installs specified versions, sets active, removes unlisted versions.
 
-The module performs the following steps during Home Manager activation:
+First run requires Apple ID auth; subsequent runs are automatic.
 
-1. **Update Index** - Runs `xcodes update` to fetch the latest available Xcode versions
-2. **Install Versions** - Installs each version specified in the `versions` list to `~/Applications`
-   - Uses `--empty-trash` to clean up temporary files
-   - Uses `--no-superuser` to avoid privilege escalation
-3. **Set Active Version** - Sets the specified `active` version as the default Xcode
-4. **Cleanup** - Removes any Xcode versions that are installed but not in the `versions` list
-   - Compares installed vs. requested versions using `comm`
-   - Safely uninstalls with `--empty-trash` flag
-   - Logs each removal for transparency
+## 📚 Docs
 
-**Note:** First run may require interactive Apple ID authentication. Subsequent runs are fully automated.
+### Nexus
+
+- [Diskpool Handbook](docs/nexus/diskpool-handbook.md) — Storage architecture, LUKS, mergerfs, SnapRAID
+- [Paperless-ngx Recovery](docs/nexus/paperless-ngx-recovery.md) — Disaster recovery for Paperless
