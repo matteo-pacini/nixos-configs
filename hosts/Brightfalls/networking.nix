@@ -2,7 +2,7 @@
 {
   networking.hostName = "BrightFalls${if isVM then "VM" else ""}";
 
-  networking.firewall.enable = false;
+  networking.firewall.enable = true;
 
   networking.networkmanager.enable = true;
 

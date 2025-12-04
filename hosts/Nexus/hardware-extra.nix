@@ -1,37 +1,24 @@
 { lib, config, ... }:
 let
-  diskNumbers = lib.lists.range 0 9;
-  listOfMountPoints = builtins.map (i: "/mnt/disk${toString i}") diskNumbers;
-  mkMountPoints =
-    listOfMountPoints:
-    lib.genAttrs (listOfMountPoints) (
-      mp:
-      let
-        # Get back disk number from /mnt/diskX
-        diskNumberAsString = lib.strings.removePrefix "/mnt/disk" mp;
-      in
-      {
-        device = "/dev/mapper/disk${diskNumberAsString}";
+  diskNumbers = lib.range 0 9;
+  mountPoints = map (n: "/mnt/disk${toString n}") diskNumbers;
+
+  diskMounts = lib.listToAttrs (
+    map (n: {
+      name = "/mnt/disk${toString n}";
+      value = {
+        device = "/dev/mapper/disk${toString n}";
         fsType = "ext4";
-        mountPoint = mp;
         options = [
           "defaults"
           "noatime"
         ];
         neededForBoot = false;
-      }
-    );
+      };
+    }) diskNumbers
+  );
 in
 {
-
-  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
-
-  boot.swraid = {
-    enable = true;
-    mdadmConf = ''
-      ARRAY /dev/md/array metadata=1.2 name=nixos:array UUID=ea2caefe:f8f04158:af8eacaa:8b5984b4
-    '';
-  };
 
   zramSwap = {
     enable = true;
@@ -51,46 +38,38 @@ in
     disk9   UUID=293952af-363d-4ca1-bb74-23e22d67b393   ${config.age.secrets."nexus/disk9".path}
   '';
 
-  fileSystems =
-    mkMountPoints listOfMountPoints
-    // {
-      "/diskpool" =
-        let
-          device = lib.concatMapStringsSep ":" (i: "/mnt/disk${toString i}") diskNumbers;
-        in
-        {
-          device = device;
-          fsType = "mergerfs";
-          options = [
-            "defaults"
-            "allow_other"
-            "cache.files=partial"
-            "dropcacheonclose=true"
-            "category.create=mfs"
-            "posix_acl=true"
-          ];
-          neededForBoot = false;
-          depends = listOfMountPoints;
-        };
-    }
-    // {
-      "/mnt/parity1" = {
-        device = "/dev/disk/by-uuid/1a81ffca-7112-49de-bce6-804e9657e4ed";
-        fsType = "ext4";
-        options = [
-          "defaults"
-          "noatime"
-        ];
-        neededForBoot = false;
-      };
-      "/mnt/parity2" = {
-        device = "/dev/disk/by-uuid/eaeeac6a-40ae-4088-8680-1a6e0146cecd";
-        fsType = "ext4";
-        options = [
-          "defaults"
-          "noatime"
-        ];
-        neededForBoot = false;
-      };
+  fileSystems = diskMounts // {
+    "/diskpool" = {
+      device = lib.concatStringsSep ":" mountPoints;
+      fsType = "mergerfs";
+      options = [
+        "defaults"
+        "allow_other"
+        "cache.files=partial"
+        "dropcacheonclose=true"
+        "category.create=mfs"
+        "posix_acl=true"
+      ];
+      neededForBoot = false;
+      depends = mountPoints;
     };
+    "/mnt/parity1" = {
+      device = "/dev/disk/by-uuid/1a81ffca-7112-49de-bce6-804e9657e4ed";
+      fsType = "ext4";
+      options = [
+        "defaults"
+        "noatime"
+      ];
+      neededForBoot = false;
+    };
+    "/mnt/parity2" = {
+      device = "/dev/disk/by-uuid/eaeeac6a-40ae-4088-8680-1a6e0146cecd";
+      fsType = "ext4";
+      options = [
+        "defaults"
+        "noatime"
+      ];
+      neededForBoot = false;
+    };
+  };
 }

@@ -6,6 +6,8 @@
 }:
 let
   backupDestination = "/diskpool/configuration";
+  envFile = config.age.secrets."nexus/janitor.env".path;
+  notify = "${pkgs.telegram-notify}/bin/telegram-notify";
   haServices = [
     "zigbee2mqtt"
     "mosquitto"
@@ -32,14 +34,9 @@ let
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
   haBackupJob = pkgs.writeShellScriptBin "haBackupJob_4" ''
     set -eo pipefail
-    source ${config.age.secrets."nexus/janitor.env".path}
+    export TELEGRAM_ENV_FILE="${envFile}"
 
-    # Notify on Telegram
-    MESSAGE="Home Assistant services will go down for backup in 60 seconds..."
-    ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-      --data chat_id="$CHANNEL_ID" \
-      --data parse_mode="Markdown" \
-      --data-urlencode "text=$MESSAGE"
+    ${notify} "Home Assistant services will go down for backup in 60 seconds..."
 
     # Wait
     sleep 60
@@ -69,24 +66,14 @@ let
     # Restart HA services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") haServices}
 
-    # Notify on Telegram
-    MESSAGE="Home Assistant services back online, starting full backup..."
-    ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-      --data chat_id="$CHANNEL_ID" \
-      --data parse_mode="Markdown" \
-      --data-urlencode "text=$MESSAGE"
+    ${notify} "Home Assistant services back online, starting full backup..."
   '';
 
   backupJob = pkgs.writeShellScriptBin "backupJob_19" ''
     set -eo pipefail
-    source ${config.age.secrets."nexus/janitor.env".path}
+    export TELEGRAM_ENV_FILE="${envFile}"
 
-    # Notify on Telegram
-    MESSAGE="Remaining Nexus services will go down for maintenance in 60 seconds..."
-    ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-      --data chat_id="$CHANNEL_ID" \
-      --data parse_mode="Markdown" \
-      --data-urlencode "text=$MESSAGE"
+    ${notify} "Remaining Nexus services will go down for maintenance in 60 seconds..."
 
     # Wait
     sleep 60
@@ -136,12 +123,7 @@ let
       service: "systemctl start ${fullComposeTargetName service}"
     ) affectedComposeTargets}
 
-    # Notify on Telegram
-    MESSAGE="Nexus is fully back online."
-    ${pkgs.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-      --data chat_id="$CHANNEL_ID" \
-      --data parse_mode="Markdown" \
-      --data-urlencode "text=$MESSAGE"
+    ${notify} "Nexus is fully back online."
   '';
 in
 {

@@ -8,6 +8,7 @@
     ./hardware-extra.nix
     ./services
     ./snapraid.nix
+    ./mdadm.nix
     ../shared/linux/kernel.nix
   ];
 
