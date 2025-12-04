@@ -1,13 +1,23 @@
-{ lib, ... }:
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
 let
-  diskNumbers = lib.lists.range 0 9;
-  snapraidDataDisksName = builtins.map (i: "d${toString i}") diskNumbers;
+  diskNumbers = lib.range 0 9;
+  envFile = config.age.secrets."nexus/janitor.env".path;
 in
 {
   services.snapraid = {
     enable = true;
-    dataDisks = lib.genAttrs snapraidDataDisksName (d: "/mnt/disk${lib.strings.removePrefix "d" d}");
-    contentFiles = builtins.map (i: "/mnt/disk${toString i}/snapraid.content") diskNumbers;
+    dataDisks = lib.listToAttrs (
+      map (n: {
+        name = "d${toString n}";
+        value = "/mnt/disk${toString n}";
+      }) diskNumbers
+    );
+    contentFiles = map (n: "/mnt/disk${toString n}/snapraid.content") diskNumbers;
     parityFiles = [
       "/mnt/parity1/snapraid.parity"
       "/mnt/parity2/snapraid.2-parity"
@@ -18,12 +28,19 @@ in
       "/lost+found/"
     ];
     touchBeforeSync = true;
+    scrub = {
+      interval = "Sun *-*-* 06:00:00";
+      plan = 12;
+      olderThan = 10;
+    };
   };
 
   systemd.services = {
-    "snapraid-scrub" = {
-      wantedBy = lib.mkForce [ ];
-      startAt = lib.mkForce [ ];
+    "snapraid-scrub".serviceConfig = {
+      IOSchedulingClass = "idle";
+      ExecStartPre = "${pkgs.telegram-notify}/bin/telegram-notify '🔍 SnapRAID scrub starting...'";
+      ExecStartPost = "${pkgs.telegram-notify}/bin/telegram-notify '✅ SnapRAID scrub completed.'";
+      Environment = "TELEGRAM_ENV_FILE=${envFile}";
     };
     "snapraid-sync" = {
       wantedBy = lib.mkForce [ ];
