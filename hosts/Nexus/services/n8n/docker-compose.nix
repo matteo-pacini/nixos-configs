@@ -21,7 +21,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."nexus-n8n-n8n" = {
-    image = "docker.n8n.io/n8nio/n8n:1.120.1";
+    image = "docker.n8n.io/n8nio/n8n:1.122.5";
     environment = {
       "DB_POSTGRESDB_DATABASE" = "n8n";
       "DB_POSTGRESDB_HOST" = "postgres";
