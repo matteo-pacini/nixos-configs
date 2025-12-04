@@ -51,6 +51,7 @@
 
   services.sunshine = lib.mkIf (!isVM) {
     enable = true;
+    openFirewall = true;
     autoStart = true;
     capSysAdmin = true;
     applications = {
