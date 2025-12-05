@@ -36,6 +36,10 @@
 
   users.users."matteo.pacini" = {
     home = "/Users/matteo.pacini";
+    # Required after home-manager commit a521eab added home.uid option.
+    # The nix-darwin integration unconditionally accesses users.users.<name>.uid
+    # which fails if not set. See: https://github.com/nix-community/home-manager/commit/a521eab
+    uid = 501;
   };
 
   system.primaryUser = "matteo.pacini";
