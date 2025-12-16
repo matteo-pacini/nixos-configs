@@ -75,6 +75,11 @@ in
               saoudrizwan.claude-dev
               # GHA
               github.vscode-github-actions
+              # Python
+              charliermarsh.ruff
+              ms-python.python
+              ms-python.vscode-pylance
+              ms-python.mypy-type-checker
             ]
             ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
               {
