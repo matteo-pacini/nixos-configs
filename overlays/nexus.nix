@@ -25,7 +25,16 @@
         })
       );
     });
-    mergerfs = optimizedForNexus super.mergerfs;
+    mergerfs = (optimizedForNexus super.mergerfs).overrideAttrs (oldAttrs: {
+      env = (oldAttrs.env or { }) // {
+        NIX_CFLAGS_COMPILE =
+          (oldAttrs.env.NIX_CFLAGS_COMPILE or "")
+          + " -Wno-error=stringop-truncation -Wno-error=unused-result";
+        NIX_CXXFLAGS_COMPILE =
+          (oldAttrs.env.NIX_CFLAGS_COMPILE or "")
+          + " -Wno-error=stringop-truncation -Wno-error=unused-result";
+      };
+    });
     snapraid = optimizedForNexus super.snapraid;
     telegram-notify = super.writeShellScriptBin "telegram-notify" ''
       set -euo pipefail
