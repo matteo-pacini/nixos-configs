@@ -22,14 +22,14 @@
 
   config = lib.mkIf config.shared.kernel.enable {
     # Kernel version used across all Linux hosts
-    boot.kernelPackages = pkgs.linuxPackages_6_17;
+    boot.kernelPackages = pkgs.linuxPackages_6_18;
 
     # BORE scheduler patches
     boot.kernelPatches = lib.mkIf config.shared.kernel.useBorePatches (
       let
-        # Use pkgs.linuxPackages_6_17.kernel.version instead of config.boot.kernelPackages.kernel.version
+        # Use pkgs.linuxPackages_6_18.kernel.version instead of config.boot.kernelPackages.kernel.version
         # to avoid infinite recursion (boot.kernelPatches affects boot.kernelPackages)
-        kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_6_17.kernel.version;
+        kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_6_18.kernel.version;
         patchesDir = "${inputs.bore-scheduler-src}/patches/stable/linux-${kernelVersion}-bore";
       in
       lib.mapAttrsToList (name: _: {
