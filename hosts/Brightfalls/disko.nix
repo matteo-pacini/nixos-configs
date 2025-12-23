@@ -12,6 +12,7 @@
             boot = {
               size = "1G";
               type = "EF00";
+              label = "BOOT";
               content = {
                 type = "filesystem";
                 format = "vfat";
@@ -20,26 +21,28 @@
                 extraArgs = [
                   "-n"
                   "BOOT"
-                ]; # Label for FAT32
+                ]; # Filesystem label for FAT32
               };
             };
             # Part 2: Swap - 4GB
             swap = {
               size = "4G";
               type = "8200";
+              label = "SWAP";
               content = {
                 type = "swap";
                 randomEncryption = false;
                 extraArgs = [
                   "-L"
                   "SWAP"
-                ]; # Label for swap
+                ]; # Filesystem label for swap
               };
             };
             # Part 3: Root - remaining space - XFS
             root = {
               size = "100%";
               type = "8300";
+              label = "ROOT";
               content = {
                 type = "filesystem";
                 format = "xfs";
@@ -51,7 +54,7 @@
                 extraArgs = [
                   "-L"
                   "ROOT"
-                ]; # Label for XFS
+                ]; # Filesystem label for XFS
               };
             };
           };
