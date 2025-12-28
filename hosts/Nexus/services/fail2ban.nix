@@ -111,11 +111,12 @@
 
   # Custom filter for Caddy bot search attempts (JSON format)
   # Matches 404 (Not Found) and 400 (Bad Request) responses
+  # Ignores Home Assistant (has dedicated hass-auth jail)
   environment.etc."fail2ban/filter.d/caddy-botsearch.conf".text = ''
     [Definition]
     failregex = "client_ip":"<HOST>"(?:.*)"status":(?:404|400)
     datepattern = "ts":{Epoch}
-    ignoreregex =
+    ignoreregex = "host":"home\.matteopacini\.me"
   '';
 
   # Custom filter for n8n authentication failures (JSON format)
