@@ -134,20 +134,6 @@
           ]
           ++ extraModules;
         };
-      overlayPackageFromPR =
-        pr: package: system:
-        (
-          self: super:
-          let
-            pkgsFromPR = import (fetchTarball {
-              url = "https://github.com/NixOS/nixpkgs/archive/refs/pull/${toString pr}/head.tar.gz";
-              sha256 = "0000000000000000000000000000000000000000000000000000"; # Replace with actual hash
-            }) { inherit system; };
-          in
-          {
-            ${package} = pkgsFromPR.${package};
-          }
-        );
     in
     {
       ###################
@@ -163,12 +149,6 @@
         extraModules = [
           inputs.disko.nixosModules.disko
           ./hosts/Brightfalls/disko-physical.nix
-          inputs.agenix.nixosModules.default
-          {
-            age.identityPaths = [ "/etc/.age/Nexus.txt" ];
-            age.secrets."nexus/mosquitto-brightfalls-password".file =
-              ./secrets/nexus/mosquitto-brightfalls-password.age;
-          }
         ];
       };
       nixosConfigurations."BrightFallsVM-x86_64-linux" = mkBrightFalls {
@@ -240,8 +220,7 @@
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
             age.secrets."nexus/wireguard.env".file = ./secrets/nexus/wireguard.env.age;
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
-            age.secrets."nexus/mosquitto-brightfalls-password".file =
-              ./secrets/nexus/mosquitto-brightfalls-password.age;
+
             age.secrets."nexus/zigbee2mqtt.env" = {
               file = ./secrets/nexus/zigbee2mqtt.env.age;
               owner = "zigbee2mqtt";

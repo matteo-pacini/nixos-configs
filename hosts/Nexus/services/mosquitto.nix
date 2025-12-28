@@ -1,4 +1,3 @@
-{ config, ... }:
 {
   services.mosquitto = {
     enable = true;
@@ -16,16 +15,13 @@
         omitPasswordAuth = true;
         settings.allow_anonymous = true;
       }
+      # LAN access without auth (for BrightFalls)
       {
-        users.brightfalls = {
-          acl = [
-            "readwrite pc/brightfalls/#"
-          ];
-          passwordFile = config.age.secrets."nexus/mosquitto-brightfalls-password".path;
-        };
-
         address = "192.168.10.14";
         port = 1883;
+        acl = [ "pattern readwrite pc/brightfalls/#" ];
+        omitPasswordAuth = true;
+        settings.allow_anonymous = true;
       }
     ];
   };
