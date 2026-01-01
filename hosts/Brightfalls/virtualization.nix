@@ -82,13 +82,24 @@
               if [[ "$GUEST_NAME" == *-with-gpu ]]; then
                 if [ "$OPERATION" == "prepare" ]; then
                   echo "[$GUEST_NAME] Preparing GPU passthrough..."
-                  
+
                   # Prevent system sleep during VM operation
                   systemctl start libvirt-sleep
-                  
+
+                  # Pin host processes to CPUs 0 and 8 BEFORE stopping display manager
+                  # This leaves CPUs 1-7 and 9-15 available for the VM
+                  echo "[$GUEST_NAME] Pinning host processes to CPUs 0,8..."
+                  systemctl set-property --runtime -- user.slice AllowedCPUs=0,8
+                  systemctl set-property --runtime -- system.slice AllowedCPUs=0,8
+                  systemctl set-property --runtime -- init.scope AllowedCPUs=0,8
+
                   # Stop display manager
+                  echo "[$GUEST_NAME] Stopping display manager..."
                   systemctl stop display-manager.service
-                  
+
+                  # Wait for display manager to fully release GPU
+                  sleep 3
+
                   # Dynamically unbind all framebuffer consoles
                   echo "[$GUEST_NAME] Unbinding framebuffer consoles..."
                   rm -f /tmp/vfio-bound-consoles
@@ -101,78 +112,65 @@
                       fi
                     fi
                   done
-                  
-                  # Unbind EFI framebuffer to prevent black screen
-                  echo "[$GUEST_NAME] Unbinding EFI framebuffer..."
-                  echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind || true
-                  
-                  # Wait for GPU to settle
-                  sleep 5
-                  
-                  # Unload AMD GPU driver (snd_hda_intel unloads automatically as dependency)
+
+                  # NOTE: EFI framebuffer unbind is SKIPPED for AMD 6000 series (causes issues)
+                  # See: https://github.com/QaidVoid/Complete-Single-GPU-Passthrough
+                  # echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind || true
+
+                  # Wait for consoles to unbind
+                  sleep 2
+
+                  # Unload AMD GPU driver
                   echo "[$GUEST_NAME] Unloading AMD GPU driver..."
                   modprobe -r amdgpu
-                  
+
+                  # Wait for driver to fully unload
+                  sleep 2
+
                   # Detach GPU devices from host (AMD RX 6800/6800 XT / 6900 XT)
+                  echo "[$GUEST_NAME] Detaching GPU devices..."
                   virsh nodedev-detach pci_0000_0a_00_0  # GPU
                   virsh nodedev-detach pci_0000_0a_00_1  # Audio
-                  
-                  # Wait before loading VFIO
-                  sleep 5
-                  
-                  # Pin host processes to CPUs 0 and 8.
-                  # This leaves CPUs 1-7 and 9-15 available for the VM
-                  systemctl set-property --runtime -- user.slice AllowedCPUs=0,8
-                  systemctl set-property --runtime -- system.slice AllowedCPUs=0,8
-                  systemctl set-property --runtime -- init.scope AllowedCPUs=0,8
-                  
-                  # Load VFIO modules for GPU passthrough
+
+                  # Load VFIO modules immediately after detaching
+                  echo "[$GUEST_NAME] Loading VFIO modules..."
                   modprobe vfio
                   modprobe vfio_pci
                   modprobe vfio_iommu_type1
-                  
+
                   echo "[$GUEST_NAME] GPU passthrough preparation complete"
                 fi
-                
+
                 if [ "$OPERATION" == "release" ]; then
                   echo "[$GUEST_NAME] Releasing GPU passthrough..."
-                  
-                  # Unload VFIO modules
+
+                  # Unload VFIO modules first
+                  echo "[$GUEST_NAME] Unloading VFIO modules..."
                   modprobe -r vfio_pci
                   modprobe -r vfio_iommu_type1
                   modprobe -r vfio
-                  
+
                   # Wait before reattaching GPU
-                  sleep 5
-                  
-                  # Allow system sleep again
-                  systemctl stop libvirt-sleep
-                  
-                  # Restore CPU allocation to all cores (0-15)
-                  systemctl set-property --runtime -- user.slice AllowedCPUs=0-15
-                  systemctl set-property --runtime -- system.slice AllowedCPUs=0-15
-                  systemctl set-property --runtime -- init.scope AllowedCPUs=0-15
-                  
+                  sleep 2
+
                   # Reattach GPU devices to host
+                  echo "[$GUEST_NAME] Reattaching GPU devices..."
                   virsh nodedev-reattach pci_0000_0a_00_0
                   virsh nodedev-reattach pci_0000_0a_00_1
-                  
-                  # Wait before rebinding framebuffer
-                  sleep 5
-                  
-                  # Rebind EFI framebuffer
-                  echo "[$GUEST_NAME] Rebinding EFI framebuffer..."
-                  echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/bind || true
-                  
-                  # Wait before loading AMD driver
-                  sleep 5
-                  
-                  # Reload AMD GPU driver (snd_hda_intel loads automatically as dependency)
+
+                  # Wait for devices to reattach
+                  sleep 2
+
+                  # Reload AMD GPU driver IMMEDIATELY after reattaching
+                  echo "[$GUEST_NAME] Loading AMD GPU driver..."
                   modprobe amdgpu
-                  
-                  # Restart display manager (will auto-login user)
-                  systemctl start display-manager.service
-                  
+
+                  # Wait for driver to initialize
+                  sleep 3
+
+                  # NOTE: EFI framebuffer rebind is SKIPPED for AMD 6000 series (causes issues)
+                  # echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/bind || true
+
                   # Rebind framebuffer consoles that were originally bound
                   echo "[$GUEST_NAME] Rebinding framebuffer consoles..."
                   if test -e /tmp/vfio-bound-consoles; then
@@ -186,7 +184,20 @@
                     done < /tmp/vfio-bound-consoles
                     rm -f /tmp/vfio-bound-consoles
                   fi
-                  
+
+                  # Restart display manager
+                  echo "[$GUEST_NAME] Starting display manager..."
+                  systemctl start display-manager.service
+
+                  # Restore CPU allocation to all cores (0-15)
+                  echo "[$GUEST_NAME] Restoring CPU allocation..."
+                  systemctl set-property --runtime -- user.slice AllowedCPUs=0-15
+                  systemctl set-property --runtime -- system.slice AllowedCPUs=0-15
+                  systemctl set-property --runtime -- init.scope AllowedCPUs=0-15
+
+                  # Allow system sleep again
+                  systemctl stop libvirt-sleep
+
                   echo "[$GUEST_NAME] GPU passthrough release complete"
                 fi
               fi
