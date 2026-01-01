@@ -45,7 +45,6 @@
       nix-output-monitor
       # Virtualisation
       qemu
-      quickemu
       # Gaming
       mangohud
       vulkan-tools
