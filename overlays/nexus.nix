@@ -19,7 +19,7 @@
     # Remove this overlay once nixos-unstable includes this fix
     nixpkgs-ctranslate2-fix = import (fetchTarball {
       url = "https://github.com/NixOS/nixpkgs/archive/554d9cca7023c1a602109a83bbcb115d4a919d45.tar.gz";
-      hash = "sha256-iVUwiuTBAf9LMOdZotq3v7PqNN+/uxE1GArczd1mDdQ=";
+      sha256 = "sha256-iVUwiuTBAf9LMOdZotq3v7PqNN+/uxE1GArczd1mDdQ=";
     }) { system = "x86_64-linux"; };
   in
   {
