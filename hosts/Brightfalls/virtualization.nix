@@ -10,9 +10,11 @@
 
     system.nixos.tags = [ "with-vfio" ];
 
-    # Disable GPU-using services in VFIO mode to prevent conflicts
+    # Disable GPU-using services and Linux gaming optimizations in VFIO mode
+    # (gaming will be done in the VM, not on the Linux host)
     services.sunshine.enable = lib.mkForce false;
     services.lact.enable = lib.mkForce false;
+    hardware.amdgpu.overdrive.enable = lib.mkForce false;
 
     # vendor-reset module for proper AMD GPU reset between VM uses
     # This helps prevent blank screen issues on second VM boot
@@ -84,11 +86,6 @@
 
               GUEST_NAME="$1"
               OPERATION="$2"
-
-              # Redirect all output to log file
-              exec 19>>"/home/matteo/''${GUEST_NAME}.log"
-              echo "[$(date)] [$OPERATION] GPU passthrough hook started for $GUEST_NAME" >&19
-              BASH_XTRACEFD=19
 
               # Only run for VMs with names ending in "-with-gpu"
               if [[ "$GUEST_NAME" == *-with-gpu ]]; then
@@ -165,15 +162,10 @@
                   # Wait before resetting GPU
                   sleep 3
 
-                  # Set GPU reset method to 'device_specific' to use vendor-reset module
-                  # This is required for vendor-reset to take effect (Linux 5.7+)
-                  # See: https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-bus-pci
+                  # Trigger GPU reset via vendor-reset module
                   # Only reset the GPU device (0a:00.0), not the audio device (0a:00.1)
-                  echo "[$GUEST_NAME] Setting GPU reset method to device_specific..."
-                  echo 'device_specific' > /sys/bus/pci/devices/0000:0a:00.0/reset_method || true
-
-                  # Trigger the GPU reset using the vendor-reset method
-                  echo "[$GUEST_NAME] Triggering GPU reset..."
+                  # On kernel 6.x, vendor-reset hooks directly into the reset infrastructure
+                  echo "[$GUEST_NAME] Triggering GPU reset via vendor-reset..."
                   echo 1 > /sys/bus/pci/devices/0000:0a:00.0/reset || true
                   sleep 3
 
@@ -182,14 +174,14 @@
                   virsh nodedev-reattach pci_0000_0a_00_0
                   virsh nodedev-reattach pci_0000_0a_00_1
 
-                  # Wait for devices to reattach
-                  sleep 3
+                  # Wait for GPU to stabilize after reset before loading driver
+                  sleep 10
 
-                  # Reload AMD GPU driver IMMEDIATELY after reattaching
+                  # Reload AMD GPU driver
                   echo "[$GUEST_NAME] Loading AMD GPU driver..."
                   modprobe amdgpu
 
-                  # Wait for driver to initialize (increased for stability)
+                  # Wait for driver to initialize
                   sleep 5
 
                   # NOTE: EFI framebuffer rebind is SKIPPED for AMD 6000 series (causes issues)
