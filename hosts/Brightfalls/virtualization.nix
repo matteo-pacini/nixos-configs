@@ -20,6 +20,10 @@
 
     # Load vendor-reset early, before amdgpu
     boot.kernelModules = [ "vendor-reset" ];
+    # Make VBIOS available at runtime for GPU passthrough
+    systemd.tmpfiles.rules = [
+      "L+ /run/libvirt/vbios/brightfalls_6800xt.rom - - - - ${./../../extra/brightfalls_6800xt_vbios}"
+    ];
 
     boot.kernelParams = [
       # Enable AMD IOMMU (Input-Output Memory Management Unit) for hardware virtualization and device isolation
