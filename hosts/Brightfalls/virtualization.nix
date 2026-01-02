@@ -1,6 +1,7 @@
 {
   lib,
   pkgs,
+  config,
   isVM,
   ...
 }:
@@ -12,6 +13,13 @@
     # Disable GPU-using services in VFIO mode to prevent conflicts
     services.sunshine.enable = lib.mkForce false;
     services.lact.enable = lib.mkForce false;
+
+    # vendor-reset module for proper AMD GPU reset between VM uses
+    # This helps prevent blank screen issues on second VM boot
+    boot.extraModulePackages = [ config.boot.kernelPackages.vendor-reset ];
+
+    # Load vendor-reset early, before amdgpu
+    boot.kernelModules = [ "vendor-reset" ];
 
     boot.kernelParams = [
       # Enable AMD IOMMU (Input-Output Memory Management Unit) for hardware virtualization and device isolation
@@ -150,8 +158,20 @@
                   modprobe -r vfio_iommu_type1
                   modprobe -r vfio
 
-                  # Wait before reattaching GPU
-                  sleep 2
+                  # Wait before resetting GPU
+                  sleep 3
+
+                  # Set GPU reset method to 'device_specific' to use vendor-reset module
+                  # This is required for vendor-reset to take effect (Linux 5.7+)
+                  # See: https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-bus-pci
+                  # Only reset the GPU device (0a:00.0), not the audio device (0a:00.1)
+                  echo "[$GUEST_NAME] Setting GPU reset method to device_specific..."
+                  echo 'device_specific' > /sys/bus/pci/devices/0000:0a:00.0/reset_method || true
+
+                  # Trigger the GPU reset using the vendor-reset method
+                  echo "[$GUEST_NAME] Triggering GPU reset..."
+                  echo 1 > /sys/bus/pci/devices/0000:0a:00.0/reset || true
+                  sleep 3
 
                   # Reattach GPU devices to host
                   echo "[$GUEST_NAME] Reattaching GPU devices..."
@@ -159,14 +179,14 @@
                   virsh nodedev-reattach pci_0000_0a_00_1
 
                   # Wait for devices to reattach
-                  sleep 2
+                  sleep 3
 
                   # Reload AMD GPU driver IMMEDIATELY after reattaching
                   echo "[$GUEST_NAME] Loading AMD GPU driver..."
                   modprobe amdgpu
 
-                  # Wait for driver to initialize
-                  sleep 3
+                  # Wait for driver to initialize (increased for stability)
+                  sleep 5
 
                   # NOTE: EFI framebuffer rebind is SKIPPED for AMD 6000 series (causes issues)
                   # echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/bind || true
