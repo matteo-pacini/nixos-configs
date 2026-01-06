@@ -45,10 +45,10 @@ in
       options = [
         "defaults"
         "allow_other"
-        "cache.files=partial"
-        "dropcacheonclose=true"
-        "category.create=mfs"
+        "category.create=epmfs"
         "posix_acl=true"
+        "moveonenospc=true"
+        "minfreespace=300G"
       ];
       neededForBoot = false;
       depends = mountPoints;
