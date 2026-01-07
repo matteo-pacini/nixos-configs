@@ -24,9 +24,14 @@ in
     ];
   };
 
-  # The default home-assistant systemd service has NoNewPrivileges=true which prevents
-  # sudo from working. We need to disable this hardening to allow shell_command to use sudo.
-  systemd.services.home-assistant.serviceConfig.NoNewPrivileges = lib.mkForce false;
+  # The default home-assistant systemd service has security hardening that prevents
+  # sudo from working. We need to disable these to allow shell_command to use sudo:
+  # - NoNewPrivileges: prevents gaining elevated privileges
+  # - RestrictSUIDSGID: prevents setuid binaries (like sudo) from working
+  systemd.services.home-assistant.serviceConfig = {
+    NoNewPrivileges = lib.mkForce false;
+    RestrictSUIDSGID = lib.mkForce false;
+  };
 
   services.home-assistant = {
     enable = true;
