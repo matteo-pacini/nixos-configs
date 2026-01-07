@@ -232,8 +232,8 @@
       };
 
       shell_command = {
-        restart_zigbee2mqtt = "sudo ${pkgs.systemd}/bin/systemctl restart zigbee2mqtt";
-        restart_mosquitto = "sudo ${pkgs.systemd}/bin/systemctl restart mosquitto";
+        restart_zigbee2mqtt = "${pkgs.sudo}/bin/sudo ${pkgs.systemd}/bin/systemctl restart zigbee2mqtt";
+        restart_mosquitto = "${pkgs.sudo}/bin/sudo ${pkgs.systemd}/bin/systemctl restart mosquitto";
       };
 
       logger = {
