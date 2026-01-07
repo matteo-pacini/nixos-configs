@@ -1,5 +1,24 @@
 { pkgs, ... }:
 {
+  # Allow hass user to restart specific services without password
+  security.sudo = {
+    extraRules = [
+      {
+        users = [ "hass" ];
+        commands = [
+          {
+            command = "${pkgs.systemd}/bin/systemctl restart zigbee2mqtt";
+            options = [ "NOPASSWD" ];
+          }
+          {
+            command = "${pkgs.systemd}/bin/systemctl restart mosquitto";
+            options = [ "NOPASSWD" ];
+          }
+        ];
+      }
+    ];
+  };
+
   services.home-assistant = {
     enable = true;
     openFirewall = true;
@@ -99,6 +118,30 @@
       # https://www.home-assistant.io/integrations/default_config/
       default_config = { };
 
+      # Service status monitoring
+      command_line = [
+        {
+          binary_sensor = {
+            name = "Zigbee2MQTT Running";
+            command = "${pkgs.systemd}/bin/systemctl is-active zigbee2mqtt";
+            payload_on = "active";
+            payload_off = "inactive";
+            device_class = "running";
+            scan_interval = 30;
+          };
+        }
+        {
+          binary_sensor = {
+            name = "Mosquitto Running";
+            command = "${pkgs.systemd}/bin/systemctl is-active mosquitto";
+            payload_on = "active";
+            payload_off = "inactive";
+            device_class = "running";
+            scan_interval = 30;
+          };
+        }
+      ];
+
       influxdb = {
         api_version = 1;
         host = "127.0.0.1";
@@ -187,7 +230,10 @@
         internal_url = "http://nexus.home.internal:8123";
       };
 
-      shell_command = { };
+      shell_command = {
+        restart_zigbee2mqtt = "sudo ${pkgs.systemd}/bin/systemctl restart zigbee2mqtt";
+        restart_mosquitto = "sudo ${pkgs.systemd}/bin/systemctl restart mosquitto";
+      };
 
       logger = {
         default = "info";
