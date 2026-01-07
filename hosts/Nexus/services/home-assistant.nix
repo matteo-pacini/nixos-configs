@@ -1,33 +1,21 @@
-{ pkgs, lib, ... }:
+{ pkgs, ... }:
 let
-  # Define paths once to ensure consistency between sudo rules and shell commands.
-  # Note: We must use the setuid wrapper for sudo, not pkgs.sudo which lacks setuid bit.
   systemctl = "${pkgs.systemd}/bin/systemctl";
-  sudo = "/run/wrappers/bin/sudo";
 in
 {
-  # Allow hass user to restart specific services without password
-  security.sudo = {
-    extraRules = [
-      {
-        users = [ "hass" ];
-        commands = [
-          {
-            command = "${systemctl} restart zigbee2mqtt";
-            options = [ "NOPASSWD" ];
-          }
-          {
-            command = "${systemctl} restart mosquitto";
-            options = [ "NOPASSWD" ];
-          }
-        ];
+  # Allow hass user to restart specific services via polkit (no sudo needed).
+  # This is more secure than using sudo as it doesn't require disabling
+  # systemd's security hardening (NoNewPrivileges, RestrictSUIDSGID, etc.)
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.systemd1.manage-units" &&
+          (action.lookup("unit") == "zigbee2mqtt.service" ||
+           action.lookup("unit") == "mosquitto.service") &&
+          subject.user == "hass") {
+        return polkit.Result.YES;
       }
-    ];
-  };
-
-  # The default home-assistant systemd service has NoNewPrivileges=true which prevents
-  # setuid binaries (like sudo) from gaining elevated privileges. We must disable this.
-  systemd.services.home-assistant.serviceConfig.NoNewPrivileges = lib.mkForce false;
+    });
+  '';
 
   services.home-assistant = {
     enable = true;
@@ -242,8 +230,8 @@ in
       };
 
       shell_command = {
-        restart_zigbee2mqtt = "${sudo} ${systemctl} restart zigbee2mqtt";
-        restart_mosquitto = "${sudo} ${systemctl} restart mosquitto";
+        restart_zigbee2mqtt = "${systemctl} restart zigbee2mqtt";
+        restart_mosquitto = "${systemctl} restart mosquitto";
       };
 
       logger = {

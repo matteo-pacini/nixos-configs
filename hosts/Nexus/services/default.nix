@@ -24,6 +24,7 @@
     ./grafana.nix
     ./geoipupdate.nix
     ./paperless.nix
+    ./polkit.nix
   ];
 
   systemd.tmpfiles.rules = [
