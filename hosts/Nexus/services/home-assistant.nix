@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
+let
+  # Define the systemctl path once to ensure consistency between sudo rules and shell commands
+  systemctl = "${pkgs.systemd}/bin/systemctl";
+  sudo = "${pkgs.sudo}/bin/sudo";
+in
 {
   # Allow hass user to restart specific services without password
   security.sudo = {
@@ -7,17 +12,21 @@
         users = [ "hass" ];
         commands = [
           {
-            command = "${pkgs.systemd}/bin/systemctl restart zigbee2mqtt";
+            command = "${systemctl} restart zigbee2mqtt";
             options = [ "NOPASSWD" ];
           }
           {
-            command = "${pkgs.systemd}/bin/systemctl restart mosquitto";
+            command = "${systemctl} restart mosquitto";
             options = [ "NOPASSWD" ];
           }
         ];
       }
     ];
   };
+
+  # The default home-assistant systemd service has NoNewPrivileges=true which prevents
+  # sudo from working. We need to disable this hardening to allow shell_command to use sudo.
+  systemd.services.home-assistant.serviceConfig.NoNewPrivileges = lib.mkForce false;
 
   services.home-assistant = {
     enable = true;
@@ -232,8 +241,8 @@
       };
 
       shell_command = {
-        restart_zigbee2mqtt = "${pkgs.sudo}/bin/sudo ${pkgs.systemd}/bin/systemctl restart zigbee2mqtt";
-        restart_mosquitto = "${pkgs.sudo}/bin/sudo ${pkgs.systemd}/bin/systemctl restart mosquitto";
+        restart_zigbee2mqtt = "${sudo} ${systemctl} restart zigbee2mqtt";
+        restart_mosquitto = "${sudo} ${systemctl} restart mosquitto";
       };
 
       logger = {
