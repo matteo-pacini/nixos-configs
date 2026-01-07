@@ -1,8 +1,9 @@
 { pkgs, lib, ... }:
 let
-  # Define the systemctl path once to ensure consistency between sudo rules and shell commands
+  # Define paths once to ensure consistency between sudo rules and shell commands.
+  # Note: We must use the setuid wrapper for sudo, not pkgs.sudo which lacks the setuid bit.
   systemctl = "${pkgs.systemd}/bin/systemctl";
-  sudo = "${pkgs.sudo}/bin/sudo";
+  sudo = "/run/wrappers/bin/sudo";
 in
 {
   # Allow hass user to restart specific services without password
@@ -25,12 +26,14 @@ in
   };
 
   # The default home-assistant systemd service has security hardening that prevents
-  # sudo from working. We need to disable these to allow shell_command to use sudo:
-  # - NoNewPrivileges: prevents gaining elevated privileges
-  # - RestrictSUIDSGID: prevents setuid binaries (like sudo) from working
+  # sudo from working. We must disable these to allow shell_command to use sudo:
+  # - NoNewPrivileges: prevents gaining elevated privileges via setuid
+  # - RestrictSUIDSGID: prevents setuid binaries from working
+  # - SystemCallFilter with ~@privileged: blocks syscalls that sudo needs
   systemd.services.home-assistant.serviceConfig = {
     NoNewPrivileges = lib.mkForce false;
     RestrictSUIDSGID = lib.mkForce false;
+    SystemCallFilter = lib.mkForce [ "@system-service" ];
   };
 
   services.home-assistant = {
@@ -142,7 +145,7 @@ in
             payload_on = "active";
             payload_off = "inactive";
             device_class = "running";
-            scan_interval = 30;
+            scan_interval = 5;
           };
         }
         {
@@ -152,7 +155,7 @@ in
             payload_on = "active";
             payload_off = "inactive";
             device_class = "running";
-            scan_interval = 30;
+            scan_interval = 5;
           };
         }
       ];
