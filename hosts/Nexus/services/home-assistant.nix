@@ -20,6 +20,7 @@
       "brother"
       # Unifi
       "unifi"
+      "unifiprotect"
       # Wake on LAN
       "wake_on_lan"
       # Ping
