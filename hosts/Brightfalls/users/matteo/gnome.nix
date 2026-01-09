@@ -8,6 +8,8 @@ with lib.hm.gvariant;
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
+      gtk-theme = "Adwaita-dark";
+      icon-theme = "Adwaita";
     };
     "org/gnome/shell/extensions/dash-to-dock" = {
       dash-max-icon-size = 64;
@@ -16,6 +18,7 @@ with lib.hm.gvariant;
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
+        "blur-my-shell@aunetx"
         "dash-to-dock@micxgx.gmail.com"
       ];
       favorite-apps = [
@@ -56,23 +59,13 @@ with lib.hm.gvariant;
     enable = true;
     cursorTheme = {
       name = "Adwaita";
-      package = pkgs.gnome-themes-extra;
+      package = pkgs.adwaita-icon-theme;
     };
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;
     };
-    gtk3.extraConfig = {
-      Settings = ''
-        gtk-application-prefer-dark-theme=1
-      '';
-    };
-
-    gtk4.extraConfig = {
-      Settings = ''
-        gtk-application-prefer-dark-theme=1
-      '';
-    };
+    gtk4.colorScheme = "dark";
   };
 
   qt = {
