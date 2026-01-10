@@ -14,7 +14,47 @@ env:
   ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
 
 jobs:
+  eval:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - host: BrightFalls
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+          - host: BrightFallsVM-x86_64-linux
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+          - host: BrightFallsVM-aarch64-linux
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+          - host: Nexus
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+          - host: CauldronLake
+            os: ubuntu-latest
+            system_attr: nixosConfigurations
+          - host: WorkLaptop
+            os: macos-latest
+            system_attr: darwinConfigurations
+          - host: NightSprings
+            os: macos-latest
+            system_attr: darwinConfigurations
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+
+      - name: Evaluate configuration
+        run: |
+          nix eval ".#${{ matrix.system_attr }}.${{ matrix.host }}.config.system.build.toplevel.drvPath" --raw
+
   pr-build:
+    needs: [eval]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
