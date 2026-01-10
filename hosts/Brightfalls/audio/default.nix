@@ -4,6 +4,9 @@
   ...
 }:
 {
+  imports = [
+    ./virtual-surround.nix
+  ];
   services.pulseaudio.enable = false;
 
   security.rtkit.enable = true;
