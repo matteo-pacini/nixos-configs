@@ -27,10 +27,11 @@
       })
     );
 
-    # OVMF runs QEMU during build to generate UEFI vars.
+    # OVMF/OVMFFull run QEMU during build to generate UEFI vars.
     # Use vanilla QEMU to avoid znver4 instructions failing in TCG emulation.
     # See: https://github.com/NixOS/nixpkgs/issues/381223
     OVMF = super.OVMF.override { qemu = super.qemu; };
+    OVMFFull = super.OVMFFull.override { qemu = super.qemu; };
 
   }
 )
