@@ -14,6 +14,15 @@
 
   programs.steam = {
     enable = pkgs.stdenv.hostPlatform.isx86_64;
+    package = lib.mkIf (!isVM) (
+      pkgs.steam.override {
+        extraEnv = {
+          # Use integrated GPU (Radeon 780M) for Steam client UI
+          # Games can override this via launch options if eGPU is preferred
+          DRI_PRIME = "0";
+        };
+      }
+    );
     extraPackages = with pkgs; [
       gamescope
     ];

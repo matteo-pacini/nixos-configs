@@ -7,8 +7,8 @@
       if !isVM then
         pkg.overrideAttrs (oldAttrs: {
           env = (oldAttrs.env or { }) // {
-            NIX_CFLAGS_COMPILE = (oldAttrs.env.NIX_CFLAGS_COMPILE or "") + " -O2 -march=znver2 -mtune=znver2";
-            NIX_CXXFLAGS_COMPILE = (oldAttrs.env.NIX_CFLAGS_COMPILE or "") + " -O2 -march=znver2 -mtune=znver2";
+            NIX_CFLAGS_COMPILE = (oldAttrs.env.NIX_CFLAGS_COMPILE or "") + " -O2 -march=znver4 -mtune=znver4";
+            NIX_CXXFLAGS_COMPILE = (oldAttrs.env.NIX_CFLAGS_COMPILE or "") + " -O2 -march=znver4 -mtune=znver4";
           };
         })
       else
@@ -16,9 +16,6 @@
   in
   {
     reshade-steam-proton = super.callPackage ../packages/reshade-steam-proton.nix { };
-
-    mesa = optimizedForBrightFalls super.mesa;
-    mangohud = optimizedForBrightFalls super.mangohud;
 
     qemu = optimizedForBrightFalls (
       super.qemu.override ({
@@ -30,11 +27,11 @@
       })
     );
 
-    brlaser = super.brlaser.overrideAttrs (oldAttrs: {
-      cmakeFlags = (oldAttrs.cmakeFlags or [ ]) ++ [
-        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-      ];
-    });
+    # OVMF/OVMFFull run QEMU during build to generate UEFI vars.
+    # Use vanilla QEMU to avoid znver4 instructions failing in TCG emulation.
+    # See: https://github.com/NixOS/nixpkgs/issues/381223
+    OVMF = super.OVMF.override { qemu = super.qemu; };
+    OVMFFull = super.OVMFFull.override { qemu = super.qemu; };
 
   }
 )

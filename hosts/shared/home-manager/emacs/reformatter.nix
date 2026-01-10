@@ -2,7 +2,7 @@
 let
   formatters = pkgs.symlinkJoin {
     name = "nix-packages";
-    paths = with pkgs; [ nixfmt-rfc-style ];
+    paths = with pkgs; [ nixfmt ];
   };
 in
 {
