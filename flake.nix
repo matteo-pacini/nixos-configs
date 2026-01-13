@@ -192,6 +192,7 @@
               inputs.nur.overlays.default
             ];
           }
+          ./modules/nixos/apcupsd-multi.nix
           ./hosts/Nexus
           inputs.home-manager.nixosModules.home-manager
           {
