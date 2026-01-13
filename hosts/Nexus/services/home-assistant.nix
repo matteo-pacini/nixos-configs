@@ -227,6 +227,10 @@ in
         time_zone = "Europe/London";
         external_url = "https://home.matteopacini.me";
         internal_url = "http://nexus.home.internal:8123";
+        allowlist_external_dirs = [
+          "/tmp"
+          "/var/lib/hass/www"
+        ];
       };
 
       shell_command = {
@@ -265,6 +269,10 @@ in
 
     };
   };
+
+  systemd.tmpfiles.rules = [
+    "d /var/lib/hass/www 0755 hass hass"
+  ];
 
   systemd.services.home-assistant.preStart = ''
     touch /var/lib/hass/automations.yaml
