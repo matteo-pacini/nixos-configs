@@ -26,7 +26,7 @@
         UPSNAME   server-ups
         UPSCABLE  usb
         UPSTYPE   usb
-        DEVICE    /dev/ups-server
+        DEVICE                # empty = auto-detect USB HID device
         POLLTIME  15
 
         # ---------- shutdown triggers for Nexus ----------
@@ -38,8 +38,4 @@
     };
   };
 
-  # udev rule to create stable symlink for server UPS
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="051d", ATTRS{idProduct}=="0003", ATTRS{serial}=="IS1124011060  ", SYMLINK+="ups-server", MODE="0660"
-  '';
 }
