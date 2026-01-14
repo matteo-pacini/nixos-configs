@@ -4,6 +4,7 @@
     rack-ups = {
       enable = true;
       nisPort = 3551;
+      requiresNetwork = true; # SNMP-based, needs network
       configText = ''
         UPSNAME   rack-ups
         UPSCABLE  ether
