@@ -19,16 +19,22 @@
       '';
     };
 
-    # Add more UPS devices here, for example:
-    # office-ups = {
-    #   enable = true;
-    #   nisPort = 3552;
-    #   configText = ''
-    #     UPSNAME   office-ups
-    #     UPSCABLE  usb
-    #     UPSTYPE   usb
-    #     DEVICE    /dev/ups-office
-    #   '';
-    # };
+    server-ups = {
+      enable = true;
+      nisPort = 3552;
+      configText = ''
+        UPSNAME   server-ups
+        UPSCABLE  usb
+        UPSTYPE   usb
+        DEVICE                # empty = auto-detect USB HID device
+        POLLTIME  15
+
+        # ---------- shutdown triggers for Nexus ----------
+        ONBATTERYDELAY 6     # seconds before reacting to power loss
+        BATTERYLEVEL   10    # shutdown at 10% battery
+        MINUTES        5     # shutdown with 5 minutes remaining
+        TIMEOUT        0     # no fixed timeout
+      '';
+    };
   };
 }
