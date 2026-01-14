@@ -19,16 +19,27 @@
       '';
     };
 
-    # Add more UPS devices here, for example:
-    # office-ups = {
-    #   enable = true;
-    #   nisPort = 3552;
-    #   configText = ''
-    #     UPSNAME   office-ups
-    #     UPSCABLE  usb
-    #     UPSTYPE   usb
-    #     DEVICE    /dev/ups-office
-    #   '';
-    # };
+    server-ups = {
+      enable = true;
+      nisPort = 3552;
+      configText = ''
+        UPSNAME   server-ups
+        UPSCABLE  usb
+        UPSTYPE   usb
+        DEVICE    /dev/ups-server
+        POLLTIME  15
+
+        # ---------- shutdown triggers for Nexus ----------
+        ONBATTERYDELAY 6     # seconds before reacting to power loss
+        BATTERYLEVEL   10    # shutdown at 10% battery
+        MINUTES        5     # shutdown with 5 minutes remaining
+        TIMEOUT        0     # no fixed timeout
+      '';
+    };
   };
+
+  # udev rule to create stable symlink for server UPS
+  services.udev.extraRules = ''
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="051d", ATTRS{idProduct}=="0003", ATTRS{serial}=="IS1124011060  ", SYMLINK+="ups-server", MODE="0660"
+  '';
 }
