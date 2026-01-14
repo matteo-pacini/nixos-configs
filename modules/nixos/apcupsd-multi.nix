@@ -134,6 +134,16 @@ let
             Event hooks for this UPS. See "man apccontrol" for the list of events.
           '';
         };
+
+        requiresNetwork = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = ''
+            Whether this UPS requires network connectivity to communicate.
+            When true, the service will wait for network-online.target before starting.
+            Enable this for SNMP-based or network-connected UPS devices.
+          '';
+        };
       };
     };
 
@@ -187,9 +197,14 @@ in
       # Main apcupsd services
       (lib.mapAttrs' (
         name: conf:
+        let
+          upsCfg = cfg.upses.${name};
+        in
         lib.nameValuePair "apcupsd-${name}" {
           description = "APC UPS Daemon (${name})";
           wantedBy = [ "multi-user.target" ];
+          wants = lib.optionals upsCfg.requiresNetwork [ "network-online.target" ];
+          after = lib.optionals upsCfg.requiresNetwork [ "network-online.target" ];
           preStart = "mkdir -p /run/apcupsd";
           serviceConfig = {
             ExecStart = "${pkgs.apcupsd}/bin/apcupsd -b -f ${conf.configFile} -d1";
