@@ -105,6 +105,7 @@ in
       mushroom
       mini-graph-card
       card-mod
+      button-card
     ];
     extraPackages =
       python3Packages: with python3Packages; [
