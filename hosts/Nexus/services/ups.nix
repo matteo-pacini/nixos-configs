@@ -40,6 +40,6 @@
 
   # udev rule to create stable symlink for server UPS
   services.udev.extraRules = ''
-    SUBSYSTEM=="usb", ATTR{idVendor}=="051d", ATTR{idProduct}=="0003", ATTR{serial}=="IS1124011060  ", SYMLINK+="ups-server", MODE="0660"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="051d", ATTRS{idProduct}=="0003", ATTRS{serial}=="IS1124011060  ", SYMLINK+="ups-server", MODE="0660"
   '';
 }
