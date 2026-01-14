@@ -104,6 +104,7 @@ in
       sankey-chart
       mushroom
       mini-graph-card
+      card-mod
     ];
     extraPackages =
       python3Packages: with python3Packages; [
