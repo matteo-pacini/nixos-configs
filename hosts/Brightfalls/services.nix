@@ -60,8 +60,8 @@ in
 
   # Allow passwordless SSH from local subnet
   users.users.matteo.openssh.authorizedKeys.keys = [
-    # NightSprings (MacBook)
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILn8qGjRSufdOKPFFbzrxBI+D0PeSVq8MGygdQNaTqQX m@matteopacini.me"
+    # Work Laptop
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH0nEXegOpQunZOaVcw03ZE/jcWKeUcNx2UUhiZC6CXO matteo.pacini@work-laptop.guest.internal"
   ];
 
   services.fstrim.enable = lib.mkIf (!isVM) true;
