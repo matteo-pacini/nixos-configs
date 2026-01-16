@@ -49,6 +49,21 @@ let
   '';
 in
 {
+  # SSH server with passwordless access on local subnet for debugging
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+    };
+  };
+
+  # Allow passwordless SSH from local subnet
+  users.users.matteo.openssh.authorizedKeys.keys = [
+    # NightSprings (MacBook)
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILn8qGjRSufdOKPFFbzrxBI+D0PeSVq8MGygdQNaTqQX m@matteopacini.me"
+  ];
+
   services.fstrim.enable = lib.mkIf (!isVM) true;
 
   # https://discourse.nixos.org/t/connected-to-mullvadvpn-but-no-internet-connection/35803/8?u=lion
