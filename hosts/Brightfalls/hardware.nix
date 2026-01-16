@@ -38,6 +38,15 @@
   hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableRedistributableFirmware = true;
 
+  # Force mutter/GDM to use the 6800 XT (eGPU) as primary GPU
+  # With dual AMD GPUs (iGPU + dGPU), mutter may pick the wrong one by default
+  # This udev rule tells mutter to prefer the dGPU for rendering
+  # Match by PCI device ID (1002:73BF = RX 6800 XT) for stability across reboots
+  # See: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1562
+  services.udev.extraRules = lib.mkIf (!isVM) ''
+    SUBSYSTEM=="drm", KERNEL=="card*", ATTRS{device}=="0x73bf", ATTRS{vendor}=="0x1002", TAG+="mutter-device-preferred-primary"
+  '';
+
   # Use systemd in initrd for proper LUKS dependency ordering
   # This ensures vault is mounted before other LUKS devices try to read keyfile
   boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
