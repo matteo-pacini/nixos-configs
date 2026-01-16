@@ -59,13 +59,14 @@
   programs.dconf.enable = true;
 
   # Set up GDM to use a custom monitors configuration
-  systemd.tmpfiles.rules = lib.optionals (!isVM) (
-    let
-      monitorsXmlContent = builtins.readFile ./monitors.xml;
-      monitorsConfig = pkgs.writeText "gdm_monitors.xml" monitorsXmlContent;
-    in
-    [
-      "L+ /run/gdm/.config/monitors.xml - - - - ${monitorsConfig}"
-    ]
-  );
+  # TEMPORARILY DISABLED - regenerating monitors.xml for UM890 transition
+  # systemd.tmpfiles.rules = lib.optionals (!isVM) (
+  #   let
+  #     monitorsXmlContent = builtins.readFile ./monitors.xml;
+  #     monitorsConfig = pkgs.writeText "gdm_monitors.xml" monitorsXmlContent;
+  #   in
+  #   [
+  #     "L+ /run/gdm/.config/monitors.xml - - - - ${monitorsConfig}"
+  #   ]
+  # );
 }
