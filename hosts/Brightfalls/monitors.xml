@@ -88,7 +88,7 @@
     </logicalmonitor>
     <disabled>
       <monitorspec>
-        <connector>HDMI-1</connector>
+        <connector>HDMI-A-1</connector>
         <vendor>FL_</vendor>
         <product>HDMI2K</product>
         <serial>0x00000000</serial>
@@ -140,7 +140,7 @@
     </logicalmonitor>
     <disabled>
       <monitorspec>
-        <connector>HDMI-1</connector>
+        <connector>HDMI-A-1</connector>
         <vendor>FUN</vendor>
         <product>Evanlak8K V2</product>
         <serial>0x00006410</serial>
