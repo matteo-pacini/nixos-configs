@@ -14,6 +14,15 @@
 
   programs.steam = {
     enable = pkgs.stdenv.hostPlatform.isx86_64;
+    package = lib.mkIf (!isVM) (
+      pkgs.steam.override {
+        extraEnv = {
+          # Use integrated GPU (Radeon 780M) for Steam client UI
+          # Games can override this via launch options if eGPU is preferred
+          DRI_PRIME = "0";
+        };
+      }
+    );
     extraPackages = with pkgs; [
       gamescope
     ];
@@ -66,7 +75,9 @@
       sunshine_name = "BrightFalls Sunshine";
       global_prep_cmd = builtins.toJSON [
         {
+          # Switch to HDMI for streaming (e.g., TV via capture card)
           do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor HDMI-1 --mode 3840x2160@59.940";
+          # Restore dual DP monitors when streaming ends
           undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951 --transform 90";
         }
       ];

@@ -1,8 +1,6 @@
 {
-  lib,
   pkgs,
   inputs,
-  isVM,
   ...
 }:
 {
@@ -18,6 +16,7 @@
     ./hardware.nix
     ./printer.nix
     ./virtualization.nix
+    ./specialisations.nix
     ../shared/bluetooth.nix
     ../shared/linux/kernel.nix
   ];

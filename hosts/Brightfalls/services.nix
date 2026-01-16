@@ -49,36 +49,29 @@ let
   '';
 in
 {
+  # SSH server with passwordless access on local subnet for debugging
+  services.openssh = {
+    openFirewall = true;
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+    };
+    ports = [ 1788 ];
+  };
+
+  # Allow passwordless SSH from local subnet
+  users.users.matteo.openssh.authorizedKeys.keys = [
+    # Work Laptop
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH0nEXegOpQunZOaVcw03ZE/jcWKeUcNx2UUhiZC6CXO matteo.pacini@work-laptop.guest.internal"
+  ];
+
   services.fstrim.enable = lib.mkIf (!isVM) true;
 
   # https://discourse.nixos.org/t/connected-to-mullvadvpn-but-no-internet-connection/35803/8?u=lion
   services.resolved.enable = true;
   services.mullvad-vpn.enable = true;
   services.mullvad-vpn.package = pkgs.mullvad-vpn;
-
-  # Fix service to activate swap at login screen
-  systemd.services.fix-swap = lib.mkIf (!isVM) {
-    description = "Fix Swap Service";
-
-    # Run after the graphical login screen appears
-    wantedBy = [ "graphical.target" ];
-    after = [ "graphical.target" ];
-
-    # Run only once at startup
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-
-    # The actual command to activate the swap using systemctl
-    script = ''
-      # Check if swap service is already active
-      if ! systemctl is-active dev-mapper-swap.swap &>/dev/null; then
-        # Try to start the swap service
-        systemctl start dev-mapper-swap.swap || true
-      fi
-    '';
-  };
 
   services.fwupd.enable = lib.mkIf (!isVM) true;
 

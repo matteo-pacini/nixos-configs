@@ -2,8 +2,30 @@
   <configuration>
     <layoutmode>physical</layoutmode>
     <logicalmonitor>
-      <x>0</x>
+      <x>2560</x>
       <y>0</y>
+      <scale>1</scale>
+      <transform>
+        <rotation>left</rotation>
+        <flipped>no</flipped>
+      </transform>
+      <monitor>
+        <monitorspec>
+          <connector>DP-2</connector>
+          <vendor>DEL</vendor>
+          <product>DELL U2719D</product>
+          <serial>7CGY223</serial>
+        </monitorspec>
+        <mode>
+          <width>2560</width>
+          <height>1440</height>
+          <rate>59.951</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+    <logicalmonitor>
+      <x>0</x>
+      <y>1120</y>
       <scale>1</scale>
       <primary>yes</primary>
       <monitor>
@@ -20,28 +42,6 @@
         </mode>
       </monitor>
     </logicalmonitor>
-    <logicalmonitor>
-      <x>2560</x>
-      <y>0</y>
-      <scale>1</scale>
-      <transform>
-        <rotation>left</rotation>
-        <flipped>no</flipped>
-      </transform>
-      <monitor>
-        <monitorspec>
-          <connector>DP-2</connector>
-          <vendor>DEL</vendor>
-          <product>DELL U2719D</product>
-          <serial>7CGY223</serial>
-        </monitorspec>
-        <mode>
-          <width>2560</width>
-          <height>1440</height>
-          <rate>59.951</rate>
-        </mode>
-      </monitor>
-    </logicalmonitor>
   </configuration>
   <configuration>
     <layoutmode>physical</layoutmode>
@@ -69,59 +69,7 @@
     </logicalmonitor>
     <logicalmonitor>
       <x>0</x>
-      <y>0</y>
-      <scale>1</scale>
-      <primary>yes</primary>
-      <monitor>
-        <monitorspec>
-          <connector>DP-1</connector>
-          <vendor>AUS</vendor>
-          <product>ROG PG278QR</product>
-          <serial>#ASO0f7HLJ+Pd</serial>
-        </monitorspec>
-        <mode>
-          <width>2560</width>
-          <height>1440</height>
-          <rate>119.998</rate>
-        </mode>
-      </monitor>
-    </logicalmonitor>
-    <disabled>
-      <monitorspec>
-        <connector>HDMI-1</connector>
-        <vendor>FL_</vendor>
-        <product>HDMI2K</product>
-        <serial>0x00000000</serial>
-      </monitorspec>
-    </disabled>
-  </configuration>
-  <configuration>
-    <layoutmode>physical</layoutmode>
-    <logicalmonitor>
-      <x>2560</x>
-      <y>0</y>
-      <scale>1</scale>
-      <transform>
-        <rotation>left</rotation>
-        <flipped>no</flipped>
-      </transform>
-      <monitor>
-        <monitorspec>
-          <connector>DP-2</connector>
-          <vendor>DEL</vendor>
-          <product>DELL U2719D</product>
-          <serial>7CGY223</serial>
-        </monitorspec>
-        <mode>
-          <width>2560</width>
-          <height>1440</height>
-          <rate>59.951</rate>
-        </mode>
-      </monitor>
-    </logicalmonitor>
-    <logicalmonitor>
-      <x>0</x>
-      <y>0</y>
+      <y>1120</y>
       <scale>1</scale>
       <primary>yes</primary>
       <monitor>
@@ -146,49 +94,5 @@
         <serial>0x00006410</serial>
       </monitorspec>
     </disabled>
-  </configuration>
-  <configuration>
-    <layoutmode>logical</layoutmode>
-    <logicalmonitor>
-      <x>0</x>
-      <y>1120</y>
-      <scale>1</scale>
-      <primary>yes</primary>
-      <monitor>
-        <monitorspec>
-          <connector>DP-1</connector>
-          <vendor>AUS</vendor>
-          <product>ROG PG278QR</product>
-          <serial>#ASO0f7HLJ+Pd</serial>
-        </monitorspec>
-        <mode>
-          <width>2560</width>
-          <height>1440</height>
-          <rate>143.998</rate>
-        </mode>
-      </monitor>
-    </logicalmonitor>
-    <logicalmonitor>
-      <x>2560</x>
-      <y>0</y>
-      <scale>1</scale>
-      <transform>
-        <rotation>left</rotation>
-        <flipped>no</flipped>
-      </transform>
-      <monitor>
-        <monitorspec>
-          <connector>DP-2</connector>
-          <vendor>DEL</vendor>
-          <product>DELL U2719D</product>
-          <serial>7CGY223</serial>
-        </monitorspec>
-        <mode>
-          <width>2560</width>
-          <height>1440</height>
-          <rate>59.951</rate>
-        </mode>
-      </monitor>
-    </logicalmonitor>
   </configuration>
 </monitors>

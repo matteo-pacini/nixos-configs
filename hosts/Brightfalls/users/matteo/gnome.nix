@@ -16,6 +16,7 @@ with lib.hm.gvariant;
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
+        "blur-my-shell@aunetx"
         "dash-to-dock@micxgx.gmail.com"
       ];
       favorite-apps = [
@@ -58,21 +59,18 @@ with lib.hm.gvariant;
       name = "Adwaita";
       package = pkgs.gnome-themes-extra;
     };
+    # GTK 2/3 theme
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;
     };
     gtk3.extraConfig = {
-      Settings = ''
-        gtk-application-prefer-dark-theme=1
-      '';
+      gtk-application-prefer-dark-theme = 1;
     };
-
-    gtk4.extraConfig = {
-      Settings = ''
-        gtk-application-prefer-dark-theme=1
-      '';
-    };
+    # GTK 4: Disable theme to prevent broken gtk.css import workaround
+    # Dark mode is handled via dconf color-scheme = "prefer-dark" above
+    # See: https://github.com/nix-community/home-manager/issues/8232
+    gtk4.theme = null;
   };
 
   qt = {
