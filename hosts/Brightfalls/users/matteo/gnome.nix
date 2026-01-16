@@ -59,17 +59,18 @@ with lib.hm.gvariant;
       name = "Adwaita";
       package = pkgs.gnome-themes-extra;
     };
+    # GTK 2/3 theme
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;
     };
-    # Use extraConfig instead of colorScheme to avoid gtk-interface-color-scheme=2 bug
     gtk3.extraConfig = {
       gtk-application-prefer-dark-theme = 1;
     };
-    gtk4.extraConfig = {
-      gtk-application-prefer-dark-theme = true;
-    };
+    # GTK 4: Disable theme to prevent broken gtk.css import workaround
+    # Dark mode is handled via dconf color-scheme = "prefer-dark" above
+    # See: https://github.com/nix-community/home-manager/issues/8232
+    gtk4.theme = null;
   };
 
   qt = {
