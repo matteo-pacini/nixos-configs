@@ -27,6 +27,10 @@
   boot.initrd.supportedFilesystems = lib.optionals (!isVM) [ "ext2" ];
   boot.kernelModules = lib.optionals (!isVM) [ "kvm-amd" ];
 
+  # Disable WiFi - not needed, using Ethernet only
+  # Blacklisting the top-level driver is sufficient; dependencies won't load
+  boot.blacklistedKernelModules = lib.optionals (!isVM) [ "mt7921e" ];
+
   # amd_pstate=active enables EPP (Energy Performance Preference) mode
   # On Linux 6.5+ with Zen2+, amd_pstate is default but explicit active mode
   # ensures best performance/efficiency balance for Zen4 (8845HS)
