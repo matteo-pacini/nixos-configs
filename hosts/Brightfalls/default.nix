@@ -15,6 +15,7 @@
     ./gaming.nix
     ./hardware.nix
     ./printer.nix
+    ./virtualization.nix
     ../shared/bluetooth.nix
     ../shared/linux/kernel.nix
   ];
