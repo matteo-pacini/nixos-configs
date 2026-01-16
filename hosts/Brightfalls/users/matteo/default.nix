@@ -33,7 +33,6 @@
     [
       #Gnome
       gnomeExtensions.appindicator
-      gnomeExtensions.blur-my-shell
       gnomeExtensions.dash-to-dock
       gnome-tweaks
       # Downloads

@@ -5,7 +5,6 @@
 }:
 {
   imports = [
-    ./virtual-surround.nix
   ];
   services.pulseaudio.enable = false;
 

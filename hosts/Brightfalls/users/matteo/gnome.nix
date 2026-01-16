@@ -18,7 +18,6 @@ with lib.hm.gvariant;
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
-        "blur-my-shell@aunetx"
         "dash-to-dock@micxgx.gmail.com"
       ];
       favorite-apps = [
