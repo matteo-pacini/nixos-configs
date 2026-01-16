@@ -51,11 +51,13 @@ in
 {
   # SSH server with passwordless access on local subnet for debugging
   services.openssh = {
+    openFirewall = true;
     enable = true;
     settings = {
       PermitRootLogin = "no";
       PasswordAuthentication = false;
     };
+    ports = [ 1788 ];
   };
 
   # Allow passwordless SSH from local subnet
