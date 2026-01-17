@@ -148,24 +148,48 @@
 
                     echo "[$GUEST_NAME] Preparing GPU passthrough with $HUGEPAGES_COUNT hugepages..."
 
-                    # Allocate hugepages dynamically (try once with memory compaction)
+                    # Allocate hugepages dynamically with retries
                     echo "[$GUEST_NAME] Allocating $HUGEPAGES_COUNT x 1GB hugepages..."
 
-                    # Drop caches and compact memory to maximize chance of allocation
-                    sync
-                    run_or_fail "drop_caches" tee /proc/sys/vm/drop_caches <<< "3"
-                    run_or_fail "compact_memory" tee /proc/sys/vm/compact_memory <<< "1"
+                    MAX_RETRIES=10
+                    ALLOCATED=0
 
-                    # Wait a moment for compaction to complete
-                    sleep 2
+                    for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
+                      echo "[$GUEST_NAME] Hugepages allocation attempt $attempt/$MAX_RETRIES..."
 
-                    # Allocate hugepages
-                    run_or_fail "allocate_hugepages" tee /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages <<< "$HUGEPAGES_COUNT"
+                      # Drop caches and compact memory to maximize chance of allocation
+                      sync
+                      echo 3 > /proc/sys/vm/drop_caches || true
+                      echo 1 > /proc/sys/vm/compact_memory || true
 
-                    # Verify allocation
-                    ALLOCATED=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
+                      # Wait for compaction to complete (longer on later attempts)
+                      sleep $((attempt + 2))
+
+                      # Attempt allocation
+                      echo "$HUGEPAGES_COUNT" > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
+
+                      # Check result
+                      ALLOCATED=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
+                      echo "[$GUEST_NAME] Attempt $attempt: allocated $ALLOCATED / $HUGEPAGES_COUNT hugepages"
+
+                      if [[ "$ALLOCATED" -ge "$HUGEPAGES_COUNT" ]]; then
+                        echo "[$GUEST_NAME] Hugepages allocation successful!"
+                        break
+                      fi
+
+                      if [[ "$attempt" -lt "$MAX_RETRIES" ]]; then
+                        echo "[$GUEST_NAME] Allocation incomplete, retrying..."
+                        # Reset hugepages before retry
+                        echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
+                        sleep 2
+                      fi
+                    done
+
+                    # Final verification after all retries
                     if [[ "$ALLOCATED" -lt "$HUGEPAGES_COUNT" ]]; then
-                      handle_error "hugepages_verify (got $ALLOCATED, wanted $HUGEPAGES_COUNT)" 1
+                      # Reset hugepages on failure
+                      echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
+                      handle_error "hugepages_verify (got $ALLOCATED, wanted $HUGEPAGES_COUNT after $MAX_RETRIES attempts)" 1
                     fi
                     echo "[$GUEST_NAME] Allocated $ALLOCATED x 1GB hugepages"
 
