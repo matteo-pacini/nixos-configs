@@ -238,6 +238,10 @@
                     run_or_fail "detach_gpu" virsh nodedev-detach pci_0000_07_00_0
                     run_or_fail "detach_audio" virsh nodedev-detach pci_0000_07_00_1
 
+                    # Detach USB controller from iGPU bus (for VM USB passthrough)
+                    echo "[$GUEST_NAME] Detaching USB controller..."
+                    run_or_fail "detach_usb" virsh nodedev-detach pci_0000_c8_00_3
+
                     # Load VFIO modules immediately after detaching
                     echo "[$GUEST_NAME] Loading VFIO modules..."
                     run_or_fail "load_vfio" modprobe vfio
@@ -270,6 +274,10 @@
                     echo "[$GUEST_NAME] Reattaching GPU devices..."
                     virsh nodedev-reattach pci_0000_07_00_0 || true
                     virsh nodedev-reattach pci_0000_07_00_1 || true
+
+                    # Reattach USB controller
+                    echo "[$GUEST_NAME] Reattaching USB controller..."
+                    virsh nodedev-reattach pci_0000_c8_00_3 || true
 
                     # Wait for GPU to stabilize after reset before loading driver
                     sleep 10
