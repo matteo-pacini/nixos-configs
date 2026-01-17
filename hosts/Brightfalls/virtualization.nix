@@ -37,7 +37,12 @@
     VFIO = {
       inheritParentConfig = true;
       configuration = {
-        system.nixos.tags = [ "vfio" ];
+        system.nixos.tags = [ "with-vfio" ];
+
+        # Disable services that conflict with GPU passthrough
+        services.sunshine.enable = lib.mkForce false;
+        services.lact.enable = lib.mkForce false;
+        hardware.amdgpu.overdrive.enable = lib.mkForce false;
 
         # vendor-reset module for proper AMD GPU reset between VM uses
         # Navi 21 (6800 XT) generally doesn't need it on kernel 6.x, but harmless to have
