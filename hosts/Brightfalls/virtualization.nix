@@ -7,6 +7,9 @@
 }:
 {
   # Basic virtualization support (always available when not a VM)
+  #
+  # USB Controllers (for reference):
+  # - Back USB ports: c8:00.3 (IOMMU Group 26)
 
   virtualisation.spiceUSBRedirection.enable = lib.mkIf (!isVM) true;
 
@@ -120,6 +123,17 @@
                   exit "$exit_code"
                 }
 
+                # Function to run a command and handle errors (captures exit code properly)
+                run_or_fail() {
+                  local step="$1"
+                  shift
+                  local exit_code=0
+                  "$@" || exit_code=$?
+                  if [[ "$exit_code" -ne 0 ]]; then
+                    handle_error "$step" "$exit_code"
+                  fi
+                }
+
                 # Check if VM name matches pattern: NAME-with-gpu-XX
                 if [[ "$GUEST_NAME" =~ -with-gpu-([0-9]+)$ ]]; then
                   HUGEPAGES_COUNT="''${BASH_REMATCH[1]}"
@@ -134,14 +148,14 @@
 
                     # Drop caches and compact memory to maximize chance of allocation
                     sync
-                    echo 3 > /proc/sys/vm/drop_caches || handle_error "drop_caches" $?
-                    echo 1 > /proc/sys/vm/compact_memory || handle_error "compact_memory" $?
+                    run_or_fail "drop_caches" tee /proc/sys/vm/drop_caches <<< "3"
+                    run_or_fail "compact_memory" tee /proc/sys/vm/compact_memory <<< "1"
 
                     # Wait a moment for compaction to complete
                     sleep 2
 
                     # Allocate hugepages
-                    echo "$HUGEPAGES_COUNT" > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || handle_error "allocate_hugepages" $?
+                    run_or_fail "allocate_hugepages" tee /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages <<< "$HUGEPAGES_COUNT"
 
                     # Verify allocation
                     ALLOCATED=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
@@ -151,18 +165,18 @@
                     echo "[$GUEST_NAME] Allocated $ALLOCATED x 1GB hugepages"
 
                     # Prevent system sleep during VM operation
-                    systemctl start libvirt-nosleep.service || handle_error "start_nosleep" $?
+                    run_or_fail "start_nosleep" systemctl start libvirt-nosleep.service
 
                     # Pin host processes to CPUs 0 and 8 BEFORE stopping display manager
                     # This leaves CPUs 1-7 and 9-15 available for the VM
                     echo "[$GUEST_NAME] Pinning host processes to CPUs 0,8..."
-                    systemctl set-property --runtime -- user.slice AllowedCPUs=0,8 || handle_error "pin_user_slice" $?
-                    systemctl set-property --runtime -- system.slice AllowedCPUs=0,8 || handle_error "pin_system_slice" $?
-                    systemctl set-property --runtime -- init.scope AllowedCPUs=0,8 || handle_error "pin_init_scope" $?
+                    run_or_fail "pin_user_slice" systemctl set-property --runtime -- user.slice AllowedCPUs=0,8
+                    run_or_fail "pin_system_slice" systemctl set-property --runtime -- system.slice AllowedCPUs=0,8
+                    run_or_fail "pin_init_scope" systemctl set-property --runtime -- init.scope AllowedCPUs=0,8
 
                     # Stop display manager
                     echo "[$GUEST_NAME] Stopping display manager..."
-                    systemctl stop display-manager.service || handle_error "stop_display_manager" $?
+                    run_or_fail "stop_display_manager" systemctl stop display-manager.service
 
                     # Wait for display manager to fully release GPU
                     sleep 3
@@ -185,21 +199,21 @@
 
                     # Unload AMD GPU driver
                     echo "[$GUEST_NAME] Unloading AMD GPU driver..."
-                    modprobe -r amdgpu || handle_error "unload_amdgpu" $?
+                    run_or_fail "unload_amdgpu" modprobe -r amdgpu
 
                     # Wait for driver to fully unload
                     sleep 2
 
                     # Detach GPU devices from host (RX 6800 XT via Thunderbolt)
                     echo "[$GUEST_NAME] Detaching GPU devices..."
-                    virsh nodedev-detach pci_0000_07_00_0 || handle_error "detach_gpu" $?
-                    virsh nodedev-detach pci_0000_07_00_1 || handle_error "detach_audio" $?
+                    run_or_fail "detach_gpu" virsh nodedev-detach pci_0000_07_00_0
+                    run_or_fail "detach_audio" virsh nodedev-detach pci_0000_07_00_1
 
                     # Load VFIO modules immediately after detaching
                     echo "[$GUEST_NAME] Loading VFIO modules..."
-                    modprobe vfio || handle_error "load_vfio" $?
-                    modprobe vfio_pci || handle_error "load_vfio_pci" $?
-                    modprobe vfio_iommu_type1 || handle_error "load_vfio_iommu" $?
+                    run_or_fail "load_vfio" modprobe vfio
+                    run_or_fail "load_vfio_pci" modprobe vfio_pci
+                    run_or_fail "load_vfio_iommu" modprobe vfio_iommu_type1
 
                     notify_user "✅ GPU Passthrough Ready" "VM $GUEST_NAME is starting" "low"
                     echo "[$GUEST_NAME] GPU passthrough preparation complete"
