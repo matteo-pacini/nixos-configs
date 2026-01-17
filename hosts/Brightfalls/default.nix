@@ -69,6 +69,15 @@
     sshfs
   ];
 
+  # Disable suspend/hibernate (eGPU doesn't survive suspend)
+  # This also hides the suspend option in GNOME's power menu
+  systemd.sleep.extraConfig = ''
+    AllowSuspend=no
+    AllowHibernation=no
+    AllowSuspendThenHibernate=no
+    AllowHybridSleep=no
+  '';
+
   # Timezone and locale
 
   time.timeZone = "Europe/London";
