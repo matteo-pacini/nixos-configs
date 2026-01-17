@@ -250,6 +250,7 @@
 
                     notify_user "✅ GPU Passthrough Ready" "VM $GUEST_NAME is starting" "low"
                     echo "[$GUEST_NAME] GPU passthrough preparation complete"
+                    sleep 2
                   fi
 
                   if [ "$OPERATION" == "release" ]; then
@@ -322,6 +323,7 @@
 
                     notify_user "✅ GPU Released" "Display manager restored" "low"
                     echo "[$GUEST_NAME] GPU passthrough release complete"
+                    sleep 2
                   fi
                 fi
               '';
