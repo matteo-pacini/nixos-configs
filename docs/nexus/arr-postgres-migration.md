@@ -245,6 +245,26 @@ Common issues:
 - Missing PostgreSQL settings in config.xml
 - Database ownership not set (run `sudo setup-arr-databases`)
 
+### Duplicate key constraint errors after migration
+
+If you get errors like `duplicate key value violates unique constraint "PK_Episodes"` when adding new content, the PostgreSQL sequences weren't reset correctly during migration.
+
+Reset all sequences for the affected database:
+
+```bash
+# For Sonarr
+sudo -u postgres psql -d "sonarr-main" -c "
+SELECT 'SELECT setval(pg_get_serial_sequence(''\"' || table_name || '\"'', ''Id''), COALESCE((SELECT MAX(\"Id\") FROM \"' || table_name || '\"), 1));'
+FROM information_schema.tables
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';" -t | sudo -u postgres psql -d "sonarr-main"
+
+# For Radarr
+sudo -u postgres psql -d "radarr-main" -c "
+SELECT 'SELECT setval(pg_get_serial_sequence(''\"' || table_name || '\"'', ''Id''), COALESCE((SELECT MAX(\"Id\") FROM \"' || table_name || '\"), 1));'
+FROM information_schema.tables
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';" -t | sudo -u postgres psql -d "radarr-main"
+```
+
 ### Rollback to SQLite
 
 If migration fails, restore from backup:
