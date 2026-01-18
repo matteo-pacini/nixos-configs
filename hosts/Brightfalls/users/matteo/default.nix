@@ -51,6 +51,7 @@
       mangohud
       vulkan-tools
       mesa-demos
+      prismlauncher
       # Other
       telegram-desktop
       element-desktop
