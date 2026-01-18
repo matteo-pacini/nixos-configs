@@ -23,15 +23,8 @@ let
       exit 1
     fi
 
-    echo "Step 1: Clearing default data from PostgreSQL tables..."
-    # Sonarr requires more tables to be cleared than Radarr
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "QualityProfiles";'
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "QualityDefinitions";'
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "DelayProfiles";'
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "Metadata";'
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "Config";'
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "VersionInfo";'
-    sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "ScheduledTasks";'
+    echo "Step 1: Clearing all data from PostgreSQL tables..."
+    sudo -u postgres psql -d "sonarr-main" -c "DO \$\$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP EXECUTE 'TRUNCATE TABLE \"' || r.tablename || '\" CASCADE'; END LOOP; END \$\$;"
 
     echo "Step 2: Migrating data with pgloader..."
     # Clean up pgloader temp directory to avoid permission issues

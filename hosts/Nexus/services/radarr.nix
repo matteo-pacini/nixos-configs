@@ -23,11 +23,8 @@ let
       exit 1
     fi
 
-    echo "Step 1: Clearing default data from PostgreSQL tables..."
-    sudo -u postgres psql -d "radarr-main" -c 'DELETE FROM "QualityProfiles";'
-    sudo -u postgres psql -d "radarr-main" -c 'DELETE FROM "QualityDefinitions";'
-    sudo -u postgres psql -d "radarr-main" -c 'DELETE FROM "DelayProfiles";'
-    sudo -u postgres psql -d "radarr-main" -c 'DELETE FROM "Metadata";'
+    echo "Step 1: Clearing all data from PostgreSQL tables..."
+    sudo -u postgres psql -d "radarr-main" -c "DO \$\$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP EXECUTE 'TRUNCATE TABLE \"' || r.tablename || '\" CASCADE'; END LOOP; END \$\$;"
 
     echo "Step 2: Migrating data with pgloader..."
     # Clean up pgloader temp directory to avoid permission issues
