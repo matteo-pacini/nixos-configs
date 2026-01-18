@@ -35,6 +35,7 @@ let
     sudo -u radarr ${pkgs.pgloader}/bin/pgloader \
       --with "quote identifiers" \
       --with "data only" \
+      --with "reset no sequences" \
       "$RADARR_DB" \
       "postgresql:///radarr-main?host=/run/postgresql"
 

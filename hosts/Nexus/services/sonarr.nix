@@ -38,6 +38,7 @@ let
     sudo -u sonarr ${pkgs.pgloader}/bin/pgloader \
       --with "quote identifiers" \
       --with "data only" \
+      --with "reset no sequences" \
       "$SONARR_DB" \
       "postgresql:///sonarr-main?host=/run/postgresql"
 
