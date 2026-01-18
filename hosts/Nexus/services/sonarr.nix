@@ -74,4 +74,10 @@ in
     group = "media";
     openFirewall = true; # Direct port access (8989)
   };
+
+  # Sonarr requires PostgreSQL to be running
+  systemd.services.sonarr = {
+    requires = [ "postgresql.service" ];
+    after = [ "postgresql.service" ];
+  };
 }

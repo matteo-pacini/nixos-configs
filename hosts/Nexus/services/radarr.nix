@@ -70,4 +70,10 @@ in
     group = "media";
     openFirewall = true; # Direct port access (7878)
   };
+
+  # Radarr requires PostgreSQL to be running
+  systemd.services.radarr = {
+    requires = [ "postgresql.service" ];
+    after = [ "postgresql.service" ];
+  };
 }
