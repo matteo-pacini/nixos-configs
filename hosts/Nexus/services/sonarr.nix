@@ -30,8 +30,8 @@ let
     # Clean up pgloader temp directory to avoid permission issues
     rm -rf /tmp/pgloader
     sudo -u sonarr ${pkgs.pgloader}/bin/pgloader \
-      --with "quote identifiers" \
       --with "data only" \
+      --with "reset sequences" \
       "$SONARR_DB" \
       "postgresql:///sonarr-main?host=/run/postgresql"
 

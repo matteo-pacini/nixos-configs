@@ -30,8 +30,8 @@ let
     # Clean up pgloader temp directory to avoid permission issues
     rm -rf /tmp/pgloader
     sudo -u radarr ${pkgs.pgloader}/bin/pgloader \
-      --with "quote identifiers" \
       --with "data only" \
+      --with "reset sequences" \
       "$RADARR_DB" \
       "postgresql:///radarr-main?host=/run/postgresql"
 
