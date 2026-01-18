@@ -30,7 +30,7 @@ let
     sudo -u postgres psql -d "radarr-main" -c 'DELETE FROM "Metadata";'
 
     echo "Step 2: Migrating data with pgloader..."
-    ${pkgs.pgloader}/bin/pgloader \
+    sudo -u radarr ${pkgs.pgloader}/bin/pgloader \
       --with "quote identifiers" \
       --with "data only" \
       "$RADARR_DB" \
