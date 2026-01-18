@@ -34,6 +34,8 @@ let
     sudo -u postgres psql -d "sonarr-main" -c 'DELETE FROM "ScheduledTasks";'
 
     echo "Step 2: Migrating data with pgloader..."
+    # Clean up pgloader temp directory to avoid permission issues
+    rm -rf /tmp/pgloader
     sudo -u sonarr ${pkgs.pgloader}/bin/pgloader \
       --with "quote identifiers" \
       --with "data only" \
