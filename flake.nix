@@ -95,6 +95,10 @@
       url = "github:firelzrd/bore-scheduler";
       flake = false;
     };
+    ################
+    # Mac App Util #
+    ################
+    mac-app-util.url = "github:hraban/mac-app-util";
   };
 
   outputs =
@@ -282,6 +286,7 @@
             ];
           }
           ./hosts/NightSprings
+          inputs.mac-app-util.darwinModules.default
           inputs.home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
@@ -292,6 +297,7 @@
             };
             home-manager.backupFileExtension = "backup";
             home-manager.sharedModules = [
+              inputs.mac-app-util.homeManagerModules.default
               self.homeManagerModules.xcodes
             ];
           }
@@ -328,6 +334,7 @@
             ];
           }
           ./hosts/WorkLaptop
+          inputs.mac-app-util.darwinModules.default
           inputs.home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
@@ -337,6 +344,9 @@
               inherit inputs;
             };
             home-manager.backupFileExtension = "backup";
+            home-manager.sharedModules = [
+              inputs.mac-app-util.homeManagerModules.default
+            ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
           {
