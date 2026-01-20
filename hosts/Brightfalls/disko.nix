@@ -38,14 +38,14 @@
                 ]; # Filesystem label for swap
               };
             };
-            # Part 3: Root - remaining space - XFS
+            # Part 3: Root - remaining space - ext4
             root = {
               size = "100%";
               type = "8300";
               label = "ROOT";
               content = {
                 type = "filesystem";
-                format = "xfs";
+                format = "ext4";
                 mountpoint = "/";
                 mountOptions = [
                   "defaults"
@@ -54,7 +54,7 @@
                 extraArgs = [
                   "-L"
                   "ROOT"
-                ]; # Filesystem label for XFS
+                ]; # Filesystem label for ext4
               };
             };
           };
