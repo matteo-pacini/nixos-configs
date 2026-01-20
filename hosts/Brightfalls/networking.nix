@@ -6,8 +6,10 @@
 
   networking.networkmanager.enable = true;
 
-  # Enable Wake-on-LAN for the Ethernet interface
-  networking.interfaces.enp2s0.wakeOnLan.enable = lib.mkIf (!isVM) true;
+  # Enable Wake-on-LAN for the Ethernet interface (physical only)
+  networking.interfaces = lib.mkIf (!isVM) {
+    enp2s0.wakeOnLan.enable = true;
+  };
 
   # IPv6 disabled
 
