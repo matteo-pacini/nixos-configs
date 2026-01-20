@@ -34,9 +34,13 @@
   # amd_pstate=active enables EPP (Energy Performance Preference) mode
   # On Linux 6.5+ with Zen2+, amd_pstate is default but explicit active mode
   # ensures best performance/efficiency balance for Zen4 (8845HS)
-  boot.kernelParams = lib.optionals (!isVM) [
-    "amd_pstate=active"
-  ];
+  boot.kernelParams =
+    lib.optionals (!isVM) [
+      "amd_pstate=active"
+    ]
+    ++ lib.optionals isVM [
+      (if pkgs.stdenv.hostPlatform.isAarch64 then "console=ttyAMA0,115200" else "console=ttyS0,115200")
+    ];
 
   hardware.cpu.amd.updateMicrocode = lib.mkIf (!isVM) true;
   hardware.firmware = [ pkgs.linux-firmware ];
