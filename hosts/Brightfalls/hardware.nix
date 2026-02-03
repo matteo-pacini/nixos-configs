@@ -46,6 +46,10 @@
   hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableRedistributableFirmware = true;
 
+  # Limit max CPU frequency to 4.5GHz for thermal/power reasons
+  # With amd_pstate=active, the default powersave governor is dynamic (not fixed-min)
+  powerManagement.cpufreq.max = lib.mkIf (!isVM) 4500000; # kHz
+
   # Force mutter/GDM to use the 6800 XT (eGPU) as primary GPU
   # With dual AMD GPUs (iGPU + dGPU), mutter may pick the wrong one by default
   # This udev rule tells mutter to prefer the dGPU for rendering
