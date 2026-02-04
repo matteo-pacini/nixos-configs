@@ -9,7 +9,7 @@
 let
   # Host public keys (from SSH host keys converted to age format)
   # TODO: Replace with actual key from Nexus
-  nexus = "age1REPLACE_WITH_NEXUS_KEY";
+  nexus = "age1q3vz0prtjdtyhc4nuwv4v8gygrsxkgyx5f392gjla5ejaxjqvsqqf96m7d";
 in
 {
   # Nexus disk encryption secrets
