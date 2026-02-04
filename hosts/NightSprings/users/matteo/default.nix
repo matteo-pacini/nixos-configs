@@ -30,7 +30,8 @@
     # Development
     gh
     # Social
-    element-desktop
+    # element-desktop - broken on darwin, requires Xcode 26+ actool
+    # Tracking: https://github.com/NixOS/nixpkgs/pull/486275
     # Window management
     loopwm
   ];
