@@ -1,15 +1,14 @@
 # Centralized key management for agenix
 #
-# To get the age public key from an SSH host key:
-#   nix-shell -p ssh-to-age --run 'cat /etc/ssh/ssh_host_ed25519_key.pub | ssh-to-age'
+# Use SSH public keys directly (agenix/age supports them natively)
+# Get host key with: cat /etc/ssh/ssh_host_ed25519_key.pub
 #
 # To re-encrypt all secrets after modifying this file:
 #   cd secrets && agenix --rekey -i /path/to/valid/identity
 
 let
-  # Host public keys (from SSH host keys converted to age format)
-  # TODO: Replace with actual key from Nexus
-  nexus = "age1q3vz0prtjdtyhc4nuwv4v8gygrsxkgyx5f392gjla5ejaxjqvsqqf96m7d";
+  # Host SSH public keys (used directly by age for encryption)
+  nexus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICqoR66tb+LELPbehy1TJp0Y8hHVYPEgtg1WUDMILe/n";
 in
 {
   # Nexus disk encryption secrets
