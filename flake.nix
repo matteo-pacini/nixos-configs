@@ -313,6 +313,8 @@
               mutableTaps = false;
             };
           }
+          inputs.agenix.nixosModules.default
+          { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
         ];
       };
       ##############
