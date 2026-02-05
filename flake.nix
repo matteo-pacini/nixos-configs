@@ -209,7 +209,7 @@
           }
           inputs.agenix.nixosModules.default
           {
-            age.identityPaths = [ "/home/matteo/.age/Nexus.txt" ];
+            age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."nexus/disk0".file = ./secrets/nexus/disk0.age;
             age.secrets."nexus/disk1".file = ./secrets/nexus/disk1.age;
             age.secrets."nexus/disk2".file = ./secrets/nexus/disk2.age;

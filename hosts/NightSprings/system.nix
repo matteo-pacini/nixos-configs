@@ -27,6 +27,7 @@
       "1password"
       "mullvadvpn"
       "dash"
+      "element"
       "telegram"
       "whatsapp"
       "jellyfin-media-player"
