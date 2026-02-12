@@ -263,7 +263,16 @@ in
         themes = "!include_dir_merge_named themes";
       };
 
-      lovelace.mode = "yaml";
+      lovelace = {
+        resource_mode = "yaml";
+        dashboards.lovelace = {
+          mode = "yaml";
+          filename = "ui-lovelace.yaml";
+          title = "Overview";
+          icon = "mdi:view-dashboard";
+          show_in_sidebar = true;
+        };
+      };
 
       "automation ui" = "!include automations.yaml";
       "scene ui" = "!include scenes.yaml";
