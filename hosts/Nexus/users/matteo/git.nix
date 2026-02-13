@@ -28,6 +28,7 @@
         email = "m+github@matteopacini.me";
       };
       init.defaultBranch = "master";
+      core.editor = "nvim";
       core.sshCommand = "ssh -i ~/.ssh/github";
     };
   };

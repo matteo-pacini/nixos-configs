@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, config, ... }:
 {
   imports = [
     ../../../../modules/home-manager/dracula.nix
@@ -6,6 +6,8 @@
 
     ../../../shared/home-manager/vscode.nix
     ./vscode.nix
+    ../../../shared/home-manager/nvf.nix
+    ./nvf.nix
 
     ../../../shared/home-manager/darwin/starship.nix
     ../../../shared/home-manager/darwin/terminal.nix
@@ -32,6 +34,11 @@
   home.stateVersion = "25.11";
 
   programs.home-manager.enable = true;
+
+  programs.zsh.shellAliases = {
+    c = "${lib.getExe config.programs.vscode.package}";
+    cr = "${lib.getExe config.programs.vscode.package} -r";
+  };
 
   dracula = {
     wallpaper.enable = true;

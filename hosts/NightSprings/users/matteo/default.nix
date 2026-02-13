@@ -4,7 +4,7 @@
     ../../../../modules/home-manager/dracula.nix
     ../../../../modules/home-manager/firefox.nix
 
-    ../../../shared/home-manager/vscode.nix
+    ../../../shared/home-manager/nvf.nix
     ../../../shared/home-manager/darwin/starship.nix
     ../../../shared/home-manager/darwin/terminal.nix
     ../../../shared/home-manager/darwin/zsh.nix
@@ -43,7 +43,6 @@
   dracula = {
     wallpaper.enable = true;
     eza.enable = true;
-    vscode.enable = true;
     xcode.enable = true;
     fzf.enable = true;
     bat.enable = true;

@@ -1,6 +1,5 @@
 {
   pkgs,
-  config,
   lib,
   ...
 }:
@@ -66,8 +65,6 @@
     historySubstringSearch.enable = true;
     shellAliases = {
       ls = "${pkgs.eza}/bin/${pkgs.eza.meta.mainProgram} --icons --color=always";
-      c = "${lib.getExe config.programs.vscode.package}";
-      cr = "${lib.getExe config.programs.vscode.package} -r";
       suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
       suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
       reloadDock = ''

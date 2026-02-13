@@ -12,6 +12,9 @@
           color_scheme = "Dracula (Official)",
           window_decorations = "RESIZE",
           window_close_confirmation = "NeverPrompt",
+          keys = {
+            { key = "f", mods = "CTRL|CMD", action = wezterm.action.ToggleFullScreen },
+          },
         }
     '';
   };

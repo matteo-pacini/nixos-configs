@@ -1,7 +1,4 @@
 { config, pkgs, ... }:
-let
-  codeCommand = "${pkgs.lib.getExe config.programs.vscode.package}";
-in
 {
   programs.ssh = {
     enable = true;
@@ -59,11 +56,9 @@ in
         clean-safe = "clean -xdf -e /.direnv/ -e /.envrc -e /nix/";
       };
       init.defaultBranch = "master";
-      core.editor = "${codeCommand} --wait";
-      diff.tool = "vscode";
-      difftool.vscode.cmd = "${codeCommand} --wait --diff $LOCAL $REMOTE";
-      merge.tool = "vscode";
-      mergetool.vscode.cmd = "${codeCommand} --wait --merge $REMOTE $LOCAL $BASE $MERGED";
+      core.editor = "nvim";
+      diff.tool = "nvimdiff";
+      merge.tool = "nvimdiff";
       core.sshCommand = "ssh -i ~/.ssh/github";
       commit.gpgsign = true;
       gpg.format = "ssh";

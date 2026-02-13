@@ -1,4 +1,4 @@
-{ pkgs, config, ... }:
+{ pkgs, ... }:
 {
   programs.direnv = {
     enable = true;
@@ -40,8 +40,6 @@
         sudo nix-collect-garbage --delete-old;
         nix-store --optimize -v;
       '';
-      c = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram}";
-      cr = "${config.programs.vscode.package}/bin/${config.programs.vscode.package.meta.mainProgram} -r";
       suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
       suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
     };
