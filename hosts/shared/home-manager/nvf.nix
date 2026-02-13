@@ -53,6 +53,13 @@
             desc = "Open Neogit";
           }
           {
+            key = "<C-n>";
+            mode = "t";
+            action = "<Cmd>2ToggleTerm direction=vertical size=80<CR>";
+            silent = true;
+            desc = "Open second vertical terminal";
+          }
+          {
             key = "<Esc><Esc>";
             mode = "t";
             action = "<C-\\><C-n>";
@@ -115,6 +122,8 @@
           indent-blankline.enable = true; # indentation guides
           rainbow-delimiters.enable = true; # color-coded matching brackets
         };
+        # Treesitter folding (za/zo/zc/zR/zM)
+        treesitter.fold = true;
         # Language support
         languages = {
           enableFormat = true;
