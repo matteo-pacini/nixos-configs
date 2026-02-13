@@ -21,7 +21,7 @@ with lib.hm.gvariant;
       ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
-        "org.wezfurlong.wezterm.desktop"
+        "org.gnome.Console.desktop"
         "code.desktop"
         "org.telegram.desktop.desktop"
         "firefox.desktop"

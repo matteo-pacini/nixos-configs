@@ -13,7 +13,6 @@
     ./git.nix
     ../../../shared/home-manager/nvf.nix
     ./zsh.nix
-    ./terminal.nix
     ./browser.nix
     ./services.nix
     ./gaming.nix
