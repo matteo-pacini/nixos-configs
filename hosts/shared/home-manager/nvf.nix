@@ -52,28 +52,11 @@
             silent = true;
             desc = "Open Neogit";
           }
-          {
-            key = "<C-n>";
-            mode = "t";
-            action = "<Cmd>2ToggleTerm direction=vertical size=80<CR>";
-            silent = true;
-            desc = "Open second vertical terminal";
-          }
-          {
-            key = "<Esc><Esc>";
-            mode = "t";
-            action = "<C-\\><C-n>";
-            silent = true;
-            desc = "Exit terminal mode";
-          }
         ];
-        # Terminal
-        terminal.toggleterm = {
+        # Smart-splits - seamless navigation between neovim splits and tmux panes
+        utility.smart-splits = {
           enable = true;
-          setupOpts = {
-            direction = "vertical";
-            size = 80;
-          };
+          setupOpts.multiplexer_integration = "tmux";
         };
         # LSP - required for language modules to hook into LSP API
         lsp = {

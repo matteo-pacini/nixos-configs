@@ -12,6 +12,7 @@
     ./gnome.nix
     ./git.nix
     ../../../shared/home-manager/nvf.nix
+    ../../../shared/home-manager/tmux.nix
     ./zsh.nix
     ./browser.nix
     ./services.nix

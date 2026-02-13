@@ -30,33 +30,6 @@
     enable = true;
   };
 
-  programs.tmux = {
-    shell = "${pkgs.zsh}/bin/zsh";
-    enable = true;
-    clock24 = true;
-    terminal = "tmux-256color";
-    plugins = with pkgs.tmuxPlugins; [
-      sensible
-      yank
-      {
-        plugin = dracula;
-        extraConfig = ''
-          set -g @dracula-show-battery true
-          set -g @dracula-show-powerline true
-          set -g @dracula-refresh-rate 10
-          set -g @dracula-show-fahrenheit false
-          set -g @dracula-fixed-location "Royal Tunbridge Wells"
-        '';
-      }
-    ];
-
-    extraConfig = ''
-      set -g mouse on
-      set-option -g default-command ''${SHELL}
-      set-option -g default-shell ''${SHELL}
-    '';
-  };
-
   programs.zsh = {
     enable = true;
     enableCompletion = true;
