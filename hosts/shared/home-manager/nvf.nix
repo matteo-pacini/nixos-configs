@@ -6,7 +6,10 @@
       vim = {
         lineNumberMode = "number"; # absolute line numbers (not relative)
         # vim-sleuth - auto-detect shiftwidth and expandtab
-        startPlugins = [ pkgs.vimPlugins.vim-sleuth ];
+        startPlugins = [
+          pkgs.vimPlugins.vim-sleuth
+          pkgs.vimPlugins.smear-cursor-nvim
+        ];
         theme = {
           enable = true;
           name = "dracula";
@@ -35,6 +38,13 @@
         };
         # Keymaps
         keymaps = [
+          {
+            key = "<leader>e";
+            mode = "n";
+            action = ":Neotree toggle<CR>";
+            silent = true;
+            desc = "Toggle Neo-tree";
+          }
           {
             key = "<leader>gg";
             mode = "n";
@@ -85,17 +95,25 @@
         luaConfigRC.floatBorder = ''
           vim.o.winborder = 'rounded'
         '';
+        # Smear cursor animation
+        luaConfigRC.smearCursor = ''
+          require('smear_cursor').setup({})
+        '';
         # Custom Neogit colors (darker green for additions)
         luaConfigRC.neogitColors = ''
           vim.api.nvim_set_hl(0, "NeogitDiffAdd", { bg = "#2d4a32", fg = "#f8f8f2" })
           vim.api.nvim_set_hl(0, "NeogitDiffAddHighlight", { bg = "#3d5a42", fg = "#f8f8f2" })
           vim.api.nvim_set_hl(0, "NeogitDiffAddCursor", { bg = "#4d6a52", fg = "#f8f8f2" })
         '';
+        # Tabline - buffer/tab bar at the top
+        tabline.nvimBufferline.enable = true;
         # Visuals
         visuals = {
           nvim-cursorline.enable = true; # highlights current line
           cinnamon-nvim.enable = true; # smooth scrolling
           fidget-nvim.enable = true; # LSP progress indicator
+          indent-blankline.enable = true; # indentation guides
+          rainbow-delimiters.enable = true; # color-coded matching brackets
         };
         # Language support
         languages = {
