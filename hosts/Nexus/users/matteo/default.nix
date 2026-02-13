@@ -1,6 +1,7 @@
 { pkgs, ... }:
 {
   imports = [
+    ../../../shared/home-manager/nvf.nix
 
     ./git.nix
     ./zsh.nix

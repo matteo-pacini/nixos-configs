@@ -18,7 +18,6 @@ in
   options.dracula = {
     wallpaper.enable = mkEnableOption "Activates the Dracula wallpaper on the first monitor";
     eza.enable = mkEnableOption "Activates the Dracula color scheme for eza";
-    vscode.enable = mkEnableOption "Activates the Dracula theme for Visual Studio Code";
     xcode.enable = mkEnableOption "Activates the Dracula theme for Xcode";
     fzf.enable = mkEnableOption "Activates the Dracula theme for fzf";
     bat.enable = mkEnableOption "Activates the Dracula theme for bat";
@@ -55,16 +54,6 @@ in
         tw=35:\
         tx=36:"
       '';
-    })
-    (lib.mkIf (cfg.vscode.enable && config.programs.vscode.enable) {
-      programs.vscode.profiles.default.extensions =
-        let
-          vscext = pkgs.vscode-extensions;
-        in
-        [ vscext.dracula-theme.theme-dracula ];
-      programs.vscode.profiles.default.userSettings = {
-        "workbench.colorTheme" = "Dracula Theme";
-      };
     })
     (lib.mkIf (cfg.xcode.enable) {
       home.activation.xcodeDraculaTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

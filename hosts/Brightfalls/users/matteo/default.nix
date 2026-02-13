@@ -11,7 +11,7 @@
 
     ./gnome.nix
     ./git.nix
-    ../../../shared/home-manager/vscode.nix
+    ../../../shared/home-manager/nvf.nix
     ./zsh.nix
     ./browser.nix
     ./services.nix

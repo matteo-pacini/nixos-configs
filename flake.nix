@@ -99,6 +99,11 @@
     # Mac App Util #
     ################
     mac-app-util.url = "github:hraban/mac-app-util";
+    #######
+    # nvf #
+    #######
+    nvf.url = "github:NotAShelf/nvf";
+    nvf.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -134,6 +139,9 @@
               home-manager.extraSpecialArgs = {
                 inherit inputs isVM;
               };
+              home-manager.sharedModules = [
+                inputs.nvf.homeManagerModules.default
+              ];
             }
           ]
           ++ extraModules;
@@ -298,6 +306,7 @@
             home-manager.backupFileExtension = "backup";
             home-manager.sharedModules = [
               inputs.mac-app-util.homeManagerModules.default
+              inputs.nvf.homeManagerModules.default
               self.homeManagerModules.xcodes
             ];
           }
@@ -346,6 +355,7 @@
             home-manager.backupFileExtension = "backup";
             home-manager.sharedModules = [
               inputs.mac-app-util.homeManagerModules.default
+              inputs.nvf.homeManagerModules.default
             ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
