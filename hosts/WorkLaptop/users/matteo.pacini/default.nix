@@ -1,9 +1,11 @@
-{ pkgs, ... }:
+{ pkgs, lib, config, ... }:
 {
   imports = [
     ../../../../modules/home-manager/dracula.nix
     ../../../../modules/home-manager/firefox.nix
 
+    ../../../shared/home-manager/vscode.nix
+    ./vscode.nix
     ../../../shared/home-manager/nvf.nix
     ./nvf.nix
 
@@ -33,9 +35,15 @@
 
   programs.home-manager.enable = true;
 
+  programs.zsh.shellAliases = {
+    c = "${lib.getExe config.programs.vscode.package}";
+    cr = "${lib.getExe config.programs.vscode.package} -r";
+  };
+
   dracula = {
     wallpaper.enable = true;
     eza.enable = true;
+    vscode.enable = true;
     xcode.enable = true;
     fzf.enable = true;
     bat.enable = true;
