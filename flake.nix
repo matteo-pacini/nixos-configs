@@ -214,6 +214,9 @@
             home-manager.extraSpecialArgs = {
               inherit inputs;
             };
+            home-manager.sharedModules = [
+              inputs.nvf.homeManagerModules.default
+            ];
           }
           inputs.agenix.nixosModules.default
           {
