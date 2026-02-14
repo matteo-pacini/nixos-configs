@@ -1,4 +1,9 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 {
   imports = [
     ../../../../modules/home-manager/dracula.nix
@@ -30,6 +35,8 @@
     gh
     # Window Management
     loopwm
+    # Music
+    jellyfin-tui
   ];
 
   home.stateVersion = "25.11";
