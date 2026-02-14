@@ -17,11 +17,13 @@
   services.spice-vdagentd.enable = lib.mkIf isVM true;
 
   # Kernel modules for UM890 Pro (NVMe-only, no SATA)
+  # r8169: Realtek RTL8125 2.5GbE NIC for initrd SSH (remote LUKS unlock)
   boot.initrd.availableKernelModules = lib.optionals (!isVM) [
     "nvme"
     "xhci_pci"
     "usbhid"
     "sd_mod"
+    "r8169"
   ];
   # ext2 required to mount vault partition in initrd
   boot.initrd.supportedFilesystems = lib.optionals (!isVM) [ "ext2" ];
@@ -62,6 +64,26 @@
   # Use systemd in initrd for proper LUKS dependency ordering
   # This ensures vault is mounted before other LUKS devices try to read keyfile
   boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
+
+  # Initrd networking for remote LUKS unlock via SSH
+  boot.initrd.systemd.network = lib.mkIf (!isVM) {
+    enable = true;
+    networks."10-enp2s0" = {
+      matchConfig.Name = "enp2s0";
+      networkConfig.DHCP = "ipv4";
+    };
+  };
+
+  # Initrd SSH for remote LUKS unlock (port 2222 to avoid known_hosts conflict with main SSH on 1788)
+  # Host key must be pre-generated: ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key
+  boot.initrd.network.ssh = lib.mkIf (!isVM) {
+    enable = true;
+    port = 2222;
+    authorizedKeys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQiM93t9mXjpqdtY12ohNAELZNg1SOdE47bWNRb4HC0 matteo@MacBookPr"
+    ];
+    hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
+  };
 
   # Set runtime keyfile path for all LUKS devices that use keyfile unlock
   # (disko's settings.keyFile is only used during installation, not at boot)
