@@ -65,6 +65,10 @@
   # This ensures vault is mounted before other LUKS devices try to read keyfile
   boot.initrd.systemd.enable = lib.mkIf (!isVM) true;
 
+  # Flush initrd DHCP lease before stage 2 so NetworkManager can cleanly
+  # acquire its own lease and configure DNS in systemd-resolved
+  boot.initrd.network.flushBeforeStage2 = true;
+
   # Initrd networking for remote LUKS unlock via SSH
   boot.initrd.systemd.network = lib.mkIf (!isVM) {
     enable = true;
