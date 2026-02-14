@@ -15,24 +15,15 @@
       yank
       {
         plugin = dracula;
-        extraConfig =
-          ''
-            set -g @dracula-show-powerline true
-            set -g @dracula-refresh-rate 10
-          ''
-          + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
-            set -g @dracula-show-battery true
-            set -g @dracula-show-fahrenheit false
-            set -g @dracula-fixed-location "Royal Tunbridge Wells"
-          ''
-          + lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
-            set -g @dracula-plugins "time"
-          '';
+        extraConfig = ''
+          set -g @dracula-show-powerline true
+          set -g @dracula-refresh-rate 10
+          set -g @dracula-plugins "time"
+        '';
       }
     ];
 
     extraConfig = ''
-      set -g mouse on
       set-option -g default-command ''${SHELL}
       set-option -g default-shell ''${SHELL}
 
