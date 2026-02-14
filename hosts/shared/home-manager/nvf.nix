@@ -5,8 +5,9 @@
     settings = {
       vim = {
         lineNumberMode = "number"; # absolute line numbers (not relative)
-        # vim-sleuth - auto-detect shiftwidth and expandtab
+        options.mouse = ""; # disable mouse support
         startPlugins = [
+          # vim-sleuth - auto-detect shiftwidth and expandtab
           pkgs.vimPlugins.vim-sleuth
           pkgs.vimPlugins.smear-cursor-nvim
         ];
@@ -67,8 +68,6 @@
         };
         # Autocomplete - LSP completions, snippets, buffer words
         autocomplete.nvim-cmp.enable = true;
-        # Dashboard - startup screen with recent files
-        dashboard.alpha.enable = true;
         # Spellcheck
         spellcheck = {
           enable = true;
@@ -88,6 +87,39 @@
         # Smear cursor animation
         luaConfigRC.smearCursor = ''
           require('smear_cursor').setup({})
+        '';
+        # Smart buffer delete - keeps window open so neo-tree doesn't resize
+        luaConfigRC.bufferDelete = ''
+          local function smart_bd()
+            local current = vim.api.nvim_get_current_buf()
+            local bufs = vim.tbl_filter(function(b)
+              return vim.api.nvim_buf_is_loaded(b) and vim.bo[b].buflisted
+            end, vim.api.nvim_list_bufs())
+
+            if #bufs > 1 then
+              vim.cmd('bnext')
+              if vim.api.nvim_get_current_buf() == current then
+                vim.cmd('bprevious')
+              end
+            else
+              vim.cmd('enew')
+            end
+            if vim.api.nvim_buf_is_valid(current) then
+              vim.cmd('bdelete ' .. current)
+            end
+          end
+
+          local function delete_other_bufs()
+            local current = vim.api.nvim_get_current_buf()
+            for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+              if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].buflisted and buf ~= current then
+                pcall(vim.cmd, 'bdelete ' .. buf)
+              end
+            end
+          end
+
+          vim.keymap.set('n', '<leader>bd', smart_bd, { desc = 'Delete buffer' })
+          vim.keymap.set('n', '<leader>bo', delete_other_bufs, { desc = 'Delete other buffers' })
         '';
         # Custom Neogit colors (darker green for additions)
         luaConfigRC.neogitColors = ''
