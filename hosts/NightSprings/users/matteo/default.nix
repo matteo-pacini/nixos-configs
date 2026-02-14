@@ -35,6 +35,8 @@
     # Tracking: https://github.com/NixOS/nixpkgs/pull/486275
     # Window management
     loopwm
+    # Music
+    jellyfin-tui
   ];
 
   home.stateVersion = "25.11";
