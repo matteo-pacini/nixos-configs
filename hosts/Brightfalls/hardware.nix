@@ -76,6 +76,7 @@
 
   # Initrd SSH for remote LUKS unlock (port 2222 to avoid known_hosts conflict with main SSH on 1788)
   # Host key must be pre-generated: ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key
+  boot.initrd.network.enable = lib.mkIf (!isVM) true;
   boot.initrd.network.ssh = lib.mkIf (!isVM) {
     enable = true;
     port = 2222;
