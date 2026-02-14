@@ -4,7 +4,7 @@
     enable = true;
     settings = {
       vim = {
-        lineNumberMode = "number"; # absolute line numbers (not relative)
+        lineNumberMode = "relNumber"; # relative line numbers
         options.mouse = ""; # disable mouse support
         startPlugins = [
           # vim-sleuth - auto-detect shiftwidth and expandtab
@@ -159,6 +159,7 @@
           json.enable = true;
           xml.enable = true;
           ruby.enable = true;
+          clang.enable = true;
         };
       };
     };
