@@ -47,6 +47,7 @@
       diff.tool = "nvimdiff";
       merge.tool = "nvimdiff";
       core.sshCommand = "ssh -i ~/.ssh/github";
+      push.autoSetupRemote = true;
     };
   };
 }
