@@ -34,8 +34,7 @@
     [
       #Gnome
       gnomeExtensions.appindicator
-      gnomeExtensions.blur-my-shell
-      gnomeExtensions.dash-to-dock
+      gnomeExtensions.paperwm
       gnome-tweaks
       # Downloads
       aria2
