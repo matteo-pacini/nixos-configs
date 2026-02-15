@@ -46,30 +46,8 @@
   <configuration>
     <layoutmode>physical</layoutmode>
     <logicalmonitor>
-      <x>2560</x>
-      <y>0</y>
-      <scale>1</scale>
-      <transform>
-        <rotation>left</rotation>
-        <flipped>no</flipped>
-      </transform>
-      <monitor>
-        <monitorspec>
-          <connector>DP-2</connector>
-          <vendor>DEL</vendor>
-          <product>DELL U2719D</product>
-          <serial>7CGY223</serial>
-        </monitorspec>
-        <mode>
-          <width>2560</width>
-          <height>1440</height>
-          <rate>59.951</rate>
-        </mode>
-      </monitor>
-    </logicalmonitor>
-    <logicalmonitor>
       <x>0</x>
-      <y>1120</y>
+      <y>0</y>
       <scale>1</scale>
       <primary>yes</primary>
       <monitor>
@@ -83,6 +61,24 @@
           <width>2560</width>
           <height>1440</height>
           <rate>143.998</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+    <logicalmonitor>
+      <x>2560</x>
+      <y>0</y>
+      <scale>1</scale>
+      <monitor>
+        <monitorspec>
+          <connector>DP-2</connector>
+          <vendor>DEL</vendor>
+          <product>DELL U2719D</product>
+          <serial>7CGY223</serial>
+        </monitorspec>
+        <mode>
+          <width>2560</width>
+          <height>1440</height>
+          <rate>59.951</rate>
         </mode>
       </monitor>
     </logicalmonitor>

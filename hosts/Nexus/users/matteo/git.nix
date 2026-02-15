@@ -30,6 +30,7 @@
       init.defaultBranch = "master";
       core.editor = "nvim";
       core.sshCommand = "ssh -i ~/.ssh/github";
+      push.autoSetupRemote = true;
     };
   };
 }

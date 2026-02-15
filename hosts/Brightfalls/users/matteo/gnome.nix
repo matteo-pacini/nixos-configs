@@ -9,15 +9,10 @@ with lib.hm.gvariant;
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
     };
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dash-max-icon-size = 64;
-      show-mounts = true;
-    };
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
-        "blur-my-shell@aunetx"
-        "dash-to-dock@micxgx.gmail.com"
+        "paperwm@paperwm.github.com"
       ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"

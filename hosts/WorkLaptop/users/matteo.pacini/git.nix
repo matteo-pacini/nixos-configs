@@ -64,6 +64,7 @@
       gpg.format = "ssh";
       gpg.ssh.allowedSignersFile = "~/.ssh/allowed_signers";
       user.signingkey = "~/.ssh/github.pub";
+      push.autoSetupRemote = true;
     };
     includes = [
       {
