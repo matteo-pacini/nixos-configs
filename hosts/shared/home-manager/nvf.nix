@@ -10,6 +10,8 @@
           # vim-sleuth - auto-detect shiftwidth and expandtab
           pkgs.vimPlugins.vim-sleuth
           pkgs.vimPlugins.smear-cursor-nvim
+          # tiny-inline-diagnostic - VS Code Error Lens-style inline diagnostics
+          pkgs.vimPlugins.tiny-inline-diagnostic-nvim
         ];
         theme = {
           enable = true;
@@ -83,6 +85,13 @@
         # Global floating window border (Neovim 0.11+)
         luaConfigRC.floatBorder = ''
           vim.o.winborder = 'rounded'
+        '';
+        # Inline diagnostics (Error Lens style)
+        luaConfigRC.tinyInlineDiagnostic = ''
+          vim.diagnostic.config({ virtual_text = false })
+          require('tiny-inline-diagnostic').setup({
+            preset = "modern",
+          })
         '';
         # Smear cursor animation
         luaConfigRC.smearCursor = ''
