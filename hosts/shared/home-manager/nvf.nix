@@ -4,6 +4,11 @@
     enable = true;
     settings = {
       vim = {
+        clipboard = {
+          enable = true;
+          registers = "unnamedplus";
+          providers.wl-copy.enable = pkgs.stdenv.hostPlatform.isLinux;
+        };
         lineNumberMode = "relNumber"; # relative line numbers
         options.mouse = ""; # disable mouse support
         startPlugins = [

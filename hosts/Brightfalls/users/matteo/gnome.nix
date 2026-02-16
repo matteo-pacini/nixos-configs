@@ -46,6 +46,10 @@ with lib.hm.gvariant;
       use-system-font = false;
       custom-font = "FiraCode Nerd Font 14";
     };
+    "org/gnome/shell/extensions/paperwm" = {
+      default-focus-mode = mkInt32 1;
+      open-window-position = mkInt32 0;
+    };
   };
 
   gtk = {
