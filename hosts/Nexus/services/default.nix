@@ -25,6 +25,7 @@
     ./geoipupdate.nix
     ./paperless.nix
     ./polkit.nix
+    ./atuin.nix
   ];
 
   systemd.tmpfiles.rules = [
