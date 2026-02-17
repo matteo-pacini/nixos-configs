@@ -12,45 +12,27 @@
     ./audio.nix
     ./services.nix
     ./gaming.nix
-    ./fonts.nix
-    ../shared/bluetooth.nix
     ./printer.nix
     ./iphone.nix
-    ../shared/linux/kernel.nix
   ];
 
-  # Shared kernel configuration (no BORE patches)
-  shared.kernel.enable = true;
+  custom.kernel.enable = true;
+  custom.bluetooth.enable = true;
+  custom.fonts.enable = true;
 
   environment.systemPackages = with pkgs; [ sshfs ];
 
-  nixpkgs.config.allowUnfree = true;
-
-  nix = {
-    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
-    };
-    settings = {
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      trusted-users = [
-        "debora"
-        "root"
-      ];
-    };
+  custom.nix-core = {
+    enable = true;
+    trustedUsers = [
+      "debora"
+      "root"
+    ];
   };
 
-  # Timezone and locale
-
-  time.timeZone = "Europe/London";
-
-  i18n.defaultLocale = "en_GB.UTF-8";
-  console = {
-    font = "Lat2-Terminus16";
-    keyMap = "uk";
+  custom.locale = {
+    enable = true;
+    consoleKeyMap = "uk";
   };
 
   system.stateVersion = "25.11";

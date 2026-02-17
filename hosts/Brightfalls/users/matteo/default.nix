@@ -6,13 +6,8 @@
 }:
 {
   imports = [
-
-    ../../../../modules/home-manager/firefox.nix
-
     ./gnome.nix
     ./git.nix
-    ../../../shared/home-manager/nvf.nix
-    ../../../shared/home-manager/tmux.nix
     ./zsh.nix
     ./browser.nix
     ./services.nix
@@ -67,6 +62,9 @@
       # Other
       discord
     ];
+
+  custom.nvf.enable = true;
+  custom.tmux.enable = true;
 
   home.stateVersion = "25.11";
 

@@ -9,31 +9,20 @@
     ./services
     ./snapraid.nix
     ./mdadm.nix
-    ../shared/linux/kernel.nix
   ];
 
-  # Shared kernel configuration (no BORE patches)
-  shared.kernel.enable = true;
+  custom.kernel.enable = true;
 
-  nix = {
-    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
-    };
-    settings = {
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      trusted-users = [
-        "root"
-        "matteo"
-      ];
-      extra-platforms = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
-    };
+  custom.nix-core = {
+    enable = true;
+    trustedUsers = [
+      "root"
+      "matteo"
+    ];
+    extraPlatforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
   };
 
   boot.loader.grub = {
@@ -54,16 +43,9 @@
     screen
   ];
 
-  nixpkgs.config.allowUnfree = true;
-
-  # Timezone and locale
-
-  time.timeZone = "Europe/London";
-
-  i18n.defaultLocale = "en_GB.UTF-8";
-  console = {
-    font = "ter-v24n";
-    keyMap = "us";
+  custom.locale = {
+    enable = true;
+    consoleFont = "ter-v24n";
   };
 
   system.stateVersion = "25.11";

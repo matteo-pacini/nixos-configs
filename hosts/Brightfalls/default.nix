@@ -1,6 +1,5 @@
 {
   pkgs,
-  inputs,
   ...
 }:
 {
@@ -11,43 +10,24 @@
     ./audio
     ./services.nix
     ./graphics.nix
-    ./fonts.nix
     ./gaming.nix
     ./hardware.nix
     ./printer.nix
     ./virtualization.nix
     ./specialisations.nix
-    ../shared/bluetooth.nix
-    ../shared/linux/kernel.nix
   ];
 
-  # Shared kernel configuration with BORE patches
-  shared.kernel = {
+  custom.kernel = {
     enable = true;
     useBorePatches = true;
   };
 
-  # Nix & Nixpkgs
-
-  nix = {
-    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
-    };
-    settings = {
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      trusted-users = [
-        "matteo"
-        "root"
-      ];
-    };
-  };
-
-  nixpkgs.config = {
-    allowUnfree = true;
+  custom.nix-core = {
+    enable = true;
+    trustedUsers = [
+      "matteo"
+      "root"
+    ];
     permittedInsecurePackages = [
       "qtwebengine-5.15.19"
     ];
@@ -69,15 +49,9 @@
     sshfs
   ];
 
-  # Timezone and locale
-
-  time.timeZone = "Europe/London";
-
-  i18n.defaultLocale = "en_GB.UTF-8";
-  console = {
-    font = "Lat2-Terminus16";
-    keyMap = "us";
-  };
+  custom.locale.enable = true;
+  custom.bluetooth.enable = true;
+  custom.fonts.enable = true;
 
   system.stateVersion = "25.11";
 }

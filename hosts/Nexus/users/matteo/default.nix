@@ -1,14 +1,14 @@
 { pkgs, ... }:
 {
   imports = [
-    ../../../shared/home-manager/nvf.nix
-
     ./git.nix
     ./zsh.nix
   ];
 
   home.username = "matteo";
   home.homeDirectory = "/home/matteo";
+
+  custom.nvf.enable = true;
 
   home.packages = [ ];
 

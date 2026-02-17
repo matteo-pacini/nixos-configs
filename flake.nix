@@ -129,6 +129,7 @@
           };
           modules = [
             { nixpkgs.overlays = baseOverlays ++ extraOverlays; }
+            self.nixosModules.default
             hostPath
             inputs.home-manager.nixosModules.home-manager
             {
@@ -141,6 +142,7 @@
               };
               home-manager.sharedModules = [
                 inputs.nvf.homeManagerModules.default
+                self.homeManagerModules.default
               ];
             }
           ]
@@ -148,6 +150,42 @@
         };
     in
     {
+      nixosModules.default = {
+        imports = [
+          ./modules/nixos/nix-core.nix
+          ./modules/nixos/locale.nix
+          ./modules/nixos/bluetooth.nix
+          ./modules/nixos/fonts.nix
+          ./modules/nixos/kernel.nix
+          ./modules/nixos/apcupsd-multi.nix
+        ];
+      };
+
+      darwinModules.default = {
+        imports = [
+          ./modules/darwin/nix-core.nix
+          ./modules/darwin/system-defaults.nix
+          ./modules/darwin/fonts.nix
+        ];
+      };
+
+      homeManagerModules.default = {
+        imports = [
+          ./modules/home-manager/firefox.nix
+          ./modules/home-manager/dracula.nix
+          ./modules/home-manager/git.nix
+          ./modules/home-manager/ssh.nix
+          ./modules/home-manager/atuin.nix
+          ./modules/home-manager/zsh.nix
+          ./modules/home-manager/shell-tools.nix
+          ./modules/home-manager/tmux.nix
+          ./modules/home-manager/nvf.nix
+          ./modules/home-manager/vscode.nix
+          ./modules/home-manager/starship.nix
+          ./modules/home-manager/wezterm.nix
+        ];
+      };
+
       ###################
       # Linux Gaming PC #
       ###################
@@ -204,7 +242,7 @@
               inputs.nur.overlays.default
             ];
           }
-          ./modules/nixos/apcupsd-multi.nix
+          self.nixosModules.default
           ./hosts/Nexus
           inputs.home-manager.nixosModules.home-manager
           {
@@ -216,6 +254,7 @@
             };
             home-manager.sharedModules = [
               inputs.nvf.homeManagerModules.default
+              self.homeManagerModules.default
             ];
           }
           inputs.agenix.nixosModules.default
@@ -268,6 +307,7 @@
               inputs.nur.overlays.default
             ];
           }
+          self.nixosModules.default
           ./hosts/CauldronLake
           inputs.home-manager.nixosModules.home-manager
           {
@@ -277,6 +317,10 @@
             home-manager.extraSpecialArgs = {
               inherit inputs;
             };
+            home-manager.sharedModules = [
+              inputs.nvf.homeManagerModules.default
+              self.homeManagerModules.default
+            ];
           }
         ];
       };
@@ -296,6 +340,7 @@
               (import ./overlays/nightsprings.nix)
             ];
           }
+          self.darwinModules.default
           ./hosts/NightSprings
           inputs.mac-app-util.darwinModules.default
           inputs.home-manager.darwinModules.home-manager
@@ -310,6 +355,7 @@
             home-manager.sharedModules = [
               inputs.mac-app-util.homeManagerModules.default
               inputs.nvf.homeManagerModules.default
+              self.homeManagerModules.default
               self.homeManagerModules.xcodes
             ];
           }
@@ -345,6 +391,7 @@
               (import ./overlays/worklaptop.nix)
             ];
           }
+          self.darwinModules.default
           ./hosts/WorkLaptop
           inputs.mac-app-util.darwinModules.default
           inputs.home-manager.darwinModules.home-manager
@@ -359,6 +406,7 @@
             home-manager.sharedModules = [
               inputs.mac-app-util.homeManagerModules.default
               inputs.nvf.homeManagerModules.default
+              self.homeManagerModules.default
             ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew

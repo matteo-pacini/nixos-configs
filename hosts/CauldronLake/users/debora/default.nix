@@ -1,8 +1,6 @@
 { pkgs, ... }:
 {
   imports = [
-    ../../../../modules/home-manager/firefox.nix
-
     ./gaming.nix
     ./gnome.nix
     ./flatpak.nix
