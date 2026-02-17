@@ -17,7 +17,7 @@
     ../../../shared/home-manager/tmux.nix
     ../../../shared/home-manager/darwin/starship.nix
     ../../../shared/home-manager/darwin/terminal.nix
-    ../../../shared/home-manager/darwin/zsh.nix
+    ./zsh.nix
 
     ./git.nix
     ./browser.nix

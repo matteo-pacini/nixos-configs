@@ -33,10 +33,11 @@
   programs.atuin = {
     enable = true;
     enableZshIntegration = true;
+    forceOverwriteSettings = true;
     settings = {
       auto_sync = true;
       sync_frequency = "5m";
-      sync_address = "http://nexus-ts.walrus-draconis.ts.net:8888";
+      sync_address = "http://nexus.home.internal:8888";
       search_mode = "fuzzy";
       filter_mode = "global";
       filter_mode_shell_up_key_binding = "directory";
