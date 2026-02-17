@@ -16,6 +16,29 @@
     enableZshIntegration = true;
   };
 
+  programs.atuin = {
+    enable = true;
+    enableZshIntegration = true;
+    settings = {
+      auto_sync = true;
+      sync_frequency = "5m";
+      sync_address = "http://nexus-ts.walrus-draconis.ts.net:8888";
+      search_mode = "fuzzy";
+      filter_mode = "global";
+      filter_mode_shell_up_key_binding = "directory";
+      style = "compact";
+      inline_height = 30;
+      enter_accept = true;
+      update_check = false;
+      show_help = false;
+      workspaces = true;
+      secrets_filter = true;
+      history_filter = [
+        "^rm " "^shred " "^dd "
+      ];
+    };
+  };
+
   home.file.".p10k.zsh".source = ./dot_p10k.zsh;
 
   programs.zsh = {
@@ -26,7 +49,7 @@
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
-    historySubstringSearch.enable = true;
+    historySubstringSearch.enable = false;
     plugins = [
       {
         name = "powerlevel10k";
