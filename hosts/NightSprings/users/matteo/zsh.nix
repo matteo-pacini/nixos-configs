@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  pkgs,
+  lib,
+  ...
+}:
+
 {
   programs.direnv = {
     enable = true;
@@ -14,6 +19,15 @@
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
+    defaultOptions = [ "--preview 'bat --color=always {}'" ];
+  };
+
+  programs.bat = {
+    enable = true;
+  };
+
+  programs.ripgrep = {
+    enable = true;
   };
 
   programs.atuin = {
@@ -23,7 +37,7 @@
     settings = {
       auto_sync = true;
       sync_frequency = "5m";
-      sync_address = "http://localhost:8888";
+      sync_address = "http://nexus-ts.walrus-draconis.ts.net:8888";
       search_mode = "fuzzy";
       filter_mode = "global";
       filter_mode_shell_up_key_binding = "directory";
@@ -40,25 +54,21 @@
     };
   };
 
-  home.file.".p10k.zsh".source = ./dot_p10k.zsh;
-
   programs.zsh = {
-    initContent = ''
-      source ~/.p10k.zsh
-    '';
     enable = true;
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     historySubstringSearch.enable = false;
-    plugins = [
-      {
-        name = "powerlevel10k";
-        src = pkgs.zsh-powerlevel10k;
-        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-      }
-    ];
     shellAliases = {
+      ls = "${pkgs.eza}/bin/${pkgs.eza.meta.mainProgram} --icons --color=always";
+      suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
+      suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
+      reloadDock = ''
+        defaults write com.apple.dock ResetLaunchPad -bool true;
+        killall Dock;
+        defaults write com.apple.dock ResetLaunchPad -bool false
+      '';
       nix-gc = ''
         nix-collect-garbage --delete-old;
         sudo nix-collect-garbage --delete-old;
