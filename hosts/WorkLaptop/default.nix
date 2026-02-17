@@ -6,31 +6,17 @@
 }:
 {
   imports = [
-    ./fonts.nix
     ./system.nix
   ];
 
-  nixpkgs.config.allowUnfree = true;
-
-  nix = {
-    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
-    };
-    extraOptions = ''
-      extra-platforms = x86_64-darwin aarch64-darwin
-    '';
-    settings = {
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      trusted-users = [
-        "@admin"
-      ];
-      sandbox = "relaxed";
-    };
+  custom.nix-core = {
+    enable = true;
+    trustedUsers = [
+      "@admin"
+    ];
   };
+
+  custom.fonts.enable = true;
 
   environment.systemPackages = [ pkgs.nix-output-monitor ];
 

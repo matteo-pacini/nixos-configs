@@ -1,15 +1,7 @@
 { pkgs, ... }:
 {
   imports = [
-    ../../../../modules/home-manager/dracula.nix
-    ../../../../modules/home-manager/firefox.nix
-
-    ../../../shared/home-manager/nvf.nix
-    ../../../shared/home-manager/tmux.nix
-    ../../../shared/home-manager/darwin/starship.nix
-    ../../../shared/home-manager/darwin/terminal.nix
     ./zsh.nix
-
     ./git.nix
     ./xcodes.nix
     ./browser.nix
@@ -38,6 +30,11 @@
     # Music
     jellyfin-tui
   ];
+
+  custom.nvf.enable = true;
+  custom.tmux.enable = true;
+  custom.starship.enable = true;
+  custom.wezterm.enable = true;
 
   home.stateVersion = "25.11";
 

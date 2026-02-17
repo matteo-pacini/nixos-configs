@@ -6,7 +6,7 @@
   ...
 }:
 {
-  options.shared.kernel = {
+  options.custom.kernel = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -20,12 +20,12 @@
     };
   };
 
-  config = lib.mkIf config.shared.kernel.enable {
+  config = lib.mkIf config.custom.kernel.enable {
     # Kernel version used across all Linux hosts
     boot.kernelPackages = pkgs.linuxPackages_6_18;
 
     # BORE scheduler patches
-    boot.kernelPatches = lib.mkIf config.shared.kernel.useBorePatches (
+    boot.kernelPatches = lib.mkIf config.custom.kernel.useBorePatches (
       let
         # Use pkgs.linuxPackages_6_18.kernel.version instead of config.boot.kernelPackages.kernel.version
         # to avoid infinite recursion (boot.kernelPatches affects boot.kernelPackages)
