@@ -37,6 +37,20 @@
       logfile = "/var/log/nextcloud/nextcloud.log";
       loglevel = 2;
       maintenance_window_start = 1;
+      enabledPreviewProviders = [
+        "OC\\Preview\\BMP"
+        "OC\\Preview\\GIF"
+        "OC\\Preview\\JPEG"
+        "OC\\Preview\\Krita"
+        "OC\\Preview\\MarkDown"
+        "OC\\Preview\\MP3"
+        "OC\\Preview\\OpenDocument"
+        "OC\\Preview\\PNG"
+        "OC\\Preview\\TXT"
+        "OC\\Preview\\XBitmap"
+        "OC\\Preview\\HEIC"
+        "OC\\Preview\\WebP"
+      ];
     };
 
     phpOptions = {
@@ -50,7 +64,12 @@
     autoUpdateApps.startAt = "05:00:00";
 
     extraApps = with config.services.nextcloud.package.packages.apps; {
-      inherit calendar contacts notes tasks;
+      inherit
+        calendar
+        contacts
+        notes
+        tasks
+        ;
     };
   };
 
