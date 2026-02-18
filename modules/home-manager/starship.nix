@@ -21,34 +21,34 @@ in
         scan_timeout = 10;
         format = builtins.concatStringsSep "" [
           # Left
-          "[](comment)"
+          "[](comment)"
           "$os"
           "$username"
-          "[](bg:purple fg:comment)"
+          "[](bg:purple fg:comment)"
           "$directory"
-          "[](bg:green fg:purple)"
+          "[](bg:green fg:purple)"
           "$git_branch"
           "$git_status"
-          "[](bg:pink fg:green)"
+          "[](bg:pink fg:green)"
           "$direnv"
-          "[](bg:black fg:pink)"
+          "[](bg:black fg:pink)"
           "$fill"
           # Right
-          "[](bg:black fg:selection)"
+          "[](bg:black fg:selection)"
           "$character"
-          "[](bg:selection fg:purple)"
+          "[](bg:selection fg:purple)"
           "$nix_shell"
-          "[](bg:purple fg:comment)"
+          "[](bg:purple fg:comment)"
           "$time"
           "$line_break$line_break"
           "[ 󰌌 ](bg:selection fg:foreground)"
-          "[ ](bg:black fg:selection)"
+          "[ ](bg:black fg:selection)"
         ];
         os = {
           disabled = false;
           symbols = {
-            Linux = "";
-            Macos = "";
+            Linux = "";
+            Macos = "";
           };
           style = "bold bg:comment fg:foreground";
         };
@@ -60,19 +60,19 @@ in
         };
         directory = {
           style = "bold bg:purple fg:black";
-          format = "[  $path ]($style)";
+          format = "[  $path ]($style)";
           truncation_length = 3;
           truncation_symbol = "…/";
-          home_symbol = " ";
+          home_symbol = " ";
           substitutions = {
             "Documents" = "󰈙 ";
-            "Downloads" = " ";
+            "Downloads" = " ";
             "Music" = "󰝚 ";
-            "Pictures" = " ";
+            "Pictures" = " ";
           };
         };
         git_branch = {
-          symbol = "";
+          symbol = "";
           style = "bg:green";
           format = "[[ $symbol $branch ](bold fg:black bg:green)]($style)";
         };
@@ -90,20 +90,20 @@ in
           symbol = " ";
         };
         character = {
-          success_symbol = "[](bold bg:selection fg:green)";
-          error_symbol = "[](bold bg:selection fg:red)";
+          success_symbol = "[](bold bg:selection fg:green)";
+          error_symbol = "[](bold bg:selection fg:red)";
           format = "[ $symbol ](bg:selection)";
         };
         nix_shell = {
           style = "bold bg:purple fg:black";
           format = "[ $symbol$state (\($name\)) ]($style)";
-          symbol = " ";
+          symbol = " ";
         };
         time = {
           disabled = false;
           time_format = "%R";
           style = "bold bg:comment fg:foreground";
-          format = "[  $time ]($style)";
+          format = "[  $time ]($style)";
         };
         palette = "Dracula";
         palettes.Dracula = {
