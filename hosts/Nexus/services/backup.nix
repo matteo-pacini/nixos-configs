@@ -169,7 +169,7 @@ in
       environmentFile = config.age.secrets."nexus/restic-env".path;
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
-        "/diskpool/matteo"
+        "/diskpool/nextcloud/data/matteo"
       ];
       timerConfig = {
         OnCalendar = "daily";
@@ -182,7 +182,7 @@ in
       environmentFile = config.age.secrets."nexus/restic-env".path;
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
-        "/diskpool/debora"
+        "/diskpool/nextcloud/data/Debora Cristiano"
       ];
       timerConfig = {
         OnCalendar = "daily";
@@ -209,6 +209,9 @@ in
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
         "/diskpool/configuration"
+      ];
+      exclude = [
+        "/diskpool/configuration/nextcloud/data/*/files"
       ];
       timerConfig = {
         OnCalendar = "daily";
