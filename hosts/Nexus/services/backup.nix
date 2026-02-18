@@ -26,6 +26,8 @@ let
     "paperless-scheduler"
     "paperless-consumer"
     "paperless-task-queue"
+    "phpfpm-nextcloud"
+    "nginx"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
@@ -111,6 +113,8 @@ let
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
     # n8n - PostgreSQL database
     ''${RSYNC_CMD} /var/lib/postgresql_n8n ${backupDestination}/
+    # nextcloud
+    ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync

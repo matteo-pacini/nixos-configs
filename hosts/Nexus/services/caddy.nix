@@ -59,6 +59,24 @@ in
         '';
       };
 
+      "nextcloud.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
+        extraConfig = ''
+          ${securityHeaders}
+
+          # Large upload limit for file sync
+          request_body {
+            max_size 16GB
+          }
+
+          # Reverse proxy to Nextcloud's internal nginx
+          reverse_proxy 127.0.0.1:8085
+        '';
+      };
+
       "home.matteopacini.me" = {
         logFormat = ''
           output file /var/log/caddy/access.log

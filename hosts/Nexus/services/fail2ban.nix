@@ -83,6 +83,20 @@
         };
       };
 
+      # Nextcloud specific protection
+      nextcloud-auth = {
+        settings = {
+          enabled = true;
+          filter = "nextcloud-auth";
+          port = "http,https";
+          logpath = "/var/log/nextcloud/nextcloud.log";
+          backend = "auto";
+          maxretry = 3;
+          findtime = "43200"; # 12 hours
+          bantime = "86400"; # 24 hours
+        };
+      };
+
       # Home Assistant specific protection
       hass-auth = {
         settings = {
@@ -125,6 +139,19 @@
     failregex = "client_ip":"<HOST>"(?:.*)"uri":".*/rest/login.*"(?:.*)"status":(?:401|403)
                 "client_ip":"<HOST>"(?:.*)"uri":".*/rest/.*"(?:.*)"status":401
     datepattern = "ts":{Epoch}
+    ignoreregex =
+  '';
+
+  # Custom filter for Nextcloud authentication failures
+  # Based on official Nextcloud documentation:
+  # https://docs.nextcloud.com/server/23/admin_manual/installation/harden_server.html
+  # Uses _groupsre to match JSON keys in any order
+  environment.etc."fail2ban/filter.d/nextcloud-auth.conf".text = ''
+    [Definition]
+    _groupsre = (?:(?:,?\s*"\w+":(?:"[^"]+"|\\w+))*?)
+    failregex = ^\{%%(_groupsre)s,?\s*"remoteAddr":"<HOST>"%%(_groupsre)s,?\s*"message":"Login failed:
+                ^\{%%(_groupsre)s,?\s*"remoteAddr":"<HOST>"%%(_groupsre)s,?\s*"message":"Trusted domain error.
+    datepattern = ,?\s*"time"\s*:\s*"%%Y-%%m-%%d[T ]%%H:%%M:%%S(%%z)?"
     ignoreregex =
   '';
 
