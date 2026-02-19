@@ -25,6 +25,9 @@
     enable = true;
     addKeysToAgent = "yes";
     nexus.enable = true;
+    nexus.tailscaleAliases = true;
+    brightfalls.enable = true;
+    brightfalls.tailscaleAliases = true;
     github.enable = true;
   };
 }
