@@ -52,7 +52,6 @@ in
       };
     }
     (lib.mkIf cfg.suggestionAliases {
-      programs.zsh.historySubstringSearch.enable = false;
       programs.zsh.shellAliases = {
         suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
         suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
