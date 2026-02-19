@@ -27,6 +27,7 @@
     ./nextcloud.nix
     ./polkit.nix
     ./atuin.nix
+    ./mosh.nix
   ];
 
   systemd.tmpfiles.rules = [
