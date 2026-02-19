@@ -26,6 +26,11 @@ in
     };
     nexus = {
       enable = lib.mkEnableOption "Nexus host SSH block";
+      tailscaleAliases = lib.mkEnableOption "Nexus Tailscale SSH aliases";
+    };
+    brightfalls = {
+      enable = lib.mkEnableOption "BrightFalls host SSH blocks";
+      tailscaleAliases = lib.mkEnableOption "BrightFalls Tailscale SSH aliases";
     };
     github = {
       enable = lib.mkEnableOption "GitHub SSH host block";
@@ -72,6 +77,52 @@ in
           User = "matteo";
           IdentityFile = "~/.ssh/nexus";
           Port = "1788";
+        };
+      };
+    })
+    (lib.mkIf cfg.nexus.tailscaleAliases {
+      programs.ssh.matchBlocks."nexus-ts" = {
+        extraOptions = {
+          HostName = "nexus-ts.walrus-draconis.ts.net";
+          User = "matteo";
+          IdentityFile = "~/.ssh/nexus";
+          Port = "1788";
+        };
+      };
+    })
+    (lib.mkIf cfg.brightfalls.enable {
+      programs.ssh.matchBlocks."brightfalls" = {
+        extraOptions = {
+          HostName = "brightfalls.home.internal";
+          User = "matteo";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "1788";
+        };
+      };
+      programs.ssh.matchBlocks."brightfalls-stage1" = {
+        extraOptions = {
+          HostName = "brightfalls.home.internal";
+          User = "root";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "2222";
+        };
+      };
+    })
+    (lib.mkIf cfg.brightfalls.tailscaleAliases {
+      programs.ssh.matchBlocks."brightfalls-ts" = {
+        extraOptions = {
+          HostName = "brightfalls-ts.walrus-draconis.ts.net";
+          User = "matteo";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "1788";
+        };
+      };
+      programs.ssh.matchBlocks."brightfalls-ts-stage1" = {
+        extraOptions = {
+          HostName = "brightfalls-ts.walrus-draconis.ts.net";
+          User = "root";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "2222";
         };
       };
     })
