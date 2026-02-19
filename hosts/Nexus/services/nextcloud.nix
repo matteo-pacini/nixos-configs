@@ -51,6 +51,8 @@
         "OC\\Preview\\HEIC"
         "OC\\Preview\\WebP"
       ];
+      # Allow Nextcloud apps to reach local services (e.g. paperless at localhost:28981)
+      allow_local_remote_servers = true;
     };
 
     phpOptions = {
@@ -70,6 +72,48 @@
         notes
         tasks
         ;
+    };
+  };
+
+  # Enable the bundled files_external app for Paperless directory mounts.
+  # files_external is a core Nextcloud app (ships with the server), it just needs enabling.
+  systemd.services.nextcloud-paperless-setup = {
+    description = "Enable files_external app for Paperless integration";
+    after = [ "nextcloud-setup.service" ];
+    requires = [ "nextcloud-setup.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      User = "nextcloud";
+    };
+    path = [ config.services.nextcloud.occ ];
+    script = ''
+      nextcloud-occ app:enable files_external || true
+    '';
+  };
+
+  # Periodic scan so Nextcloud picks up new files written by paperless to external storage.
+  systemd.services.nextcloud-scan-external = {
+    description = "Scan Nextcloud external storage for new documents";
+    after = [ "nextcloud-setup.service" ];
+    requires = [ "nextcloud-setup.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "nextcloud";
+    };
+    path = [ config.services.nextcloud.occ ];
+    script = ''
+      nextcloud-occ files:scan --all --shallow
+    '';
+  };
+
+  systemd.timers.nextcloud-scan-external = {
+    description = "Timer for scanning Nextcloud external storage";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*:0/15";
+      Persistent = true;
     };
   };
 
