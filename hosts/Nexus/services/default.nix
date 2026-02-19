@@ -24,6 +24,7 @@
     ./grafana.nix
     ./geoipupdate.nix
     ./paperless.nix
+    ./nextcloud.nix
     ./polkit.nix
     ./atuin.nix
   ];

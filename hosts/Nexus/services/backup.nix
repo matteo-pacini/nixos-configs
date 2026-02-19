@@ -26,6 +26,8 @@ let
     "paperless-scheduler"
     "paperless-consumer"
     "paperless-task-queue"
+    "phpfpm-nextcloud"
+    "nginx"
   ];
   affectedComposeTargets = [
     "nexus-qbittorrent"
@@ -111,6 +113,8 @@ let
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
     # n8n - PostgreSQL database
     ''${RSYNC_CMD} /var/lib/postgresql_n8n ${backupDestination}/
+    # nextcloud
+    ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync
@@ -165,7 +169,7 @@ in
       environmentFile = config.age.secrets."nexus/restic-env".path;
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
-        "/diskpool/matteo"
+        "/diskpool/nextcloud/data/matteo"
       ];
       timerConfig = {
         OnCalendar = "daily";
@@ -178,7 +182,7 @@ in
       environmentFile = config.age.secrets."nexus/restic-env".path;
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
-        "/diskpool/debora"
+        "/diskpool/nextcloud/data/Debora Cristiano"
       ];
       timerConfig = {
         OnCalendar = "daily";
@@ -205,6 +209,9 @@ in
       passwordFile = config.age.secrets."nexus/restic-password".path;
       paths = [
         "/diskpool/configuration"
+      ];
+      exclude = [
+        "/diskpool/configuration/nextcloud/data/*/files"
       ];
       timerConfig = {
         OnCalendar = "daily";

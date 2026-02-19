@@ -28,6 +28,7 @@ in
     ensureDatabases = [
       "hass"
       "grafana"
+      "nextcloud"
       # Radarr databases (main + log)
       "radarr-main"
       "radarr-log"
@@ -42,6 +43,10 @@ in
       }
       {
         name = "grafana";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "nextcloud";
         ensureDBOwnership = true;
       }
       # Radarr user (ownership set via script, db names don't match username)
