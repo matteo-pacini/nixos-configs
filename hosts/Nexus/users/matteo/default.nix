@@ -9,6 +9,7 @@
   home.homeDirectory = "/home/matteo";
 
   custom.nvf.enable = true;
+  custom.tmux.enable = true;
 
   home.packages = [ ];
 

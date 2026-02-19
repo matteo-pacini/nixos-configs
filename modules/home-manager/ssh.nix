@@ -119,10 +119,11 @@ in
       };
       programs.ssh.matchBlocks."brightfalls-ts-stage1" = {
         extraOptions = {
-          HostName = "brightfalls-ts.walrus-draconis.ts.net";
+          HostName = "brightfalls.home.internal";
           User = "root";
           IdentityFile = "~/.ssh/brightfalls";
           Port = "2222";
+          ProxyJump = "nexus-ts";
         };
       };
     })
