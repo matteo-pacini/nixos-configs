@@ -36,6 +36,11 @@ in
         set-option -g default-command ''${SHELL}
         set-option -g default-shell ''${SHELL}
 
+        # Clipboard and mouse
+        set -g set-clipboard on
+        set -g mouse off
+        set -g @yank_action 'copy-pipe-and-cancel'
+
         # smart-splits.nvim integration
         # Navigation: C-h/j/k/l moves between neovim splits and tmux panes seamlessly
         bind-key -n C-h if -F "#{@pane-is-vim}" 'send-keys C-h' 'select-pane -L'
