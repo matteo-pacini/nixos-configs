@@ -10,14 +10,6 @@ in
 {
   options.custom.zsh = {
     enable = lib.mkEnableOption "Zsh configuration";
-    powerlevel10k = {
-      enable = lib.mkEnableOption "Powerlevel10k zsh theme";
-      configSource = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = "Path to .p10k.zsh config file";
-      };
-    };
     suggestionAliases = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -55,21 +47,6 @@ in
       programs.zsh.shellAliases = {
         suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
         suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
-      };
-    })
-    (lib.mkIf cfg.powerlevel10k.enable {
-      programs.zsh.plugins = [
-        {
-          name = "powerlevel10k";
-          src = pkgs.zsh-powerlevel10k;
-          file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-        }
-      ];
-      programs.zsh.initContent = lib.mkIf (cfg.powerlevel10k.configSource != null) ''
-        source ~/.p10k.zsh
-      '';
-      home.file.".p10k.zsh" = lib.mkIf (cfg.powerlevel10k.configSource != null) {
-        source = cfg.powerlevel10k.configSource;
       };
     })
     (lib.mkIf cfg.darwinAliases {

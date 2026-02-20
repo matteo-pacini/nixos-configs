@@ -65,6 +65,7 @@
 
   custom.nvf.enable = true;
   custom.tmux.enable = true;
+  custom.starship.enable = true;
 
   home.stateVersion = "25.11";
 

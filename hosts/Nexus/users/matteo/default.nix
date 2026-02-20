@@ -10,6 +10,7 @@
 
   custom.nvf.enable = true;
   custom.tmux.enable = true;
+  custom.starship.enable = true;
 
   home.packages = [ ];
 
