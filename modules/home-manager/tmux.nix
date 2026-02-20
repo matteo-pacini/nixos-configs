@@ -36,6 +36,9 @@ in
         set-option -g default-command ''${SHELL}
         set-option -g default-shell ''${SHELL}
 
+        # True color (24-bit RGB) passthrough for SSH sessions
+        set -as terminal-features ",xterm-256color:RGB"
+
         # Clipboard and mouse
         set -g set-clipboard on
         set -g mouse off
