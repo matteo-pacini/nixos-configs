@@ -78,7 +78,18 @@ in
         };
         git_status = {
           style = "bg:green";
-          format = "[[($all_status$ahead_behind )](fg:black bg:green)]($style)";
+          format = "[[($conflicted$stashed$staged$renamed$deleted$modified$untracked$ahead_behind )](bold fg:black bg:green)]($style)";
+          conflicted = "=$count";
+          ahead = "⇡$count";
+          behind = "⇣$count";
+          diverged = "⇡$ahead_count⇣$behind_count";
+          up_to_date = "";
+          stashed = "*$count";
+          staged = "+$count";
+          renamed = "»$count";
+          deleted = "✘$count";
+          modified = "!$count";
+          untracked = "?$count";
         };
         direnv = {
           disabled = false;

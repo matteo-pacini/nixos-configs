@@ -27,7 +27,7 @@
     bottles
   ];
 
-  home.file.".p10k.zsh".source = ./dot_p10k.zsh;
+  custom.starship.enable = true;
 
   programs.git = {
     enable = true;
