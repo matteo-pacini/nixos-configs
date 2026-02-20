@@ -24,6 +24,7 @@
         admin_password = "$__file{${config.age.secrets."nexus/grafana-admin-password".path}}";
         admin_email = "m+grafana@matteopacini.me";
         allow_embedding = true;
+        secret_key = "$__file{${config.age.secrets."nexus/grafana-secret-key".path}}";
       };
     };
     provision.dashboards.settings.providers = [
