@@ -273,7 +273,6 @@
             age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
-            age.secrets."nexus/wireguard.env".file = ./secrets/nexus/wireguard.env.age;
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
 
             age.secrets."nexus/zigbee2mqtt.env" = {

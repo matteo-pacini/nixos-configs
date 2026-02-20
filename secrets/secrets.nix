@@ -27,7 +27,6 @@ in
   "nexus/janitor.env.age".publicKeys = [ nexus ];
   "nexus/restic-env.age".publicKeys = [ nexus ];
   "nexus/restic-password.age".publicKeys = [ nexus ];
-  "nexus/wireguard.env.age".publicKeys = [ nexus ];
   "nexus/route53-env.age".publicKeys = [ nexus ];
   "nexus/zigbee2mqtt.env.age".publicKeys = [ nexus ];
   "nexus/grafana-admin-password.age".publicKeys = [ nexus ];

@@ -9,7 +9,6 @@
     ./nzbhydra.nix
     ./radarr.nix
     ./sonarr.nix
-    ./qbittorrent
     ./n8n
     ./ddns.nix
     ./caddy.nix

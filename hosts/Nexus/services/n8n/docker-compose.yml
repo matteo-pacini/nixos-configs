@@ -18,7 +18,7 @@ services:
       retries: 10
 
   n8n:
-    image: docker.n8n.io/n8nio/n8n:2.2.0
+    image: docker.n8n.io/n8nio/n8n:2.9.1
     restart: always
     environment:
       - N8N_HOST=n8n.matteopacini.me

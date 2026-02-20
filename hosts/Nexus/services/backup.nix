@@ -30,7 +30,6 @@ let
     "nginx"
   ];
   affectedComposeTargets = [
-    "nexus-qbittorrent"
     "nexus-n8n"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
@@ -103,8 +102,6 @@ let
     ''${RSYNC_CMD} ${config.services.radarr.dataDir} ${backupDestination}/
     # sonarr
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
-    # qbittorrent
-    ''${RSYNC_CMD} /var/lib/qbittorrent ${backupDestination}/
     # paperless - data directory
     ''${RSYNC_CMD} ${config.services.paperless.dataDir} ${backupDestination}/
     # paperless - media directory
