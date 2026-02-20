@@ -18,7 +18,7 @@ in
     darwinAliases = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Enable Darwin-specific aliases (eza ls, reloadDock)";
+      description = "Enable Darwin-specific aliases (reloadDock)";
     };
     extraAliases = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
@@ -35,6 +35,7 @@ in
         autosuggestion.enable = true;
         syntaxHighlighting.enable = true;
         shellAliases = {
+          ls = "${lib.getExe pkgs.eza} --icons --color=always";
           nix-gc = ''
             nix-collect-garbage --delete-old;
             sudo nix-collect-garbage --delete-old;
@@ -51,7 +52,6 @@ in
     })
     (lib.mkIf cfg.darwinAliases {
       programs.zsh.shellAliases = {
-        ls = "${pkgs.eza}/bin/${pkgs.eza.meta.mainProgram} --icons --color=always";
         reloadDock = ''
           defaults write com.apple.dock ResetLaunchPad -bool true;
           killall Dock;

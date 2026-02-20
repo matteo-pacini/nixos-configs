@@ -29,6 +29,10 @@
 
   custom.starship.enable = true;
 
+  dracula.eza.enable = true;
+  dracula.fzf.enable = true;
+  dracula.bat.enable = true;
+
   programs.git = {
     enable = true;
     # package = pkgs.gitAndTools.gitFull;
