@@ -24,6 +24,8 @@ in
           "[](comment)"
           "$os"
           "$username"
+          "$hostname"
+          "[ ](bg:comment)"
           "[](bg:purple fg:comment)"
           "$directory"
           "[](bg:green fg:purple)"
@@ -56,7 +58,13 @@ in
           show_always = true;
           style_user = "bold bg:comment fg:foreground";
           style_root = "bold bg:comment fg:red";
-          format = "[ $user ]($style)";
+          format = "[ $user]($style)";
+        };
+        hostname = {
+          ssh_only = true;
+          ssh_symbol = "";
+          style = "bold bg:comment fg:cyan";
+          format = "[@$hostname]($style)";
         };
         directory = {
           style = "bold bg:purple fg:black";
