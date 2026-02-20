@@ -67,6 +67,10 @@
   custom.tmux.enable = true;
   custom.starship.enable = true;
 
+  dracula.eza.enable = true;
+  dracula.fzf.enable = true;
+  dracula.bat.enable = true;
+
   home.stateVersion = "25.11";
 
   programs.home-manager.enable = true;

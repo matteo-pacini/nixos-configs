@@ -29,5 +29,12 @@
     brightfalls.enable = true;
     brightfalls.tailscaleAliases = true;
     github.enable = true;
+    extraMatchBlocks."fpnas" = {
+      extraOptions = {
+        HostName = "fpnas3.tailadca8a.ts.net";
+        User = "fabrizio";
+        Port = "2812";
+      };
+    };
   };
 }
