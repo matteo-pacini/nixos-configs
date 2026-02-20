@@ -33,18 +33,18 @@ in
           "$git_status"
           "[](bg:pink fg:green)"
           "$direnv"
-          "[](bg:black fg:pink)"
-          "$fill"
-          # Right
-          "[](bg:black fg:selection)"
+          "[](fg:pink)"
+          "$line_break$line_break"
+          "[ 󰌌 ](bg:selection fg:foreground)"
+          "[ ](bg:black fg:selection)"
+        ];
+        right_format = builtins.concatStringsSep "" [
+          "[](fg:selection)"
           "$character"
           "[](bg:selection fg:purple)"
           "$nix_shell"
           "[](bg:purple fg:comment)"
           "$time"
-          "$line_break$line_break"
-          "[ 󰌌 ](bg:selection fg:foreground)"
-          "[ ](bg:black fg:selection)"
         ];
         os = {
           disabled = false;
@@ -104,9 +104,6 @@ in
           style = "bold bg:pink fg:black";
           format = "[ $symbol $loaded ($allowed) ]($style)";
           symbol = "direnv";
-        };
-        fill = {
-          symbol = " ";
         };
         character = {
           success_symbol = "[](bold bg:selection fg:green)";
