@@ -89,6 +89,9 @@ in
           };
           notify.nvim-notify.enable = true;
           ui.borders.enable = true;
+          luaConfigRC.termguicolors = ''
+            vim.opt.termguicolors = true
+          '';
           luaConfigRC.floatBorder = ''
             vim.o.winborder = 'rounded'
           '';
