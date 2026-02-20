@@ -288,6 +288,12 @@
               group = "grafana";
               mode = "770";
             };
+            age.secrets."nexus/grafana-secret-key" = {
+              file = ./secrets/nexus/grafana-secret-key.age;
+              owner = "grafana";
+              group = "grafana";
+              mode = "770";
+            };
             age.secrets."nexus/nextcloud-admin-password" = {
               file = ./secrets/nexus/nextcloud-admin-password.age;
               owner = "nextcloud";
