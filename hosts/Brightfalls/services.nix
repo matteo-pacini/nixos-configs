@@ -68,6 +68,8 @@ in
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQiM93t9mXjpqdtY12ohNAELZNg1SOdE47bWNRb4HC0 matteo@NightSprings"
   ];
 
+  programs.mosh.enable = true;
+
   services.fstrim.enable = lib.mkIf (!isVM) true;
 
   # https://discourse.nixos.org/t/connected-to-mullvadvpn-but-no-internet-connection/35803/8?u=lion
