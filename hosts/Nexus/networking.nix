@@ -29,6 +29,10 @@ in
     firewall = {
       enable = true;
 
+      # Trust Tailscale interface — all traffic from the tailnet bypasses firewall rules.
+      # Access control is handled by Tailscale ACLs instead.
+      trustedInterfaces = [ "tailscale0" ];
+
       # Allow HTTP/HTTPS for Caddy (ACME certificate validation and web services)
       allowedTCPPorts = [
         80 # HTTP (ACME challenges, redirects to HTTPS)
