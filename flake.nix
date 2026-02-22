@@ -183,6 +183,7 @@
           ./modules/home-manager/vscode.nix
           ./modules/home-manager/starship.nix
           ./modules/home-manager/wezterm.nix
+          ./modules/home-manager/aerospace.nix
         ];
       };
 

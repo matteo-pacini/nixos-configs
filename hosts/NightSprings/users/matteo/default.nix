@@ -25,12 +25,11 @@
     # Social
     # element-desktop - broken on darwin, requires Xcode 26+ actool
     # Tracking: https://github.com/NixOS/nixpkgs/pull/486275
-    # Window management
-    loopwm
     # Music
     jellyfin-tui
   ];
 
+  custom.aerospace.enable = true;
   custom.nvf.enable = true;
   custom.tmux.enable = true;
   custom.starship.enable = true;
