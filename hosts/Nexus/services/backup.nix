@@ -7,6 +7,8 @@
 let
   backupDestination = "/diskpool/configuration";
   envFile = config.age.secrets."nexus/janitor.env".path;
+  resticEnvFile = config.age.secrets."nexus/restic-env".path;
+  resticPasswordFile = config.age.secrets."nexus/restic-password".path;
   notify = "${pkgs.telegram-notify}/bin/telegram-notify";
   haServices = [
     "zigbee2mqtt"
@@ -33,6 +35,41 @@ let
     "nexus-n8n"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
+  restic-b2 = pkgs.writeShellScriptBin "restic-b2" ''
+    set -euo pipefail
+
+    REPOS="matteo debora fabrizio config"
+
+    if [[ $# -lt 2 ]]; then
+      echo "Usage: restic-b2 <repo> <restic command...>"
+      echo "Available repos: $REPOS"
+      exit 1
+    fi
+
+    REPO_NAME="$1"
+    shift
+
+    case "$REPO_NAME" in
+      matteo)    REPO_URL="s3:s3.eu-central-003.backblazeb2.com/matteo-nexus-backup" ;;
+      debora)    REPO_URL="s3:s3.eu-central-003.backblazeb2.com/debora-nexus-backup" ;;
+      fabrizio)  REPO_URL="s3:s3.eu-central-003.backblazeb2.com/fabrizio-nexus-backup" ;;
+      config)    REPO_URL="s3:s3.eu-central-003.backblazeb2.com/config-nexus-backup" ;;
+      *)
+        echo "Unknown repo: $REPO_NAME"
+        echo "Available repos: $REPOS"
+        exit 1
+        ;;
+    esac
+
+    set -a
+    source "${resticEnvFile}"
+    set +a
+
+    export RESTIC_REPOSITORY="$REPO_URL"
+    export RESTIC_PASSWORD_FILE="${resticPasswordFile}"
+
+    exec ${pkgs.restic}/bin/restic "$@"
+  '';
   haBackupJob = pkgs.writeShellScriptBin "haBackupJob_4" ''
     set -eo pipefail
     export TELEGRAM_ENV_FILE="${envFile}"
@@ -128,6 +165,8 @@ let
   '';
 in
 {
+  environment.systemPackages = [ restic-b2 ];
+
   systemd.timers."backup" = {
     description = "Backup sequence timer";
     wantedBy = [ "timers.target" ];
@@ -163,8 +202,8 @@ in
     matteo = {
       user = "root";
       repository = "s3:s3.eu-central-003.backblazeb2.com/matteo-nexus-backup";
-      environmentFile = config.age.secrets."nexus/restic-env".path;
-      passwordFile = config.age.secrets."nexus/restic-password".path;
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
       paths = [
         "/diskpool/nextcloud/data/matteo"
       ];
@@ -176,8 +215,8 @@ in
       initialize = true;
       user = "root";
       repository = "s3:s3.eu-central-003.backblazeb2.com/debora-nexus-backup";
-      environmentFile = config.age.secrets."nexus/restic-env".path;
-      passwordFile = config.age.secrets."nexus/restic-password".path;
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
       paths = [
         "/diskpool/nextcloud/data/Debora Cristiano"
       ];
@@ -189,8 +228,8 @@ in
       initialize = true;
       user = "root";
       repository = "s3:s3.eu-central-003.backblazeb2.com/fabrizio-nexus-backup";
-      environmentFile = config.age.secrets."nexus/restic-env".path;
-      passwordFile = config.age.secrets."nexus/restic-password".path;
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
       paths = [
         "/diskpool/fabrizio"
       ];
@@ -202,8 +241,8 @@ in
       initialize = true;
       user = "root";
       repository = "s3:s3.eu-central-003.backblazeb2.com/config-nexus-backup";
-      environmentFile = config.age.secrets."nexus/restic-env".path;
-      passwordFile = config.age.secrets."nexus/restic-password".path;
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
       paths = [
         "/diskpool/configuration"
       ];
