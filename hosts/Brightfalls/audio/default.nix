@@ -42,12 +42,15 @@
       };
     };
 
-    # Buffer/quantum optimization for stable, high-quality playback
-    # 8192 samples provides excellent stability without audible latency
+    # Buffer/quantum optimization balancing streaming and playback stability
+    # 1024 samples (~21ms at 48kHz) works well for Sunshine game streaming
+    # while remaining stable on dedicated DAC hardware (Modi 2)
+    # max-quantum allows apps to request larger buffers if needed
     "30-quantum" = {
       "context.properties" = {
-        "default.clock.quantum" = 8192;
-        "default.clock.min-quantum" = 8192;
+        "default.clock.quantum" = 1024;
+        "default.clock.min-quantum" = 1024;
+        "default.clock.max-quantum" = 8192;
       };
     };
   };
