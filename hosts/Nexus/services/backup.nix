@@ -35,6 +35,54 @@ let
     "nexus-n8n"
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
+
+  # ── Restic shared configuration ──────────────────────────────────────
+
+  b2Endpoint = "s3:s3.eu-central-003.backblazeb2.com";
+
+  b2ExtraOptions = [ "s3.connections=10" ];
+
+  b2ExtraBackupArgs = [
+    "--pack-size 32"
+    "--exclude-caches"
+  ];
+
+  personalExcludes = [
+    ".cache"
+    "cache/"
+    "Cache/"
+    ".thumbnails"
+    "__pycache__/"
+    "node_modules/"
+    ".Trash"
+    ".local/share/Trash"
+    "*.tmp"
+    "*~"
+    "*.swp"
+  ];
+
+  configExcludes = [
+    "/diskpool/configuration/nextcloud/data/*/files"
+    "*.log"
+    "cache/"
+  ];
+
+  personalRetention = [
+    "--keep-daily 7"
+    "--keep-weekly 5"
+    "--keep-monthly 12"
+    "--keep-yearly 5"
+  ];
+
+  configRetention = [
+    "--keep-daily 14"
+    "--keep-weekly 4"
+    "--keep-monthly 12"
+    "--keep-yearly 2"
+  ];
+
+  # ── Wrapper script for interactive restic queries ────────────────────
+
   restic-b2 = pkgs.writeShellScriptBin "restic-b2" ''
     set -euo pipefail
 
@@ -50,10 +98,10 @@ let
     shift
 
     case "$REPO_NAME" in
-      matteo)    REPO_URL="s3:s3.eu-central-003.backblazeb2.com/matteo-nexus-backup" ;;
-      debora)    REPO_URL="s3:s3.eu-central-003.backblazeb2.com/debora-nexus-backup" ;;
-      fabrizio)  REPO_URL="s3:s3.eu-central-003.backblazeb2.com/fabrizio-nexus-backup" ;;
-      config)    REPO_URL="s3:s3.eu-central-003.backblazeb2.com/config-nexus-backup" ;;
+      matteo)    REPO_URL="${b2Endpoint}/matteo-nexus-backup" ;;
+      debora)    REPO_URL="${b2Endpoint}/debora-nexus-backup" ;;
+      fabrizio)  REPO_URL="${b2Endpoint}/fabrizio-nexus-backup" ;;
+      config)    REPO_URL="${b2Endpoint}/config-nexus-backup" ;;
       *)
         echo "Unknown repo: $REPO_NAME"
         echo "Available repos: $REPOS"
@@ -70,6 +118,9 @@ let
 
     exec ${pkgs.restic}/bin/restic "$@"
   '';
+
+  # ── Local backup jobs (rsync + SnapRAID) ─────────────────────────────
+
   haBackupJob = pkgs.writeShellScriptBin "haBackupJob_4" ''
     set -eo pipefail
     export TELEGRAM_ENV_FILE="${envFile}"
@@ -196,61 +247,97 @@ in
         ExecStart = "${lib.getExe backupJob}";
       };
     };
+
+    # Ensure restic B2 backups run after the local backup pipeline
+    "restic-backups-config".after = [ "backup-job.service" ];
+    "restic-backups-matteo".after = [ "backup-job.service" ];
+    "restic-backups-debora".after = [ "backup-job.service" ];
+    "restic-backups-fabrizio".after = [ "backup-job.service" ];
   };
 
   services.restic.backups = {
-    matteo = {
-      user = "root";
-      repository = "s3:s3.eu-central-003.backblazeb2.com/matteo-nexus-backup";
-      environmentFile = resticEnvFile;
-      passwordFile = resticPasswordFile;
-      paths = [
-        "/diskpool/nextcloud/data/matteo"
-      ];
-      timerConfig = {
-        OnCalendar = "daily";
-      };
-    };
-    debora = {
-      initialize = true;
-      user = "root";
-      repository = "s3:s3.eu-central-003.backblazeb2.com/debora-nexus-backup";
-      environmentFile = resticEnvFile;
-      passwordFile = resticPasswordFile;
-      paths = [
-        "/diskpool/nextcloud/data/Debora Cristiano"
-      ];
-      timerConfig = {
-        OnCalendar = "daily";
-      };
-    };
-    fabrizio = {
-      initialize = true;
-      user = "root";
-      repository = "s3:s3.eu-central-003.backblazeb2.com/fabrizio-nexus-backup";
-      environmentFile = resticEnvFile;
-      passwordFile = resticPasswordFile;
-      paths = [
-        "/diskpool/fabrizio"
-      ];
-      timerConfig = {
-        OnCalendar = "daily";
-      };
-    };
     config = {
       initialize = true;
       user = "root";
-      repository = "s3:s3.eu-central-003.backblazeb2.com/config-nexus-backup";
+      repository = "${b2Endpoint}/config-nexus-backup";
       environmentFile = resticEnvFile;
       passwordFile = resticPasswordFile;
       paths = [
         "/diskpool/configuration"
       ];
-      exclude = [
-        "/diskpool/configuration/nextcloud/data/*/files"
-      ];
+      exclude = configExcludes;
+      pruneOpts = configRetention;
+      runCheck = true;
+      checkOpts = [ "--read-data-subset=2%" ];
+      extraOptions = b2ExtraOptions;
+      extraBackupArgs = b2ExtraBackupArgs;
+
       timerConfig = {
-        OnCalendar = "daily";
+        OnCalendar = "*-*-* 04:30:00";
+        Persistent = true;
+      };
+    };
+
+    matteo = {
+      initialize = true;
+      user = "root";
+      repository = "${b2Endpoint}/matteo-nexus-backup";
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
+      paths = [
+        "/diskpool/nextcloud/data/matteo"
+      ];
+      exclude = personalExcludes;
+      pruneOpts = personalRetention;
+      runCheck = true;
+      checkOpts = [ "--read-data-subset=2%" ];
+      extraOptions = b2ExtraOptions;
+      extraBackupArgs = b2ExtraBackupArgs;
+      timerConfig = {
+        OnCalendar = "*-*-* 05:00:00";
+        Persistent = true;
+      };
+    };
+
+    debora = {
+      initialize = true;
+      user = "root";
+      repository = "${b2Endpoint}/debora-nexus-backup";
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
+      paths = [
+        "/diskpool/nextcloud/data/Debora Cristiano"
+      ];
+      exclude = personalExcludes;
+      pruneOpts = personalRetention;
+      runCheck = true;
+      checkOpts = [ "--read-data-subset=2%" ];
+      extraOptions = b2ExtraOptions;
+      extraBackupArgs = b2ExtraBackupArgs;
+      timerConfig = {
+        OnCalendar = "*-*-* 05:30:00";
+        Persistent = true;
+      };
+    };
+
+    fabrizio = {
+      initialize = true;
+      user = "root";
+      repository = "${b2Endpoint}/fabrizio-nexus-backup";
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
+      paths = [
+        "/diskpool/fabrizio"
+      ];
+      exclude = personalExcludes;
+      pruneOpts = personalRetention;
+      runCheck = true;
+      checkOpts = [ "--read-data-subset=2%" ];
+      extraOptions = b2ExtraOptions;
+      extraBackupArgs = b2ExtraBackupArgs;
+      timerConfig = {
+        OnCalendar = "*-*-* 06:00:00";
+        Persistent = true;
       };
     };
   };
