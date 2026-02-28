@@ -54,24 +54,6 @@
       };
     };
 
-    # Null sink for Sunshine game streaming audio capture.
-    # Channels are intentionally swapped (FR,FL) to compensate for a
-    # channel reversal in the Sunshine/Moonlight streaming pipeline
-    # where L/R end up inverted on the client.
-    "40-sunshine-sink" = {
-      "context.objects" = [
-        {
-          factory = "adapter";
-          args = {
-            "factory.name" = "support.null-audio-sink";
-            "node.name" = "sunshine-capture";
-            "node.description" = "Sunshine Streaming";
-            "media.class" = "Audio/Sink";
-            "audio.position" = "FR,FL";
-          };
-        }
-      ];
-    };
   };
 
   # Wireplumber configuration for bit-perfect USB DAC output
