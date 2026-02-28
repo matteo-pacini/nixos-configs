@@ -81,7 +81,12 @@
           undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951";
         }
       ];
-      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.analog-stereo";
+      # Capture from Sunshine's own virtual stereo sink (created when
+      # "Mute Host PC Speakers" is enabled in Moonlight).
+      # Without this, Sunshine fails to auto-detect the virtual sink's
+      # monitor via PipeWire's PulseAudio layer (pa_simple_new() gets
+      # an empty monitor name).
+      audio_sink = "sink-sunshine-stereo";
       fec_percentage = 10;
       qp = 10;
     };
