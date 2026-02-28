@@ -75,18 +75,23 @@
       sunshine_name = "BrightFalls Sunshine";
       global_prep_cmd = builtins.toJSON [
         {
+          # Mute host speakers by routing all audio to the Sunshine null sink.
+          # This replaces Moonlight's "Mute Host PC Speakers" which has a
+          # PipeWire bug (pa_simple_new gets empty monitor name for virtual sinks).
+          do = "${pkgs.pulseaudio}/bin/pactl set-default-sink sunshine-capture";
+          undo = "${pkgs.pulseaudio}/bin/pactl set-default-sink alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
+        }
+        {
           # Switch to HDMI for streaming (e.g., TV via capture card)
           do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor HDMI-1 --mode 3840x2160@59.940";
           # Restore dual DP monitors when streaming ends
           undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951";
         }
       ];
-      # Capture from Sunshine's own virtual stereo sink (created when
-      # "Mute Host PC Speakers" is enabled in Moonlight).
-      # Without this, Sunshine fails to auto-detect the virtual sink's
-      # monitor via PipeWire's PulseAudio layer (pa_simple_new() gets
-      # an empty monitor name).
-      audio_sink = "sink-sunshine-stereo";
+      # Capture from our own PipeWire null sink (defined in audio/default.nix).
+      # Channels are pre-swapped there (FR,FL) to compensate for a L/R reversal
+      # in the Sunshine/Moonlight streaming pipeline.
+      audio_sink = "sunshine-capture";
       fec_percentage = 10;
       qp = 10;
     };
