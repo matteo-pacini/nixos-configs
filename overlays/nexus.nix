@@ -36,6 +36,28 @@
       };
     });
     snapraid = optimizedForNexus super.snapraid;
+    # Pin psutil to 7.1.2 for Home Assistant due to API changes in psutil 7.2.x
+    # that removed named tuples from psutil._common (breaks systemmonitor).
+    # Upstream PR: https://github.com/NixOS/nixpkgs/pull/496693
+    home-assistant = super.home-assistant.override {
+      packageOverrides = _: pySuper: {
+        psutil = pySuper.psutil.overridePythonAttrs (oldAttrs: rec {
+          version = "7.1.2";
+          src = super.fetchFromGitHub {
+            inherit (oldAttrs.src) owner repo;
+            tag = "release-${version}";
+            hash = "sha256-LyGnLrq+SzCQmz8/P5DOugoNEyuH0IC7uIp8UAPwH0U=";
+          };
+          # psutil 7.1.x has tests at psutil/tests/, not top-level tests/
+          enabledTestPaths = [
+            "${builtins.placeholder "out"}/${pySuper.python.sitePackages}/psutil/tests/test_system.py"
+          ];
+          # Don't delete psutil/ dir — tests live inside it in 7.1.x
+          preCheck = "";
+          nativeCheckInputs = [ pySuper.pytestCheckHook ];
+        });
+      };
+    };
     telegram-notify = super.writeShellScriptBin "telegram-notify" ''
       set -euo pipefail
 
