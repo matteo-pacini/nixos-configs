@@ -85,6 +85,7 @@
     port = 2222;
     authorizedKeys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQiM93t9mXjpqdtY12ohNAELZNg1SOdE47bWNRb4HC0 matteo@MacBookPr"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINm/ozPgRTmYmOVgkdNOw2deEOzBjoA4gGWLjWzrEC+u Pixel"
     ];
     hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
     extraConfig = "StrictModes no";

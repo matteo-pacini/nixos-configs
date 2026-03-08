@@ -66,6 +66,8 @@ in
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH0nEXegOpQunZOaVcw03ZE/jcWKeUcNx2UUhiZC6CXO matteo.pacini@work-laptop.guest.internal"
     # NightSprings (MacBook Pro M1 Max)
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQiM93t9mXjpqdtY12ohNAELZNg1SOdE47bWNRb4HC0 matteo@NightSprings"
+    # Pixel
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINm/ozPgRTmYmOVgkdNOw2deEOzBjoA4gGWLjWzrEC+u Pixel"
   ];
 
   programs.mosh.enable = true;
