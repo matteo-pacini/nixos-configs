@@ -20,6 +20,7 @@
     # Extra
     tree
     # Development
+    claude-code
     gh
     # Window Management
     loopwm
