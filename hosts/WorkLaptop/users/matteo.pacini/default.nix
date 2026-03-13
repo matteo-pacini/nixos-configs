@@ -6,8 +6,6 @@
 }:
 {
   imports = [
-    ./vscode.nix
-    ./nvf.nix
     ./zsh.nix
     ./git.nix
     ./browser.nix
