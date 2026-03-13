@@ -170,6 +170,9 @@ in
             xml.enable = true;
             ruby.enable = true;
             clang.enable = true;
+            css.enable = true;
+            html.enable = true;
+            tailwind.enable = true;
           };
         };
       };
