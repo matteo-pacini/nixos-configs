@@ -21,6 +21,7 @@
     # Encription
     age
     # Development
+    claude-code
     gh
     # Social
     # element-desktop - broken on darwin, requires Xcode 26+ actool

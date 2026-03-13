@@ -36,6 +36,7 @@
       # Security
       _1password-gui
       # Development
+      claude-code
       gh
       # Other
       nix-output-monitor

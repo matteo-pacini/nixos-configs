@@ -6,8 +6,6 @@
 }:
 {
   imports = [
-    ./vscode.nix
-    ./nvf.nix
     ./zsh.nix
     ./git.nix
     ./browser.nix
@@ -22,6 +20,7 @@
     # Extra
     tree
     # Development
+    claude-code
     gh
     # Window Management
     loopwm

@@ -16,7 +16,10 @@
   dracula.fzf.enable = true;
   dracula.bat.enable = true;
 
-  home.packages = [ ];
+  home.packages = with pkgs; [
+    # Development
+    claude-code
+  ];
 
   home.stateVersion = "25.11";
 
