@@ -34,6 +34,10 @@ let
   affectedComposeTargets = [
     "nexus-n8n"
   ];
+  nextcloudTimers = [
+    "nextcloud-cron.timer"
+    "nextcloud-scan-external.timer"
+  ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
 
   # ── Restic shared configuration ──────────────────────────────────────
@@ -158,9 +162,19 @@ let
     ${notify} "Home Assistant services back online, starting full backup..."
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_19" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_20" ''
     set -eo pipefail
     export TELEGRAM_ENV_FILE="${envFile}"
+
+    # Ensure services are always restarted, even on failure
+    cleanup() {
+      ${lib.concatMapStringsSep "\n  " (timer: "systemctl start ${timer}") nextcloudTimers}
+      ${lib.concatMapStringsSep "\n  " (service: "systemctl start ${service}") affectedServices}
+      ${lib.concatMapStringsSep "\n  " (
+        service: "systemctl start ${fullComposeTargetName service}"
+      ) affectedComposeTargets}
+    }
+    trap cleanup EXIT
 
     ${notify} "Remaining Nexus services will go down for maintenance in 60 seconds..."
 
@@ -174,6 +188,12 @@ let
     ${lib.concatMapStringsSep "\n" (
       service: "systemctl stop ${fullComposeTargetName service}"
     ) affectedComposeTargets}
+
+    # Stop Nextcloud background timers to prevent writes during SnapRAID sync
+    ${lib.concatMapStringsSep "\n" (timer: "systemctl stop ${timer}") nextcloudTimers}
+    # Stop any currently-running oneshot instances
+    systemctl stop nextcloud-cron.service || true
+    systemctl stop nextcloud-scan-external.service || true
 
     # This is needed to ensure that the services are fully stopped before proceeding with the backup
     sleep 60
@@ -203,14 +223,6 @@ let
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync
-
-    # Restart all services
-    ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") affectedServices}
-
-    # Restart all compose targets
-    ${lib.concatMapStringsSep "\n" (
-      service: "systemctl start ${fullComposeTargetName service}"
-    ) affectedComposeTargets}
 
     ${notify} "Nexus is fully back online."
   '';
