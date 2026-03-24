@@ -39,6 +39,9 @@
   boot.kernelParams =
     lib.optionals (!isVM) [
       "amd_pstate=active"
+      "pcie_aspm=off"
+      "iommu=pt"
+      "pci=realloc,assign-busses,pcie_bus_perf"
     ]
     ++ lib.optionals isVM [
       (if pkgs.stdenv.hostPlatform.isAarch64 then "console=ttyAMA0,115200" else "console=ttyS0,115200")
