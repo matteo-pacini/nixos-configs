@@ -45,7 +45,14 @@ in
           format json
         '';
         extraConfig = ''
-          ${securityHeaders}
+          header {
+            -Server  # Hide Caddy version (security hardening)
+            X-Content-Type-Options nosniff
+            -X-Frame-Options  # Strip n8n's X-Frame-Options to allow HA iframe embedding
+            Content-Security-Policy "frame-ancestors 'self' https://home.matteopacini.me"
+            Referrer-Policy no-referrer
+            Strict-Transport-Security "max-age=31536000; includeSubDomains"
+          }
 
           # Larger limit for workflow imports/exports and webhook payloads
           request_body {
