@@ -80,7 +80,7 @@ in
           hash = "sha256-6aaBhjBbGTtlnc1Qu+DuHWu0/oDgEcApksTv/8iSpKc=";
         };
 
-        dependencies = with pkgs.python3Packages; [
+        dependencies = with pkgs.home-assistant.python.pkgs; [
           voluptuous-openapi
         ];
 
