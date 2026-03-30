@@ -1,10 +1,4 @@
 { config, lib, ... }:
-let
-  # Extract port from VictoriaMetrics listenAddress (format: "0.0.0.0:8428")
-  victoriaMetricsPort = lib.toInt (
-    lib.last (lib.splitString ":" config.services.victoriametrics.listenAddress)
-  );
-in
 {
   networking.hostName = "Nexus";
 
@@ -41,9 +35,7 @@ in
       ++ config.services.openssh.ports
       ++ [
         config.services.paperless.port
-        victoriaMetricsPort
         config.services.zigbee2mqtt.settings.frontend.port
-        config.services.grafana.settings.server.http_port
       ]
       ++ lib.optionals config.services.nzbhydra2.enable [ 5076 ]
       ++ lib.optionals config.services.nzbget.enable [ 6789 ]

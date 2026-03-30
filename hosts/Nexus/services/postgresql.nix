@@ -27,7 +27,6 @@ in
     enable = true;
     ensureDatabases = [
       "hass"
-      "grafana"
       "nextcloud"
       # Radarr databases (main + log)
       "radarr-main"
@@ -39,10 +38,6 @@ in
     ensureUsers = [
       {
         name = "hass";
-        ensureDBOwnership = true;
-      }
-      {
-        name = "grafana";
         ensureDBOwnership = true;
       }
       {

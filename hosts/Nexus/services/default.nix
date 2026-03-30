@@ -18,9 +18,7 @@
     ./mosquitto.nix
     ./home-assistant.nix
     ./ups.nix
-    ./victoriametrics.nix
     ./postgresql.nix
-    ./grafana.nix
     ./geoipupdate.nix
     ./paperless.nix
     ./nextcloud.nix

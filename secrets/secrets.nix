@@ -29,8 +29,6 @@ in
   "nexus/restic-password.age".publicKeys = [ nexus ];
   "nexus/route53-env.age".publicKeys = [ nexus ];
   "nexus/zigbee2mqtt.env.age".publicKeys = [ nexus ];
-  "nexus/grafana-admin-password.age".publicKeys = [ nexus ];
-  "nexus/grafana-secret-key.age".publicKeys = [ nexus ];
   "nexus/nextcloud-admin-password.age".publicKeys = [ nexus ];
   "nexus/geoip-license-key.age".publicKeys = [ nexus ];
   "nexus/backblaze-b2.env.age".publicKeys = [ nexus ];
