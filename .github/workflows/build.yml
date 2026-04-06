@@ -85,7 +85,7 @@ jobs:
         run: |
           nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --fallback
 
-      - uses: nick-fields/retry@v3
+      - uses: nick-fields/retry@v4
         name: Push system
         with:
           timeout_minutes: 60
