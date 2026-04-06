@@ -25,6 +25,7 @@
     # Window Management
     loopwm
     # Music
+    jellyfin-desktop
     jellyfin-tui
   ];
 
