@@ -47,7 +47,9 @@
       "Bash(git log:*)",
       "WebFetch(domain:docs.lizardbyte.dev)",
       "WebFetch(domain:purpleidea.com)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(grep:*)",
+      "Bash(nix search:*)"
     ]
   }
 }

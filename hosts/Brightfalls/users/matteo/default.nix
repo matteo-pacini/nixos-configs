@@ -52,6 +52,7 @@
       telegram-desktop
       element-desktop
       # Music
+      jellyfin-desktop
       jellyfin-tui
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
