@@ -26,6 +26,7 @@
     in
     {
       enable = true;
+      defaults.autodetected = "-a -o on -s S/../.././02";
       notifications = {
         mail = {
           enable = true;
