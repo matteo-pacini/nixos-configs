@@ -45,7 +45,7 @@ in
       options = [
         "defaults"
         "allow_other"
-        "category.create=epmfs"
+        "category.create=mfs"
         "posix_acl=true"
         "moveonenospc=true"
         "minfreespace=300G"
