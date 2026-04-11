@@ -425,5 +425,22 @@
       homeManagerModules = {
         xcodes = import ./modules/home-manager/darwin/xcodes.nix;
       };
+
+      packages =
+        let
+          forSystem =
+            system:
+            let
+              pkgs = import inputs.nixpkgs { inherit system; };
+            in
+            {
+              qemu-3dfx = pkgs.callPackage ./packages/qemu-3dfx.nix { };
+            };
+        in
+        {
+          x86_64-linux = forSystem "x86_64-linux";
+          x86_64-darwin = forSystem "x86_64-darwin";
+          aarch64-darwin = forSystem "aarch64-darwin";
+        };
     };
 }
