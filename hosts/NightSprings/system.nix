@@ -1,11 +1,8 @@
-{ pkgs, ... }:
+{ ... }:
 {
   custom.system-defaults.enable = true;
 
   services.tailscale.enable = true;
-  services.tailscale.package = pkgs.tailscale.overrideAttrs (oldAttrs: {
-    doCheck = false;
-  });
 
   homebrew = {
     enable = true;

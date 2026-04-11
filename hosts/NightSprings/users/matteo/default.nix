@@ -24,8 +24,7 @@
     claude-code
     gh
     # Social
-    # element-desktop - broken on darwin, requires Xcode 26+ actool
-    # Tracking: https://github.com/NixOS/nixpkgs/pull/486275
+    element-desktop
     # Music
     jellyfin-desktop
     jellyfin-tui
