@@ -93,10 +93,7 @@ stdenv.mkDerivation (finalAttrs: {
     })
 
     # 3Dfx Glide / Mesa passthrough (pinned to qemu-3dfx rev)
-    (fetchpatch {
-      url = "https://raw.githubusercontent.com/kjliew/qemu-3dfx/${qemu3dfxRev}/00-qemu92x-mesa-glide.patch";
-      hash = "sha256-6xYZ0gFhPUni61dU9o0HMLAl0WA5vtRU9lp3n41njhc=";
-    })
+    ./qemu-3dfx-mesa-glide.patch
   ];
 
   postPatch = ''
@@ -116,9 +113,14 @@ stdenv.mkDerivation (finalAttrs: {
       sed -i "s/HASH_ALGO/$CRYP/" hw/mesa/mesagl_pfn.h
     fi
 
-    # 3. Fix include paths for QEMU 9.2.2 (address-spaces.h is in exec/, not sysemu/)
-    sed -i 's|"sysemu/address-spaces.h"|"exec/address-spaces.h"|' \
-      $(grep -rl '"sysemu/address-spaces.h"' hw/3dfx hw/mesa) || true
+    # 3. Fix include paths (overlay targets newer QEMU where sysemu/ was renamed to system/)
+    #    QEMU 9.2.x still uses sysemu/ for kvm.h and whpx.h, and exec/ for address-spaces.h
+    sed -i 's|"system/kvm.h"|"sysemu/kvm.h"|' \
+      $(grep -rl '"system/kvm.h"' hw/3dfx hw/mesa) 2>/dev/null || true
+    sed -i 's|"system/whpx.h"|"sysemu/whpx.h"|' \
+      $(grep -rl '"system/whpx.h"' hw/3dfx hw/mesa) 2>/dev/null || true
+    sed -i 's|"system/address-spaces.h"|"exec/address-spaces.h"|' \
+      $(grep -rl '"system/address-spaces.h"' hw/3dfx hw/mesa) 2>/dev/null || true
 
     # 4. Read module variable name from target/i386/meson.build and patch
     MODS=$(tail -n 2 target/i386/meson.build | head -n 1 | sed "s/.*:\ //;s/\}//" | tr -d '[:space:]')
@@ -246,10 +248,10 @@ stdenv.mkDerivation (finalAttrs: {
     libpng
     # OpenGL / X11 (needed for 3dfx host-side rendering)
     libGL
-    mesa.dev
     libx11
     libxxf86vm
   ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [ mesa.dev ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [
     libcap_ng
     libcap
