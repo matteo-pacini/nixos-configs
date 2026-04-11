@@ -29,9 +29,9 @@
     # Music
     jellyfin-desktop
     jellyfin-tui
+    # Window Management
+    loopwm
   ];
-
-  custom.aerospace.enable = true;
   custom.nvf.enable = true;
   custom.tmux.enable = true;
   custom.starship.enable = true;
