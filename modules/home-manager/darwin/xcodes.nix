@@ -25,7 +25,7 @@ let
   # Update xcodes index to fetch latest available versions
   updateScript = ''
     echo "Updating Xcode versions index..."
-    xcodes update 2>&1 > /dev/null
+    xcodes update > /dev/null 2>&1
   '';
 
   # Install each requested Xcode version
@@ -53,14 +53,13 @@ let
 
     if [ -z "$TO_REMOVE" ]; then
       echo "No Xcodes to remove."
-      exit 0
+    else
+      while IFS= read -r version; do
+        echo "Removing Xcode $version..."
+        xcodes uninstall --empty-trash \
+          --directory "${xcodesDir}" "$version"
+      done <<< "$TO_REMOVE"
     fi
-
-    while IFS= read -r version; do
-      echo "Removing Xcode $version..."
-      xcodes uninstall --empty-trash \
-        --directory "${xcodesDir}" "$version"
-    done <<< "$TO_REMOVE"
   '';
 in
 {
