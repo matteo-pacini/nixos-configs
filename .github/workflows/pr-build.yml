@@ -112,6 +112,7 @@ jobs:
         with:
           nix_conf: |
             keep-outputs = true
+            build-dir = /nix/build
 
       - name: Configure Attic cache
         run: |
