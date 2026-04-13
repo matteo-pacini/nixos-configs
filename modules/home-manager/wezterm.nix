@@ -24,6 +24,10 @@ in
             color_scheme = "Dracula (Official)",
             window_decorations = "RESIZE",
             window_close_confirmation = "NeverPrompt",
+            enable_kitty_keyboard = true,
+            max_fps = 120,
+            animation_fps = 120,
+            scrollback_lines = 20000,
             keys = {
               { key = "f", mods = "CTRL|CMD", action = wezterm.action.ToggleFullScreen },
             },
