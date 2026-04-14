@@ -69,45 +69,47 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      programs.git = {
-        enable = true;
-        lfs.enable = true;
-        settings = {
-          user = {
-            name = cfg.userName;
-            email = cfg.userEmail;
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      {
+        programs.git = {
+          enable = true;
+          lfs.enable = true;
+          settings = {
+            user = {
+              name = cfg.userName;
+              email = cfg.userEmail;
+            };
+            init.defaultBranch = cfg.defaultBranch;
+            core.editor = cfg.editor;
+            core.sshCommand = "ssh -i ${cfg.sshKeyPath}";
+            push.autoSetupRemote = true;
           };
-          init.defaultBranch = cfg.defaultBranch;
-          core.editor = cfg.editor;
-          core.sshCommand = "ssh -i ${cfg.sshKeyPath}";
-          push.autoSetupRemote = true;
         };
-      };
-    }
-    (lib.mkIf (cfg.extraAliases != { }) {
-      programs.git.settings.alias = cfg.extraAliases;
-    })
-    (lib.mkIf (cfg.diffMergeTool != null) {
-      programs.git.settings = {
-        diff.tool = cfg.diffMergeTool;
-        merge.tool = cfg.diffMergeTool;
-      };
-    })
-    (lib.mkIf cfg.signing.enable {
-      programs.git.settings = {
-        commit.gpgsign = true;
-        gpg.format = "ssh";
-        gpg.ssh.allowedSignersFile = cfg.signing.allowedSignersFile;
-        user.signingkey = cfg.signing.key;
-      };
-    })
-    (lib.mkIf (cfg.signing.enable && cfg.signing.allowedSignersContent != "") {
-      home.file."${cfg.signing.allowedSignersFile}".text = cfg.signing.allowedSignersContent;
-    })
-    (lib.mkIf (cfg.includes != [ ]) {
-      programs.git.includes = cfg.includes;
-    })
-  ]);
+      }
+      (lib.mkIf (cfg.extraAliases != { }) {
+        programs.git.settings.alias = cfg.extraAliases;
+      })
+      (lib.mkIf (cfg.diffMergeTool != null) {
+        programs.git.settings = {
+          diff.tool = cfg.diffMergeTool;
+          merge.tool = cfg.diffMergeTool;
+        };
+      })
+      (lib.mkIf cfg.signing.enable {
+        programs.git.settings = {
+          commit.gpgsign = true;
+          gpg.format = "ssh";
+          gpg.ssh.allowedSignersFile = cfg.signing.allowedSignersFile;
+          user.signingkey = cfg.signing.key;
+        };
+      })
+      (lib.mkIf (cfg.signing.enable && cfg.signing.allowedSignersContent != "") {
+        home.file."${cfg.signing.allowedSignersFile}".text = cfg.signing.allowedSignersContent;
+      })
+      (lib.mkIf (cfg.includes != [ ]) {
+        programs.git.includes = cfg.includes;
+      })
+    ]
+  );
 }

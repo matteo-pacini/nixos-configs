@@ -26,30 +26,32 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      programs.direnv = {
-        enable = true;
-        enableZshIntegration = true;
-        nix-direnv.enable = true;
-      };
-      programs.zoxide = {
-        enable = true;
-        enableZshIntegration = true;
-      };
-      programs.fzf = {
-        enable = true;
-        enableZshIntegration = true;
-      };
-    }
-    (lib.mkIf cfg.fzf.batPreview {
-      programs.fzf.defaultOptions = [ "--preview 'bat --color=always {}'" ];
-    })
-    (lib.mkIf cfg.bat.enable {
-      programs.bat.enable = true;
-    })
-    (lib.mkIf cfg.ripgrep.enable {
-      programs.ripgrep.enable = true;
-    })
-  ]);
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      {
+        programs.direnv = {
+          enable = true;
+          enableZshIntegration = true;
+          nix-direnv.enable = true;
+        };
+        programs.zoxide = {
+          enable = true;
+          enableZshIntegration = true;
+        };
+        programs.fzf = {
+          enable = true;
+          enableZshIntegration = true;
+        };
+      }
+      (lib.mkIf cfg.fzf.batPreview {
+        programs.fzf.defaultOptions = [ "--preview 'bat --color=always {}'" ];
+      })
+      (lib.mkIf cfg.bat.enable {
+        programs.bat.enable = true;
+      })
+      (lib.mkIf cfg.ripgrep.enable {
+        programs.ripgrep.enable = true;
+      })
+    ]
+  );
 }

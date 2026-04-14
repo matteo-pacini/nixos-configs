@@ -35,7 +35,9 @@ in
         workspaces = true;
         secrets_filter = true;
         history_filter = [
-          "^rm " "^shred " "^dd "
+          "^rm "
+          "^shred "
+          "^dd "
         ];
       };
     };

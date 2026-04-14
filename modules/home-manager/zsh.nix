@@ -27,37 +27,40 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      programs.zsh = {
-        enable = true;
-        enableCompletion = true;
-        autosuggestion.enable = true;
-        syntaxHighlighting.enable = true;
-        shellAliases = {
-          ls = "${lib.getExe pkgs.eza} --icons --color=always";
-          nix-gc = ''
-            nix-collect-garbage --delete-old;
-            sudo nix-collect-garbage --delete-old;
-            nix-store --optimize -v;
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      {
+        programs.zsh = {
+          enable = true;
+          enableCompletion = true;
+          autosuggestion.enable = true;
+          syntaxHighlighting.enable = true;
+          shellAliases = {
+            ls = "${lib.getExe pkgs.eza} --icons --color=always";
+            nix-gc = ''
+              nix-collect-garbage --delete-old;
+              sudo nix-collect-garbage --delete-old;
+              nix-store --optimize -v;
+            '';
+          }
+          // cfg.extraAliases;
+        };
+      }
+      (lib.mkIf cfg.suggestionAliases {
+        programs.zsh.shellAliases = {
+          suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
+          suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
+        };
+      })
+      (lib.mkIf cfg.darwinAliases {
+        programs.zsh.shellAliases = {
+          reloadDock = ''
+            defaults write com.apple.dock ResetLaunchPad -bool true;
+            killall Dock;
+            defaults write com.apple.dock ResetLaunchPad -bool false
           '';
-        } // cfg.extraAliases;
-      };
-    }
-    (lib.mkIf cfg.suggestionAliases {
-      programs.zsh.shellAliases = {
-        suggestions_off = "ZSH_AUTOSUGGEST_HISTORY_IGNORE=*";
-        suggestions_on = "unset ZSH_AUTOSUGGEST_HISTORY_IGNORE";
-      };
-    })
-    (lib.mkIf cfg.darwinAliases {
-      programs.zsh.shellAliases = {
-        reloadDock = ''
-          defaults write com.apple.dock ResetLaunchPad -bool true;
-          killall Dock;
-          defaults write com.apple.dock ResetLaunchPad -bool false
-        '';
-      };
-    })
-  ]);
+        };
+      })
+    ]
+  );
 }

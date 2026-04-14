@@ -38,7 +38,11 @@ in
   systemd.services = {
     "snapraid-scrub".serviceConfig = {
       IOSchedulingClass = "idle";
-      RestrictAddressFamilies = lib.mkForce [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+      RestrictAddressFamilies = lib.mkForce [
+        "AF_UNIX"
+        "AF_INET"
+        "AF_INET6"
+      ];
       ExecStartPre = "${pkgs.telegram-notify}/bin/telegram-notify '🔍 SnapRAID scrub starting...'";
       ExecStartPost = "${pkgs.telegram-notify}/bin/telegram-notify '✅ SnapRAID scrub completed.'";
       Environment = "TELEGRAM_ENV_FILE=${envFile}";
