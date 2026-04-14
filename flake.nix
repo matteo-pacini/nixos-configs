@@ -112,6 +112,7 @@
     let
       baseOverlays = [
         inputs.nur.overlays.default
+        (import ./overlays/shared.nix)
       ];
       mkBrightFalls =
         {
@@ -237,10 +238,7 @@
         };
         modules = [
           {
-            nixpkgs.overlays = [
-              (import ./overlays/nexus.nix)
-              inputs.nur.overlays.default
-            ];
+            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/nexus.nix) ];
           }
           self.nixosModules.default
           ./hosts/Nexus
@@ -301,10 +299,7 @@
         };
         modules = [
           {
-            nixpkgs.overlays = [
-              (import ./overlays/cauldronlake.nix)
-              inputs.nur.overlays.default
-            ];
+            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/cauldronlake.nix) ];
           }
           self.nixosModules.default
           ./hosts/CauldronLake
@@ -334,10 +329,7 @@
         };
         modules = [
           {
-            nixpkgs.overlays = [
-              inputs.nur.overlays.default
-              (import ./overlays/nightsprings.nix)
-            ];
+            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/nightsprings.nix) ];
           }
           self.darwinModules.default
           ./hosts/NightSprings
@@ -385,10 +377,7 @@
         };
         modules = [
           {
-            nixpkgs.overlays = [
-              inputs.nur.overlays.default
-              (import ./overlays/worklaptop.nix)
-            ];
+            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/worklaptop.nix) ];
           }
           self.darwinModules.default
           ./hosts/WorkLaptop
@@ -424,6 +413,12 @@
       };
       homeManagerModules = {
         xcodes = import ./modules/home-manager/darwin/xcodes.nix;
+      };
+
+      formatter = {
+        x86_64-linux = inputs.nixpkgs.legacyPackages.x86_64-linux.nixfmt;
+        aarch64-linux = inputs.nixpkgs.legacyPackages.aarch64-linux.nixfmt;
+        aarch64-darwin = inputs.nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
       };
     };
 }

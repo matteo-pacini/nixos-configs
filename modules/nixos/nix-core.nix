@@ -27,28 +27,30 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      nix = {
-        nixPath = [ "nixpkgs=${inputs.nixpkgs}" ];
-        registry = {
-          nixpkgs.flake = inputs.nixpkgs;
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      {
+        nix = {
+          nixPath = [ "nixpkgs=${inputs.nixpkgs}" ];
+          registry = {
+            nixpkgs.flake = inputs.nixpkgs;
+          };
+          settings = {
+            experimental-features = [
+              "nix-command"
+              "flakes"
+            ];
+            trusted-users = cfg.trustedUsers;
+          };
         };
-        settings = {
-          experimental-features = [
-            "nix-command"
-            "flakes"
-          ];
-          trusted-users = cfg.trustedUsers;
-        };
-      };
-      nixpkgs.config.allowUnfree = true;
-    }
-    (lib.mkIf (cfg.extraPlatforms != [ ]) {
-      nix.settings.extra-platforms = cfg.extraPlatforms;
-    })
-    (lib.mkIf (cfg.permittedInsecurePackages != [ ]) {
-      nixpkgs.config.permittedInsecurePackages = cfg.permittedInsecurePackages;
-    })
-  ]);
+        nixpkgs.config.allowUnfree = true;
+      }
+      (lib.mkIf (cfg.extraPlatforms != [ ]) {
+        nix.settings.extra-platforms = cfg.extraPlatforms;
+      })
+      (lib.mkIf (cfg.permittedInsecurePackages != [ ]) {
+        nixpkgs.config.permittedInsecurePackages = cfg.permittedInsecurePackages;
+      })
+    ]
+  );
 }

@@ -27,7 +27,10 @@
   ];
   # ext2 required to mount vault partition in initrd
   boot.initrd.supportedFilesystems = lib.optionals (!isVM) [ "ext2" ];
-  boot.kernelModules = lib.optionals (!isVM) [ "kvm-amd" "ntsync" ];
+  boot.kernelModules = lib.optionals (!isVM) [
+    "kvm-amd"
+    "ntsync"
+  ];
 
   # Disable WiFi - not needed, using Ethernet only
   # Blacklisting the top-level driver is sufficient; dependencies won't load
