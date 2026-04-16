@@ -92,7 +92,7 @@
     # Bore Scheduler #
     ##################
     bore-scheduler-src = {
-      url = "github:firelzrd/bore-scheduler?rev=a020594b8562909d71494f1857432f61cb75893a";
+      url = "github:firelzrd/bore-scheduler?rev=09075221d81b27cc6ba4dc0d1be14a62555fde85";
       flake = false;
     };
     ################
