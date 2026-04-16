@@ -9,6 +9,7 @@
     ./services
     ./snapraid.nix
     ./mdadm.nix
+    ./storage-tuning.nix
   ];
 
   custom.kernel.enable = true;
