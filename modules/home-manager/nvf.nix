@@ -172,8 +172,8 @@ in
             clang.enable = true;
             css.enable = true;
             html.enable = true;
-            tailwind.enable = true;
           };
+          lsp.presets.tailwindcss-language-server.enable = true;
         };
       };
     };

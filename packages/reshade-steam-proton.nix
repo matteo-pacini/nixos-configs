@@ -3,7 +3,7 @@
   fetchFromGitHub,
   makeWrapper,
   lib,
-  wineWowPackages,
+  protontricks,
   p7zip,
   git,
   curl,
@@ -12,7 +12,7 @@
 }:
 let
   binPath = lib.makeBinPath [
-    wineWowPackages.minimal
+    protontricks
     p7zip
     git
     curl
@@ -35,14 +35,15 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ makeWrapper ];
 
+  dontConfigure = true;
+  dontBuild = true;
+
   installPhase = ''
     mkdir -p $out/bin
     cp $src/*.sh $out/bin/
     wrapProgram "$out/bin/reshade-steam-proton.sh" \
       --prefix PATH : "${binPath}"
     wrapProgram "$out/bin/reshade-linux.sh" \
-      --prefix PATH : "${binPath}"
-    wrapProgram "$out/bin/reshade-linux-flatpak.sh" \
       --prefix PATH : "${binPath}"
   '';
 
