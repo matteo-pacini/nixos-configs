@@ -23,7 +23,11 @@ in
             providers.wl-copy.enable = pkgs.stdenv.hostPlatform.isLinux;
           };
           lineNumberMode = "relNumber";
-          options.mouse = "";
+          options = {
+            mouse = "";
+            foldlevel = 99;
+            foldlevelstart = 99;
+          };
           startPlugins = [
             pkgs.vimPlugins.vim-sleuth
             pkgs.vimPlugins.smear-cursor-nvim
@@ -44,6 +48,7 @@ in
           filetree = {
             neo-tree = {
               enable = true;
+              setupOpts.git_status_async = true;
             };
           };
           telescope.enable = true;
@@ -163,7 +168,7 @@ in
             };
             bash.enable = true;
             markdown.enable = true;
-            ts.enable = true;
+            typescript.enable = true;
             go.enable = true;
             python.enable = true;
             json.enable = true;
