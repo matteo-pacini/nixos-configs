@@ -5,17 +5,15 @@
   # and adds procps/bubblewrap/socat to PATH).
   #
   # Relevant issues & references:
-  #   - Quality / thinking regression:  https://github.com/anthropics/claude-code/issues/42796
-  #   - Autocompact window regression:  https://github.com/anthropics/claude-code/issues/43989
   #   - Effort level ignored (>=113):   https://github.com/anthropics/claude-code/issues/50099
-  #   - Reddit investigation:           https://www.reddit.com/r/ClaudeCode/comments/1sj10ou/
+  #   - Autocompact window regression:  https://github.com/anthropics/claude-code/issues/43989
+  #   - 1h cache TTL vs telemetry:      https://github.com/anthropics/claude-code/issues/45381
   claude-code = super.claude-code.overrideAttrs (old: {
     postInstall = old.postInstall + ''
       wrapProgram $out/bin/claude \
         --set CLAUDE_CODE_EFFORT_LEVEL max \
-        --set CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING 1 \
-        --set MAX_THINKING_TOKENS 63999 \
-        --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 400000
+        --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 400000 \
+        --set ENABLE_PROMPT_CACHING_1H 1
     '';
   });
 
