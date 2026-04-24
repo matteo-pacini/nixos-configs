@@ -8,6 +8,8 @@ let
   cfg = config.custom.nvf;
 in
 {
+  imports = [ ./nvf-perl.nix ];
+
   options.custom.nvf = {
     enable = lib.mkEnableOption "Neovim configuration via nvf";
   };
