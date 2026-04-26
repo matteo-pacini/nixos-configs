@@ -22,6 +22,7 @@
     age
     # Development
     opencode
+    tokscale
     gh
     # Social
     element-desktop
