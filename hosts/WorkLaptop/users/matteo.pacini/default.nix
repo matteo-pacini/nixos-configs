@@ -21,6 +21,7 @@
     tree
     # Development
     claude-code
+    tokscale
     gh
     # Window Management
     loopwm
