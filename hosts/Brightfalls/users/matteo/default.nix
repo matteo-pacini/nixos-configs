@@ -36,7 +36,7 @@
       # Security
       _1password-gui
       # Development
-      claude-code
+      opencode
       gh
       # Other
       nix-output-monitor
@@ -68,6 +68,7 @@
   custom.nvf.enable = true;
   custom.tmux.enable = true;
   custom.starship.enable = true;
+  custom.opencode.enable = true;
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;

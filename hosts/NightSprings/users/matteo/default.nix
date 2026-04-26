@@ -21,7 +21,7 @@
     # Encription
     age
     # Development
-    claude-code
+    opencode
     gh
     # Social
     element-desktop
@@ -35,6 +35,7 @@
   custom.tmux.enable = true;
   custom.starship.enable = true;
   custom.wezterm.enable = true;
+  custom.opencode.enable = true;
 
   home.stateVersion = "25.11";
 
