@@ -1,0 +1,86 @@
+{
+  config,
+  lib,
+  ...
+}:
+let
+  cfg = config.custom.opencode;
+in
+{
+  options.custom.opencode = {
+    enable = lib.mkEnableOption "OpenCode configuration with agent definitions";
+  };
+
+  config = lib.mkIf cfg.enable {
+    home.file.".config/opencode/opencode.json".text = builtins.toJSON {
+      "$schema" = "https://opencode.ai/config.json";
+      model = "openrouter/moonshotai/kimi-k2.6";
+      agent = {
+        build = {
+          description = "Full-featured coding agent for implementation and complex changes. Writes code, runs tests, manages files, and executes system commands. Use for: building features, bug fixes, large refactors, dependency updates, and any task requiring code modifications.";
+          mode = "primary";
+          model = "openrouter/moonshotai/kimi-k2.6";
+          temperature = 0.2;
+          max_iterations = 25;
+        };
+        plan = {
+          description = "Architecture and planning specialist. Analyzes code, designs solutions, and creates implementation plans without modifying files. Use for: system design, code review preparation, technical decisions, refactoring strategies, and understanding complex codebases.";
+          mode = "primary";
+          model = "openrouter/moonshotai/kimi-k2.6";
+          temperature = 0.3;
+          max_iterations = 15;
+          permission = {
+            write = { "*" = "deny"; };
+            edit = { "*" = "deny"; };
+            bash = { "*" = "deny"; };
+          };
+        };
+        explore = {
+          description = "Fast codebase navigator for discovery and analysis. Searches files, finds references, maps dependencies, and answers questions about code structure. Use for: understanding unfamiliar codebases, finding functions/classes, tracing data flows, and locating configuration.";
+          mode = "subagent";
+          model = "openrouter/deepseek/deepseek-v4-flash";
+          temperature = 0.1;
+          max_iterations = 10;
+          permission = {
+            write = { "*" = "deny"; };
+            edit = { "*" = "deny"; };
+            bash = { "*" = "deny"; };
+            read = { "*" = "allow"; };
+            glob = { "*" = "allow"; };
+            grep = { "*" = "allow"; };
+          };
+        };
+        review = {
+          description = "Code quality and security reviewer. Identifies bugs, security vulnerabilities, performance issues, and style violations. Use for: PR reviews, security audits, best practice enforcement, and spotting potential edge cases or anti-patterns.";
+          mode = "subagent";
+          model = "openrouter/google/gemini-3-flash-preview";
+          temperature = 0.1;
+          max_iterations = 10;
+          permission = {
+            write = { "*" = "deny"; };
+            edit = { "*" = "deny"; };
+            bash = { "*" = "deny"; };
+            read = { "*" = "allow"; };
+            glob = { "*" = "allow"; };
+            grep = { "*" = "allow"; };
+          };
+        };
+        debug = {
+          description = "Diagnostic specialist for troubleshooting and investigation. Runs tests, inspects logs, reproduces issues, and analyzes error patterns. Use for: debugging failures, investigating performance issues, analyzing test results, and diagnosing system problems.";
+          mode = "subagent";
+          model = "openrouter/moonshotai/kimi-k2.6";
+          temperature = 0.1;
+          max_iterations = 15;
+          permission = {
+            write = { "*" = "deny"; };
+            edit = { "*" = "deny"; };
+            bash = { "*" = "allow"; };
+            read = { "*" = "allow"; };
+            glob = { "*" = "allow"; };
+            grep = { "*" = "allow"; };
+          };
+        };
+      };
+    };
+  };
+}

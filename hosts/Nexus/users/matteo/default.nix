@@ -17,8 +17,6 @@
   dracula.bat.enable = true;
 
   home.packages = with pkgs; [
-    # Development
-    claude-code
   ];
 
   home.stateVersion = "25.11";

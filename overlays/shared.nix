@@ -25,4 +25,7 @@
       wrapProgram $out/bin/gh --set GH_TELEMETRY false
     '';
   });
+
+  # Token usage tracker for AI coding agents
+  tokscale = super.callPackage ../packages/tokscale.nix { };
 })
