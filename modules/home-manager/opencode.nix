@@ -17,14 +17,14 @@ in
       model = "openrouter/moonshotai/kimi-k2.6";
       agent = {
         build = {
-          description = "Primary coding agent. Full file and bash access. Uses Kimi K2.6 — Tier A in April 2026 benchmarks, best value coding model at ~$0.30/run.";
+          description = "Full-featured coding agent for implementation and complex changes. Writes code, runs tests, manages files, and executes system commands. Use for: building features, bug fixes, large refactors, dependency updates, and any task requiring code modifications.";
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 0.2;
           max_iterations = 25;
         };
         plan = {
-          description = "Planning and architecture agent. Read-only, no file writes. Uses Kimi K2.6 — same Tier A quality without the extra cost of thinking mode.";
+          description = "Architecture and planning specialist. Analyzes code, designs solutions, and creates implementation plans without modifying files. Use for: system design, code review preparation, technical decisions, refactoring strategies, and understanding complex codebases.";
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 0.3;
@@ -36,7 +36,7 @@ in
           };
         };
         explore = {
-          description = "Lightweight codebase explorer. Read-only. Uses DeepSeek V4 Flash — $0.01/run, 1M context, cheapest useful model available.";
+          description = "Fast codebase navigator for discovery and analysis. Searches files, finds references, maps dependencies, and answers questions about code structure. Use for: understanding unfamiliar codebases, finding functions/classes, tracing data flows, and locating configuration.";
           mode = "subagent";
           model = "openrouter/deepseek/deepseek-v4-flash";
           temperature = 0.1;
@@ -51,7 +51,7 @@ in
           };
         };
         review = {
-          description = "Code review agent. Read-only. Uses Gemini 3 Flash — fast, 1M context, good at spotting issues.";
+          description = "Code quality and security reviewer. Identifies bugs, security vulnerabilities, performance issues, and style violations. Use for: PR reviews, security audits, best practice enforcement, and spotting potential edge cases or anti-patterns.";
           mode = "subagent";
           model = "openrouter/google/gemini-3-flash-preview";
           temperature = 0.1;
@@ -66,7 +66,7 @@ in
           };
         };
         debug = {
-          description = "Debug agent. Can read files and run bash commands but cannot edit. Uses Kimi K2.6 for reliable reasoning.";
+          description = "Diagnostic specialist for troubleshooting and investigation. Runs tests, inspects logs, reproduces issues, and analyzes error patterns. Use for: debugging failures, investigating performance issues, analyzing test results, and diagnosing system problems.";
           mode = "subagent";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 0.1;
