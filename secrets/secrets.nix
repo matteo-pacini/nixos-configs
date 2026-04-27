@@ -32,4 +32,12 @@ in
   "nexus/nextcloud-admin-password.age".publicKeys = [ nexus ];
   "nexus/geoip-license-key.age".publicKeys = [ nexus ];
   "nexus/backblaze-b2.env.age".publicKeys = [ nexus ];
+
+  # LibreChat secrets
+  "nexus/librechat-creds-key.age".publicKeys = [ nexus ];
+  "nexus/librechat-creds-iv.age".publicKeys = [ nexus ];
+  "nexus/librechat-jwt-secret.age".publicKeys = [ nexus ];
+  "nexus/librechat-jwt-refresh-secret.age".publicKeys = [ nexus ];
+  "nexus/librechat-openrouter-key.age".publicKeys = [ nexus ];
+  "nexus/meilisearch-master-key.age".publicKeys = [ nexus ];
 }
