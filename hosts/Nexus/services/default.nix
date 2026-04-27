@@ -25,6 +25,7 @@
     ./polkit.nix
     ./atuin.nix
     ./mosh.nix
+    ./librechat.nix
   ];
 
   systemd.tmpfiles.rules = [

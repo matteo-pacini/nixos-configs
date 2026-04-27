@@ -159,6 +159,10 @@ let
 
     # Ensure services are always restarted, even on failure
     cleanup() {
+      # Restart LibreChat dependencies first, then LibreChat
+      systemctl start mongodb.service
+      systemctl start meilisearch.service
+      systemctl start librechat.service
       ${lib.concatMapStringsSep "\n  " (timer: "systemctl start ${timer}") nextcloudTimers}
       ${lib.concatMapStringsSep "\n  " (service: "systemctl start ${service}") affectedServices}
       ${lib.concatMapStringsSep "\n  " (
@@ -171,6 +175,11 @@ let
 
     # Wait
     sleep 60
+
+    # Stop LibreChat and dependencies (librechat first, then deps)
+    systemctl stop librechat.service
+    systemctl stop meilisearch.service
+    systemctl stop mongodb.service
 
     # Stop all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl stop ${service}") affectedServices}
@@ -211,6 +220,12 @@ let
     ''${RSYNC_CMD} /var/lib/postgresql_n8n ${backupDestination}/
     # nextcloud
     ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
+    # LibreChat
+    ''${RSYNC_CMD} ${config.services.librechat.dataDir} ${backupDestination}/
+    # Meilisearch
+    ''${RSYNC_CMD} ${config.services.meilisearch.settings.db_path} ${backupDestination}/
+    # MongoDB
+    ''${RSYNC_CMD} ${config.services.mongodb.dbpath} ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync
