@@ -15,6 +15,7 @@
       ALLOW_REGISTRATION = false;
       HOST = "0.0.0.0";
       PORT = 3080;
+      MONGO_URI = "mongodb://localhost:27017/librechat";
     };
 
     credentials = {
