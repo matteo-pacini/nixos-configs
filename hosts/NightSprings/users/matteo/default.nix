@@ -21,7 +21,6 @@
     # Encription
     age
     # Development
-    opencode
     tokscale
     gh
     # Social
