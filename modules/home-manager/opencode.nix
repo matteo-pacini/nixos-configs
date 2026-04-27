@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 let
@@ -14,8 +15,10 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages = [ pkgs.opencode ];
+    home.file.".config/opencode/themes/dracula.json".source = "${inputs.opencode-dracula-theme}/dracula.json";
     home.file.".config/opencode/opencode.json".text = builtins.toJSON {
       "$schema" = "https://opencode.ai/config.json";
+      theme = "dracula";
       model = "openrouter/moonshotai/kimi-k2.6";
       agent = {
         build = {

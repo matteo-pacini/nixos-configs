@@ -81,6 +81,10 @@
       url = "github:dracula/wallpaper";
       flake = false;
     };
+    opencode-dracula-theme = {
+      url = "github:dracula/opencode";
+      flake = false;
+    };
     ###############
     # Gnome theme #
     ###############
