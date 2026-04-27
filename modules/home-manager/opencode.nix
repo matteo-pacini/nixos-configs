@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -12,6 +13,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    home.packages = [ pkgs.opencode ];
     home.file.".config/opencode/opencode.json".text = builtins.toJSON {
       "$schema" = "https://opencode.ai/config.json";
       model = "openrouter/moonshotai/kimi-k2.6";

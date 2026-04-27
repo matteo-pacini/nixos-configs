@@ -36,7 +36,6 @@
       # Security
       _1password-gui
       # Development
-      opencode
       tokscale
       gh
       # Other
