@@ -20,6 +20,8 @@ in
       "$schema" = "https://opencode.ai/config.json";
       theme = "dracula";
       model = "openrouter/moonshotai/kimi-k2.6";
+      small_model = "openrouter/google/gemini-3-flash-preview";
+      instructions = [ "AGENTS.md" ];
       agent = {
         build = {
           description = "Full-featured coding agent for implementation and complex changes. Writes code, runs tests, manages files, and executes system commands. Use for: building features, bug fixes, large refactors, dependency updates, and any task requiring code modifications.";
@@ -32,7 +34,7 @@ in
           description = "Architecture and planning specialist. Analyzes code, designs solutions, and creates implementation plans without modifying files. Use for: system design, code review preparation, technical decisions, refactoring strategies, and understanding complex codebases.";
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
-          temperature = 0.3;
+          temperature = 0.1;
           steps = 15;
           permission = {
             write = { "*" = "deny"; };
