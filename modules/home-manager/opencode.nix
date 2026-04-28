@@ -16,9 +16,11 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [ pkgs.opencode ];
     home.file.".config/opencode/themes/dracula.json".source = "${inputs.opencode-dracula-theme}/dracula.json";
+    home.file.".config/opencode/tui.json".text = builtins.toJSON {
+      theme = "dracula";
+    };
     home.file.".config/opencode/opencode.json".text = builtins.toJSON {
       "$schema" = "https://opencode.ai/config.json";
-      theme = "dracula";
       autoupdate = false;
       model = "openrouter/moonshotai/kimi-k2.6";
       small_model = "openrouter/google/gemini-2.5-flash-lite";
@@ -29,8 +31,10 @@ in
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 1.0;
-          top_p = 1.0;
-          reasoningEffort = "high";
+          top_p = 0.95;
+          options = {
+            reasoning = { effort = "high"; };
+          };
           steps = 50;
         };
         plan = {
@@ -39,10 +43,11 @@ in
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 1.0;
           top_p = 0.95;
-          reasoningEffort = "xhigh";
+          options = {
+            reasoning = { effort = "xhigh"; };
+          };
           steps = 20;
           permission = {
-            write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
             bash = { "*" = "deny"; };
           };
@@ -53,10 +58,11 @@ in
           model = "openrouter/deepseek/deepseek-v4-flash";
           temperature = 1.0;
           top_p = 1.0;
-          reasoningEffort = "high";
+          options = {
+            reasoning = { effort = "high"; };
+          };
           steps = 20;
           permission = {
-            write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
             bash = { "*" = "deny"; };
             read = { "*" = "allow"; };
@@ -68,10 +74,8 @@ in
           description = "Code quality and security reviewer. Identifies bugs, security vulnerabilities, performance issues, and style violations. Use for: PR reviews, security audits, best practice enforcement, and spotting potential edge cases or anti-patterns.";
           mode = "subagent";
           model = "openrouter/google/gemini-3-flash-preview";
-          reasoningEffort = "high";
           steps = 20;
           permission = {
-            write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
             bash = { "*" = "deny"; };
             read = { "*" = "allow"; };
@@ -85,10 +89,11 @@ in
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 1.0;
           top_p = 0.95;
-          reasoningEffort = "high";
+          options = {
+            reasoning = { effort = "high"; };
+          };
           steps = 30;
           permission = {
-            write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
             bash = { "*" = "allow"; };
             read = { "*" = "allow"; };
