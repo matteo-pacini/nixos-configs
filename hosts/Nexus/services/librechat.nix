@@ -12,7 +12,7 @@
     };
 
     env = {
-      ALLOW_REGISTRATION = false;
+      ALLOW_REGISTRATION = true;
       HOST = "0.0.0.0";
       PORT = 3080;
       MONGO_URI = lib.mkForce "mongodb://localhost:27017/librechat";
