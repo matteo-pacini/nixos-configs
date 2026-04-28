@@ -19,6 +19,7 @@ in
     home.file.".config/opencode/opencode.json".text = builtins.toJSON {
       "$schema" = "https://opencode.ai/config.json";
       theme = "dracula";
+      autoupdate = false;
       model = "openrouter/moonshotai/kimi-k2.6";
       small_model = "openrouter/google/gemini-3-flash-preview";
       instructions = [ "AGENTS.md" ];
