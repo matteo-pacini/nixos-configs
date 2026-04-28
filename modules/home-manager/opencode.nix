@@ -26,14 +26,14 @@ in
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 0.2;
-          max_iterations = 25;
+          steps = 25;
         };
         plan = {
           description = "Architecture and planning specialist. Analyzes code, designs solutions, and creates implementation plans without modifying files. Use for: system design, code review preparation, technical decisions, refactoring strategies, and understanding complex codebases.";
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 0.3;
-          max_iterations = 15;
+          steps = 15;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
@@ -45,7 +45,7 @@ in
           mode = "subagent";
           model = "openrouter/deepseek/deepseek-v4-flash";
           temperature = 0.1;
-          max_iterations = 10;
+          steps = 10;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
@@ -60,7 +60,7 @@ in
           mode = "subagent";
           model = "openrouter/google/gemini-3-flash-preview";
           temperature = 0.1;
-          max_iterations = 10;
+          steps = 10;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
@@ -75,7 +75,7 @@ in
           mode = "subagent";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 0.1;
-          max_iterations = 15;
+          steps = 15;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
