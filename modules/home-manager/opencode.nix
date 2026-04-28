@@ -21,7 +21,7 @@ in
       theme = "dracula";
       autoupdate = false;
       model = "openrouter/moonshotai/kimi-k2.6";
-      small_model = "openrouter/google/gemini-3-flash-preview";
+      small_model = "openrouter/google/gemini-2.5-flash-lite";
       instructions = [ "AGENTS.md" ];
       agent = {
         build = {
@@ -29,16 +29,18 @@ in
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
           temperature = 1.0;
-          top_p = 0.95;
-          steps = 25;
+          top_p = 1.0;
+          reasoningEffort = "high";
+          steps = 50;
         };
         plan = {
           description = "Architecture and planning specialist. Analyzes code, designs solutions, and creates implementation plans without modifying files. Use for: system design, code review preparation, technical decisions, refactoring strategies, and understanding complex codebases.";
           mode = "primary";
           model = "openrouter/moonshotai/kimi-k2.6";
-          temperature = 0.6;
+          temperature = 1.0;
           top_p = 0.95;
-          steps = 15;
+          reasoningEffort = "xhigh";
+          steps = 20;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
@@ -51,7 +53,8 @@ in
           model = "openrouter/deepseek/deepseek-v4-flash";
           temperature = 1.0;
           top_p = 1.0;
-          steps = 10;
+          reasoningEffort = "high";
+          steps = 20;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
@@ -65,7 +68,8 @@ in
           description = "Code quality and security reviewer. Identifies bugs, security vulnerabilities, performance issues, and style violations. Use for: PR reviews, security audits, best practice enforcement, and spotting potential edge cases or anti-patterns.";
           mode = "subagent";
           model = "openrouter/google/gemini-3-flash-preview";
-          steps = 10;
+          reasoningEffort = "high";
+          steps = 20;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
@@ -79,9 +83,10 @@ in
           description = "Diagnostic specialist for troubleshooting and investigation. Runs tests, inspects logs, reproduces issues, and analyzes error patterns. Use for: debugging failures, investigating performance issues, analyzing test results, and diagnosing system problems.";
           mode = "subagent";
           model = "openrouter/moonshotai/kimi-k2.6";
-          temperature = 0.6;
+          temperature = 1.0;
           top_p = 0.95;
-          steps = 15;
+          reasoningEffort = "high";
+          steps = 30;
           permission = {
             write = { "*" = "deny"; };
             edit = { "*" = "deny"; };
