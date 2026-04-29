@@ -1,0 +1,154 @@
+name: Build & Push Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package attribute name (e.g. open-watcom-v2)"
+        required: true
+        type: string
+      allow-unfree:
+        description: "Allow unfree packages (NIXPKGS_ALLOW_UNFREE=1)"
+        required: false
+        type: boolean
+        default: false
+      BrightFalls:
+        description: "Build for BrightFalls"
+        required: false
+        type: boolean
+        default: false
+      BrightFallsVM-x86_64-linux:
+        description: "Build for BrightFallsVM-x86_64-linux"
+        required: false
+        type: boolean
+        default: false
+      BrightFallsVM-aarch64-linux:
+        description: "Build for BrightFallsVM-aarch64-linux"
+        required: false
+        type: boolean
+        default: false
+      Nexus:
+        description: "Build for Nexus"
+        required: false
+        type: boolean
+        default: false
+      CauldronLake:
+        description: "Build for CauldronLake"
+        required: false
+        type: boolean
+        default: false
+      WorkLaptop:
+        description: "Build for WorkLaptop"
+        required: false
+        type: boolean
+        default: false
+      NightSprings:
+        description: "Build for NightSprings"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ATTIC_CACHE_NAME: ${{ secrets.ATTIC_CACHE_NAME }}
+  ATTIC_CACHE_URL: ${{ secrets.ATTIC_CACHE_URL }}
+  ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+    steps:
+      - name: Build matrix
+        id: build-matrix
+        env:
+          INPUTS_JSON: ${{ toJSON(inputs) }}
+        run: |
+          hosts='[
+            {"host":"BrightFalls","platform":"x86_64-linux","os":"ubuntu-latest","system_attr":"nixosConfigurations"},
+            {"host":"BrightFallsVM-x86_64-linux","platform":"x86_64-linux","os":"ubuntu-latest","system_attr":"nixosConfigurations"},
+            {"host":"BrightFallsVM-aarch64-linux","platform":"aarch64-linux","os":"ubuntu-24.04-arm","system_attr":"nixosConfigurations"},
+            {"host":"Nexus","platform":"x86_64-linux","os":"ubuntu-latest","system_attr":"nixosConfigurations"},
+            {"host":"CauldronLake","platform":"x86_64-linux","os":"ubuntu-latest","system_attr":"nixosConfigurations"},
+            {"host":"WorkLaptop","platform":"aarch64-darwin","os":"macos-latest","system_attr":"darwinConfigurations"},
+            {"host":"NightSprings","platform":"aarch64-darwin","os":"macos-latest","system_attr":"darwinConfigurations"}
+          ]'
+
+          selected='[]'
+          for row in $(echo "$hosts" | jq -c '.[]'); do
+            name=$(echo "$row" | jq -r '.host')
+            val=$(echo "$INPUTS_JSON" | jq -r --arg n "$name" '.[$n]')
+            if [ "$val" = "true" ]; then
+              selected=$(echo "$selected" | jq --argjson row "$row" '. + [$row]')
+            fi
+          done
+
+          echo "matrix=$(echo "$selected" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+  eval:
+    needs: [prepare]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+
+      - name: Evaluate package
+        run: |
+          nix eval ".#${{ matrix.system_attr }}.${{ matrix.host }}.pkgs.${{ inputs.package }}.drvPath" --raw
+
+  build:
+    needs: [eval]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - uses: wimpysworld/nothing-but-nix@v10
+        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm' }}
+        with:
+          hatchet-protocol: "rampage"
+          witness-carnage: true
+          nix-permission-edict: true
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            keep-outputs = true
+            ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
+
+      - name: Configure Attic cache
+        run: |
+          nix run nixpkgs#attic-client -- login \
+            "${{ env.ATTIC_CACHE_NAME }}" "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
+          nix run nixpkgs#attic-client -- use "${{ matrix.host }}"
+
+      - name: Build package
+        run: |
+          NIXPKGS_ALLOW_UNFREE=${{ inputs.allow-unfree && '1' || '0' }} \
+            nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.pkgs.${{ inputs.package }}" --fallback
+
+      - uses: nick-fields/retry@v4
+        name: Push package
+        with:
+          timeout_minutes: 60
+          max_attempts: 5
+          retry_on: error
+          command: nix run nixpkgs#attic-client -- push "${{ matrix.host }}" result -j 3
