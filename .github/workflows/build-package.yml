@@ -89,26 +89,8 @@ jobs:
 
           echo "matrix=$(echo "$selected" | jq -c .)" >> "$GITHUB_OUTPUT"
 
-  eval:
-    needs: [prepare]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v34
-
-      - name: Evaluate package
-        run: |
-          nix eval ".#${{ matrix.system_attr }}.${{ matrix.host }}.pkgs.${{ inputs.package }}.drvPath" --raw
-
   build:
-    needs: [eval]
+    needs: [prepare]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -120,6 +102,13 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+
+      - name: Evaluate package
+        run: |
+          nix eval ".#${{ matrix.system_attr }}.${{ matrix.host }}.pkgs.${{ inputs.package }}.drvPath" --raw
+
       - uses: wimpysworld/nothing-but-nix@v10
         if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm' }}
         with:
@@ -127,7 +116,7 @@ jobs:
           witness-carnage: true
           nix-permission-edict: true
 
-      - name: Install Nix
+      - name: Install Nix (with config)
         uses: nixbuild/nix-quick-install-action@v34
         with:
           nix_conf: |
