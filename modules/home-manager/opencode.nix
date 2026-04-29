@@ -23,16 +23,33 @@
 #   OpenCode source:  https://github.com/sst/opencode
 #                     (packages/opencode/src/provider/transform.ts holds the
 #                      model-specific default temperature/top_p, plus the
-#                      reasoning-passthrough whitelist that excludes Kimi /
-#                      DeepSeek-V4 / MiniMax / GLM / Qwen)
+#                      variants() exclusion list which currently includes
+#                      Kimi / DeepSeek-V3 / MiniMax / GLM / Qwen — DeepSeek
+#                      V4 is NOT excluded, but the OpenRouter branch in
+#                      variants() returns {} unless the model id contains
+#                      gpt / gemini-3 / claude, so V4 reaches OpenRouter
+#                      with manual options.reasoning.effort intact while
+#                      no auto-generated effort variants are surfaced.)
 #   OpenRouter:       https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
 #
 # ----------------------------------------------------------------------------
-# Open issues to monitor (snapshot 2026-04-28):
-#   anomalyco/opencode#24569 + #24722  DeepSeek V4 reasoning_content not
+# Open issues to monitor (snapshot 2026-04-29):
+#   anomalyco/opencode#24722 / #24714  DeepSeek V4 reasoning_content not
 #                                       round-tripped → 400 on multi-turn
-#                                       tool calls. If `explore` fires this,
-#                                       drop its options.reasoning.effort.
+#                                       tool calls. #24569 was CLOSED via
+#                                       an OpenRouter server-side fix on
+#                                       2026-04-28, but these siblings still
+#                                       reproduce. Affects `explore` AND
+#                                       `plan-deepseek`. If it fires, drop
+#                                       the options.reasoning block.
+#   anomalyco/opencode#24920  Once the V4 400 fires the session is
+#                              unrecoverable — must restart.
+#   anomalyco/opencode#24610  No client-side toggle to disable V4 default-on
+#                              thinking; only mitigation is removing the
+#                              options.reasoning block (= Non-think mode).
+#   anomalyco/opencode#24424  V4-Pro/Flash mis-format tool descriptions
+#                              ~50% of the time. Tolerable for read-only
+#                              grep/glob/read but a known papercut.
 #   anomalyco/opencode#23334 / PR #23335  Proposes lifting the Kimi/Qwen
 #                                          exclusion from variants() so that
 #                                          the reasoning passthrough actually
@@ -180,6 +197,65 @@ in
           top_p = 0.95;
           options = {
             reasoning = { effort = "xhigh"; };
+          };
+          steps = 20;
+          permission = {
+            edit = { "*" = "deny"; };
+            bash = { "*" = "deny"; };
+          };
+        };
+
+        # ----------------------------------------------------------------
+        # plan-deepseek — primary, read-only architecture/design (alternate).
+        #   Sibling to `plan` for cases where Kimi's 256K context is tight
+        #   or output cost matters. V4-Pro pricing on OpenRouter:
+        #   $0.435 in / $0.87 out per Mtok with 1M context — 5.4x cheaper
+        #   on output than Kimi K2.6 ($0.74 / $4.66, 256K).
+        #   PROMO ENDS 2026-05-05 → list price rises to $1.74 / $3.48
+        #   (still cheaper than Kimi but the gap narrows).
+        #   https://openrouter.ai/deepseek/deepseek-v4-pro
+        #
+        #   Switch to this agent via Tab in TUI or `opencode --agent
+        #   plan-deepseek` on CLI. NOT an `@`-mention target — that would
+        #   require mode=subagent, which trips #21632 (subagent variants
+        #   not applied at runtime in v1.4.0+).
+        #
+        #   Sampling: temp=1.0 / top_p=1.0 per the DeepSeek V4-Pro and
+        #   V4-Flash HuggingFace model cards (the V4 family unified on
+        #   these values across all reasoning modes). Unlike Kimi K2.6,
+        #   OpenCode's transform.ts does NOT auto-inject defaults for
+        #   V4-Pro — values MUST be explicit here.
+        #   https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro
+        #
+        #   reasoning.effort = "high" (NOT xhigh, deliberate divergence
+        #   from the Kimi `plan` agent above). xhigh maps to V4-Pro's
+        #   "Think Max" mode which the vLLM recipe says wants ≥384K
+        #   context allocated and burns ~95% of token budget on
+        #   reasoning. DeepSeek's upstream effort mapping is coarser
+        #   than OpenRouter's four-tier scheme, so "high" likely
+        #   produces equivalent upstream thinking depth at a fraction
+        #   of the cost/latency. The Kimi `plan` agent gets away with
+        #   xhigh because Kimi's effort mapping is binary — wasted
+        #   budget there is purely cosmetic.
+        #
+        #   WATCH-OUT: anomalyco/opencode#24722 / #24714 — V4 multi-turn
+        #   tool call 400s still reproducing despite OpenRouter's
+        #   2026-04-28 server-side fix to #24569. A read-only plan agent
+        #   doing repeated grep/glob/read tool calls is exactly the shape
+        #   that triggers it; when it fires the session is unrecoverable
+        #   (#24920). Mitigation: drop the options.reasoning block (=
+        #   Non-think mode) — V4-Pro thinking is default-on upstream and
+        #   cannot be disabled client-side without removing the block
+        #   (#24610).
+        # ----------------------------------------------------------------
+        plan-deepseek = {
+          description = "Architecture and planning specialist (DeepSeek V4-Pro variant). Same role as `plan` but on DeepSeek V4-Pro for cheaper output, 1M context, and a different reasoner profile. Use for: very large codebases, exploratory plans with heavy file reads, cost-sensitive planning, or a second-opinion plan when the Kimi `plan` output feels off.";
+          mode = "primary";
+          model = "openrouter/deepseek/deepseek-v4-pro";
+          temperature = 1.0;
+          top_p = 1.0;
+          options = {
+            reasoning = { effort = "high"; };
           };
           steps = 20;
           permission = {
