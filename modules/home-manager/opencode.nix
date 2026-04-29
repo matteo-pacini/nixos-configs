@@ -105,7 +105,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ pkgs.opencode ];
+    home.packages = [ pkgs.opencode pkgs.rtk ];
     home.file.".config/opencode/themes/dracula.json".source = "${inputs.opencode-dracula-theme}/dracula.json";
 
     # tui.json — theme, keybinds, TUI settings.
