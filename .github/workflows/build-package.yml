@@ -123,6 +123,10 @@ jobs:
             keep-outputs = true
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
 
+      - name: Evaluate package
+        run: |
+          nix eval ".#${{ matrix.system_attr }}.${{ matrix.host }}.pkgs.${{ inputs.package }}.drvPath" --raw
+
       - name: Configure Attic cache
         run: |
           nix run nixpkgs#attic-client -- login \
