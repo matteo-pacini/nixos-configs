@@ -27,4 +27,16 @@
   openldap = super.openldap.overrideAttrs (old: {
     doCheck = false;
   });
+
+  # Workaround: fwupd 2.1.1 tests call Inhibit on systemd-logind via D-Bus,
+  # which fails in the Nix sandbox with AccessDenied. Affects CauldronLake.
+  # Keep an eye on upstream for a proper fix:
+  #   - fwupd: 2.1.1 -> 2.1.2 (may or may not resolve test failures)
+  #     https://github.com/NixOS/nixpkgs/pull/513368
+  #   - Also watch for new issues/PRs specifically about fwupd logind/D-Bus
+  #     test failures in sandboxed builds.
+  # TODO: Remove once upstream fixes the sandboxed test failures.
+  fwupd = super.fwupd.overrideAttrs (old: {
+    doCheck = false;
+  });
 })
