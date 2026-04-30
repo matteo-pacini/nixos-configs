@@ -87,6 +87,32 @@
 #     it's silently absorbed by additionalProperties and does NOTHING. The
 #     `edit` permission already gates the {edit, write, patch} tool group
 #     per OpenCode docs.
+#
+# ----------------------------------------------------------------------------
+# Phase 1 reasoning-param validation (2026-04-30, single-shot probes via
+# Parasail provider on OpenRouter):
+#
+#   - `options.thinking.type = "disabled"` → IGNORED downstream. OpenCode
+#     parses and forwards it (visible in `opencode debug agent build`),
+#     but Parasail/OpenRouter strips it. Probe still produced 497
+#     reasoning tokens (gen-1777544627) on the attrset-merge prompt.
+#   - `options.reasoning.effort` → INCONCLUSIVE on N=1 single-shot. The
+#     same prompt with effort=high produced 64 reasoning tokens
+#     (gen-1777546045) — a 7.7x spread vs disabled, but plausibly noise.
+#     Variants infrastructure preserved on the assumption it has SOME
+#     effect; will be confirmed via real-world hot-swap usage.
+#   - `options.reasoning.max_tokens = N` → not probed. OpenRouter docs
+#     limit max_tokens reasoning to Gemini/Anthropic/Qwen; Kimi is not
+#     on the supported provider list. Almost certainly a no-op.
+#
+# Variants live under `provider.openrouter.models."moonshotai/kimi-k2.6".
+# variants` and are referenced from agents via `variant = "<name>";`.
+# Subagent variants don't apply at runtime per #21632 — only `build` and
+# `plan` use the variant field; `debug` keeps its inline options block.
+#
+# Higher-confidence fix landed in AGENTS.md: a "Reasoning Budget"
+# tie-breaker rule that targets K2.6's documented oscillation between
+# simplicity and robustness regardless of which provider param is honored.
 # ============================================================================
 
 {
@@ -98,6 +124,26 @@
 }:
 let
   cfg = config.custom.opencode;
+
+  # Kimi K2.6 tie-breaker rule. Targets the documented K2.6 failure mode
+  # of oscillating between simplicity and edge-case-safety — burning
+  # thousands of reasoning tokens before resolving. Per opencode docs
+  # (https://opencode.ai/docs/agents/), the `prompt` field on an agent
+  # is appended as agent-scoped system instructions on top of the
+  # global system prompt + AGENTS.md content. Applied to `build` and
+  # `plan` only — `debug` is exploratory and benefits from
+  # contemplation; `explore`/`review` use different models with
+  # different bias profiles.
+  kimiBrevityPrompt = ''
+    ## Reasoning Budget
+
+    When a decision could go either way between brevity and edge-case
+    safety, **choose brevity**. Stop self-critique loops once a
+    workable answer is reached — do not re-litigate
+    simplicity-vs-robustness trade-offs. If you've considered both
+    sides once, commit and move on; the user can ask for the
+    alternative if needed.
+  '';
 
   opencodeBaseConfig = {
     "$schema" = "https://opencode.ai/config.json";
@@ -137,6 +183,62 @@ let
     # explicitly documents the dependency for any custom rules in the file.
     instructions = [ "AGENTS.md" ];
 
+    # ------------------------------------------------------------------
+    # provider.<id>.models.<model>.variants — named option presets.
+    #
+    # PHASE 1 EMPIRICAL FINDINGS (2026-04-30, Parasail provider via OR):
+    #   - `options.thinking.type = "disabled"` → IGNORED downstream.
+    #     The attrset-merge probe still produced 497 reasoning tokens
+    #     (gen-1777544627). OpenCode parses it (visible in `opencode
+    #     debug agent build`), but Parasail/OpenRouter strips it.
+    #   - `options.reasoning.effort = "high"` → produced 64 reasoning
+    #     tokens on the same probe (gen-1777546045). Could be honored,
+    #     could be variance — single-shot inconclusive.
+    #   - `options.reasoning.max_tokens = N` → not probed. OpenRouter
+    #     docs limit max_tokens reasoning to Gemini/Anthropic/Qwen;
+    #     Kimi is not on the list. Almost certainly no-op.
+    #
+    # Variants intentionally include BOTH shapes (effort + thinking):
+    # if the gateway picks one and ignores the other we still get
+    # whichever is honored. Cycle in TUI via the `variant_cycle`
+    # keybind. Subagent variants don't apply at runtime per
+    # anomalyco/opencode#21632 — only `build` and `plan` use these.
+    # ------------------------------------------------------------------
+    provider = {
+      openrouter = {
+        models = {
+          "moonshotai/kimi-k2.6" = {
+            variants = {
+              # Defensive "no-think" — sets BOTH the OpenRouter-shape
+              # effort=minimal AND the Moonshot-native thinking.disabled
+              # so whichever the gateway honors gets through.
+              nothink = {
+                options = {
+                  reasoning = { effort = "minimal"; };
+                  thinking = { type = "disabled"; };
+                };
+              };
+              fast = {
+                options = {
+                  reasoning = { effort = "low"; };
+                };
+              };
+              balanced = {
+                options = {
+                  reasoning = { effort = "medium"; };
+                };
+              };
+              deep = {
+                options = {
+                  reasoning = { effort = "high"; };
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+
     agent = {
 
       # ----------------------------------------------------------------
@@ -152,16 +254,14 @@ let
         model = "openrouter/moonshotai/kimi-k2.6";
         temperature = 1.0;
         top_p = 0.95;
-        # KIMI CAVEAT: OpenCode has no client-side thinking-on toggle for
-        # Kimi via OpenRouter — auto-thinking is gated to @ai-sdk/anthropic
-        # only (transform.ts ~lines 914-922). This value propagates as
-        # `reasoning: { effort: "high" }` in the request body; whether
-        # thinking actually engages depends on the OpenRouter→Moonshot
-        # gateway honouring it. See issue #23334 for proposal to lift the
-        # Kimi exclusion in variants().
-        options = {
-          reasoning = { effort = "high"; };
-        };
+        # Default to `fast` — K2.6 looping/over-thinking failure mode
+        # (oscillating between simplicity and robustness) is the user-
+        # reported issue this whole config is tuned for. Cycle to
+        # `balanced` or `deep` in TUI for harder tasks; cycle to
+        # `nothink` for trivial refactors. See provider.openrouter.
+        # models."moonshotai/kimi-k2.6".variants above for definitions.
+        variant = "fast";
+        prompt = kimiBrevityPrompt;
         steps = 50;
       };
 
@@ -178,9 +278,11 @@ let
         model = "openrouter/moonshotai/kimi-k2.6";
         temperature = 1.0;
         top_p = 0.95;
-        options = {
-          reasoning = { effort = "xhigh"; };
-        };
+        # Plan is the most reasoning-bound role — default to `deep`.
+        # The previous `xhigh` setting was clipped: OpenRouter's effort
+        # ladder maxes at "high"; "xhigh" is silently dropped (#18634).
+        variant = "deep";
+        prompt = kimiBrevityPrompt;
         steps = 20;
         permission = {
           edit = { "*" = "deny"; };
@@ -397,6 +499,11 @@ in
       theme = "dracula";
     };
 
-    home.file.".config/opencode/opencode.json".text = builtins.toJSON (opencodeBaseConfig // localLlamaProvider);
+    # recursiveUpdate (NOT //) — the base config now defines a `provider`
+    # block (for the openrouter Kimi variants), and localLlamaProvider also
+    # defines `provider`. Shallow `//` would let localLlama clobber the
+    # openrouter entry on BrightFalls. recursiveUpdate merges keys deeply.
+    home.file.".config/opencode/opencode.json".text =
+      builtins.toJSON (lib.recursiveUpdate opencodeBaseConfig localLlamaProvider);
   };
 }
