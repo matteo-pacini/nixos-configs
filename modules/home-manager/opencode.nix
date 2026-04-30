@@ -386,7 +386,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ pkgs.opencode ] ++ lib.optional cfg.localLlama.enable cfg.localLlama.llamaCppPackage;
+    home.packages = [ pkgs.opencode pkgs.rtk ] ++ lib.optional cfg.localLlama.enable cfg.localLlama.llamaCppPackage;
     home.file.".config/opencode/themes/dracula.json".source = "${inputs.opencode-dracula-theme}/dracula.json";
 
     # tui.json — theme, keybinds, TUI settings.
