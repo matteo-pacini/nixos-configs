@@ -51,4 +51,17 @@
   xdg-desktop-portal = super.xdg-desktop-portal.overrideAttrs (old: {
     doCheck = false;
   });
+
+  # Workaround: rusty-v8 147.2.1 `tests/slots.rs` aborts under Nixpkgs'
+  # libc++ hardening with "vector[] index out of bounds", breaking Deno and
+  # nvf builds.
+  # Upstream issue:
+  #   - Build failure: deno
+  #     https://github.com/NixOS/nixpkgs/issues/511900
+  # TODO: Remove once upstream fixes the slots test or updates rusty-v8/deno.
+  deno = super.deno.override {
+    librusty_v8 = super.deno.librusty_v8.overrideAttrs (old: {
+      checkFlags = old.checkFlags ++ [ "--skip=slots" ];
+    });
+  };
 })
