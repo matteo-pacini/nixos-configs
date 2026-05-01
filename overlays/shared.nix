@@ -39,4 +39,16 @@
   fwupd = super.fwupd.overrideAttrs (old: {
     doCheck = false;
   });
+
+  # Workaround: xdg-desktop-portal 1.20.4 integration tests
+  # (integration/dynamiclauncher and integration/notification) fail in the
+  # Nix sandbox / CI environment. Affects CauldronLake.
+  # No exact upstream tracker yet for these two tests. Loosely related
+  # (same package, sandbox test flakiness — different root cause):
+  #   - xdg-desktop-portal: test failed (integration/location, geoclue disabled)
+  #     https://github.com/NixOS/nixpkgs/issues/511228
+  # TODO: Remove once upstream fixes the sandboxed test failures.
+  xdg-desktop-portal = super.xdg-desktop-portal.overrideAttrs (old: {
+    doCheck = false;
+  });
 })
