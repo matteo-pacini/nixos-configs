@@ -1,5 +1,3 @@
-@RTK.md
-
 ## Git
 
 - **Commits**: always commit as the default git author. Never add `Co-Authored-By: Claude` (or any Claude attribution) lines or trailers.

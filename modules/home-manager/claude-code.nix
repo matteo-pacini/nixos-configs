@@ -41,7 +41,16 @@ in
 
     home.file.".claude/settings.json".text = builtins.toJSON (baseSettings // cfg.extraSettings);
 
-    home.file.".claude/CLAUDE.md".source = ./claude-code/CLAUDE.md;
+    # CLAUDE.md is assembled from numbered fragments so each section can be
+    # edited in isolation. Order matches the structure documented in the repo's
+    # root CLAUDE.md: role/tone → RTK reference → workflow → git → non-negotiables.
+    home.file.".claude/CLAUDE.md".text = lib.concatStringsSep "\n" [
+      (builtins.readFile ./claude-code/claude-md/01-role-tone.md)
+      "@RTK.md\n"
+      (builtins.readFile ./claude-code/claude-md/02-working-on-code.md)
+      (builtins.readFile ./claude-code/claude-md/03-git.md)
+      (builtins.readFile ./claude-code/claude-md/04-non-negotiables.md)
+    ];
     home.file.".claude/RTK.md".source = ./claude-code/RTK.md;
   };
 }
