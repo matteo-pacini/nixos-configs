@@ -11,6 +11,7 @@
   custom.nvf.enable = true;
   custom.tmux.enable = true;
   custom.starship.enable = true;
+  custom.claude-code.enable = true;
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;

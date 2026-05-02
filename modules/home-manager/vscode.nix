@@ -7,6 +7,11 @@
 let
   cfg = config.custom.vscode;
   targetFolder = if config.programs.vscode.package == pkgs.vscode then "Code" else "VSCodium";
+  clineSettings =
+    if pkgs.stdenv.hostPlatform.isDarwin then
+      "Library/Application Support/${targetFolder}/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
+    else
+      ".config/${targetFolder}/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
 in
 {
   options.custom.vscode = {
@@ -72,6 +77,8 @@ in
                 # JS/TS
                 esbenp.prettier-vscode
                 dbaeumer.vscode-eslint
+                # LLMs
+                saoudrizwan.claude-dev
                 # GHA
                 github.vscode-github-actions
                 # Python
@@ -126,5 +133,18 @@ in
         };
       };
     };
+
+    home.file."${clineSettings}".text = ''
+      {
+        "mcpServers": {
+          "github.com/upstash/context7-mcp": {
+            "command": "${pkgs.nodejs}/bin/npx",
+            "args": ["-y", "@upstash/context7-mcp@latest"],
+            "disabled": false,
+            "autoApprove": []
+          }
+        }
+      }
+    '';
   };
 }

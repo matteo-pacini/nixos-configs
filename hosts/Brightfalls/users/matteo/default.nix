@@ -68,11 +68,7 @@
   custom.nvf.enable = true;
   custom.tmux.enable = true;
   custom.starship.enable = true;
-  custom.opencode.enable = true;
-  custom.opencode.localLlama = {
-    enable = true;
-    llamaCppPackage = pkgs.llama-cpp-vulkan;
-  };
+  custom.claude-code.enable = true;
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;

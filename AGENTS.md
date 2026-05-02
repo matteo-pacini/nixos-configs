@@ -34,6 +34,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 ## Workflow Gotchas
 
 - **New `.nix` files must be `git add`ed before `nix build`.** The flake reads from the git store; untracked files are invisible.
+- **Don't use `nix flake check` as a blanket validation.** It tries to build every output and fails on cross-platform configs from your current host. Use the targeted `nix build` (local platform) + `nix eval` (foreign platform) commands above instead.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
 - CI builds all 7 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
 

@@ -20,7 +20,6 @@
     # Extra
     tree
     # Development
-    claude-code
     tokscale
     gh
     # Window Management
@@ -35,7 +34,7 @@
   custom.vscode.enable = true;
   custom.starship.enable = true;
   custom.wezterm.enable = true;
-  custom.opencode.enable = true;
+  custom.claude-code.enable = true;
 
   home.stateVersion = "25.11";
 
