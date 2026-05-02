@@ -1,0 +1,96 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {
+        "id": "1",
+        "type": "model",
+        "color": "brightMagenta",
+        "rawValue": false
+      },
+      {
+        "id": "3fcad138-2a6f-4494-a959-acf712a9f8f8",
+        "type": "thinking-effort",
+        "rawValue": false,
+        "color": "yellow"
+      },
+      {
+        "id": "44074cfe-3de0-49b1-8117-8ca038fc7479",
+        "type": "context-length",
+        "rawValue": false,
+        "color": "brightGreen"
+      },
+      {
+        "id": "a0c9bf61-0fd6-4269-8bd1-9faf77cb06d9",
+        "type": "context-percentage-usable",
+        "rawValue": true,
+        "color": "brightRed"
+      },
+      {
+        "id": "a3776b6e-f557-49dc-a105-1ddb51d1ef19",
+        "type": "compaction-counter"
+      }
+    ],
+    [
+      {
+        "id": "4727a801-a414-4994-a10a-35e6f4a2dd93",
+        "type": "tokens-input",
+        "color": "brightBlack"
+      },
+      {
+        "id": "232557df-7ff5-46d4-8bc6-b78efb9f91c9",
+        "type": "tokens-output",
+        "color": "brightBlack"
+      },
+      {
+        "id": "69bc97d0-b2ad-4b21-ad32-c342d490ea92",
+        "type": "tokens-cached",
+        "color": "brightBlack"
+      }
+    ],
+    [
+      {
+        "id": "78b190b4-ed3d-4882-9f1d-f538638ef572",
+        "type": "session-usage",
+        "metadata": {
+          "display": "slider"
+        }
+      },
+      {
+        "id": "3a320f3c-c0da-4482-9bee-6fba9f507498",
+        "type": "weekly-usage",
+        "metadata": {
+          "display": "slider"
+        }
+      },
+      {
+        "id": "5372d63d-a8c2-4e28-b47d-57b21cdccbbb",
+        "type": "reset-timer",
+        "metadata": {
+          "display": "time"
+        }
+      }
+    ]
+  ],
+  "flexMode": "full-minus-40",
+  "compactThreshold": 60,
+  "colorLevel": 3,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": false,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [],
+    "endCaps": [],
+    "autoAlign": false,
+    "continueThemeAcrossLines": false,
+    "theme": "dracula"
+  },
+  "defaultPadding": " "
+}

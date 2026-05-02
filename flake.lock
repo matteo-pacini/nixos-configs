@@ -594,22 +594,6 @@
         "type": "github"
       }
     },
-    "opencode-dracula-theme": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1759476923,
-        "narHash": "sha256-JChZttHoHQ4CU7DsjzOskcz7NLAdZM45yrZdrCssj5E=",
-        "owner": "dracula",
-        "repo": "opencode",
-        "rev": "e7b8ba5bff2eca780c974a241d233230e58c4e0c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dracula",
-        "repo": "opencode",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "agenix": "agenix",
@@ -627,7 +611,6 @@
         "nixpkgs": "nixpkgs_5",
         "nur": "nur",
         "nvf": "nvf",
-        "opencode-dracula-theme": "opencode-dracula-theme",
         "sublime-dracula-theme": "sublime-dracula-theme",
         "xcode-dracula-theme": "xcode-dracula-theme"
       }
