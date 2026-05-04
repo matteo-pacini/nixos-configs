@@ -36,6 +36,7 @@
   custom.starship.enable = true;
   custom.wezterm.enable = true;
   custom.claude-code.enable = true;
+  custom.opencode.enable = true;
 
   home.stateVersion = "25.11";
 
