@@ -81,6 +81,10 @@
       url = "github:dracula/wallpaper";
       flake = false;
     };
+    opencode-dracula-theme = {
+      url = "github:dracula/opencode";
+      flake = false;
+    };
     ###############
     # Gnome theme #
     ###############
@@ -185,6 +189,7 @@
           ./modules/home-manager/starship.nix
           ./modules/home-manager/wezterm.nix
           ./modules/home-manager/claude-code.nix
+          ./modules/home-manager/opencode.nix
         ];
       };
 
@@ -291,7 +296,8 @@
             age.secrets."nexus/librechat-creds-key".file = ./secrets/nexus/librechat-creds-key.age;
             age.secrets."nexus/librechat-creds-iv".file = ./secrets/nexus/librechat-creds-iv.age;
             age.secrets."nexus/librechat-jwt-secret".file = ./secrets/nexus/librechat-jwt-secret.age;
-            age.secrets."nexus/librechat-jwt-refresh-secret".file = ./secrets/nexus/librechat-jwt-refresh-secret.age;
+            age.secrets."nexus/librechat-jwt-refresh-secret".file =
+              ./secrets/nexus/librechat-jwt-refresh-secret.age;
             age.secrets."nexus/librechat-openrouter-key".file = ./secrets/nexus/librechat-openrouter-key.age;
             age.secrets."nexus/meilisearch-master-key".file = ./secrets/nexus/meilisearch-master-key.age;
           }
