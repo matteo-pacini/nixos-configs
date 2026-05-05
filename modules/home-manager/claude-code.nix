@@ -7,6 +7,19 @@
 let
   cfg = config.custom.claude-code;
   baseSettings = {
+    hooks = {
+      PreToolUse = [
+        {
+          matcher = "Bash";
+          hooks = [
+            {
+              type = "command";
+              command = "~/.claude/hooks/rtk-rewrite.sh";
+            }
+          ];
+        }
+      ];
+    };
     statusLine = {
       type = "command";
       # Relies on nodejs being on claude's PATH (set in overlays/shared.nix).
@@ -25,7 +38,7 @@ in
       default = { };
       description = ''
         Extra keys merged into ~/.claude/settings.json on top of the base
-        settings (which only sets statusLine). Use this for per-host overrides
+        settings (hooks + statusLine). Use this for per-host overrides
         like permissions.allow, enabledPlugins, effortLevel, etc.
       '';
     };
@@ -52,5 +65,10 @@ in
       (builtins.readFile ./claude-code/claude-md/04-non-negotiables.md)
     ];
     home.file.".claude/RTK.md".source = ./claude-code/RTK.md;
+
+    home.file.".claude/hooks/rtk-rewrite.sh" = {
+      source = ./claude-code/rtk-rewrite.sh;
+      executable = true;
+    };
   };
 }

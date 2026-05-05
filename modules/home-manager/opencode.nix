@@ -559,6 +559,10 @@ in
       theme = "dracula";
     };
 
+    # RTK plugin — auto-loaded from the plugins directory by OpenCode at
+    # startup (no opencode.json entry needed for file-based plugins).
+    home.file.".config/opencode/plugins/rtk.ts".source = ./opencode/rtk.ts;
+
     # recursiveUpdate (NOT //) — the base config now defines a `provider`
     # block (for the openrouter Kimi variants), and localLlamaProvider also
     # defines `provider`. Shallow `//` would let localLlama clobber the
