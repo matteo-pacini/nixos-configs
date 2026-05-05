@@ -92,4 +92,29 @@
   fwupd = super.fwupd.overrideAttrs (_: {
     doCheck = false;
   });
+
+  # xdg-desktop-portal-1.20.4: two integration tests fail in the Nix build
+  # sandbox because the validator helpers (xdg-desktop-portal-validate-sound
+  # and -validate-icon) shell out to bwrap, which tries to create a nested
+  # user namespace and trips on:
+  #     bwrap: Can't mount proc on /newroot/proc: Operation not permitted
+  # The failures:
+  #   - integration/dynamiclauncher (exit status 1)
+  #   - integration/notification    (pytest test_sound_fd: "invalid sound:
+  #                                  The sound data is invalid (36)" because
+  #                                  the validator subprocess died)
+  # Same family as openldap/fwupd above — environment-driven, not a real
+  # package bug. Affects the gaming Linux hosts (CauldronLake / BrightFalls)
+  # that pull xdg-desktop-portal in via their desktop closure.
+  #
+  # Skipping the check phase until upstream nixpkgs ships a fix. The closest
+  # tracking issue is open with no comments and was filed for a different
+  # trigger (a custom enableGeoLocation override), but the failing test is
+  # the same one:
+  #   Issue: https://github.com/NixOS/nixpkgs/issues/511228 (OPEN)
+  # Drop this override once nixos-unstable ships an xdg-desktop-portal whose
+  # checkPhase passes inside the build sandbox.
+  xdg-desktop-portal = super.xdg-desktop-portal.overrideAttrs (_: {
+    doCheck = false;
+  });
 })
