@@ -26,7 +26,6 @@
     # Social
     element-desktop
     # Music
-    jellyfin-desktop
     jellyfin-tui
     # Window Management
     loopwm
