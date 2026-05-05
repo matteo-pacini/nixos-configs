@@ -57,21 +57,21 @@
   # Token usage tracker for AI coding agents
   tokscale = super.callPackage ../packages/tokscale.nix { };
 
-  # openldap-2.6.13: test017-syncreplication-refresh is timing-sensitive and
-  # fails on slow/sandboxed builders ("provider and consumer databases
-  # differ"). The failure cascades into bottles / lutris / wine FHS envs
-  # pulled in by the gaming hosts (BrightFalls, CauldronLake), killing their
-  # full system builds in CI.
+  # openldap-2.6.13: the syncreplication tests are timing-sensitive and fail
+  # on slow / sandboxed builders ("provider and consumer databases differ").
+  # First test017 fell over, then surgically skipping it just exposed the
+  # next one (test019-syncreplication-cascade). The failure cascades into
+  # bottles / lutris / wine FHS envs pulled in by the gaming hosts
+  # (BrightFalls, CauldronLake), killing their full system builds in CI.
   #
-  # Mirrors the upstream nixpkgs fix (still OPEN) by extending preCheck to
-  # delete the offending test script, matching how other flaky openldap
-  # tests (test022, test063, test076) are already skipped.
+  # Disabling the check phase entirely until upstream lands a real fix —
+  # going test-by-test is whack-a-mole.
   #   Issue: https://github.com/NixOS/nixpkgs/issues/516392 (CLOSED, links to PR)
-  #   Fix:   https://github.com/NixOS/nixpkgs/pull/516445   (OPEN as of 2026-05-05)
-  # Drop this override once the fix PR lands in nixos-unstable.
-  openldap = super.openldap.overrideAttrs (old: {
-    preCheck = (old.preCheck or "") + ''
-      rm -f tests/scripts/test017-syncreplication-refresh
-    '';
+  #   Fix:   https://github.com/NixOS/nixpkgs/pull/516445   (OPEN as of 2026-05-05,
+  #          only patches test017 — won't fully unbreak us; revisit when
+  #          upstream addresses test019 too)
+  # Drop this override once nixos-unstable ships a build that passes checks.
+  openldap = super.openldap.overrideAttrs (_: {
+    doCheck = false;
   });
 })
