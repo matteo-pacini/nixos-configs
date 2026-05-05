@@ -13,8 +13,8 @@
   # with `./packages/claude-code/update.sh`.
   #
   # Wrapper additions on top of upstream (last reviewed against v2.1.123):
-  #   - PATH: nodejs and rtk are bundled onto claude's wrapped PATH instead of
-  #     being installed user-wide.
+  #   - PATH: nodejs, rtk, and jq are bundled onto claude's wrapped PATH
+  #     instead of being installed user-wide.
   #       * nodejs: so RTK's claude-code hook (and any other node-based hook
   #         under ~/.claude/hooks) can find `node`. Also satisfies the
   #         statusLine command (`npx -y ccstatusline@latest`).
@@ -22,6 +22,8 @@
   #         commands inside Claude sessions. Subprocesses spawned by claude
   #         inherit this PATH, so `rtk <cmd>` invocations from inside a session
   #         resolve. NOT on the user's interactive shell PATH by design.
+  #       * jq: needed by the rtk-rewrite hook to parse/emit JSON. macOS has
+  #         /usr/bin/jq but NixOS hosts don't install it by default.
   #     This is unrelated to upstream bugs — pure local-tooling concern.
   #   - CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000: works around the autocompact
   #     400k cap on Opus 4.7 [1m] variants
@@ -48,7 +50,7 @@
   claude-code = (super.callPackage ../packages/claude-code/package.nix { }).overrideAttrs (old: {
     postInstall = (old.postInstall or "") + ''
       wrapProgram $out/bin/claude \
-        --prefix PATH : ${super.nodejs}/bin:${super.rtk}/bin \
+        --prefix PATH : ${super.nodejs}/bin:${super.rtk}/bin:${super.jq}/bin \
         --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000 \
         --set ENABLE_PROMPT_CACHING_1H 1
     '';
