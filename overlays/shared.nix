@@ -74,4 +74,22 @@
   openldap = super.openldap.overrideAttrs (_: {
     doCheck = false;
   });
+
+  # fwupd-2.1.1: two test cases fail in the Nix build sandbox because they
+  # expect a running desktop session:
+  #   - fu-engine-gtypes-test: FuPluginLogind aborts with
+  #     "GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Permission
+  #     denied" when it tries to call logind.Inhibit (no logind in sandbox).
+  #   - fwupd-client-test:     killed by SIGABRT (related fallout).
+  # Affects the gaming hosts (CauldronLake / BrightFalls) that pull fwupd
+  # in transitively, killing the system build in CI.
+  #
+  # Skipping the check phase until upstream nixpkgs gets a fix. There's no
+  # tracking issue specific to this; the next-version bump PR doesn't
+  # address tests either, so don't expect it to land a fix on its own.
+  #   2.1.2 bump:    https://github.com/NixOS/nixpkgs/pull/513368 (OPEN, x86_64-linux only)
+  # Drop this once nixos-unstable ships a fwupd whose checkPhase passes.
+  fwupd = super.fwupd.overrideAttrs (_: {
+    doCheck = false;
+  });
 })
