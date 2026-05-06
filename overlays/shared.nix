@@ -50,11 +50,20 @@
   claude-code = (super.callPackage ../packages/claude-code/package.nix { }).overrideAttrs (old: {
     postInstall = (old.postInstall or "") + ''
       wrapProgram $out/bin/claude \
-        --prefix PATH : ${super.nodejs}/bin:${super.rtk}/bin:${super.jq}/bin \
+        --prefix PATH : ${super.nodejs}/bin:${self.rtk}/bin:${super.jq}/bin \
         --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000 \
         --set ENABLE_PROMPT_CACHING_1H 1
     '';
   });
+
+  # rtk: vendored from nixpkgs master into ../packages/rtk/ so we can track
+  # upstream faster than the flake's nixos-unstable pin. The rtk binary embeds
+  # an expected hash for the bundled rtk-rewrite.sh hook; when upstream pushes
+  # a hook content change ahead of a binary release, anyone on a nixpkgs lag
+  # sees the integrity check fail. Vendoring lets us bump the rtk derivation
+  # as soon as upstream tags a release that bundles the new hook.
+  # Refresh with `./packages/rtk/update.sh`.
+  rtk = super.callPackage ../packages/rtk/package.nix { };
 
   # Token usage tracker for AI coding agents
   tokscale = super.callPackage ../packages/tokscale.nix { };
