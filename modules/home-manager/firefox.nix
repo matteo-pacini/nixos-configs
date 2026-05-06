@@ -64,6 +64,8 @@ in
       programs.firefox = {
         enable = true;
         package = pkgs.firefox;
+        # Pinned: gnome-theme injection below hardcodes .mozilla/firefox.
+        configPath = ".mozilla/firefox";
         profiles = {
           default = {
             id = 0;
