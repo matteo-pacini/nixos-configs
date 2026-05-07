@@ -78,6 +78,48 @@ in
             settings = {
               "places.history.enabled" = cfg.history.enable;
               "browser.chrome.site_icons" = true;
+
+              # Sponsored content & new-tab "Popular today / Health / Entertainment"
+              "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;
+              "browser.newtabpage.activity-stream.showSponsored" = false;
+              "browser.newtabpage.activity-stream.feeds.section.topstories" = false;
+              "browser.newtabpage.activity-stream.showSponsoredCheckboxes" = false;
+              "browser.newtabpage.activity-stream.default.sites" = "";
+
+              # Telemetry
+              "datareporting.policy.dataSubmissionEnabled" = false;
+              "datareporting.healthreport.uploadEnabled" = false;
+              "datareporting.usage.uploadEnabled" = false;
+              "toolkit.telemetry.unified" = false;
+              "toolkit.telemetry.enabled" = false;
+              "toolkit.telemetry.server" = "data:,";
+              "toolkit.telemetry.archive.enabled" = false;
+              "toolkit.telemetry.newProfilePing.enabled" = false;
+              "toolkit.telemetry.shutdownPingSender.enabled" = false;
+              "toolkit.telemetry.updatePing.enabled" = false;
+              "toolkit.telemetry.bhrPing.enabled" = false;
+              "toolkit.telemetry.firstShutdownPing.enabled" = false;
+              "toolkit.telemetry.coverage.opt-out" = true;
+              "toolkit.coverage.opt-out" = true;
+              "toolkit.coverage.endpoint.base" = "";
+              "browser.newtabpage.activity-stream.feeds.telemetry" = false;
+              "browser.newtabpage.activity-stream.telemetry" = false;
+
+              # Studies / experiments (Normandy, Shield)
+              "app.shield.optoutstudies.enabled" = false;
+              "app.normandy.enabled" = false;
+              "app.normandy.api_url" = "";
+
+              # Crash reports
+              "breakpad.reportURL" = "";
+              "browser.tabs.crashReporting.sendReport" = false;
+
+              # CFR & personalized add-on recommendations
+              "browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons" = false;
+              "browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features" = false;
+              "browser.discovery.enabled" = false;
+              "extensions.htmlaboutaddons.recommendations.enabled" = false;
+              "extensions.getAddons.showPane" = false;
             };
           };
         };
