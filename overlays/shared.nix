@@ -65,6 +65,15 @@
   # Refresh with `./packages/rtk/update.sh`.
   rtk = super.callPackage ../packages/rtk/package.nix { };
 
+  # opencode: vendored from nixpkgs master into ../packages/opencode/ so we
+  # can track upstream faster than the flake's nixos-unstable pin. Upstream
+  # ships frequent releases that fix provider/transform bugs and adjust
+  # agent behavior we depend on (see modules/home-manager/opencode.nix for
+  # the live list of issues we're chasing); waiting for nixos-unstable to
+  # pick them up noticeably lags day-to-day usage.
+  # Refresh with `./packages/opencode/update.sh`.
+  opencode = super.callPackage ../packages/opencode/package.nix { };
+
   # Token usage tracker for AI coding agents
   tokscale = super.callPackage ../packages/tokscale.nix { };
 
