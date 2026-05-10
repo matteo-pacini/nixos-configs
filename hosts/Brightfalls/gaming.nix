@@ -2,7 +2,6 @@
   pkgs,
   lib,
   config,
-  isVM,
   ...
 }:
 {
@@ -10,19 +9,17 @@
     "vm.max_map_count" = "1048576";
   };
 
-  hardware.steam-hardware.enable = pkgs.stdenv.hostPlatform.isx86_64;
+  hardware.steam-hardware.enable = true;
 
   programs.steam = {
-    enable = pkgs.stdenv.hostPlatform.isx86_64;
-    package = lib.mkIf (!isVM) (
-      pkgs.steam.override {
-        extraEnv = {
-          # Use integrated GPU (Radeon 780M) for Steam client UI
-          # Games can override this via launch options if eGPU is preferred
-          DRI_PRIME = "0";
-        };
-      }
-    );
+    enable = true;
+    package = pkgs.steam.override {
+      extraEnv = {
+        # Use integrated GPU (Radeon 780M) for Steam client UI
+        # Games can override this via launch options if eGPU is preferred
+        DRI_PRIME = "0";
+      };
+    };
     extraPackages = with pkgs; [
       gamescope
     ];
@@ -40,9 +37,9 @@
     ];
   };
 
-  services.lact.enable = !isVM;
+  services.lact.enable = true;
 
-  programs.gamemode = lib.mkIf (pkgs.stdenv.hostPlatform.isx86_64) {
+  programs.gamemode = {
     enable = true;
     enableRenice = true;
     settings = {
@@ -53,12 +50,12 @@
     };
   };
 
-  hardware.amdgpu.overdrive = lib.mkIf (!isVM) {
+  hardware.amdgpu.overdrive = {
     enable = true;
     ppfeaturemask = "0xffffffff";
   };
 
-  services.sunshine = lib.mkIf (!isVM) {
+  services.sunshine = {
     enable = true;
     openFirewall = true;
     autoStart = true;
@@ -86,5 +83,4 @@
       qp = 10;
     };
   };
-
 }

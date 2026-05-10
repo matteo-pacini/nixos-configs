@@ -1,7 +1,6 @@
 {
   pkgs,
   lib,
-  isVM,
   ...
 }:
 let
@@ -31,15 +30,15 @@ let
         pc/brightfalls/launch_steam_bigpicture)
           xdg-open steam://open/gamepadui
           ;;
-        *)  
-          echo "Unhandled topic received: \"$topic\" payload: \"$payload\""
+        *)
+          echo "Unhandled topic received: \"$topic\" payload: \"$payload\""
           ;;
       esac
     done
   '';
 in
 {
-  systemd.user.services."mqtt2brightfalls-user" = lib.mkIf (!isVM) {
+  systemd.user.services."mqtt2brightfalls-user" = {
     Unit = {
       Description = "mqtt2brightfalls user dispatcher";
       After = [ "graphical-session.target" ];
@@ -56,5 +55,4 @@ in
       WantedBy = [ "default.target" ];
     };
   };
-
 }

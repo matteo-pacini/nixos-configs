@@ -16,13 +16,11 @@
 
 ## Overview
 
-Seven build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_0`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) (Nexus only, today).
+Five build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_0`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) (Nexus only, today).
 
 | Host | Platform | Role | User |
 |------|----------|------|------|
 | **BrightFalls** | `x86_64-linux` | Gaming desktop | `matteo` |
-| **BrightFallsVM-x86_64-linux** | `x86_64-linux` | VM variant | `matteo` |
-| **BrightFallsVM-aarch64-linux** | `aarch64-linux` | VM variant | `matteo` |
 | **Nexus** | `x86_64-linux` | Headless home server | `matteo` |
 | **CauldronLake** | `x86_64-linux` | Razer travel laptop | `debora` |
 | **NightSprings** | `aarch64-darwin` | MacBook Pro M1 Max | `matteo` |

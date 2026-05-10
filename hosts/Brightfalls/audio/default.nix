@@ -1,8 +1,4 @@
-{
-  lib,
-  isVM,
-  ...
-}:
+_:
 {
   imports = [
   ];
@@ -18,7 +14,7 @@
 
   # High-fidelity audio configuration for Schiit Modi 2 + Magni + HD650
   # Optimized for bit-perfect playback and audio quality
-  services.pipewire.extraConfig.pipewire = lib.mkIf (!isVM) {
+  services.pipewire.extraConfig.pipewire = {
     "10-clock-rate" = {
       "context.properties" = {
         # Default to 44.1kHz (most common music sample rate)
@@ -57,7 +53,7 @@
 
   # Wireplumber configuration for bit-perfect USB DAC output
   # Enforces 24-bit format (S24LE) matching Modi 2 capabilities
-  services.pipewire.wireplumber.extraConfig."50-alsa-config" = lib.mkIf (!isVM) {
+  services.pipewire.wireplumber.extraConfig."50-alsa-config" = {
     "monitor.alsa.rules" = [
       {
         matches = [
@@ -74,5 +70,4 @@
       }
     ];
   };
-
 }

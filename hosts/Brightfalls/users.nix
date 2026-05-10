@@ -1,9 +1,4 @@
-{
-  pkgs,
-  lib,
-  isVM,
-  ...
-}:
+{ pkgs, ... }:
 {
   programs.zsh.enable = true;
 
@@ -23,7 +18,5 @@
       "gamemode"
     ];
     shell = pkgs.zsh;
-    initialPassword = lib.optionalString (isVM) "ziosasso";
   };
-
 }
