@@ -47,7 +47,7 @@
           name = "CVE-2026-43284-xfrm-esp-no-inplace-shared-frags";
           patch = pkgs.fetchpatch {
             url = "https://github.com/torvalds/linux/commit/f4c50a4034e62ab75f1d5cdd191dd5f9c77fdff4.patch";
-            hash = "sha256-i03hdv2r1OjGr2LhXLL0qZmdXYATjGo0xqOVsmvlDEY=";
+            hash = "sha256-68d7/BoMYHWVBY8btrr8yuObhkGod1Hwj5Ny2CZt+qk=";
           };
         };
       in
