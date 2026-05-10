@@ -64,6 +64,10 @@ in
       programs.firefox = {
         enable = true;
         package = pkgs.firefox;
+        # Pin: HM 26.05's Linux default flipped to ~/.config/mozilla/firefox,
+        # but stock pkgs.firefox still reads ~/.mozilla/firefox. Darwin keeps
+        # HM's default (Library/Application Support/Firefox).
+        configPath = mkIf isLinux ".mozilla/firefox";
         profiles = {
           default = {
             id = 0;
