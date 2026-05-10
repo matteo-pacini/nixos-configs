@@ -1,9 +1,4 @@
-{
-  pkgs,
-  lib,
-  isVM,
-  ...
-}:
+{ pkgs, ... }:
 {
   services.xserver = {
     enable = true;
@@ -54,13 +49,12 @@
   programs.dconf.enable = true;
 
   # Set up GDM to use a custom monitors configuration
-  systemd.tmpfiles.rules = lib.optionals (!isVM) (
+  systemd.tmpfiles.rules =
     let
       monitorsXmlContent = builtins.readFile ./monitors.xml;
       monitorsConfig = pkgs.writeText "gdm_monitors.xml" monitorsXmlContent;
     in
     [
       "L+ /run/gdm/.config/monitors.xml - - - - ${monitorsConfig}"
-    ]
-  );
+    ];
 }

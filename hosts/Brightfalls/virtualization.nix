@@ -1,22 +1,17 @@
-{
-  pkgs,
-  lib,
-  isVM,
-  ...
-}:
+{ pkgs, ... }:
 {
   # Basic virtualization support (no GPU passthrough)
 
-  virtualisation.spiceUSBRedirection.enable = lib.mkIf (!isVM) true;
+  virtualisation.spiceUSBRedirection.enable = true;
 
-  users.extraUsers.matteo.extraGroups = lib.mkIf (!isVM) [
+  users.extraUsers.matteo.extraGroups = [
     "kvm"
     "libvirtd"
   ];
 
-  programs.virt-manager.enable = lib.mkIf (!isVM) true;
+  programs.virt-manager.enable = true;
 
-  virtualisation.libvirtd = lib.mkIf (!isVM) {
+  virtualisation.libvirtd = {
     enable = true;
     qemu = {
       package = pkgs.qemu_kvm;

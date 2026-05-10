@@ -2,8 +2,6 @@
   nixConfig = {
     extra-substituters = [
       "https://zpnixcache.fly.dev/BrightFalls"
-      "https://zpnixcache.fly.dev/BrightFallsVM-x86_64-linux"
-      "https://zpnixcache.fly.dev/BrightFallsVM-aarch64-linux"
       "https://zpnixcache.fly.dev/Nexus"
       "https://zpnixcache.fly.dev/CauldronLake"
       "https://zpnixcache.fly.dev/NightSprings"
@@ -11,8 +9,6 @@
     ];
     extra-trusted-public-keys = [
       "BrightFalls:gMudzNSdeCzW745O/B5VSeCLUnpoD1Vj0EbsIV0X6C4="
-      "BrightFallsVM-x86_64-linux:L798OfLl6Hcelm1lvSnoisSlUNvlQqIyyOo4UfwLjH8="
-      "BrightFallsVM-aarch64-linux:LRzMt4Uzp6sjrCC9Bo1l1ZUJkNM0K6sS8mWmTS2KWmg="
       "Nexus:KhHzSL94AngTFwzZHLZldWY8GIdCGNx0ZsN5w1HqwS8="
       "CauldronLake:AyKsbh7J70m93eOsZJvjtHzgrUgUrPmCY7aOSVQAVF0="
       "NightSprings:iCflayy0sY61Irqnschj7glvKedEEY3mlODEVe61CkY="
@@ -118,41 +114,6 @@
         inputs.nur.overlays.default
         (import ./overlays/shared.nix)
       ];
-      mkBrightFalls =
-        {
-          system,
-          hostPath,
-          userPath,
-          extraOverlays ? [ ],
-          extraModules ? [ ],
-          isVM ? false,
-        }:
-        inputs.nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = {
-            inherit inputs isVM;
-          };
-          modules = [
-            { nixpkgs.overlays = baseOverlays ++ extraOverlays; }
-            self.nixosModules.default
-            hostPath
-            inputs.home-manager.nixosModules.home-manager
-            {
-              home-manager.backupFileExtension = "backup";
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.users.matteo = import userPath;
-              home-manager.extraSpecialArgs = {
-                inherit inputs isVM;
-              };
-              home-manager.sharedModules = [
-                inputs.nvf.homeManagerModules.default
-                self.homeManagerModules.default
-              ];
-            }
-          ]
-          ++ extraModules;
-        };
     in
     {
       nixosModules.default = {
@@ -196,40 +157,31 @@
       ###################
       # Linux Gaming PC #
       ###################
-      nixosConfigurations."BrightFalls" = mkBrightFalls {
+      nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        hostPath = ./hosts/Brightfalls;
-        userPath = ./hosts/Brightfalls/users/matteo;
-        extraOverlays = [
-          (import ./overlays/brightfalls.nix { isVM = false; })
-        ];
-        extraModules = [
-          inputs.disko.nixosModules.disko
-          ./hosts/Brightfalls/disko-physical.nix
-        ];
-      };
-      nixosConfigurations."BrightFallsVM-x86_64-linux" = mkBrightFalls {
-        system = "x86_64-linux";
-        hostPath = ./hosts/Brightfalls;
-        userPath = ./hosts/Brightfalls/users/matteo;
-        isVM = true;
-        extraOverlays = [
-          (import ./overlays/brightfalls.nix { isVM = true; })
-        ];
-        extraModules = [
-          inputs.disko.nixosModules.disko
-          ./hosts/Brightfalls/disko.nix
-        ];
-      };
-      nixosConfigurations."BrightFallsVM-aarch64-linux" = mkBrightFalls {
-        system = "aarch64-linux";
-        hostPath = ./hosts/Brightfalls;
-        userPath = ./hosts/Brightfalls/users/matteo;
-        isVM = true;
-        extraOverlays = [
-          (import ./overlays/brightfalls.nix { isVM = true; })
-        ];
-        extraModules = [
+        specialArgs = {
+          inherit inputs;
+        };
+        modules = [
+          {
+            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/brightfalls.nix) ];
+          }
+          self.nixosModules.default
+          ./hosts/Brightfalls
+          inputs.home-manager.nixosModules.home-manager
+          {
+            home-manager.backupFileExtension = "backup";
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.matteo = import ./hosts/Brightfalls/users/matteo;
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+            home-manager.sharedModules = [
+              inputs.nvf.homeManagerModules.default
+              self.homeManagerModules.default
+            ];
+          }
           inputs.disko.nixosModules.disko
           ./hosts/Brightfalls/disko.nix
         ];

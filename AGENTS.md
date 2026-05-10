@@ -36,15 +36,13 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **New `.nix` files must be `git add`ed before `nix build`.** The flake reads from the git store; untracked files are invisible.
 - **Don't use `nix flake check` as a blanket validation.** It tries to build every output and fails on cross-platform configs from your current host. Use the targeted `nix build` (local platform) + `nix eval` (foreign platform) commands above instead.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
-- CI builds all 7 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
+- CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
 
 ## Hosts
 
 | Host | Platform | User | Notes |
 |------|----------|------|-------|
 | BrightFalls | x86_64-linux | matteo | Gaming PC |
-| BrightFallsVM-x86_64-linux | x86_64-linux | matteo | VM variant |
-| BrightFallsVM-aarch64-linux | aarch64-linux | matteo | VM variant |
 | Nexus | x86_64-linux | matteo | Headless server |
 | CauldronLake | x86_64-linux | **debora** | Razer laptop |
 | NightSprings | aarch64-darwin | matteo | MacBook Pro M1 Max |
@@ -53,7 +51,6 @@ nix run nix-darwin -- switch --flake .#<Host>
 ## Architecture
 
 - **Custom modules** use the `custom.X = { enable = true; }` convention: `mkEnableOption` + `mkIf` + `mkMerge`.
-- **`mkBrightFalls`** in `flake.nix` is a factory that creates the BrightFalls system variants with an `isVM` flag. All three BrightFalls configs share the same host and user paths.
 - **Per-host CPU overlays** in `overlays/<host>.nix` (e.g. `znver4`, `apple-m4`). Shared overlays live in `overlays/shared.nix`.
 - **Darwin hosts** get extra modules NixOS hosts do not: `mac-app-util`, `xcodes` (NightSprings only), and `nix-homebrew`.
 - **Shared Home Manager modules** are loaded on all hosts via `homeManagerModules.default` in `flake.nix`.

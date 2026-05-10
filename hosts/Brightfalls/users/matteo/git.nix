@@ -1,8 +1,4 @@
-{
-  lib,
-  isVM,
-  ...
-}:
+_:
 {
   custom.git = {
     enable = true;
@@ -11,7 +7,7 @@
 
   custom.ssh = {
     enable = true;
-    nexus.enable = !isVM;
+    nexus.enable = true;
     extraMatchBlocks."fpnas" = {
       extraOptions = {
         HostName = "fpnas3.tailadca8a.ts.net";
