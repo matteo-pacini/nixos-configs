@@ -29,7 +29,7 @@
   ];
 
   custom.nvf.enable = true;
-  custom.tmux.enable = true;
+  custom.zellij.enable = true;
   custom.vscode.enable = true;
   custom.starship.enable = true;
   custom.wezterm.enable = true;

@@ -78,7 +78,7 @@ in
           ];
           utility.smart-splits = {
             enable = true;
-            setupOpts.multiplexer_integration = "tmux";
+            setupOpts.multiplexer_integration = "zellij";
           };
           lsp = {
             enable = true;
