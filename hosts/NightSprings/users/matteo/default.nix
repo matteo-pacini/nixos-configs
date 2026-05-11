@@ -31,7 +31,7 @@
     loopwm
   ];
   custom.nvf.enable = true;
-  custom.tmux.enable = true;
+  custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.wezterm.enable = true;
   custom.claude-code.enable = true;

@@ -66,7 +66,7 @@
     ];
 
   custom.nvf.enable = true;
-  custom.tmux.enable = true;
+  custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
   custom.opencode.enable = true;

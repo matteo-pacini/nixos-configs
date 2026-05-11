@@ -144,7 +144,7 @@
           ./modules/home-manager/atuin.nix
           ./modules/home-manager/zsh.nix
           ./modules/home-manager/shell-tools.nix
-          ./modules/home-manager/tmux.nix
+          ./modules/home-manager/zellij.nix
           ./modules/home-manager/nvf.nix
           ./modules/home-manager/vscode.nix
           ./modules/home-manager/starship.nix
