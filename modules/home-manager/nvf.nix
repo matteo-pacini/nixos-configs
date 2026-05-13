@@ -15,6 +15,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    home.sessionVariables.EDITOR = "nvim";
+
     programs.nvf = {
       enable = true;
       settings = {
