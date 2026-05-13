@@ -19,6 +19,7 @@
   custom.kernel.enable = true;
   custom.bluetooth.enable = true;
   custom.fonts.enable = true;
+  custom.nix-index.enable = true;
 
   environment.systemPackages = with pkgs; [ sshfs ];
 

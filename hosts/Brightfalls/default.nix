@@ -52,6 +52,7 @@
   custom.locale.enable = true;
   custom.bluetooth.enable = true;
   custom.fonts.enable = true;
+  custom.nix-index.enable = true;
 
   system.stateVersion = "26.05";
 }

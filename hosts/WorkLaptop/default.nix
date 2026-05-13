@@ -17,6 +17,7 @@
   };
 
   custom.fonts.enable = true;
+  custom.nix-index.enable = true;
 
   environment.systemPackages = [ pkgs.nix-output-monitor ];
 
