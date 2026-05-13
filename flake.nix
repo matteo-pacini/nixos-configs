@@ -104,6 +104,11 @@
     #######
     nvf.url = "github:NotAShelf/nvf";
     nvf.inputs.nixpkgs.follows = "nixpkgs";
+    #####################
+    # nix-index-database #
+    #####################
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -124,6 +129,7 @@
           ./modules/nixos/fonts.nix
           ./modules/nixos/kernel.nix
           ./modules/nixos/apcupsd-multi.nix
+          ./modules/nixos/nix-index.nix
         ];
       };
 
@@ -132,6 +138,7 @@
           ./modules/darwin/nix-core.nix
           ./modules/darwin/system-defaults.nix
           ./modules/darwin/fonts.nix
+          ./modules/darwin/nix-index.nix
         ];
       };
 

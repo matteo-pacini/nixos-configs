@@ -18,6 +18,7 @@
   };
 
   custom.fonts.enable = true;
+  custom.nix-index.enable = true;
 
   ids.gids.nixbld = 30000;
 

@@ -13,6 +13,7 @@
   ];
 
   custom.kernel.enable = true;
+  custom.nix-index.enable = true;
 
   custom.nix-core = {
     enable = true;
