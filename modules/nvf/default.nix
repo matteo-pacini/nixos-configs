@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   ...
 }:
@@ -41,11 +42,39 @@
           git_status_async = true;
           use_libuv_file_watcher = true;
           close_if_last_window = true;
+          event_handlers = [
+            {
+              event = "neo_tree_buffer_enter";
+              handler = lib.generators.mkLuaInline ''
+                function()
+                  vim.opt_local.number = true
+                  vim.opt_local.relativenumber = true
+                  vim.opt_local.winhighlight = "LineNr:Comment,CursorLineNr:Title"
+                end
+              '';
+            }
+          ];
         };
       };
     };
     telescope = {
       enable = true;
+      setupOpts = {
+        defaults.vimgrep_arguments = [
+          (lib.getExe pkgs.ripgrep)
+          "--color=never"
+          "--no-heading"
+          "--with-filename"
+          "--line-number"
+          "--column"
+          "--smart-case"
+          "--max-columns=200"
+          "--max-columns-preview"
+        ];
+        pickers.live_grep.additional_args = lib.generators.mkLuaInline ''
+          function() return { "--max-filesize=1M" } end
+        '';
+      };
       extensions = [
         {
           name = "fzf";
@@ -74,6 +103,13 @@
         action = ":Neotree toggle<CR>";
         silent = true;
         desc = "Toggle Neo-tree";
+      }
+      {
+        key = "<leader>E";
+        mode = "n";
+        action = ":Neotree reveal<CR>";
+        silent = true;
+        desc = "Reveal current buffer in Neo-tree";
       }
       {
         key = "<leader>gg";
@@ -117,15 +153,6 @@
     '';
     luaConfigRC.smearCursor = ''
       require('smear_cursor').setup({})
-    '';
-    luaConfigRC.neoTreeLineNumbers = ''
-      vim.api.nvim_create_autocmd("FileType", {
-        pattern = "neo-tree",
-        callback = function()
-          vim.wo.number = true
-          vim.wo.relativenumber = true
-        end,
-      })
     '';
     luaConfigRC.bufferDelete = ''
       local function smart_bd()
