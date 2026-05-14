@@ -393,5 +393,15 @@
         aarch64-linux = inputs.nixpkgs.legacyPackages.aarch64-linux.nixfmt;
         aarch64-darwin = inputs.nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
       };
+
+      packages =
+        inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ]
+          (system: {
+            nvim =
+              (inputs.nvf.lib.neovimConfiguration {
+                pkgs = inputs.nixpkgs.legacyPackages.${system};
+                modules = [ ./modules/nvf ];
+              }).neovim;
+          });
     };
 }
