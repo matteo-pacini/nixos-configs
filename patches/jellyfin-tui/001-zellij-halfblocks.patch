@@ -1,0 +1,66 @@
+jellyfin-tui: force halfblocks when running inside zellij
+==========================================================
+
+Problem
+-------
+Inside a zellij pane, the album cover art in jellyfin-tui flickers on every
+redraw. Outside zellij (bare WezTerm, Kitty, Ghostty, etc.) it is stable.
+
+Root cause
+----------
+jellyfin-tui renders cover art with `ratatui-image` 10.x. At startup,
+`Picker::from_query_stdio()` (src/tui.rs:714) probes the terminal and picks
+the best available image protocol — usually Kitty graphics or Sixel.
+
+That protocol selection happens against zellij's *virtual* terminal, not the
+real one underneath. zellij does not actually implement Kitty graphics, and
+its Sixel passthrough has long-standing artifact / clearing bugs. Each time
+ratatui's draw loop emits image cells (which jellyfin-tui does very often
+— mpv state updates, spinner ticks, theme lerp, lyric advance all flip the
+dirty flag) zellij re-emits or drops the graphics sequence, producing visible
+flicker.
+
+Relevant upstream zellij trackers:
+  - https://github.com/zellij-org/zellij/issues/2814  (Kitty graphics, OPEN)
+  - https://github.com/zellij-org/zellij/issues/4500  (Kitty passthrough, OPEN)
+  - https://github.com/zellij-org/zellij/issues/2576  (Sixel glitch after
+    rendering — matches the symptom exactly, OPEN)
+  - https://github.com/zellij-org/zellij/issues/3372  (Sixel regression
+    since v0.40.0, OPEN)
+
+Fix
+---
+Skip the protocol probe and use `Picker::halfblocks()` whenever the `ZELLIJ`
+environment variable is set. Halfblocks render the image as ordinary colored
+cells (no out-of-band graphics escapes), so zellij's diff renderer handles
+them the same as any other text and the picture stays put.
+
+The art is visibly lower-resolution under this fallback, but it does not
+flicker. Outside zellij the original probe path is unchanged.
+
+Drop this patch when zellij-org/zellij#2814 lands and ratatui-image's Kitty
+backend works through zellij — or upstream a config knob into jellyfin-tui
+that lets the user pick the protocol explicitly.
+
+Submitted upstream: not yet.
+
+--- a/src/tui.rs
++++ b/src/tui.rs
+@@ -711,11 +711,12 @@ impl App {
+     ) -> (Color, Option<Picker>) {
+         let is_art_enabled = config.get("art").and_then(|a| a.as_bool()).unwrap_or(true);
+         let picker = if is_art_enabled {
+-            match Picker::from_query_stdio() {
+-                Ok(picker) => Some(picker),
+-                Err(_) => {
+-                    let picker = Picker::halfblocks();
+-                    Some(picker)
++            if std::env::var_os("ZELLIJ").is_some() {
++                Some(Picker::halfblocks())
++            } else {
++                match Picker::from_query_stdio() {
++                    Ok(picker) => Some(picker),
++                    Err(_) => Some(Picker::halfblocks()),
+                 }
+             }
+         } else {
