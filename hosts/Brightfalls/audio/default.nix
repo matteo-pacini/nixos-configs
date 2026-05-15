@@ -12,14 +12,23 @@ _:
     pulse.enable = true;
   };
 
-  # High-fidelity audio configuration for Schiit Modi 2 + Magni + HD650
-  # Optimized for bit-perfect playback and audio quality
+  # High-fidelity audio configuration for Schiit Modi 2 + Magni 2 + HD650.
+  #
+  # Goal: bit-perfect playback to the Modi 2 — let PipeWire follow the source
+  # sample rate so no resampling happens for 44.1/48/88.2/96 kHz material.
+  #
+  # Hardware facts that drive this config:
+  #   - Modi 2 (regular): C-Media CM6631A USB receiver, AKM AK4396 DAC.
+  #   - Linux/macOS max is 24-bit / 96 kHz; 192 kHz needs Schiit's Windows
+  #     "Expert Mode" driver and is unreachable here.
+  #   - Native rates: 44.1, 48, 88.2, 96 kHz @ 16/24-bit.
+  #   - Magni 2 is a pure analog amp — no digital config concerns it.
   services.pipewire.extraConfig.pipewire = {
     "10-clock-rate" = {
       "context.properties" = {
-        # Default to 44.1kHz (most common music sample rate)
-        "default.clock.rate" = 44100;
-        # Modi 2 supports up to 96kHz (NOT 192kHz - removed to avoid unnecessary resampling)
+        # default.clock.rate intentionally omitted — without a fixed default,
+        # the graph rate follows the first stream that comes in, which gives
+        # bit-perfect rates for 44.1, 48, 88.2, 96 kHz sources.
         "default.clock.allowed-rates" = [
           44100
           48000
@@ -29,19 +38,19 @@ _:
       };
     };
 
-    # Resampling quality optimization for high-fidelity playback
-    # Quality 10 provides excellent audio quality with minimal CPU overhead
-    # (Quality 14 uses 2-3x more CPU with negligible audible improvement)
+    # Resampling quality. Rate-follow keeps resampling rare (only when streams
+    # at different rates mix), so quality 10 is a comfortable middle ground —
+    # quality 14 costs 2-3x CPU for negligible audible improvement.
     "20-resampling" = {
       "context.properties" = {
         "resample.quality" = 10;
       };
     };
 
-    # Buffer/quantum optimization balancing streaming and playback stability
-    # 1024 samples (~21ms at 48kHz) works well for Sunshine game streaming
-    # while remaining stable on dedicated DAC hardware (Modi 2)
-    # max-quantum allows apps to request larger buffers if needed
+    # Buffer/quantum: 1024 samples (~21 ms at 48 kHz) is stable for Sunshine
+    # game streaming and the USB1 Modi 2. Min == default keeps apps from
+    # negotiating tiny buffers that xrun on the C-Media chip; max allows
+    # high-latency apps (e.g. media players) to request larger ones.
     "30-quantum" = {
       "context.properties" = {
         "default.clock.quantum" = 1024;
@@ -51,8 +60,21 @@ _:
     };
   };
 
-  # Wireplumber configuration for bit-perfect USB DAC output
-  # Enforces 24-bit format (S24LE) matching Modi 2 capabilities
+  # Per-device rule for the Modi 2.
+  #
+  # audio.format = S24LE        Modi 2 is a 24-bit DAC; padding 16-bit content
+  #                             with zeros is mathematically lossless.
+  # audio.rate   = 0            Follow the graph rate instead of locking the
+  #                             node to a single rate (which would force
+  #                             resampling of every other rate to that one).
+  # audio.allowed-rates         DAC's actual native capability; constrains the
+  #                             follow behaviour so an off-list rate (e.g.
+  #                             192 kHz) cleanly resamples to 96 kHz instead
+  #                             of being attempted on hardware that can't.
+  # api.alsa.use-acp = false    Skip alsa-card-profile (mixers, profile
+  #                             switching) — Modi 2 is a single stereo output;
+  #                             raw ALSA passthrough is simpler and avoids
+  #                             ACP-side conversions.
   services.pipewire.wireplumber.extraConfig."50-alsa-config" = {
     "monitor.alsa.rules" = [
       {
@@ -64,7 +86,9 @@ _:
         actions = {
           "update-props" = {
             "audio.format" = "S24LE";
-            "audio.rate" = 96000;
+            "audio.rate" = 0;
+            "audio.allowed-rates" = "44100,48000,88200,96000";
+            "api.alsa.use-acp" = false;
           };
         };
       }
