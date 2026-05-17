@@ -6,6 +6,79 @@
 }:
 let
   cfg = config.custom.claude-code;
+
+  # Effort levels supported by each model. Source of truth:
+  # https://code.claude.com/docs/en/model-config#adjust-effort-level
+  # Keys are values passed to `claude --model` — aliases auto-track the latest
+  # version (https://code.claude.com/docs/en/model-config#model-aliases); pin
+  # a full model ID (e.g. "claude-opus-4-6") when you need a specific version.
+  # Empty list = model does not support --effort.
+  modelEfforts = {
+    opus = [
+      "low"
+      "medium"
+      "high"
+      "xhigh"
+      "max"
+    ];
+    sonnet = [
+      "low"
+      "medium"
+      "high"
+      "max"
+    ];
+    haiku = [ ];
+    "claude-opus-4-6" = [
+      "low"
+      "medium"
+      "high"
+      "max"
+    ];
+  };
+
+  # Maps each modelEfforts key to the slug used in the shell alias name
+  # (`claude-<slug>` and `claude-<slug>-<effort>`). Pinned IDs get a compact
+  # slug to avoid dash ambiguity with the effort suffix.
+  modelAliasSlug = {
+    opus = "opus";
+    sonnet = "sonnet";
+    haiku = "haiku";
+    "claude-opus-4-6" = "opus46";
+  };
+
+  # Whether each model supports the 1M-token context window. Source:
+  # https://code.claude.com/docs/en/model-config#extended-context
+  # When true, an additional set of `claude-<slug>-1m[-<effort>]` aliases is
+  # generated, invoking the model with the `[1m]` suffix.
+  model1mContext = {
+    opus = true;
+    sonnet = true;
+    haiku = false;
+    "claude-opus-4-6" = true;
+  };
+
+  # Generate `claude-<slug>[-<effort>]` for the default context window, plus
+  # `claude-<slug>-1m[-<effort>]` when the model supports 1M context. The
+  # model arg is single-quoted so zsh doesn't glob the `[1m]` brackets.
+  claudeAliases = lib.listToAttrs (
+    lib.concatMap (
+      model:
+      let
+        slug = modelAliasSlug.${model};
+        mkVariants =
+          modelArg: slugSuffix:
+          let
+            baseCmd = "claude --model '${modelArg}'";
+          in
+          [ (lib.nameValuePair "claude-${slug}${slugSuffix}" baseCmd) ]
+          ++ map (
+            effort: lib.nameValuePair "claude-${slug}${slugSuffix}-${effort}" "${baseCmd} --effort ${effort}"
+          ) modelEfforts.${model};
+      in
+      mkVariants model "" ++ lib.optionals model1mContext.${model} (mkVariants "${model}[1m]" "-1m")
+    ) (lib.attrNames modelEfforts)
+  );
+
   baseSettings = {
     hooks = {
       PreToolUse = [
@@ -49,6 +122,10 @@ in
     # via overlays/shared.nix so it's only visible inside Claude sessions
     # (where ~/.claude/hooks/rtk-rewrite.sh consumes it). Same story for nodejs.
     home.packages = [ pkgs.claude-code ];
+
+    # Aliases are set on zsh directly (every host enables it). Has no effect
+    # on a host where programs.zsh.enable is false.
+    programs.zsh.shellAliases = claudeAliases;
 
     home.file.".config/ccstatusline/settings.json".source = ./claude-code/ccstatusline.json;
 
