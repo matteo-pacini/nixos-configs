@@ -36,7 +36,6 @@
       ++ [
         config.services.paperless.port
         config.services.zigbee2mqtt.settings.frontend.port
-        (lib.toInt config.services.librechat.env.PORT)
       ]
       ++ lib.optionals config.services.nzbhydra2.enable [ 5076 ]
       ++ lib.optionals config.services.nzbget.enable [ 6789 ]
