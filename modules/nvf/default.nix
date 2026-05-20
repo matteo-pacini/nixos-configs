@@ -219,13 +219,43 @@
       markdown.enable = true;
       typescript.enable = true;
       go.enable = true;
-      python.enable = true;
+      python = {
+        enable = true;
+        lsp.servers = [
+          "basedpyright"
+          "ruff"
+        ];
+        format = {
+          enable = true;
+          type = [
+            "ruff"
+            "ruff-check"
+          ];
+        };
+        extraDiagnostics.enable = false;
+      };
       json.enable = true;
       xml.enable = true;
       ruby.enable = true;
       clang.enable = true;
       css.enable = true;
       html.enable = true;
+      haskell.enable = true;
+      rust = {
+        enable = true;
+        lsp.opts = ''
+          ['rust-analyzer'] = {
+            cargo = { allFeatures = true },
+            checkOnSave = true,
+            check = {
+              command = "clippy",
+              extraArgs = { "--no-deps" },
+            },
+            procMacro = { enable = true },
+          },
+        '';
+        extensions.crates-nvim.enable = true;
+      };
     };
     lsp.presets.tailwindcss-language-server.enable = true;
   };
