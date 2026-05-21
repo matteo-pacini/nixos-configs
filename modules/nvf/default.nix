@@ -215,7 +215,10 @@
       vim.api.nvim_set_hl(0, "NeogitDiffAddHighlight", { bg = "#3d5a42", fg = "#f8f8f2" })
       vim.api.nvim_set_hl(0, "NeogitDiffAddCursor", { bg = "#4d6a52", fg = "#f8f8f2" })
     '';
-    tabline.nvimBufferline.enable = true;
+    tabline.nvimBufferline = {
+      enable = true;
+      setupOpts.options.numbers = "none";
+    };
     visuals = {
       nvim-cursorline.enable = true;
       cinnamon-nvim.enable = true;
