@@ -17,7 +17,26 @@
       mouse = "";
       foldlevel = 99;
       foldlevelstart = 99;
+      autoread = true;
     };
+    augroups = [
+      {
+        name = "AutoReload";
+        clear = true;
+      }
+    ];
+    autocmds = [
+      {
+        event = [
+          "FocusGained"
+          "BufEnter"
+        ];
+        pattern = [ "*" ];
+        group = "AutoReload";
+        command = "checktime";
+        desc = "Reload buffers changed outside Neovim";
+      }
+    ];
     startPlugins = [
       pkgs.vimPlugins.vim-sleuth
       pkgs.vimPlugins.smear-cursor-nvim
@@ -42,6 +61,7 @@
           git_status_async = true;
           use_libuv_file_watcher = true;
           close_if_last_window = true;
+          filesystem.follow_current_file.enabled = true;
           event_handlers = [
             {
               event = "neo_tree_buffer_enter";
@@ -195,7 +215,10 @@
       vim.api.nvim_set_hl(0, "NeogitDiffAddHighlight", { bg = "#3d5a42", fg = "#f8f8f2" })
       vim.api.nvim_set_hl(0, "NeogitDiffAddCursor", { bg = "#4d6a52", fg = "#f8f8f2" })
     '';
-    tabline.nvimBufferline.enable = true;
+    tabline.nvimBufferline = {
+      enable = true;
+      setupOpts.options.numbers = "none";
+    };
     visuals = {
       nvim-cursorline.enable = true;
       cinnamon-nvim.enable = true;
