@@ -71,6 +71,10 @@
   custom.opencode.enable = true;
   custom.mpv.enable = true;
   custom.mpv.jellyfinShim.enable = true;
+  custom.mpv.exclusiveAudio = {
+    enable = true;
+    device = "pipewire/alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
+  };
   custom.opencode.localLlama = {
     enable = true;
     llamaCppPackage = pkgs.llama-cpp-vulkan;
