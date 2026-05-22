@@ -52,7 +52,6 @@
       telegram-desktop
       element-desktop
       # Music
-      jellyfin-desktop
       jellyfin-tui
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
@@ -70,6 +69,8 @@
   custom.starship.enable = true;
   custom.claude-code.enable = true;
   custom.opencode.enable = true;
+  custom.mpv.enable = true;
+  custom.mpv.jellyfinShim.enable = true;
   custom.opencode.localLlama = {
     enable = true;
     llamaCppPackage = pkgs.llama-cpp-vulkan;

@@ -36,6 +36,8 @@
   custom.wezterm.enable = true;
   custom.claude-code.enable = true;
   custom.opencode.enable = true;
+  custom.mpv.enable = true;
+  custom.mpv.jellyfinShim.enable = true;
 
   home.stateVersion = "26.05";
 
