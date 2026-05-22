@@ -78,7 +78,7 @@
           undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951";
         }
       ];
-      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.analog-stereo";
+      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
       fec_percentage = 10;
       qp = 10;
     };
