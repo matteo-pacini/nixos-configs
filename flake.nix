@@ -158,6 +158,7 @@
           ./modules/home-manager/wezterm.nix
           ./modules/home-manager/claude-code.nix
           ./modules/home-manager/opencode.nix
+          ./modules/home-manager/mpv
         ];
       };
 

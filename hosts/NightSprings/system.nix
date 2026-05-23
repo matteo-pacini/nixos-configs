@@ -20,7 +20,6 @@
       "element"
       "telegram"
       "whatsapp"
-      "jellyfin-media-player"
       "sf-symbols"
       "vlc"
     ];
