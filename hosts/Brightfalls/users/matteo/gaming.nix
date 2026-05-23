@@ -15,6 +15,10 @@
 
   home.file.".config/MangoHud/MangoHud.conf".source = ./MangoHud.conf;
 
+  home.packages = [
+    (pkgs.retroarch.withCores (cores: with cores; [ beetle-psx-hw ]))
+  ];
+
   programs.obs-studio = {
     enable = true;
     package = pkgs.obs-studio;
