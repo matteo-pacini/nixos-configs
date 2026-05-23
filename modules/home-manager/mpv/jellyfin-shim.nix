@@ -58,7 +58,11 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.enable && shimCfg.enable) {
+  # Skip entirely on Darwin: the shim's embedded libmpv backend is broken
+  # upstream on macOS, jellyfin-mpv-shim's python-mpv dep fails to build
+  # because its test suite requires Xvfb, and home-manager cannot manage
+  # launchd agents for auto-start anyway.
+  config = lib.mkIf (cfg.enable && shimCfg.enable && !isDarwin) {
     home.packages = [ pkgs.jellyfin-mpv-shim ];
 
     # Reuse the mpv config tree — single source of truth.
