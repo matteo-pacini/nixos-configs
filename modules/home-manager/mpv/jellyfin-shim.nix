@@ -90,6 +90,11 @@ in
         ExecStart = "${pkgs.jellyfin-mpv-shim}/bin/jellyfin-mpv-shim";
         Restart = "on-failure";
         RestartSec = 5;
+        # Exclude the llvmpipe software rasterizer from Vulkan device
+        # selection — libplacebo / mpv occasionally pick it over a real
+        # GPU on cold start, which drops nnedi3 onto the CPU and renders
+        # at ~1 fps.
+        Environment = [ "MESA_VK_DEVICE_SELECT=!llvmpipe" ];
       };
       Install.WantedBy = [ "graphical-session.target" ];
     };
