@@ -18,7 +18,9 @@ let
       {
         vo = "gpu-next";
         gpu-api = "vulkan";
-        hwdec = "auto-safe";
+        # Explicit vaapi — mature mesa decoder, faster cold init than the
+        # newer Vulkan video decode that auto-safe was selecting.
+        hwdec = "vaapi";
       };
 in
 {
