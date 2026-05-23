@@ -14,7 +14,6 @@ in
     ./bindings.nix
     ./scripts.nix
     ./jellyfin-shim.nix
-    ./exclusive-audio.nix
   ];
 
   options.custom.mpv = {

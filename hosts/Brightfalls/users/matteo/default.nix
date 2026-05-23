@@ -71,7 +71,6 @@
   custom.opencode.enable = true;
   custom.mpv.enable = true;
   custom.mpv.jellyfinShim.enable = true;
-  custom.mpv.exclusiveAudio.enable = true;
   custom.opencode.localLlama = {
     enable = true;
     llamaCppPackage = pkgs.llama-cpp-vulkan;
