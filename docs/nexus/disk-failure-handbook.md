@@ -130,10 +130,19 @@ sudo systemctl stop \
   backup.timer snapraid-scrub.timer \
   restic-backups-config.timer restic-backups-matteo.timer \
   restic-backups-debora.timer restic-backups-fabrizio.timer
-sudo systemctl mask \
+
+# Mask with --runtime (see note below — plain `mask` fails on NixOS).
+sudo systemctl mask --runtime \
   backup.timer snapraid-scrub.timer \
   restic-backups-config.timer restic-backups-matteo.timer \
   restic-backups-debora.timer restic-backups-fabrizio.timer
+
+# Verify masking took — authoritative check is the NEXT column of
+# list-timers; a masked timer will show `-`. Do NOT rely on
+# `systemctl is-enabled`, which only reports the on-disk unit state
+# and will still say "enabled" for a runtime-masked NixOS unit.
+systemctl list-timers --all backup.timer snapraid-scrub.timer 'restic-backups-*.timer'
+ls -la /run/systemd/system/backup.timer    # expect -> /dev/null
 
 # Confirm no backup is currently running.
 sudo systemctl is-active \
@@ -348,8 +357,8 @@ rewritten from scratch). Run in tmux.
 ### A9. Decommission the physical disk
 
 ```bash
-# Re-enable timers stopped in A2.
-sudo systemctl unmask \
+# Re-enable timers stopped in A2 (use --runtime to match the mask).
+sudo systemctl unmask --runtime \
   backup.timer snapraid-scrub.timer \
   restic-backups-config.timer restic-backups-matteo.timer \
   restic-backups-debora.timer restic-backups-fabrizio.timer
@@ -441,6 +450,27 @@ Unmask timers and restart application services as in A9.
 ---
 
 ## Troubleshooting
+
+### `systemctl mask` fails: "File already exists and is a symlink"
+
+NixOS-managed units live in `/etc/systemd/system/<unit>` as symlinks
+into `/nix/store/`. Plain `systemctl mask` tries to overwrite that
+path with a symlink to `/dev/null` and fails because the original
+symlink is already there.
+
+Use `systemctl mask --runtime` instead — it creates the mask under
+`/run/systemd/system/<unit>`, which takes precedence over `/etc/` at
+runtime and doesn't touch the nix-store symlinks. The mask survives
+`nixos-rebuild switch` (which doesn't write to `/run`) but resets on
+reboot, which is exactly the lifetime we want for a maintenance
+window. Unmask with `systemctl unmask --runtime <unit>`.
+
+`systemctl is-enabled` will still report `enabled` for a
+runtime-masked unit because it inspects the on-disk unit file, not
+the runtime override. To confirm the mask is effective, check
+`systemctl list-timers --all` (the `NEXT` column shows `-` for masked
+timers) or list `/run/systemd/system/<unit>` (should be a symlink to
+`/dev/null`).
 
 ### Mergerfs xattr change reverted mid-drain
 
