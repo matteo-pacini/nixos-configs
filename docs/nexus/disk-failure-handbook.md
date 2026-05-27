@@ -289,8 +289,10 @@ errors mid-drain):
 sudo snapraid -d dN -f /path/relative/to/diskN fix
 ```
 
-Never run `snapraid sync` between Phases A3 and A8 — it would
-overwrite parity for the old layout while you are mid-transition.
+Never run `snapraid sync` between Phases A3 and A7 — it would
+overwrite parity for the old layout while files are mid-move. After
+A7 the new layout is committed and A8 is exactly the right time to
+sync.
 
 ### A6. Verify empty
 
@@ -312,8 +314,9 @@ ls /mnt/diskN     # expect only 'lost+found/'
 
 ### A7. Commit the nix layout change
 
-Edit the three files listed in the [Quick reference](#quick-reference-files-touched-during-a-retirement)
-at the top. For the `diskNumbers` filter, use:
+Edit the three nix files listed in the [Quick reference](#quick-reference-files-touched-during-a-retirement)
+at the top (the doc updates listed there are handled in A9). For the
+`diskNumbers` filter, use:
 
 ```nix
 # diskN drained YYYY-MM-DD — <one-line reason>
@@ -539,12 +542,6 @@ to direct-disk rsync (A4–A5).
 parity into its original location on the source disk, then resume the
 rsync. `--remove-source-files` ensures rsync will not re-attempt files
 it already moved.
-
-### `snapraid sync` complains about block-size mismatch
-
-`md127: echo current LBS to md/logical_block_size` appears at boot
-when the SSDs report a different LBS than expected. Unrelated to the
-drain — see kernel docs for the workaround.
 
 ---
 

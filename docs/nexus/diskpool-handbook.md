@@ -27,8 +27,8 @@
 │       LUKS        │       LUKS        │       LUKS        │       LUKS        │       LUKS        │       LUKS        │       LUKS        │       LUKS        │       LUKS        │
 │ acc41b71-316b-... │ 5f612cb9-5386-... │ 46707d5b-8251-... │ 468f45f0-1ec1-... │ 3af3cf56-3141-... │ bea58b71-f5e1-... │ 5c754299-f3d7-... │ 58caf63b-4142-... │ 293952af-363d-... │
 ├───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┤
-│ 9.1TB Seagate     │ 9.1TB WDC         │ 9.1TB Seagate     │ 7.3TB WDC         │ 9.1TB Seagate     │ 7.3TB WDC         │ 9.1TB WDC         │ 7.3TB WDC         │ 9.1TB WDC         │
-│ Barracuda Pro     │ WD101EMAZ-11G7DA0 │ Barracuda Pro     │ WD80EFAX-68KNBN0  │ Barracuda Pro     │ WD80EFAX-68LHPN0  │ WD101EDBZ-11B1DA0 │ WD80EFAX-68LHPN0  │ WD101EDBZ-11B1DA0 │
+│ 9.1TB NETAPP      │ 9.1TB NETAPP      │ 9.1TB WDC         │ 7.3TB WDC         │ 7.3TB WDC         │ 7.3TB WDC         │ 7.3TB WDC         │ 9.1TB WDC         │ 9.1TB WDC         │
+│ X377_HLBRE10TA07  │ X377_HLBRE10TA07  │ WD101EMAZ-11G7DA0 │ WD80EFAX-68KNBN0  │ WD80EFAX-68KNBN0  │ WD80EFAX-68LHPN0  │ WD80EFAX-68LHPN0  │ WD101EDBZ-11B1DA0 │ WD101EDBZ-11B1DA0 │
 └───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -46,7 +46,7 @@
 
 ## LUKS Encryption
 
-Each data disk (disk0–disk9) is encrypted with LUKS2:
+Each data disk (disk0, disk2–disk9) is encrypted with LUKS2:
 
 | Parameter | Value |
 |-----------|-------|
@@ -81,15 +81,15 @@ All data and parity disks use ext4:
 
 ## mergerfs Pool
 
-The `/diskpool` mount combines all 10 data disks into a unified namespace:
+The `/diskpool` mount combines all 9 data disks into a unified namespace:
 
 | Option | Value | Description |
 |--------|-------|-------------|
 | `allow_other` | enabled | Allow non-root users to access |
-| `cache.files` | partial | Partial file caching for performance |
-| `dropcacheonclose` | true | Free cache when files are closed |
 | `category.create` | mfs | New files go to disk with **most free space** |
 | `posix_acl` | true | Enable POSIX ACLs |
+| `moveonenospc` | true | Fall over to another branch if a write hits ENOSPC mid-write |
+| `minfreespace` | 300G | Hard floor — `mfs` will skip any branch with less than this free |
 
 **Configuration**: `hosts/Nexus/hardware-extra.nix`
 
@@ -120,17 +120,19 @@ With dual parity, SnapRAID can recover from up to **2 simultaneous data-disk fai
 
 ### Data Disks (LUKS encrypted)
 
-| Mountpoint | Capacity | Model | LUKS UUID |
-|------------|----------|-------|-----------|
-| `/mnt/disk0` | 9.1TB | Seagate Barracuda Pro (X377_HLBRE10TA07) | `acc41b71-316b-45d8-8f0b-7451f07704e5` |
-| `/mnt/disk2` | 9.1TB | WDC Red Pro (WD101EMAZ-11G7DA0) | `5f612cb9-5386-4bad-9ac7-63cc5297886a` |
-| `/mnt/disk3` | 9.1TB | Seagate Barracuda Pro (X377_HLBRE10TA07) | `46707d5b-8251-4b0d-b1b1-5342e5b869cc` |
-| `/mnt/disk4` | 7.3TB | WDC Red Pro (WD80EFAX-68KNBN0) | `468f45f0-1ec1-4345-ac77-54bb16a5c064` |
-| `/mnt/disk5` | 9.1TB | Seagate Barracuda Pro (X377_HLBRE10TA07) | `3af3cf56-3141-422b-9de3-06b0849bf7ca` |
-| `/mnt/disk6` | 7.3TB | WDC Red Pro (WD80EFAX-68LHPN0) | `bea58b71-f5e1-4406-8312-70c8ee850536` |
-| `/mnt/disk7` | 9.1TB | WDC Red Pro (WD101EDBZ-11B1DA0) | `5c754299-f3d7-42ad-9156-35c97c70a269` |
-| `/mnt/disk8` | 7.3TB | WDC Red Pro (WD80EFAX-68LHPN0) | `58caf63b-4142-45ab-8392-ba02cc4a86f3` |
-| `/mnt/disk9` | 9.1TB | WDC Red Pro (WD101EDBZ-11B1DA0) | `293952af-363d-4ca1-bb74-23e22d67b393` |
+Verified against `udevadm info` 2026-05-27; supersedes earlier stale entries.
+
+| Mountpoint | Capacity | Vendor / Model | LUKS UUID |
+|------------|----------|----------------|-----------|
+| `/mnt/disk0` | 9.1TB | NETAPP X377_HLBRE10TA07 (HGST He10 SAS) | `acc41b71-316b-45d8-8f0b-7451f07704e5` |
+| `/mnt/disk2` | 9.1TB | NETAPP X377_HLBRE10TA07 (HGST He10 SAS) | `5f612cb9-5386-4bad-9ac7-63cc5297886a` |
+| `/mnt/disk3` | 9.1TB | WDC WD101EMAZ-11G7DA0 (white-label He10 SATA) | `46707d5b-8251-4b0d-b1b1-5342e5b869cc` |
+| `/mnt/disk4` | 7.3TB | WDC WD80EFAX-68KNBN0 (Red 8TB SATA) | `468f45f0-1ec1-4345-ac77-54bb16a5c064` |
+| `/mnt/disk5` | 7.3TB | WDC WD80EFAX-68KNBN0 (Red 8TB SATA) | `3af3cf56-3141-422b-9de3-06b0849bf7ca` |
+| `/mnt/disk6` | 7.3TB | WDC WD80EFAX-68LHPN0 (Red 8TB SATA) | `bea58b71-f5e1-4406-8312-70c8ee850536` |
+| `/mnt/disk7` | 7.3TB | WDC WD80EFAX-68LHPN0 (Red 8TB SATA) | `5c754299-f3d7-42ad-9156-35c97c70a269` |
+| `/mnt/disk8` | 9.1TB | WDC WD101EDBZ-11B1DA0 (Red Pro 10TB SATA) | `58caf63b-4142-45ab-8392-ba02cc4a86f3` |
+| `/mnt/disk9` | 9.1TB | WDC WD101EDBZ-11B1DA0 (Red Pro 10TB SATA) | `293952af-363d-4ca1-bb74-23e22d67b393` |
 
 ### Parity Disks (unencrypted ext4)
 
@@ -143,8 +145,10 @@ With dual parity, SnapRAID can recover from up to **2 simultaneous data-disk fai
 
 | Metric | Value |
 |--------|-------|
-| Raw capacity | ~76TB (9 data + 2 parity) |
-| Usable capacity | ~66TB (with dual parity protection) |
+| Data capacity | ~75TB (5×9.1TB + 4×7.3TB across 9 disks) |
+| Parity capacity | ~18TB (2×9.1TB; separate disks, not subtracted from usable) |
+| Usable for storage | ~75TB |
+| Failure tolerance | 2 simultaneous data-disk failures |
 
 ---
 
