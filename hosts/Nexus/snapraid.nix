@@ -5,7 +5,9 @@
   ...
 }:
 let
-  diskNumbers = lib.range 0 9;
+  # disk1 drained 2026-05-27 — failing SMART self-tests; see hardware-extra.nix
+  # diskNumbers = lib.range 0 9;
+  diskNumbers = lib.filter (n: n != 1) (lib.range 0 9);
   envFile = config.age.secrets."nexus/janitor.env".path;
 in
 {
