@@ -8,12 +8,10 @@ _:
   custom.ssh = {
     enable = true;
     nexus.enable = true;
-    extraMatchBlocks."fpnas" = {
-      extraOptions = {
-        HostName = "fpnas3.tailadca8a.ts.net";
-        User = "fabrizio";
-        Port = "2812";
-      };
+    extraSettings."fpnas" = {
+      HostName = "fpnas3.tailadca8a.ts.net";
+      User = "fabrizio";
+      Port = "2812";
     };
   };
 }

@@ -40,10 +40,10 @@ in
         description = "Path to GitHub identity file";
       };
     };
-    extraMatchBlocks = lib.mkOption {
+    extraSettings = lib.mkOption {
       type = lib.types.attrsOf lib.types.attrs;
       default = { };
-      description = "Additional SSH match blocks";
+      description = "Additional SSH `programs.ssh.settings` blocks (directives written directly, no `extraOptions` wrapper).";
     };
   };
 
@@ -53,18 +53,18 @@ in
         programs.ssh = {
           enable = true;
           enableDefaultConfig = false;
-          matchBlocks."*" = {
-            forwardAgent = false;
-            addKeysToAgent = cfg.addKeysToAgent;
-            compression = true;
-            serverAliveInterval = 0;
-            serverAliveCountMax = 3;
-            hashKnownHosts = false;
-            userKnownHostsFile = "~/.ssh/known_hosts";
-            controlMaster = "no";
-            controlPath = "~/.ssh/master-%r@%n:%p";
-            controlPersist = "no";
-            identitiesOnly = cfg.identitiesOnly;
+          settings."*" = {
+            ForwardAgent = false;
+            AddKeysToAgent = cfg.addKeysToAgent;
+            Compression = true;
+            ServerAliveInterval = 0;
+            ServerAliveCountMax = 3;
+            HashKnownHosts = false;
+            UserKnownHostsFile = "~/.ssh/known_hosts";
+            ControlMaster = "no";
+            ControlPath = "~/.ssh/master-%r@%n:%p";
+            ControlPersist = "no";
+            IdentitiesOnly = cfg.identitiesOnly;
           };
         };
       }
@@ -72,73 +72,59 @@ in
         programs.ssh.extraConfig = cfg.extraConfig;
       })
       (lib.mkIf cfg.nexus.enable {
-        programs.ssh.matchBlocks."nexus" = {
-          extraOptions = {
-            HostName = "nexus.home.internal";
-            User = "matteo";
-            IdentityFile = "~/.ssh/nexus";
-            Port = "1788";
-          };
+        programs.ssh.settings."nexus" = {
+          HostName = "nexus.home.internal";
+          User = "matteo";
+          IdentityFile = "~/.ssh/nexus";
+          Port = "1788";
         };
       })
       (lib.mkIf cfg.nexus.tailscaleAliases {
-        programs.ssh.matchBlocks."nexus-ts" = {
-          extraOptions = {
-            HostName = "nexus-ts.walrus-draconis.ts.net";
-            User = "matteo";
-            IdentityFile = "~/.ssh/nexus";
-            Port = "1788";
-          };
+        programs.ssh.settings."nexus-ts" = {
+          HostName = "nexus-ts.walrus-draconis.ts.net";
+          User = "matteo";
+          IdentityFile = "~/.ssh/nexus";
+          Port = "1788";
         };
       })
       (lib.mkIf cfg.brightfalls.enable {
-        programs.ssh.matchBlocks."brightfalls" = {
-          extraOptions = {
-            HostName = "brightfalls.home.internal";
-            User = "matteo";
-            IdentityFile = "~/.ssh/brightfalls";
-            Port = "1788";
-          };
+        programs.ssh.settings."brightfalls" = {
+          HostName = "brightfalls.home.internal";
+          User = "matteo";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "1788";
         };
-        programs.ssh.matchBlocks."brightfalls-stage1" = {
-          extraOptions = {
-            HostName = "brightfalls.home.internal";
-            User = "root";
-            IdentityFile = "~/.ssh/brightfalls";
-            Port = "2222";
-          };
+        programs.ssh.settings."brightfalls-stage1" = {
+          HostName = "brightfalls.home.internal";
+          User = "root";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "2222";
         };
       })
       (lib.mkIf cfg.brightfalls.tailscaleAliases {
-        programs.ssh.matchBlocks."brightfalls-ts" = {
-          extraOptions = {
-            HostName = "brightfalls-ts.walrus-draconis.ts.net";
-            User = "matteo";
-            IdentityFile = "~/.ssh/brightfalls";
-            Port = "1788";
-          };
+        programs.ssh.settings."brightfalls-ts" = {
+          HostName = "brightfalls-ts.walrus-draconis.ts.net";
+          User = "matteo";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "1788";
         };
-        programs.ssh.matchBlocks."brightfalls-ts-stage1" = {
-          extraOptions = {
-            HostName = "brightfalls.home.internal";
-            User = "root";
-            IdentityFile = "~/.ssh/brightfalls";
-            Port = "2222";
-            ProxyJump = "nexus-ts";
-          };
+        programs.ssh.settings."brightfalls-ts-stage1" = {
+          HostName = "brightfalls.home.internal";
+          User = "root";
+          IdentityFile = "~/.ssh/brightfalls";
+          Port = "2222";
+          ProxyJump = "nexus-ts";
         };
       })
       (lib.mkIf cfg.github.enable {
-        programs.ssh.matchBlocks."github.com" = {
-          extraOptions = {
-            HostName = "github.com";
-            User = "git";
-            IdentityFile = cfg.github.identityFile;
-          };
+        programs.ssh.settings."github.com" = {
+          HostName = "github.com";
+          User = "git";
+          IdentityFile = cfg.github.identityFile;
         };
       })
-      (lib.mkIf (cfg.extraMatchBlocks != { }) {
-        programs.ssh.matchBlocks = cfg.extraMatchBlocks;
+      (lib.mkIf (cfg.extraSettings != { }) {
+        programs.ssh.settings = cfg.extraSettings;
       })
     ]
   );
