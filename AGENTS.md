@@ -37,6 +37,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **Don't use `nix flake check` as a blanket validation.** It tries to build every output and fails on cross-platform configs from your current host. Use the targeted `nix build` (local platform) + `nix eval` (foreign platform) commands above instead.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
 - CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
+- **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update both `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
 
 ## Hosts
 
