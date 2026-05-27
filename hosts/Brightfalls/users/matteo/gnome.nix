@@ -5,6 +5,8 @@
 }:
 with lib.hm.gvariant;
 {
+  xdg.configFile."monitors.xml".source = ../../monitors.xml;
+
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
