@@ -344,44 +344,71 @@ After switch, `/etc/snapraid.conf` no longer lists the disk, and the
 mergerfs mount no longer includes it (matching the runtime state from
 A3).
 
+**What `nixos-rebuild switch` does automatically — important:**
+
+- **Unmounts** the removed `fileSystems."/mnt/diskN"` entry. You do
+  *not* need to `umount /mnt/diskN` manually afterwards.
+- **Restarts** application services that were merely `stop`ped (not
+  permanently disabled) in A2, because the new generation still
+  enables them. The pool comes back online for normal use.
+- **Resets the `--runtime` timer masks** from A2 — the timers get
+  re-armed by the activation script. If you need the timers to stay
+  masked past the switch, re-run `systemctl mask --runtime …` after
+  the rebuild.
+- Does **not** close the LUKS mapping — `/dev/mapper/diskN` will
+  still exist until A9.
+
+Practical consequence: by the time `switch` finishes, the only
+operational artefacts left are the open LUKS mapping (handled in A9)
+and out-of-date parity (handled in A8).
+
 ### A8. Re-sync SnapRAID against the new layout
 
+Parity needs to be rewritten against the new disk set. Two options;
+either is fine.
+
+**Option 1 — let the nightly backup do it.** `backup.timer` already
+runs `snapraid --force-zero sync` as the final step of its job (see
+`hosts/Nexus/services/backup.nix`), with the same service-stop/start
+orchestration that the daily backup uses. After the rebuild in A7 the
+timer is armed again, so just wait for the next 03:00 firing. You
+get a Telegram notification when it completes.
+
+**Option 2 — run it manually now.** Faster feedback, but it'll
+contend for I/O with whatever services started back up in A7.
+
 ```bash
-sudo snapraid sync       # rewrites parity for the 9-disk layout
+tmux new -s sync
+sudo snapraid sync       # rewrites parity for the new layout
 sudo snapraid status     # confirm clean
 ```
 
-This is the long step (multiple hours — both parity disks are
-rewritten from scratch). Run in tmux.
+Multiple hours either way — both parity disks are rewritten from
+scratch.
 
 ### A9. Decommission the physical disk
 
+By this point `switch` has already unmounted `/mnt/diskN` and brought
+services + timers back online (see A7). The only outstanding state is
+the open LUKS mapping.
+
 ```bash
-# Re-enable timers stopped in A2 (use --runtime to match the mask).
-sudo systemctl unmask --runtime \
-  backup.timer snapraid-scrub.timer \
-  restic-backups-config.timer restic-backups-matteo.timer \
-  restic-backups-debora.timer restic-backups-fabrizio.timer
-sudo systemctl start \
-  backup.timer snapraid-scrub.timer \
-  restic-backups-config.timer restic-backups-matteo.timer \
-  restic-backups-debora.timer restic-backups-fabrizio.timer
+# Sanity check — should already be unmounted by the rebuild.
+mount | grep "/mnt/diskN" || echo "(unmounted)"
 
-# Restart application services.
-sudo systemctl start \
-  jellyfin nzbget nzbhydra2 radarr sonarr \
-  paperless-web paperless-scheduler paperless-consumer paperless-task-queue \
-  phpfpm-nextcloud nginx
-sudo systemctl start podman-compose-nexus-n8n-root.target
-sudo systemctl start nextcloud-cron.timer nextcloud-scan-external.timer
-sudo systemctl start home-assistant mosquitto zigbee2mqtt
-
-# Take the disk offline.
-sudo umount /mnt/diskN
+# Close the LUKS mapping (not done automatically by switch).
 sudo cryptsetup close diskN
+
+# Verify gone.
+ls /dev/mapper/diskN 2>&1   # expect "No such file or directory"
 
 # Hot-pull is supported on the BP13G+EXP backplane.
 ```
+
+If you stopped any services manually in A2 that the rebuild did not
+restart (for example if you `disable`d them rather than just
+`stop`ped), start them now. Likewise re-mask any timers you re-masked
+post-rebuild for the manual sync window.
 
 Update `diskpool-handbook.md`:
 
@@ -401,6 +428,12 @@ the disk count constant.
 
 Same as A2 — in particular, `backup.timer` must be masked so it does
 not run `snapraid sync` while the array is in a degraded state.
+
+Note: if Phase B3 requires a `nixos-rebuild switch` (you generated a
+new LUKS UUID instead of reusing the existing one), the switch will
+re-arm the `--runtime` masks. Re-run `systemctl mask --runtime …`
+immediately after the rebuild and before starting B4. See the
+Troubleshooting section for context.
 
 ### B2. Physically replace the disk
 
@@ -459,11 +492,18 @@ path with a symlink to `/dev/null` and fails because the original
 symlink is already there.
 
 Use `systemctl mask --runtime` instead — it creates the mask under
-`/run/systemd/system/<unit>`, which takes precedence over `/etc/` at
-runtime and doesn't touch the nix-store symlinks. The mask survives
-`nixos-rebuild switch` (which doesn't write to `/run`) but resets on
-reboot, which is exactly the lifetime we want for a maintenance
-window. Unmask with `systemctl unmask --runtime <unit>`.
+`/run/systemd/system/<unit>`, which doesn't touch the nix-store
+symlinks. Unmask with `systemctl unmask --runtime <unit>`.
+
+**Caveat observed in practice (May 2026 drain):** the `--runtime`
+mask is reset by `nixos-rebuild switch`. The symlinks under `/run/`
+may still appear to exist after the switch, but `systemctl
+list-timers` shows the timers re-armed with real NEXT firings. If you
+need the timers to stay masked across a rebuild, re-run `systemctl
+mask --runtime …` after the switch. The cleaner alternative is to
+plan the procedure so the switch is the final action and the
+re-armed timers are exactly what you want (the nightly backup at
+03:00 will then run `snapraid sync` for you).
 
 `systemctl is-enabled` will still report `enabled` for a
 runtime-masked unit because it inspects the on-disk unit file, not
