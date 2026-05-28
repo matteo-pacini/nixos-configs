@@ -11,7 +11,7 @@ let
   # https://code.claude.com/docs/en/model-config#adjust-effort-level
   # Keys are values passed to `claude --model` — aliases auto-track the latest
   # version (https://code.claude.com/docs/en/model-config#model-aliases); pin
-  # a full model ID (e.g. "claude-opus-4-6") when you need a specific version.
+  # a full model ID (e.g. "claude-opus-4-8") when you need a specific version.
   # Empty list = model does not support --effort.
   modelEfforts = {
     opus = [
@@ -28,12 +28,6 @@ let
       "max"
     ];
     haiku = [ ];
-    "claude-opus-4-6" = [
-      "low"
-      "medium"
-      "high"
-      "max"
-    ];
   };
 
   # Maps each modelEfforts key to the slug used in the shell alias name
@@ -43,7 +37,6 @@ let
     opus = "opus";
     sonnet = "sonnet";
     haiku = "haiku";
-    "claude-opus-4-6" = "opus46";
   };
 
   # Whether each model supports the 1M-token context window. Source:
@@ -54,7 +47,6 @@ let
     opus = true;
     sonnet = true;
     haiku = false;
-    "claude-opus-4-6" = true;
   };
 
   # Generate `claude-<slug>[-<effort>]` for the default context window, plus
