@@ -120,29 +120,27 @@ sudo lsof +D /diskpool 2>/dev/null | awk 'NR>1 {print $1}' | sort -u
 
 Cross-reference with `hosts/Nexus/services/backup.nix` — that file
 already enumerates the services that the nightly backup stops, which
-is exactly the set we need to stop here. **Critically, mask
+is exactly the set we need to stop here. **Critically, stop
 `backup.timer` first** — its job ends with `snapraid sync`, which
 would corrupt parity if it ran mid-drain.
 
 ```bash
-# Timers that would fire during the drain window.
+# Stop all timers that would fire during the drain window. `stop` is
+# the right tool here — see the Troubleshooting section below for why
+# `systemctl mask` (with or without --runtime) does not work on
+# NixOS-managed units. Stopping disarms the timer; it will stay
+# disarmed until something triggers a re-arm (a `nixos-rebuild
+# switch`, a reboot, or `systemctl start`).
 sudo systemctl stop \
   backup.timer snapraid-scrub.timer \
   restic-backups-config.timer restic-backups-matteo.timer \
-  restic-backups-debora.timer restic-backups-fabrizio.timer
+  restic-backups-debora.timer restic-backups-fabrizio.timer \
+  nextcloud-cron.timer nextcloud-scan-external.timer
 
-# Mask with --runtime (see note below — plain `mask` fails on NixOS).
-sudo systemctl mask --runtime \
-  backup.timer snapraid-scrub.timer \
-  restic-backups-config.timer restic-backups-matteo.timer \
-  restic-backups-debora.timer restic-backups-fabrizio.timer
-
-# Verify masking took — authoritative check is the NEXT column of
-# list-timers; a masked timer will show `-`. Do NOT rely on
-# `systemctl is-enabled`, which only reports the on-disk unit state
-# and will still say "enabled" for a runtime-masked NixOS unit.
-systemctl list-timers --all backup.timer snapraid-scrub.timer 'restic-backups-*.timer'
-ls -la /run/systemd/system/backup.timer    # expect -> /dev/null
+# Verify — the NEXT column of list-timers must show `-` for every
+# stopped timer. Do NOT rely on `systemctl is-enabled`; it reports
+# the on-disk unit state and will still say "enabled".
+systemctl list-timers --all backup.timer snapraid-scrub.timer 'restic-backups-*.timer' nextcloud-cron.timer nextcloud-scan-external.timer
 
 # Confirm no backup is currently running.
 sudo systemctl is-active \
@@ -160,8 +158,6 @@ sudo systemctl stop \
   paperless-web paperless-scheduler paperless-consumer paperless-task-queue \
   phpfpm-nextcloud nginx
 sudo systemctl stop podman-compose-nexus-n8n-root.target
-sudo systemctl stop \
-  nextcloud-cron.timer nextcloud-scan-external.timer
 sudo systemctl stop \
   nextcloud-cron.service nextcloud-scan-external.service 2>/dev/null || true
 
@@ -354,10 +350,12 @@ A3).
 - **Restarts** application services that were merely `stop`ped (not
   permanently disabled) in A2, because the new generation still
   enables them. The pool comes back online for normal use.
-- **Resets the `--runtime` timer masks** from A2 — the timers get
-  re-armed by the activation script. If you need the timers to stay
-  masked past the switch, re-run `systemctl mask --runtime …` after
-  the rebuild.
+- **Re-arms the timers stopped in A2.** The activation script
+  reloads systemd and the timers come back to their armed state.
+  If you need them stopped past the switch (e.g. you're about to
+  run `snapraid sync` manually in A8 and don't want `backup.timer`
+  firing in the middle of it), re-run the `systemctl stop ...` from
+  A2 immediately after the rebuild completes.
 - Does **not** close the LUKS mapping — `/dev/mapper/diskN` will
   still exist until A9.
 
@@ -434,8 +432,16 @@ ls /dev/mapper/diskN 2>&1   # expect "No such file or directory"
 
 If you stopped any services manually in A2 that the rebuild did not
 restart (for example if you `disable`d them rather than just
-`stop`ped), start them now. Likewise re-mask any timers you re-masked
-post-rebuild for the manual sync window.
+`stop`ped), start them now. Likewise restart any timers you stopped
+post-rebuild for the manual sync window in A8:
+
+```bash
+sudo systemctl start \
+  backup.timer snapraid-scrub.timer \
+  restic-backups-config.timer restic-backups-matteo.timer \
+  restic-backups-debora.timer restic-backups-fabrizio.timer \
+  nextcloud-cron.timer nextcloud-scan-external.timer
+```
 
 Update `diskpool-handbook.md`:
 
@@ -453,14 +459,15 @@ the disk count constant.
 
 ### B1. Quiesce writers
 
-Same as A2 — in particular, `backup.timer` must be masked so it does
-not run `snapraid sync` while the array is in a degraded state.
+Same as A2 — in particular, `backup.timer` must be stopped so it
+does not run `snapraid sync` while the array is in a degraded state.
 
 Note: if Phase B3 requires a `nixos-rebuild switch` (you generated a
-new LUKS UUID instead of reusing the existing one), the switch will
-re-arm the `--runtime` masks. Re-run `systemctl mask --runtime …`
+new LUKS UUID instead of reusing the existing one), the switch
+re-arms every stopped timer. Re-run the `systemctl stop ...` from A2
 immediately after the rebuild and before starting B4. See the
-Troubleshooting section for context.
+Troubleshooting section for why `systemctl mask` is not an option on
+NixOS-managed units.
 
 ### B2. Physically replace the disk
 
@@ -505,39 +512,39 @@ sudo snapraid sync            # bring parity back into a clean state
 
 ### B5. Restore writers
 
-Unmask timers and restart application services as in A9.
+Restart timers and application services as in A9.
 
 ---
 
 ## Troubleshooting
 
-### `systemctl mask` fails: "File already exists and is a symlink"
+### `systemctl mask` does not work on NixOS-managed units
 
-NixOS-managed units live in `/etc/systemd/system/<unit>` as symlinks
-into `/nix/store/`. Plain `systemctl mask` tries to overwrite that
-path with a symlink to `/dev/null` and fails because the original
-symlink is already there.
+NixOS materialises every unit as a symlink at
+`/etc/systemd/system/<unit>` pointing into `/nix/store`. Plain
+`systemctl mask` tries to overwrite that path with `/dev/null` and
+fails because the file already exists. `systemctl mask --runtime`
+appears to succeed (it places `/run/systemd/system/<unit>` →
+`/dev/null`) but is silently ignored at runtime: systemd's unit-file
+search order puts `/etc/systemd/system` *before* `/run/systemd/system`,
+so the real `/etc/` unit wins. `systemctl list-timers` continues to
+show the timer armed, and `systemctl show -p LoadState` returns
+`loaded` (not `masked`) with `FragmentPath` pointing into `/etc/`.
 
-Use `systemctl mask --runtime` instead — it creates the mask under
-`/run/systemd/system/<unit>`, which doesn't touch the nix-store
-symlinks. Unmask with `systemctl unmask --runtime <unit>`.
+**Use `systemctl stop` to disarm a NixOS-managed timer instead.**
+Stopping disarms the timer and makes its `NEXT` column show `-`. It
+will stay stopped until something triggers a re-arm. The two
+practical re-arm triggers in this procedure are:
 
-**Caveat observed in practice (May 2026 drain):** the `--runtime`
-mask is reset by `nixos-rebuild switch`. The symlinks under `/run/`
-may still appear to exist after the switch, but `systemctl
-list-timers` shows the timers re-armed with real NEXT firings. If you
-need the timers to stay masked across a rebuild, re-run `systemctl
-mask --runtime …` after the switch. The cleaner alternative is to
-plan the procedure so the switch is the final action and the
-re-armed timers are exactly what you want (the nightly backup at
-03:00 will then run `snapraid sync` for you).
+- `nixos-rebuild switch` — the activation script reloads systemd and
+  brings enabled timers back to their armed state. See A7's
+  "What `nixos-rebuild switch` does automatically" subsection.
+- An explicit `systemctl start <timer>`.
 
-`systemctl is-enabled` will still report `enabled` for a
-runtime-masked unit because it inspects the on-disk unit file, not
-the runtime override. To confirm the mask is effective, check
-`systemctl list-timers --all` (the `NEXT` column shows `-` for masked
-timers) or list `/run/systemd/system/<unit>` (should be a symlink to
-`/dev/null`).
+If you need a timer to stay disabled past a `nixos-rebuild switch`,
+either re-run `systemctl stop` immediately after the rebuild, or
+disable the timer in the nix module itself (more invasive, but
+survives rebuilds and reboots).
 
 ### `snapraid sync` fails: "Error decoding … at offset N"
 
