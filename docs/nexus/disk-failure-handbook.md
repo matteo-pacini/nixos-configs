@@ -367,27 +367,51 @@ and out-of-date parity (handled in A8).
 
 ### A8. Re-sync SnapRAID against the new layout
 
-Parity needs to be rewritten against the new disk set. Two options;
-either is fine.
+**The first sync after retirement cannot use the post-rebuild nix
+config directly.** SnapRAID's content file still has block records
+for the removed disk, and it refuses to silently drop them — `sync`
+fails immediately with a misleading "Error decoding … at offset N"
+followed by "Disk 'dN' … not present in the configuration file". The
+`--force-zero` flag (which `backup.nix` already passes) is not
+sufficient, and `--force-empty` on its own only applies to disks
+*still listed* in the config but empty.
 
-**Option 1 — let the nightly backup do it.** `backup.timer` already
-runs `snapraid --force-zero sync` as the final step of its job (see
-`hosts/Nexus/services/backup.nix`), with the same service-stop/start
-orchestration that the daily backup uses. After the rebuild in A7 the
-timer is armed again, so just wait for the next 03:00 firing. You
-get a Telegram notification when it completes.
-
-**Option 2 — run it manually now.** Faster feedback, but it'll
-contend for I/O with whatever services started back up in A7.
+The supported workaround is to run a one-time sync against a
+**temporary config** that re-introduces the removed disk pointing at
+an empty placeholder. SnapRAID then rewrites the content file
+without that disk's records, after which the nix-managed config
+works normally.
 
 ```bash
+# 1. Empty placeholder for the removed disk.
+sudo mkdir -p /tmp/empty-diskN
+
+# 2. Temp config = nix-generated config + a placeholder data line.
+{ cat /etc/snapraid.conf; echo; echo 'data dN /tmp/empty-diskN'; } \
+  | sudo tee /tmp/snapraid-resync.conf >/dev/null
+
+# 3. Verify (data dN /tmp/empty-diskN should be the last data line).
+grep -E '^(data|content|parity|2-parity)' /tmp/snapraid-resync.conf
+ls /tmp/empty-diskN     # should be empty
+
+# 4. Sync. BOTH flags are required: --force-zero (allow zero blocks)
+#    and --force-empty (allow sync of the placeholder empty disk).
 tmux new -s sync
-sudo snapraid sync       # rewrites parity for the new layout
-sudo snapraid status     # confirm clean
+sudo snapraid -c /tmp/snapraid-resync.conf --force-zero --force-empty sync
+sudo snapraid -c /tmp/snapraid-resync.conf status   # confirm clean
+
+# 5. Cleanup after success.
+rm /tmp/snapraid-resync.conf
+rmdir /tmp/empty-diskN
 ```
 
-Multiple hours either way — both parity disks are rewritten from
+Multiple hours wall time — both parity disks are rewritten from
 scratch.
+
+After this one-time sync completes, the nix-managed `/etc/snapraid.conf`
+(which does not list `dN`) is valid on its own and the nightly
+`backup.timer` job will succeed the next time it runs. No further
+manual intervention is needed.
 
 ### A9. Decommission the physical disk
 
@@ -514,6 +538,26 @@ the runtime override. To confirm the mask is effective, check
 `systemctl list-timers --all` (the `NEXT` column shows `-` for masked
 timers) or list `/run/systemd/system/<unit>` (should be a symlink to
 `/dev/null`).
+
+### `snapraid sync` fails: "Error decoding … at offset N"
+
+Full message:
+
+```
+Error decoding '/mnt/diskX/snapraid.content' at offset N
+The CRC of the file is correct!
+Disk 'dN' with uuid '<uuid>' not present in the configuration file!
+If you have removed it from the configuration file, please restore it
+```
+
+The "Error decoding at offset N" wording is misleading — the file is
+intact (note "The CRC of the file is correct"). The real complaint
+is the follow-up line: SnapRAID's content file still references a
+disk that no longer appears in the config. `--force-zero` alone (the
+default in `backup.nix`) is not enough to proceed. Fix this with the
+temp-config workaround in [Phase A8](#a8-re-sync-snapraid-against-the-new-layout)
+— it's a one-time operation per disk removal, after which the
+nix-managed config works on its own.
 
 ### Mergerfs xattr change reverted mid-drain
 
