@@ -13,7 +13,8 @@ in
 {
   # Nexus disk encryption secrets
   "nexus/disk0.age".publicKeys = [ nexus ];
-  "nexus/disk1.age".publicKeys = [ nexus ];
+  # disk1 drained 2026-05-27 — see hosts/Nexus/hardware-extra.nix
+  # "nexus/disk1.age".publicKeys = [ nexus ];
   "nexus/disk2.age".publicKeys = [ nexus ];
   "nexus/disk3.age".publicKeys = [ nexus ];
   "nexus/disk4.age".publicKeys = [ nexus ];

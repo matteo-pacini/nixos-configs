@@ -1,6 +1,9 @@
 { lib, config, ... }:
 let
-  diskNumbers = lib.range 0 9;
+  # disk1 (sda) drained 2026-05-27 — repeated SMART Background self-test
+  # failures (segment 3, no LBA). Data redistributed to disk0/2/3/8.
+  # diskNumbers = lib.range 0 9;
+  diskNumbers = lib.filter (n: n != 1) (lib.range 0 9);
   mountPoints = map (n: "/mnt/disk${toString n}") diskNumbers;
 
   diskMounts = lib.listToAttrs (
@@ -27,7 +30,8 @@ in
 
   environment.etc.crypttab.text = ''
     disk0   UUID=acc41b71-316b-45d8-8f0b-7451f07704e5   ${config.age.secrets."nexus/disk0".path}
-    disk1   UUID=10b7a53d-00d7-44b8-a939-81e5e97cb39b   ${config.age.secrets."nexus/disk1".path}
+    # disk1 drained 2026-05-27 — see filter on diskNumbers above
+    # disk1   UUID=10b7a53d-00d7-44b8-a939-81e5e97cb39b   ${config.age.secrets."nexus/disk1".path}
     disk2   UUID=5f612cb9-5386-4bad-9ac7-63cc5297886a   ${config.age.secrets."nexus/disk2".path}
     disk3   UUID=46707d5b-8251-4b0d-b1b1-5342e5b869cc   ${config.age.secrets."nexus/disk3".path}
     disk4   UUID=468f45f0-1ec1-4345-ac77-54bb16a5c064   ${config.age.secrets."nexus/disk4".path}
@@ -45,6 +49,7 @@ in
       options = [
         "defaults"
         "allow_other"
+        # mfs = most-free-space create policy; new writes go to the lightest branch.
         "category.create=mfs"
         "posix_acl=true"
         "moveonenospc=true"
