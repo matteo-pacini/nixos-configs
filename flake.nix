@@ -18,6 +18,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Bleeding-edge nixpkgs master, used only to source a handful of
+    # fast-moving packages (claude-code, rtk, opencode) ahead of the
+    # nixos-unstable pin. Injected via overlays/shared.nix. Bump with
+    # `nix flake update nixpkgs-master`.
+    nixpkgs-master.url = "github:NixOS/nixpkgs/master";
     ################
     # Home Manager #
     ################
@@ -117,7 +122,7 @@
     let
       baseOverlays = [
         inputs.nur.overlays.default
-        (import ./overlays/shared.nix)
+        (import ./overlays/shared.nix { inherit inputs; })
       ];
     in
     {
@@ -386,15 +391,5 @@
         aarch64-linux = inputs.nixpkgs.legacyPackages.aarch64-linux.nixfmt;
         aarch64-darwin = inputs.nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
       };
-
-      packages =
-        inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ]
-          (system: {
-            nvim =
-              (inputs.nvf.lib.neovimConfiguration {
-                pkgs = inputs.nixpkgs.legacyPackages.${system};
-                modules = [ ./modules/nvf ];
-              }).neovim;
-          });
     };
 }
