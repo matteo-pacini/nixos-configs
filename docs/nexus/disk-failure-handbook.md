@@ -414,8 +414,10 @@ manual intervention is needed.
 ### A9. Decommission the physical disk
 
 By this point `switch` has already unmounted `/mnt/diskN` and brought
-services + timers back online (see A7). The only outstanding state is
-the open LUKS mapping.
+services + timers back online (see A7). The outstanding state is the
+open LUKS mapping and the physical drive still slotted in the chassis.
+
+#### A9.1 Detach the FS layer
 
 ```bash
 # Sanity check — should already be unmounted by the rebuild.
@@ -424,11 +426,106 @@ mount | grep "/mnt/diskN" || echo "(unmounted)"
 # Close the LUKS mapping (not done automatically by switch).
 sudo cryptsetup close diskN
 
-# Verify gone.
-ls /dev/mapper/diskN 2>&1   # expect "No such file or directory"
-
-# Hot-pull is supported on the BP13G+EXP backplane.
+# Verify.
+lsblk /dev/sdX                  # expect no children under sdX
+ls /dev/mapper/diskN 2>&1       # expect "No such file or directory"
 ```
+
+After this, `/dev/sdX` is a plain block device with no DM consumers and
+no FS mounted on top. Safe to read; not yet detached from the kernel.
+
+#### A9.2 Identify the physical drive
+
+The Nexus chassis fronts a BP13G+EXP SAS expander backplane via an LSI
+MegaRAID SAS-3 3108 (Invader). Three methods, in order of preference.
+
+**Method 1 — `storcli` locate LED (RAID personality only).**
+
+`storcli` is unfree and not in the system profile; pull it via
+`nix-shell` on demand.
+
+```bash
+# Check personality first.
+NIXPKGS_ALLOW_UNFREE=1 nix-shell --impure -p storcli --command \
+  'sudo storcli /c0 show personality'
+
+# Dump the full PD list and find the row matching sdX's serial. The
+# output is long — capture it to a file.
+NIXPKGS_ALLOW_UNFREE=1 nix-shell --impure -p storcli --command \
+  'sudo storcli /c0/eall/sall show all' | sudo tee /tmp/storcli-pds.txt >/dev/null
+grep -B1 -A2 "SN = <sdX-serial>" /tmp/storcli-pds.txt
+
+# Blink the locate LED. Replace eN/sM with the enclosure/slot found above.
+NIXPKGS_ALLOW_UNFREE=1 nix-shell --impure -p storcli --command \
+  'sudo storcli /c0/eN/sM start locate'
+
+# Stop after identification.
+NIXPKGS_ALLOW_UNFREE=1 nix-shell --impure -p storcli --command \
+  'sudo storcli /c0/eN/sM stop locate'
+```
+
+If `Current Personality` is `HBA`, `start locate` returns:
+
+```
+Status = Failure
+Description = Start Drive Locate Failed.
+…
+ErrCd 255 — Operation not allowed.
+```
+
+Broadcom's 3108 firmware does not proxy SES locate to JBOD drives
+behind a SAS expander in HBA personality, and `start locate force` is
+not a valid token. Switching personality requires a reboot and
+re-imports every JBOD, so it is not worth doing just to blink a LED.
+Fall back to Method 2.
+
+**Method 2 — Activity-LED trick (works regardless of personality).**
+
+Pound the failing disk with sequential reads. Its activity LED blinks
+constantly while every other caddy stays quiet. Safe to run against
+the raw block device once A9.1 has detached the FS layer.
+
+```bash
+while true; do
+  sudo dd if=/dev/sdX of=/dev/null bs=1M count=2000 iflag=direct status=none
+done
+```
+
+`iflag=direct` bypasses the page cache so every loop iteration actually
+hits the platter. Ctrl-C when you have identified the blinking caddy.
+This is what worked in the May 2026 retirement.
+
+**Method 3 — Physical-position counting (fallback).**
+
+`storcli /c0/eall/sall show all` prints slots in physical order
+starting at slot 0. Cross-reference the failing disk's model and
+serial against the neighbouring slots to locate it visually. In the
+May 2026 example, the chassis held three NETAPP X377 drives in
+adjacent slots 0/1/2, with the failing one in slot 1 (the middle of
+the three):
+
+| Slot | Linux name | Model | Serial |
+|------|-----------|-------|--------|
+| s0   | sdf       | NETAPP X377_HLBRE10TA07 | 7PHSNSNG |
+| s1   | sda       | NETAPP X377_HLBRE10TA07 | 7PHSPJ7G (failing) |
+| s2   | sde       | NETAPP X377_HLBRE10TA07 | 7PHSNJKG |
+| s3   | sdc       | WDC WD101EMAZ | VCH3BK7P |
+| …    | …         | … | … |
+
+#### A9.3 Pull the drive
+
+Hot-pull is supported on the BP13G+EXP backplane. Pull the caddy you
+identified, then verify the kernel released the device:
+
+```bash
+ls /dev/sdX 2>&1            # expect "No such file or directory"
+lsblk | grep "^sdX " || echo "(gone)"
+```
+
+The slot will also disappear from `storcli /c0/e32/sM show` once the
+drive is out.
+
+#### A9.4 Restart anything still down
 
 If you stopped any services manually in A2 that the rebuild did not
 restart (for example if you `disable`d them rather than just
@@ -442,6 +539,8 @@ sudo systemctl start \
   restic-backups-debora.timer restic-backups-fabrizio.timer \
   nextcloud-cron.timer nextcloud-scan-external.timer
 ```
+
+#### A9.5 Update the diskpool handbook
 
 Update `diskpool-handbook.md`:
 
