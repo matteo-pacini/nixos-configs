@@ -107,6 +107,6 @@ sudo rm -rf /tmp/restore
 
 - Backups run **daily** via `services.restic.backups.config`
 - PostgreSQL dumps are created by `services.postgresqlBackup`
-- Media files are at `/diskpool/configuration/paperless/documents/` (usually intact)
+- Live media files are at `/diskpool/paperless` (`services.paperless.mediaDir`, usually intact); `/diskpool/configuration/paperless` is the nightly rsync backup copy, not the live tree
 - Restic credentials are managed by **agenix**
 
