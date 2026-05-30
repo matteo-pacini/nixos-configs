@@ -230,7 +230,7 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."nexus/disk0".file = ./secrets/nexus/disk0.age;
-            age.secrets."nexus/disk1".file = ./secrets/nexus/disk1.age;
+            # disk1 drained 2026-05-27 — see hosts/Nexus/hardware-extra.nix
             age.secrets."nexus/disk2".file = ./secrets/nexus/disk2.age;
             age.secrets."nexus/disk3".file = ./secrets/nexus/disk3.age;
             age.secrets."nexus/disk4".file = ./secrets/nexus/disk4.age;
