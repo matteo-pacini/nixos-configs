@@ -110,7 +110,7 @@ SnapRAID provides snapshot-based parity protection:
 
 With dual parity, SnapRAID can recover from up to **2 simultaneous data-disk failures**.
 
-**Note**: The NixOS snapraid-sync and snapraid-scrub timers are disabled; sync is triggered during the backup job.
+**Note**: The NixOS snapraid-sync timer is disabled (sync is triggered during the backup job); the snapraid-scrub timer remains enabled and runs weekly (Sun 06:00).
 
 **Configuration**: `hosts/Nexus/snapraid.nix`
 
