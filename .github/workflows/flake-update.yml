@@ -25,15 +25,18 @@ jobs:
             keep-outputs = true
 
       - name: Update flake inputs
-        run: nix flake update
+        run: |
+          # nix flake update updates every input and prints the per-input
+          # lock changes to stderr; capture them for the PR body.
+          nix flake update 2>&1 | tee /tmp/flake-update.log
 
-      - name: Check for nixpkgs changes
+      - name: Check for changes
         id: check_changes
         run: |
-          if git diff flake.lock | grep -A 20 '"nixpkgs"' | grep -q '^\+'; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
+          if git diff --quiet flake.lock; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Generate update summary
@@ -41,13 +44,13 @@ jobs:
         id: summary
         run: |
           {
-            echo "## Nixpkgs Updated"
+            echo "## Flake inputs updated"
             echo ""
-            echo "The nixpkgs input has been updated to the latest version."
+            echo "Automated weekly \`nix flake update\` — refreshes all inputs."
             echo ""
             echo "### Changes:"
-            echo '```diff'
-            git diff flake.lock | grep -A 5 -B 5 "nixpkgs"
+            echo '```'
+            grep -v '^warning:' /tmp/flake-update.log
             echo '```'
           } > /tmp/pr_body.md
           cat /tmp/pr_body.md >> $GITHUB_STEP_SUMMARY
