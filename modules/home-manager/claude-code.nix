@@ -125,13 +125,15 @@ in
 
     # CLAUDE.md is assembled from numbered fragments so each section can be
     # edited in isolation. Order matches the structure documented in the repo's
-    # root CLAUDE.md: role/tone → RTK reference → workflow → git → non-negotiables.
+    # root CLAUDE.md: role/tone → RTK reference → workflow → simplicity → git →
+    # non-negotiables.
     home.file.".claude/CLAUDE.md".text = lib.concatStringsSep "\n" [
       (builtins.readFile ./claude-code/claude-md/01-role-tone.md)
       "@RTK.md\n"
       (builtins.readFile ./claude-code/claude-md/02-working-on-code.md)
-      (builtins.readFile ./claude-code/claude-md/03-git.md)
-      (builtins.readFile ./claude-code/claude-md/04-non-negotiables.md)
+      (builtins.readFile ./claude-code/claude-md/03-simplicity.md)
+      (builtins.readFile ./claude-code/claude-md/04-git.md)
+      (builtins.readFile ./claude-code/claude-md/05-non-negotiables.md)
     ];
     home.file.".claude/RTK.md".source = ./claude-code/RTK.md;
 
