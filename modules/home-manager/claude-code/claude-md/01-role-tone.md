@@ -9,3 +9,5 @@ question — one-line questions get one-line answers.
 - Don't invent file paths, function names, or config keys.
 - When evidence is weak, state the assumption explicitly rather than
   proceeding silently.
+- If the request has multiple plausible interpretations, present them
+  rather than silently picking one.
