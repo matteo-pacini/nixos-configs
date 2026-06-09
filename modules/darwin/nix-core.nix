@@ -7,6 +7,28 @@
 }:
 let
   cfg = config.custom.nix-core;
+
+  # One-shot push of the running system to the cache, using the agenix
+  # token; leaves no attic client config behind
+  atticPushCurrentSystem = pkgs.writeShellApplication {
+    name = "attic-push-current-system";
+    runtimeInputs = [
+      pkgs.attic-client
+      pkgs.gawk
+    ];
+    text = ''
+      if [ "$(id -u)" -ne 0 ]; then
+        echo "must run as root: the attic token is root-readable only" >&2
+        exit 1
+      fi
+      token=$(awk '/^password/ { print $2 }' "${toString cfg.atticCache.netrcFile}")
+      XDG_CONFIG_HOME=$(mktemp -d)
+      export XDG_CONFIG_HOME
+      trap 'rm -rf "$XDG_CONFIG_HOME"' EXIT
+      attic login nexus https://cache.matteopacini.me "$token"
+      attic push main /run/current-system
+    '';
+  };
 in
 {
   options.custom.nix-core = {
@@ -47,9 +69,6 @@ in
           };
         };
         nixpkgs.config.allowUnfree = true;
-
-        # Client for the self-hosted attic cache on Nexus
-        environment.systemPackages = [ pkgs.attic-client ];
       }
       # System-level so the substituter applies to every user (the
       # nix-daemon performs all downloads), with no flake nixConfig
@@ -62,6 +81,10 @@ in
         // lib.optionalAttrs (cfg.atticCache.netrcFile != null) {
           netrc-file = cfg.atticCache.netrcFile;
         };
+
+        environment.systemPackages = lib.optionals (cfg.atticCache.netrcFile != null) [
+          atticPushCurrentSystem
+        ];
       })
     ]
   );
