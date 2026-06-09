@@ -1,13 +1,4 @@
 {
-  nixConfig = {
-    extra-substituters = [
-      "https://cache.matteopacini.me/main"
-    ];
-    extra-trusted-public-keys = [
-      "main:qAfi80bao6jxVrLVIuX07sthJscb2CcFBboYsEBxdG4="
-    ];
-  };
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # Bleeding-edge nixpkgs master, used only to source a handful of
