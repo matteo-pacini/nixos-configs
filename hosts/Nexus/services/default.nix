@@ -25,6 +25,7 @@
     ./polkit.nix
     ./atuin.nix
     ./mosh.nix
+    ./attic.nix
   ];
 
   systemd.tmpfiles.rules = [

@@ -125,12 +125,14 @@
 
   # Custom filter for Caddy bot search attempts (JSON format)
   # Matches 404 (Not Found) and 400 (Bad Request) responses
-  # Ignores services with dedicated auth jails
+  # Ignores services with dedicated auth jails, and the binary cache:
+  # 404s on narinfo lookups are normal operation (cache misses), not
+  # bot probing
   environment.etc."fail2ban/filter.d/caddy-botsearch.conf".text = ''
     [Definition]
     failregex = "client_ip":"<HOST>"(?:.*)"status":(?:404|400)
     datepattern = "ts":{Epoch}
-    ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n)\.matteopacini\.me"
+    ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n|cache)\.matteopacini\.me"
   '';
 
   # Custom filter for n8n authentication failures (JSON format)

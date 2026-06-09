@@ -1,18 +1,11 @@
 {
   nixConfig = {
     extra-substituters = [
-      "https://zpnixcache.fly.dev/BrightFalls"
-      "https://zpnixcache.fly.dev/Nexus"
-      "https://zpnixcache.fly.dev/CauldronLake"
-      "https://zpnixcache.fly.dev/NightSprings"
-      "https://zpnixcache.fly.dev/WorkLaptop"
+      "https://cache.matteopacini.me/main"
     ];
     extra-trusted-public-keys = [
-      "BrightFalls:gMudzNSdeCzW745O/B5VSeCLUnpoD1Vj0EbsIV0X6C4="
-      "Nexus:KhHzSL94AngTFwzZHLZldWY8GIdCGNx0ZsN5w1HqwS8="
-      "CauldronLake:AyKsbh7J70m93eOsZJvjtHzgrUgUrPmCY7aOSVQAVF0="
-      "NightSprings:iCflayy0sY61Irqnschj7glvKedEEY3mlODEVe61CkY="
-      "WorkLaptop:YGElmUpcb7tiuwhpX2gzsEEh4uMQeqKZVYLNF2h0Krg="
+      # TODO: fill in once the cache is created on Nexus — the signing
+      # key lives in attic's database. Get it with: attic cache info main
     ];
   };
 
@@ -239,6 +232,7 @@
             age.secrets."nexus/disk7".file = ./secrets/nexus/disk7.age;
             age.secrets."nexus/disk8".file = ./secrets/nexus/disk8.age;
             age.secrets."nexus/disk9".file = ./secrets/nexus/disk9.age;
+            age.secrets."nexus/attic-env".file = ./secrets/nexus/attic-env.age;
             age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
