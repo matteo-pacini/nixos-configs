@@ -9,7 +9,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ATTIC_CACHE_NAME: ${{ secrets.ATTIC_CACHE_NAME }}
   ATTIC_CACHE_URL: ${{ secrets.ATTIC_CACHE_URL }}
   ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
 
@@ -69,8 +68,8 @@ jobs:
       - name: Configure Attic cache
         run: |
           nix run nixpkgs#attic-client -- login \
-            "${{ env.ATTIC_CACHE_NAME }}" "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
-          nix run nixpkgs#attic-client -- use "${{ matrix.host }}"
+            nexus "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
+          nix run nixpkgs#attic-client -- use main
 
       - name: Build system
         run: |
@@ -82,4 +81,4 @@ jobs:
           timeout_minutes: 60
           max_attempts: 5
           retry_on: error
-          command: nix run nixpkgs#attic-client -- push "${{ matrix.host }}" result -j 3
+          command: nix run nixpkgs#attic-client -- push main result -j 3
