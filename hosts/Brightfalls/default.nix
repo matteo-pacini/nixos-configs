@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   ...
 }:
@@ -31,6 +32,11 @@
     permittedInsecurePackages = [
       "qtwebengine-5.15.19"
     ];
+    # Substituter + auth for pulling from the private attic cache
+    atticCache = {
+      enable = true;
+      netrcFile = config.age.secrets."brightfalls/attic-netrc".path;
+    };
   };
 
   # Boot loader

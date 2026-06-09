@@ -10,6 +10,7 @@ let
   # Host SSH public keys (used directly by age for encryption)
   nexus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICqoR66tb+LELPbehy1TJp0Y8hHVYPEgtg1WUDMILe/n";
   worklaptop = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtM6cXF6v03BIDdYeMYUHuuoLljzT2Lx+judeJSag8c";
+  brightfalls = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFhrAwaSAjKS/FLYRZRNkgpRn8gZECa+Sc0t32gENbv1";
 in
 {
   # Nexus disk encryption secrets
@@ -39,4 +40,7 @@ in
 
   # WorkLaptop service secrets
   "worklaptop/attic-netrc.age".publicKeys = [ worklaptop ];
+
+  # BrightFalls service secrets
+  "brightfalls/attic-netrc.age".publicKeys = [ brightfalls ];
 }

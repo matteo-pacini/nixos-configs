@@ -180,6 +180,11 @@
           }
           inputs.disko.nixosModules.disko
           ./hosts/Brightfalls/disko.nix
+          inputs.agenix.nixosModules.default
+          {
+            age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            age.secrets."brightfalls/attic-netrc".file = ./secrets/brightfalls/attic-netrc.age;
+          }
         ];
       };
       #########
