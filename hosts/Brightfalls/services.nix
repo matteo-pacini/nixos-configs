@@ -80,6 +80,18 @@ in
 
   services.fwupd.enable = true;
 
+  # fwupd-refresh.service runs as the sessionless `fwupd-refresh` user,
+  # and refresh-remote defaults to auth_admin outside an active session,
+  # so polkit denies it ("Failed to obtain auth") without this rule
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.fwupd.refresh-remote" &&
+          subject.user == "fwupd-refresh") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
+
   systemd.services.mqtt2brightfalls = {
     description = "MQTT to Brightfalls bridge service";
     wantedBy = [ "graphical.target" ];
