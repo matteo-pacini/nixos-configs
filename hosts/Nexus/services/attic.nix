@@ -14,6 +14,15 @@
     "d /diskpool/attic 0750 atticd atticd"
   ];
 
+  # Nexus resolves cache.matteopacini.me via public DNS to the WAN IP,
+  # which the router won't hairpin — pin it to loopback instead
+  # (Caddy listens on *:443). LAN clients get the LAN IP via the
+  # router's split DNS.
+  networking.hosts."127.0.0.1" = [ "cache.matteopacini.me" ];
+
+  # Auth for pulling from the private cache during rebuilds
+  nix.settings.netrc-file = config.age.secrets."nexus/attic-netrc".path;
+
   # Token generation:
   #   sudo atticd-atticadm make-token --sub matteo --validity 2y \
   #     --pull '*' --push '*' --create-cache '*'

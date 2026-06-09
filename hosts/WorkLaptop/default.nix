@@ -2,6 +2,7 @@
   pkgs,
   inputs,
   flake,
+  config,
   ...
 }:
 {
@@ -15,6 +16,9 @@
       "@admin"
     ];
   };
+
+  # Auth for pulling from the private attic cache
+  nix.settings.netrc-file = config.age.secrets."worklaptop/attic-netrc".path;
 
   custom.fonts.enable = true;
   custom.nix-index.enable = true;

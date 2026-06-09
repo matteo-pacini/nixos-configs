@@ -4,8 +4,7 @@
       "https://cache.matteopacini.me/main"
     ];
     extra-trusted-public-keys = [
-      # TODO: fill in once the cache is created on Nexus — the signing
-      # key lives in attic's database. Get it with: attic cache info main
+      "main:qAfi80bao6jxVrLVIuX07sthJscb2CcFBboYsEBxdG4="
     ];
   };
 
@@ -233,6 +232,7 @@
             age.secrets."nexus/disk8".file = ./secrets/nexus/disk8.age;
             age.secrets."nexus/disk9".file = ./secrets/nexus/disk9.age;
             age.secrets."nexus/attic-env".file = ./secrets/nexus/attic-env.age;
+            age.secrets."nexus/attic-netrc".file = ./secrets/nexus/attic-netrc.age;
             age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
@@ -346,6 +346,11 @@
           }
           self.darwinModules.default
           ./hosts/WorkLaptop
+          inputs.agenix.darwinModules.default
+          {
+            age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            age.secrets."worklaptop/attic-netrc".file = ./secrets/worklaptop/attic-netrc.age;
+          }
           inputs.mac-app-util.darwinModules.default
           inputs.home-manager.darwinModules.home-manager
           {
