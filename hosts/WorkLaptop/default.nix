@@ -15,10 +15,12 @@
     trustedUsers = [
       "@admin"
     ];
+    # Substituter + auth for pulling from the private attic cache
+    atticCache = {
+      enable = true;
+      netrcFile = config.age.secrets."worklaptop/attic-netrc".path;
+    };
   };
-
-  # Auth for pulling from the private attic cache
-  nix.settings.netrc-file = config.age.secrets."worklaptop/attic-netrc".path;
 
   custom.fonts.enable = true;
   custom.nix-index.enable = true;

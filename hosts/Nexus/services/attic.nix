@@ -20,8 +20,11 @@
   # router's split DNS.
   networking.hosts."127.0.0.1" = [ "cache.matteopacini.me" ];
 
-  # Auth for pulling from the private cache during rebuilds
-  nix.settings.netrc-file = config.age.secrets."nexus/attic-netrc".path;
+  # Substituter + auth for pulling from the private cache
+  custom.nix-core.atticCache = {
+    enable = true;
+    netrcFile = config.age.secrets."nexus/attic-netrc".path;
+  };
 
   # Token generation:
   #   sudo atticd-atticadm make-token --sub matteo --validity 2y \

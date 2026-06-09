@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   inputs,
   ...
 }:
@@ -25,6 +26,14 @@ in
       default = [ ];
       description = "List of insecure packages to permit";
     };
+    atticCache = {
+      enable = lib.mkEnableOption "the self-hosted attic cache as a system-level substituter";
+      netrcFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "netrc file with the attic token, for pulling from the private cache";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable (
@@ -44,12 +53,27 @@ in
           };
         };
         nixpkgs.config.allowUnfree = true;
+
+        # Client for the self-hosted attic cache on Nexus
+        environment.systemPackages = [ pkgs.attic-client ];
       }
       (lib.mkIf (cfg.extraPlatforms != [ ]) {
         nix.settings.extra-platforms = cfg.extraPlatforms;
       })
       (lib.mkIf (cfg.permittedInsecurePackages != [ ]) {
         nixpkgs.config.permittedInsecurePackages = cfg.permittedInsecurePackages;
+      })
+      # System-level so the substituter applies to every user (the
+      # nix-daemon performs all downloads), with no flake nixConfig
+      # trust prompts
+      (lib.mkIf cfg.atticCache.enable {
+        nix.settings = {
+          extra-substituters = [ "https://cache.matteopacini.me/main" ];
+          extra-trusted-public-keys = [ "main:qAfi80bao6jxVrLVIuX07sthJscb2CcFBboYsEBxdG4=" ];
+        }
+        // lib.optionalAttrs (cfg.atticCache.netrcFile != null) {
+          netrc-file = cfg.atticCache.netrcFile;
+        };
       })
     ]
   );
