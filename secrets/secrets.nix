@@ -25,6 +25,7 @@ in
   "nexus/disk9.age".publicKeys = [ nexus ];
 
   # Nexus service secrets
+  "nexus/attic-env.age".publicKeys = [ nexus ];
   "nexus/janitor.env.age".publicKeys = [ nexus ];
   "nexus/restic-env.age".publicKeys = [ nexus ];
   "nexus/restic-password.age".publicKeys = [ nexus ];

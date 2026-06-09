@@ -26,6 +26,7 @@ in
   services.postgresql = {
     enable = true;
     ensureDatabases = [
+      "atticd"
       "hass"
       "nextcloud"
       # Radarr databases (main + log)
@@ -36,6 +37,10 @@ in
       "sonarr-log"
     ];
     ensureUsers = [
+      {
+        name = "atticd";
+        ensureDBOwnership = true;
+      }
       {
         name = "hass";
         ensureDBOwnership = true;

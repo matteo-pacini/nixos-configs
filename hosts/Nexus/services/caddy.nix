@@ -84,6 +84,25 @@ in
         '';
       };
 
+      "cache.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
+        extraConfig = ''
+          ${securityHeaders}
+
+          # Generous limit: the largest NARs (CUDA, kernels) run to a
+          # few GB; this just bounds what a single request can stream
+          request_body {
+            max_size 8GB
+          }
+
+          # Reverse proxy to atticd
+          reverse_proxy 127.0.0.1:8080
+        '';
+      };
+
       "home.matteopacini.me" = {
         logFormat = ''
           output file /var/log/caddy/access.log
