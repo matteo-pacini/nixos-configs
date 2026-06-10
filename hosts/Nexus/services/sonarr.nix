@@ -10,7 +10,7 @@
   services.sonarr = {
     enable = true;
     group = "media";
-    openFirewall = true; # Direct port access (8989)
+    openFirewall = false; # tailnet + trusted-device rule in ../networking.nix
   };
 
   # Sonarr requires PostgreSQL to be running
