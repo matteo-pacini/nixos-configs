@@ -69,13 +69,13 @@ in
       (pkgs.buildHomeAssistantComponent rec {
         owner = "eulemitkeule";
         domain = "webhook_conversation";
-        version = "1.10.0";
+        version = "1.12.1";
 
         src = pkgs.fetchFromGitHub {
           inherit owner;
           repo = "webhook-conversation";
           tag = "${version}";
-          hash = "sha256-6aaBhjBbGTtlnc1Qu+DuHWu0/oDgEcApksTv/8iSpKc=";
+          hash = "sha256-gTrid3Wa2s9jIYkdHzRYz4tHd4WrbZ63vhlb6kqTJCk=";
         };
 
         dependencies = with pkgs.home-assistant.python3Packages; [
@@ -102,8 +102,33 @@ in
       sankey-chart
       mushroom
       mini-graph-card
-      card-mod
       button-card
+      # In nixpkgs master but not yet in our pin; drop this inline copy
+      # once the pin advances past NixOS/nixpkgs#525127.
+      (pkgs.buildNpmPackage rec {
+        pname = "trash-card";
+        version = "2.4.7";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "idaho";
+          repo = "hassio-trash-card";
+          tag = version;
+          hash = "sha256-Zf+iUcJs45eguaDJcuto6ccc/puormFajmYMc7Qpdsw=";
+        };
+
+        npmDepsHash = "sha256-zvsJASztDfecn+FRvQPmT0vIblaCD11eBM9LLq+VFrg=";
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir $out
+          cp dist/trashcard.js $out/
+
+          runHook postInstall
+        '';
+
+        passthru.entrypoint = "trashcard.js";
+      })
     ];
     extraPackages =
       python3Packages: with python3Packages; [
