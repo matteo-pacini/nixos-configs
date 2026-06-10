@@ -37,6 +37,7 @@ in
   "nexus/nextcloud-admin-password.age".publicKeys = [ nexus ];
   "nexus/geoip-license-key.age".publicKeys = [ nexus ];
   "nexus/backblaze-b2.env.age".publicKeys = [ nexus ];
+  "nexus/n8n-env.age".publicKeys = [ nexus ];
 
   # WorkLaptop service secrets
   "worklaptop/attic-netrc.age".publicKeys = [ worklaptop ];
