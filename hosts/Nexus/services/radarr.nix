@@ -10,7 +10,7 @@
   services.radarr = {
     enable = true;
     group = "media";
-    openFirewall = true; # Direct port access (7878)
+    openFirewall = false; # tailnet + trusted-device rule in ../networking.nix
   };
 
   # Radarr requires PostgreSQL to be running
