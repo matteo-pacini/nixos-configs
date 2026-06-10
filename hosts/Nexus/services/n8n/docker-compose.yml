@@ -7,7 +7,6 @@ services:
     restart: always
     environment:
       - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
       - POSTGRES_DB=n8n
     volumes:
       - /var/lib/postgresql_n8n:/var/lib/postgresql/data
@@ -23,13 +22,13 @@ services:
     environment:
       - N8N_HOST=n8n.matteopacini.me
       - WEBHOOK_URL=https://n8n.matteopacini.me
-      - N8N_SECURE_COOKIE=false
+      - N8N_SECURE_COOKIE=true
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - N8N_PROXY_HOPS=1
-      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
-      - NODE_FUNCTION_ALLOW_EXTERNAL=*
-      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=false
+      - NODE_FUNCTION_ALLOW_EXTERNAL=
+      - NODE_FUNCTION_ALLOW_BUILTIN=
       - NODE_ENV=production
       - GENERIC_TIMEZONE=Europe/London
       - TZ=Europe/London
@@ -38,9 +37,13 @@ services:
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=user
-      - DB_POSTGRESDB_PASSWORD=password
     ports:
-      - 0.0.0.0:5678:5678
+      # localhost only: Caddy + fail2ban front everything
+      - 127.0.0.1:5678:5678
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     links:
       - postgres
     volumes:
