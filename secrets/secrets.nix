@@ -29,6 +29,7 @@ in
   # Nexus service secrets
   "nexus/attic-env.age".publicKeys = [ nexus ];
   "nexus/attic-netrc.age".publicKeys = [ nexus ];
+  "nexus/claude.env.age".publicKeys = [ nexus ];
   "nexus/janitor.env.age".publicKeys = [ nexus ];
   "nexus/restic-env.age".publicKeys = [ nexus ];
   "nexus/restic-password.age".publicKeys = [ nexus ];
