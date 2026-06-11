@@ -47,7 +47,7 @@ Produce a Telegram-friendly digest, max 3000 characters, plain text only - no Ma
 
 If everything is routine noise (e.g. misclassified info logs from containers), say so in one line and keep the digest short.
 
-The very first line of your reply must be exactly ALERT if the "Worth a look" section contains anything actionable, otherwise exactly OK. The digest starts on the second line.'
+The very first line of your reply must be exactly ALERT or exactly OK. If you write anything under "Worth a look", the first line must be ALERT - never pair an OK marker with a non-empty "Worth a look" section. If nothing needs action, omit the section entirely and use OK. The digest starts on the second line.'
 
 DIGEST=$(printf '%s\n' "$ERRORS" | claude -p "$PROMPT" \
   --model sonnet \
