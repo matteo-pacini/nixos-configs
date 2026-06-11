@@ -16,10 +16,22 @@ set +a
 
 CURSOR_FILE="$STATE_DIRECTORY/cursor"
 
-# Cursor file = no gaps/overlaps between runs; --since only applies on the
-# first run, when the cursor file does not exist yet.
-ERRORS=$(journalctl -p err -q --no-pager -o short-iso \
-  --cursor-file="$CURSOR_FILE" --since "-6h" || true)
+# Cursor file = no gaps/overlaps between runs. journalctl (systemd 260)
+# refuses --cursor-file combined with --since, and a missing cursor file
+# means "from the beginning of the journal" - so the first run bounds the
+# window manually and saves the cursor itself.
+if [[ -f "$CURSOR_FILE" ]]; then
+  ERRORS=$(journalctl -p err -q --no-pager -o short-iso \
+    --cursor-file="$CURSOR_FILE")
+else
+  OUT=$(journalctl -p err -q --no-pager -o short-iso \
+    --since "-6h" --show-cursor)
+  CURSOR=$(printf '%s\n' "$OUT" | sed -n 's/^-- cursor: //p')
+  if [[ -n "$CURSOR" ]]; then
+    printf '%s\n' "$CURSOR" > "$CURSOR_FILE"
+  fi
+  ERRORS=$(printf '%s\n' "$OUT" | grep -v '^-- cursor:' || true)
+fi
 
 if [[ -z "$ERRORS" ]]; then
   exit 0

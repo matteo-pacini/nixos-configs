@@ -10,6 +10,8 @@ let
   runtimeDeps = [
     pkgs.bash
     pkgs.coreutils
+    pkgs.gnused
+    pkgs.gnugrep
     pkgs.systemd
     pkgs.claude-code
     pkgs.telegram-notify
