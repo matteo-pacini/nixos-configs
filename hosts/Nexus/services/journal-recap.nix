@@ -16,13 +16,19 @@ let
     pkgs.claude-code
     pkgs.telegram-notify
   ];
+  alertMention = "@matteopacini";
   # End-to-end test run: same script, throwaway state dir (fresh cursor picks
   # up the last 6h; the real timer's cursor is untouched). Sends to the real
-  # channel. Needs sudo to read the agenix secrets.
+  # channel. Needs sudo to read the agenix secrets. Pass "alert" to force the
+  # mention path (tests ping-through-mute).
   journalRecapTest = pkgs.writeShellScriptBin "journal-recap-test" ''
     set -euo pipefail
+    if [[ "''${1:-}" == "alert" ]]; then
+      export FORCE_ALERT=1
+    fi
     export TELEGRAM_ENV_FILE=${envFile}
     export CLAUDE_ENV_FILE=${claudeEnvFile}
+    export ALERT_MENTION=${alertMention}
     STATE_DIRECTORY=$(${pkgs.coreutils}/bin/mktemp -d)
     export STATE_DIRECTORY
     export HOME=$STATE_DIRECTORY
@@ -46,6 +52,7 @@ in
         "HOME=%S/journal-recap"
         "TELEGRAM_ENV_FILE=${envFile}"
         "CLAUDE_ENV_FILE=${claudeEnvFile}"
+        "ALERT_MENTION=${alertMention}"
       ];
       ExecStart = "${pkgs.bash}/bin/bash ${./journal-recap.sh}";
     };

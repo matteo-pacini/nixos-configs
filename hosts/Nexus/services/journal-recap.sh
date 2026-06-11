@@ -45,7 +45,9 @@ Produce a Telegram-friendly digest, max 3000 characters, plain text only - no Ma
 2. Grouped findings: per unit, count and one representative message, deduplicated.
 3. "Worth a look": only things that need action, each with the next diagnostic command to run. You may run the allowed read-only commands (systemctl status, journalctl) to add context before deciding.
 
-If everything is routine noise (e.g. misclassified info logs from containers), say so in one line and keep the digest short.'
+If everything is routine noise (e.g. misclassified info logs from containers), say so in one line and keep the digest short.
+
+The very first line of your reply must be exactly ALERT if the "Worth a look" section contains anything actionable, otherwise exactly OK. The digest starts on the second line.'
 
 DIGEST=$(printf '%s\n' "$ERRORS" | claude -p "$PROMPT" \
   --model sonnet \
@@ -56,14 +58,32 @@ DIGEST=$(printf '%s\n' "$ERRORS" | claude -p "$PROMPT" \
   ) || DIGEST=""
 
 if [[ -z "$DIGEST" ]]; then
+  STATUS="ALERT" # pipeline failure is always worth a ping
   DIGEST="claude digest failed, raw errors:
 $ERRORS"
+else
+  STATUS=$(printf '%s' "$DIGEST" | head -n 1 | tr -d '[:space:]')
+  case "$STATUS" in
+    ALERT | OK) DIGEST=$(printf '%s' "$DIGEST" | tail -n +2) ;;
+    *) STATUS="ALERT" ;; # claude ignored the marker - assume actionable
+  esac
+fi
+
+if [[ -n "${FORCE_ALERT:-}" ]]; then
+  STATUS="ALERT"
+fi
+
+# Group mute can't be bypassed by the Bot API, but Telegram clients notify on
+# @mentions even in muted groups - so actionable digests mention the admin.
+MENTION=""
+if [[ "$STATUS" == "ALERT" && -n "${ALERT_MENTION:-}" ]]; then
+  MENTION=" $ALERT_MENTION"
 fi
 
 # telegram-notify sends with parse_mode=Markdown; strip characters that can
 # break Telegram's parser, and respect the 4096-char message cap.
 DIGEST=$(printf '%s' "$DIGEST" | tr -d '*_`[]')
 
-telegram-notify "⚠️ Nexus journal recap
+telegram-notify "⚠️ Nexus journal recap$MENTION
 
 ${DIGEST:0:3800}"
