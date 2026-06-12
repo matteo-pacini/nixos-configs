@@ -71,20 +71,9 @@
     # pushes a hook content change ahead of a binary release, anyone on a
     # nixpkgs lag sees the integrity check fail. The master pin lets us bump rtk
     # as soon as upstream tags a release that bundles the new hook. After a bump
-    # re-sync the vendored hooks with
-    # `modules/home-manager/{claude-code,opencode}/update-rtk.sh`.
+    # re-sync the vendored hook with
+    # `modules/home-manager/claude-code/update-rtk.sh`.
     rtk = masterPkgs.rtk;
-
-    # opencode: sourced from the nixpkgs-master input (see masterPkgs above) so
-    # we track upstream faster than the flake's nixos-unstable pin. Upstream
-    # ships frequent releases that fix provider/transform bugs and adjust agent
-    # behavior we depend on (see modules/home-manager/opencode.nix for the live
-    # list of issues we're chasing); waiting for nixos-unstable to pick them up
-    # noticeably lags day-to-day usage.
-    opencode = masterPkgs.opencode;
-
-    # Token usage tracker for AI coding agents
-    tokscale = super.callPackage ../packages/tokscale.nix { };
 
     # openldap-2.6.13: the syncreplication tests are timing-sensitive and fail
     # on slow / sandboxed builders ("provider and consumer databases differ").

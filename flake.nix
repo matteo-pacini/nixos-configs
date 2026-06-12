@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # Bleeding-edge nixpkgs master, used only to source a handful of
-    # fast-moving packages (claude-code, rtk, opencode) ahead of the
+    # fast-moving packages (claude-code, rtk) ahead of the
     # nixos-unstable pin. Injected via overlays/shared.nix. Bump with
     # `nix flake update nixpkgs-master`.
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
@@ -63,10 +63,6 @@
     };
     dracula-wallpaper = {
       url = "github:dracula/wallpaper";
-      flake = false;
-    };
-    opencode-dracula-theme = {
-      url = "github:dracula/opencode";
       flake = false;
     };
     ###############
@@ -145,7 +141,6 @@
           ./modules/home-manager/starship.nix
           ./modules/home-manager/wezterm.nix
           ./modules/home-manager/claude-code.nix
-          ./modules/home-manager/opencode.nix
           ./modules/home-manager/mpv
         ];
       };

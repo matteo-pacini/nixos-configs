@@ -57,6 +57,22 @@
         "type": "github"
       }
     },
+    "caveman-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781272264,
+        "narHash": "sha256-FbmfhFaPs/SnSZdfNdErdIUHXt1FfBzErpPpLy8kdIc=",
+        "owner": "JuliusBrussee",
+        "repo": "caveman",
+        "rev": "25d22f864ad68cc447a4cb93aefde918aa4aec9f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "JuliusBrussee",
+        "repo": "caveman",
+        "type": "github"
+      }
+    },
     "cl-nix-lite": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -377,6 +393,22 @@
         "type": "github"
       }
     },
+    "matteo-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1775924021,
+        "narHash": "sha256-Q0AuLLfwEvuJ+ZD9wgbD0rzl/yWhj6z+Pi5jJQto4AI=",
+        "owner": "matteo-pacini",
+        "repo": "skills",
+        "rev": "9d47600aefb5141c57a2bfcff743706f19943314",
+        "type": "github"
+      },
+      "original": {
+        "owner": "matteo-pacini",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
     "mnw": {
       "locked": {
         "lastModified": 1778541201,
@@ -630,26 +662,11 @@
         "type": "github"
       }
     },
-    "opencode-dracula-theme": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1759476923,
-        "narHash": "sha256-JChZttHoHQ4CU7DsjzOskcz7NLAdZM45yrZdrCssj5E=",
-        "owner": "dracula",
-        "repo": "opencode",
-        "rev": "e7b8ba5bff2eca780c974a241d233230e58c4e0c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dracula",
-        "repo": "opencode",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "agenix": "agenix",
         "bore-scheduler-src": "bore-scheduler-src",
+        "caveman-skills": "caveman-skills",
         "colorls-dracula-theme": "colorls-dracula-theme",
         "disko": "disko",
         "dracula-wallpaper": "dracula-wallpaper",
@@ -658,6 +675,7 @@
         "homebrew-cask": "homebrew-cask",
         "homebrew-core": "homebrew-core",
         "mac-app-util": "mac-app-util",
+        "matteo-skills": "matteo-skills",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nix-index-database": "nix-index-database",
@@ -665,7 +683,6 @@
         "nixpkgs-master": "nixpkgs-master",
         "nur": "nur",
         "nvf": "nvf",
-        "opencode-dracula-theme": "opencode-dracula-theme",
         "sublime-dracula-theme": "sublime-dracula-theme",
         "xcode-dracula-theme": "xcode-dracula-theme"
       }
