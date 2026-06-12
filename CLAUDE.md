@@ -12,8 +12,9 @@ edit the matching fragment:
 - `01-role-tone.md` — role, tone, confidence
 - `02-working-on-code.md` — workflow, output format
 - `03-simplicity.md` — simplicity & surgical-change discipline
-- `04-git.md` — git/PR rules
-- `05-non-negotiables.md` — short list of never-dos
+- `04-model-delegation.md` — model/effort choice for subagents & tasks
+- `05-git.md` — git/PR rules
+- `06-non-negotiables.md` — short list of never-dos
 
 ### Recommended order (don't break this)
 
@@ -30,9 +31,11 @@ weights conflicts:
         ↓
 4. SIMPLICITY / SURGICAL        ← narrows how code changes are made
         ↓
-5. GIT GUIDANCE                  ← workflow specialization for VCS
+5. MODEL DELEGATION              ← which model/effort per task tier
         ↓
-6. NON-NEGOTIABLES (short)       ← final reinforcement, 2–4 lines
+6. GIT GUIDANCE                  ← workflow specialization for VCS
+        ↓
+7. NON-NEGOTIABLES (short)       ← final reinforcement, 2–4 lines
 ```
 
 When adding a new section, slot it where it fits this hierarchy rather
