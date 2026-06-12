@@ -226,7 +226,6 @@ Scoped to this flake but written with options should you want to crib them:
 
 `overlays/shared.nix` exposes a few custom packages:
 
-- **`tokscale`** — CLI for tracking token usage across agentic coding tools (Claude Code, OpenCode). Nix packaging of [junhoyeo/tokscale](https://github.com/junhoyeo/tokscale).
 - **`reshade-steam-proton`** — ReShade installer for Linux games running under Wine/Proton.
 - **`claude-code`** — Vendored from nixpkgs master with a wrapper that puts Node.js and `rtk` on PATH and toggles auto-compact + prompt caching.
 

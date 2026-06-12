@@ -20,7 +20,6 @@
     # Extra
     tree
     # Development
-    tokscale
     gh
     # Window Management
     loopwm
@@ -34,7 +33,6 @@
   custom.starship.enable = true;
   custom.wezterm.enable = true;
   custom.claude-code.enable = true;
-  custom.opencode.enable = true;
   custom.mpv.enable = true;
 
   home.stateVersion = "26.05";

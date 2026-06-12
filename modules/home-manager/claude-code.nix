@@ -99,6 +99,12 @@ let
   );
 
   baseSettings = {
+    # Empty strings disable commit Co-Authored-By trailers and PR-body
+    # attribution at the harness level (replaces deprecated includeCoAuthoredBy).
+    attribution = {
+      commit = "";
+      pr = "";
+    };
     hooks = {
       PreToolUse = [
         {
