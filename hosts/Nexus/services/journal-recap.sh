@@ -14,6 +14,25 @@ set -a
 source "$CLAUDE_ENV_FILE"
 set +a
 
+# Skip while the nightly backup window is running: services are deliberately
+# stopped and restarted then, so the journal fills with expected churn. Exit
+# before reading the journal so the cursor is untouched and the next run covers
+# this window once the backup is done. Unit list mirrors
+# hosts/Nexus/services/backup.nix.
+BACKUP_UNITS=(
+  ha-backup.service
+  backup-job.service
+  restic-backups-config.service
+  restic-backups-matteo.service
+  restic-backups-debora.service
+  restic-backups-fabrizio.service
+)
+for unit in "${BACKUP_UNITS[@]}"; do
+  if systemctl is-active --quiet "$unit"; then
+    exit 0
+  fi
+done
+
 CURSOR_FILE="$STATE_DIRECTORY/cursor"
 
 # Cursor file = no gaps/overlaps between runs. journalctl (systemd 260)
@@ -39,6 +58,8 @@ fi
 
 PROMPT='You are summarizing systemd journal errors (priority err and above) from the NixOS home server "Nexus", collected since the last run. The raw journal lines are on stdin.
 
+A nightly maintenance and backup window runs roughly 03:00-07:00 Europe/London. During it many services are deliberately stopped and restarted (Home Assistant, zigbee2mqtt, mosquitto, Jellyfin, sonarr, radarr, nzbget, nzbhydra2, paperless, nextcloud with nginx and php-fpm, n8n) and SnapRAID plus restic-to-Backblaze run. Errors timestamped in that window from those units are expected backup churn (service stopped, connection refused, database unavailable) and count as routine noise - do not flag them unless they persist outside the window or the backup units themselves (backup-job, restic-backups-*) report a failure.
+
 Produce a Telegram-friendly digest, max 3000 characters, plain text only - no Markdown, no backticks, no asterisks, no underscores:
 
 1. One-line overview: error count and which units are involved.
@@ -47,11 +68,12 @@ Produce a Telegram-friendly digest, max 3000 characters, plain text only - no Ma
 
 If everything is routine noise (e.g. misclassified info logs from containers), say so in one line and keep the digest short.
 
+End the digest with a one-line disclaimer that this is an automated AI-generated summary that may be incomplete or wrong - verify before acting.
+
 The very first line of your reply must be exactly ALERT or exactly OK. If you write anything under "Worth a look", the first line must be ALERT - never pair an OK marker with a non-empty "Worth a look" section. If nothing needs action, omit the section entirely and use OK. The digest starts on the second line.'
 
 DIGEST=$(printf '%s\n' "$ERRORS" | claude -p "$PROMPT" \
   --model sonnet \
-  --max-budget-usd 0.50 \
   --no-session-persistence \
   --output-format text \
   --allowedTools "Bash(journalctl:*),Bash(systemctl status:*),Bash(systemctl list-units:*),Read,Grep,Glob" \
