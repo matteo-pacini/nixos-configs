@@ -23,4 +23,12 @@
     max-jobs = 8;
     cores = 8;
   };
+
+  # Always-on host: fixed daily GC/optimise instead of the weekly module
+  # default, staggered after the backup timer cluster (~03:00–07:00) to
+  # avoid root-SSD vs /diskpool I/O contention. Shorter retention since
+  # daily local rebuilds churn /nix/store (separate fs from the attic pool).
+  custom.nix-core.gc.deleteOlderThan = "14d";
+  nix.gc.dates = "*-*-* 08:00:00";
+  nix.optimise.dates = [ "*-*-* 09:00:00" ];
 }

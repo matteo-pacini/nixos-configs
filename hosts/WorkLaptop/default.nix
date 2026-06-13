@@ -12,6 +12,8 @@
 
   custom.nix-core = {
     enable = true;
+    # Disk-pressured work SSD: stricter retention than the 30d default.
+    gc.deleteOlderThan = "7d";
     trustedUsers = [
       "@admin"
     ];
@@ -20,6 +22,13 @@
       enable = true;
       netrcFile = config.age.secrets."worklaptop/attic-netrc".path;
     };
+  };
+
+  # Free disk mid-build when it runs low (platform-agnostic daemon GC),
+  # complementing the weekly scheduled GC on this space-constrained host.
+  nix.settings = {
+    min-free = 3221225472; # 3 GiB
+    max-free = 10737418240; # 10 GiB
   };
 
   custom.fonts.enable = true;

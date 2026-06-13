@@ -16,6 +16,11 @@ in
 {
   options.custom.nix-core = {
     enable = lib.mkEnableOption "Shared Nix and Nixpkgs configuration for NixOS hosts";
+    gc.deleteOlderThan = lib.mkOption {
+      type = lib.types.str;
+      default = "30d";
+      description = "Age passed to nix-collect-garbage --delete-older-than.";
+    };
     trustedUsers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "root" ];
@@ -58,6 +63,23 @@ in
           };
         };
         nixpkgs.config.allowUnfree = true;
+      }
+      {
+        # Scheduled garbage collection + store optimisation. persistent so
+        # intermittent hosts catch up a missed timer on next boot; jitter
+        # softens the post-boot I/O spike. Hosts override dates/retention.
+        nix.gc = {
+          automatic = true;
+          dates = lib.mkDefault "Sun 04:00";
+          options = "--delete-older-than ${cfg.gc.deleteOlderThan}";
+          persistent = true;
+          randomizedDelaySec = "30min";
+        };
+        nix.optimise = {
+          automatic = true;
+          dates = lib.mkDefault [ "Sun 05:00" ];
+          randomizedDelaySec = "30min";
+        };
       }
       (lib.mkIf (cfg.extraPlatforms != [ ]) {
         nix.settings.extra-platforms = cfg.extraPlatforms;
