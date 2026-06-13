@@ -58,6 +58,7 @@
       bottles
       pcsx2
       reshade-steam-proton
+      optiscaler-client
       heroic
       # Other
       discord
