@@ -1,0 +1,74 @@
+{
+  // OpenCode "kimi" profile — global config layer.
+  // ==========================================================================
+  // Lands at <OPENCODE_CONFIG_DIR>/opencode.jsonc and is loaded as the GLOBAL
+  // config. The companion agents.jsonc is merged on top via OPENCODE_CONFIG.
+  //
+  // Verification (after switch, with the opencode-kimi launcher):
+  //   OPENCODE_LOG_LEVEL=DEBUG opencode-kimi run --agent build "say hi" 2>&1 \
+  //     | grep -iE 'temperature|top_p|reasoning'
+  //
+  // Inspect merged config:
+  //   opencode-kimi debug agent build   # resolved per-agent settings
+  //   opencode-kimi debug config        # merged top-level config
+  //
+  // Primary references:
+  //   Schema:          https://opencode.ai/config.json
+  //   Config docs:     https://opencode.ai/docs/config/
+  //   OpenRouter:      https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
+  // ==========================================================================
+
+  "$schema": "https://opencode.ai/config.json",
+
+  // Nix manages the package version. Without this opt-out OpenCode tries to
+  // self-update its binary in /nix/store (read-only) and emits "update
+  // available" notices.
+  "autoupdate": false,
+
+  // Default model for any agent that doesn't override. Kimi K2.6 — long-horizon
+  // agentic design (200-300 sequential tool calls, ~4000-step horizon), 256K ctx.
+  // transform.ts auto-injects temperature=1.0 for any kimi-k2.* id, but does NOT
+  // auto-inject top_p for k2.6 (its topP() whitelist is
+  // minimax-m2/gemini/kimi-k2.5/kimi-k2p5/kimi-k2-5 — k2.6 matches none), so
+  // agents that want top_p=0.95 must set it explicitly.
+  // https://openrouter.ai/moonshotai/kimi-k2.6
+  "model": "openrouter/moonshotai/kimi-k2.6",
+
+  // small_model — title generation, summarisation, lightweight auxiliary calls.
+  // OpenCode schema makes this a STRING ONLY (no per-call param overrides). Kept
+  // on Gemini 2.5 Flash Lite deliberately: these ~5-token plumbing calls don't
+  // warrant Kimi output cost (~$3.40/Mtok), it's GA (not preview), reasoning is
+  // off by default. Kimi-centric = agentic roles run Kimi, plumbing does not.
+  // ~$0.10 in / $0.40 out per Mtok. https://openrouter.ai/google/gemini-2.5-flash-lite
+  "small_model": "openrouter/google/gemini-2.5-flash-lite",
+
+  // --------------------------------------------------------------------------
+  // provider.<id>.models.<model>.variants — named option presets, merged flat
+  // into the OpenRouter provider options (NO `options` wrapper in v1.16.2).
+  //
+  // K2.6 thinking is BINARY (thinking.type enabled/disabled, no graded budget).
+  // The former fast/balanced/deep effort ladder was illusory: 20/21 OpenRouter
+  // K2.6 endpoints don't advertise reasoning_effort, so low/medium/high gave no
+  // reliable graded depth. Collapsed to an honest think/nothink pair.
+  //
+  // Only `plan` (a primary) consumes a variant at runtime — subagent variants
+  // don't apply (opencode #21632), and build/debug run always-thinking
+  // kimi-k2.7-code with no variant. So these live under k2.6 for `plan`.
+  //
+  // CAVEAT: K2.6 ships thinking-on and may be mandatory-reasoning. `nothink`
+  // (reasoning.enabled:false) is UNVERIFIED on the live OpenRouter route — it
+  // may 400 or be silently ignored. Test on the host before relying on it.
+  // --------------------------------------------------------------------------
+  "provider": {
+    "openrouter": {
+      "models": {
+        "moonshotai/kimi-k2.6": {
+          "variants": {
+            "think": { "reasoning": { "enabled": true } },
+            "nothink": { "reasoning": { "enabled": false } }
+          }
+        }
+      }
+    }
+  }
+}

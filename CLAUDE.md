@@ -3,11 +3,14 @@
 ## Vendored Claude Code CLAUDE.md
 
 `~/.claude/CLAUDE.md` is a managed symlink — never edit it directly. The
-deployed file is assembled in `modules/home-manager/claude-code.nix` by
-concatenating fragments from
-`modules/home-manager/claude-code/claude-md/` in numeric order, with
-`@RTK.md` injected between fragments 01 and 02. To change a section,
-edit the matching fragment:
+instruction fragments are shared: they live in
+`modules/home-manager/agents-md/` and are assembled by the `mkDoc`
+generator in `modules/home-manager/agents-md.nix`, which is consumed by
+**both** the claude-code and opencode modules. `claude-code.nix` refines
+the base with the `@RTK.md` include (after fragment 01) and the
+model-delegation tier (04); `opencode.nix` augments it with per-profile
+steering instead, dropping RTK and model-delegation. To change a section,
+edit the matching fragment in `modules/home-manager/agents-md/`:
 
 - `01-role-tone.md` — role, tone, confidence
 - `02-working-on-code.md` — workflow, output format
@@ -41,6 +44,10 @@ weights conflicts:
 When adding a new section, slot it where it fits this hierarchy rather
 than appending blindly. Reuse an existing fragment if the topic
 overlaps; create a new numbered fragment only for a genuinely new
-layer, and add a `builtins.readFile` line in the `concatStringsSep`
-list in `modules/home-manager/claude-code.nix`. `RTK.md` lives
-alongside the fragments and is deployed separately to `~/.claude/RTK.md`.
+layer, and weave it into the `mkDoc` cascade in
+`modules/home-manager/agents-md.nix` (shared by both consumers) — or, if
+it's tool-specific, inject it via the `afterRoleTone` / `afterSimplicity`
+hooks from `claude-code.nix` or `opencode.nix`. `RTK.md` is
+Claude-Code-specific: it lives in `modules/home-manager/claude-code/`,
+is `@`-included by claude-code only, and is deployed separately to
+`~/.claude/RTK.md`.
