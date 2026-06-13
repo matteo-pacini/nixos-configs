@@ -375,3 +375,4 @@ Other synced machines pick up the atuin tombstones on their next sync.
 | 2026-06-10 | `attic-client` removed from systemPackages; push script + `wipe-user-nix-config.sh` added (#285) |
 | 2026-06-10 | BrightFalls adopted the cache (#286) |
 | 2026-06-10 | Push script generalized to `attic-push-closure`, defined once in `modules/shared/` (#287) |
+| 2026-06-13 | `pr-build.yml` pushes the PR candidate toplevel to `main` so post-merge master builds are cache hits (#304) |
