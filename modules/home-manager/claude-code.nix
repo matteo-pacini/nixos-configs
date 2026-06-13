@@ -7,6 +7,9 @@
 let
   cfg = config.custom.claude-code;
 
+  # Shared base instruction generator (fragments live in ../agents-md/).
+  agentsMd = import ./agents-md.nix { inherit lib; };
+
   # Effort levels supported by each model. Source of truth:
   # https://code.claude.com/docs/en/model-config#adjust-effort-level
   # Keys are values passed to `claude --model` — aliases auto-track the latest
@@ -147,19 +150,14 @@ in
 
     home.file.".claude/settings.json".text = builtins.toJSON (baseSettings // cfg.extraSettings);
 
-    # CLAUDE.md is assembled from numbered fragments so each section can be
-    # edited in isolation. Order matches the structure documented in the repo's
-    # root CLAUDE.md: role/tone → RTK reference → workflow → simplicity →
-    # model delegation → git → non-negotiables.
-    home.file.".claude/CLAUDE.md".text = lib.concatStringsSep "\n" [
-      (builtins.readFile ./claude-code/claude-md/01-role-tone.md)
-      "@RTK.md\n"
-      (builtins.readFile ./claude-code/claude-md/02-working-on-code.md)
-      (builtins.readFile ./claude-code/claude-md/03-simplicity.md)
-      (builtins.readFile ./claude-code/claude-md/04-model-delegation.md)
-      (builtins.readFile ./claude-code/claude-md/05-git.md)
-      (builtins.readFile ./claude-code/claude-md/06-non-negotiables.md)
-    ];
+    # CLAUDE.md is assembled from the shared fragment base (../agents-md/),
+    # refined with the Claude-only specializations: the @RTK.md include (after
+    # role/tone) and the model-delegation tier (after simplicity). Order matches
+    # the cascade documented in the repo's root CLAUDE.md.
+    home.file.".claude/CLAUDE.md".text = agentsMd.mkDoc {
+      afterRoleTone = [ "@RTK.md\n" ];
+      includeModelDelegation = true;
+    };
     home.file.".claude/RTK.md".source = ./claude-code/RTK.md;
 
     home.file.".claude/hooks/rtk-rewrite.sh" = {

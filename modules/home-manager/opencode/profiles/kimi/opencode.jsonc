@@ -1,0 +1,86 @@
+{
+  // OpenCode "kimi" profile — global config layer.
+  // ==========================================================================
+  // Lands at <OPENCODE_CONFIG_DIR>/opencode.jsonc and is loaded as the GLOBAL
+  // config. The companion agents.jsonc is merged on top via OPENCODE_CONFIG.
+  //
+  // Verification (after switch, with the opencode-kimi launcher):
+  //   OPENCODE_LOG_LEVEL=DEBUG opencode-kimi run --agent build "say hi" 2>&1 \
+  //     | grep -iE 'temperature|top_p|reasoning'
+  //
+  // Inspect merged config:
+  //   opencode-kimi debug agent build   # resolved per-agent settings
+  //   opencode-kimi debug config        # merged top-level config
+  //
+  // Primary references:
+  //   Schema:          https://opencode.ai/config.json
+  //   Config docs:     https://opencode.ai/docs/config/
+  //   OpenRouter:      https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
+  // ==========================================================================
+
+  "$schema": "https://opencode.ai/config.json",
+
+  // Nix manages the package version. Without this opt-out OpenCode tries to
+  // self-update its binary in /nix/store (read-only) and emits "update
+  // available" notices.
+  "autoupdate": false,
+
+  // Default model for any agent that doesn't override. Kimi K2.6 — long-horizon
+  // agentic design (200-300 sequential tool calls, ~4000-step horizon), 256K ctx.
+  // transform.ts auto-injects temperature=1.0 for any kimi-k2.* id, but does NOT
+  // auto-inject top_p for k2.6 (its topP() whitelist is
+  // minimax-m2/gemini/kimi-k2.5/kimi-k2p5/kimi-k2-5 — k2.6 matches none), so
+  // agents that want top_p=0.95 must set it explicitly.
+  // https://openrouter.ai/moonshotai/kimi-k2.6
+  "model": "openrouter/moonshotai/kimi-k2.6",
+
+  // small_model — title generation, summarisation, lightweight auxiliary calls.
+  // OpenCode schema makes this a STRING ONLY (no per-call param overrides). Kept
+  // on Gemini 2.5 Flash Lite deliberately: these ~5-token plumbing calls don't
+  // warrant Kimi output cost (~$3.40/Mtok), it's GA (not preview), reasoning is
+  // off by default. Kimi-centric = agentic roles run Kimi, plumbing does not.
+  // ~$0.10 in / $0.40 out per Mtok. https://openrouter.ai/google/gemini-2.5-flash-lite
+  "small_model": "openrouter/google/gemini-2.5-flash-lite",
+
+  // --------------------------------------------------------------------------
+  // provider.<id>.models — explicit pricing/limit overrides for EVERY model
+  // this profile uses. opencode's cached models.dev snapshot can lag (it briefly
+  // flagged the just-released kimi-k2.7-code as "is not valid"); declaring each
+  // model here forces it into the merged provider map (so the TUI accepts it)
+  // and pins cost + context/output limits for accurate usage/cost display
+  // regardless of catalog freshness. Numbers mirror models.dev (opencode's
+  // catalog source of truth) — note these are models.dev's figures, which may
+  // differ slightly from the OpenRouter marketing page; OpenRouter does the
+  // actual billing.
+  //
+  // No `variants` block: every agentic role runs thinking-on (k2.7-code for
+  // build/debug, k2.6 for plan/review — both default to thinking), so the old
+  // think/nothink effort presets are unused and were dropped.
+  // --------------------------------------------------------------------------
+  "provider": {
+    "openrouter": {
+      "models": {
+        "moonshotai/kimi-k2.7-code": {
+          "name": "Kimi K2.7 Code",
+          "limit": { "context": 262144, "output": 262144 },
+          "cost": { "input": 0.95, "output": 4, "cache_read": 0.19 }
+        },
+        "moonshotai/kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "limit": { "context": 262142, "output": 262142 },
+          "cost": { "input": 0.68, "output": 3.41, "cache_read": 0.34 }
+        },
+        "moonshotai/kimi-k2.5": {
+          "name": "Kimi K2.5",
+          "limit": { "context": 256000, "output": 262144 },
+          "cost": { "input": 0.375, "output": 2.025 }
+        },
+        "google/gemini-2.5-flash-lite": {
+          "name": "Gemini 2.5 Flash-Lite",
+          "limit": { "context": 1048576, "output": 65535 },
+          "cost": { "input": 0.1, "output": 0.4, "reasoning": 0.4, "cache_read": 0.01, "cache_write": 0.083333 }
+        }
+      }
+    }
+  }
+}
