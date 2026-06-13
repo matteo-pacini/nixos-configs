@@ -16,7 +16,7 @@
 
 ## Overview
 
-Five build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_0`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) (Nexus only, today).
+Five build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_0`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) (Nexus, BrightFalls, and WorkLaptop today; NightSprings imports the module but has no secrets).
 
 | Host | Platform | Role | User |
 |------|----------|------|------|
@@ -136,12 +136,12 @@ Travel gaming laptop running NixOS. Intel CPU + NVIDIA GPU (Optimus, PRIME rende
 </details>
 
 <details>
-<summary><strong>Storage</strong> — ~82 TB raw / ~73 TB usable</summary>
+<summary><strong>Storage</strong> — ~93 TB raw / ~75 TB usable</summary>
 
 | Pool | Disks | FS | Notes |
 |------|-------|----|-------|
 | OS | 2× MX500 2 TB | XFS | mdadm RAID1 |
-| Data | 10× 7–9 TB HDDs | ext4 | LUKS encrypted, merged via [mergerfs](https://github.com/trapexit/mergerfs) |
+| Data | 9× 7–9 TB HDDs | ext4 | LUKS encrypted, merged via [mergerfs](https://github.com/trapexit/mergerfs) |
 | Parity | 2× 9 TB HDDs | ext4 | [SnapRAID](https://www.snapraid.it) dual parity |
 
 See the [Diskpool Handbook](docs/nexus/diskpool-handbook.md) for the full storage architecture.
@@ -217,16 +217,25 @@ Scoped to this flake but written with options should you want to crib them:
 - **`custom.nix-core`** *(NixOS, Darwin)* — Trusted users, experimental features, extra platforms.
 - **`custom.kernel`** *(NixOS)* — Linux 7.0 with optional BORE scheduler patches.
 - **`custom.locale`** *(NixOS)* — Locale, timezone, console keymap and font.
-- **`custom.bluetooth`**, **`custom.fonts`** *(NixOS / Darwin)* — Simple bundles.
+- **`custom.bluetooth`**, **`custom.fonts`** *(NixOS)* — Simple bundles.
+- **`custom.nix-index`** *(NixOS, Darwin)* — Pre-built `nix-index` database and optional `comma` wrapper.
 - **`custom.system-defaults`** *(Darwin)* — Dock, Finder, Touch ID for `sudo`, dark mode.
-- **`programs.git`**, **`programs.ssh`**, **`programs.atuin`**, **`programs.shell-tools`** *(Home Manager)* — Wrappers around their upstream counterparts with my preferences pre-applied.
+- **`custom.git`**, **`custom.ssh`**, **`custom.atuin`**, **`custom.shell-tools`**, **`custom.zsh`** *(Home Manager)* — Wrappers around their upstream counterparts with my preferences pre-applied.
+- **`custom.claude-code`**, **`custom.opencode`** *(Home Manager)* — Managed AI coding-assistant configs with bundled instruction files and hooks.
+- **`custom.mpv`**, **`custom.nvf`**, **`custom.phone.scrcpy`**, **`custom.zellij`**, **`custom.wezterm`**, **`custom.vscode`**, **`custom.starship`** *(Home Manager)* — Media player, Neovim, phone mirroring, terminal multiplexer, terminal emulator, editor, and prompt.
+- **`programs.firefox.customization`** *(Home Manager)* — Firefox customization, search engines, and extensions.
+- **`dracula`** *(Home Manager)* — Dracula theme activations for wallpaper, eza, VS Code, Xcode, fzf, bat, and Firefox.
 - **[`apcupsd-multi`](modules/nixos/apcupsd-multi.nix)** *(NixOS)* — apcupsd configured for multiple UPS units.
 
 ## Packages
 
-`overlays/shared.nix` exposes a few custom packages:
+Package definitions live in `packages/` and are wired into host overlays:
 
-- **`reshade-steam-proton`** — ReShade installer for Linux games running under Wine/Proton.
+- **`reshade-steam-proton`** — ReShade installer for Linux games running under Wine/Proton (`packages/reshade-steam-proton.nix`, wired into the BrightFalls overlay).
+- **`optiscaler-client`** — OptiScaler client for Linux games (`packages/optiscaler-client.nix`, wired into the BrightFalls overlay).
+
+`overlays/shared.nix` also exposes:
+
 - **`claude-code`** — Vendored from nixpkgs master with a wrapper that puts Node.js and `rtk` on PATH and toggles auto-compact + prompt caching.
 
 ---

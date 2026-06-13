@@ -92,7 +92,7 @@ and confirm `sum(free elsewhere) > used on failing disk`). The May
 
 Switch to **Approach B** if the disk is throwing kernel I/O errors,
 the rsync is failing on specific files, or you specifically want to
-preserve the 10-disk layout.
+preserve the 9-disk layout.
 
 ---
 
@@ -316,8 +316,9 @@ at the top (the doc updates listed there are handled in A9). For the
 
 ```nix
 # diskN drained YYYY-MM-DD — <one-line reason>
-# diskNumbers = lib.range 0 9;
-diskNumbers = lib.filter (n: n != N) (lib.range 0 9);
+# Previous state (already excludes retired disk1):
+# diskNumbers = lib.filter (n: n != 1) (lib.range 0 9);
+diskNumbers = lib.filter (n: n != 1 && n != N) (lib.range 0 9);
 ```
 
 Comment-style edits make the change reversible if you ever re-add the
@@ -676,7 +677,7 @@ Fix: stop, re-apply `setfattr` from A3, and restart the rsync.
 If you want belt-and-braces, do the nix-side edit from A7 *before*
 starting the drain — the rebuild then makes the branch change
 persistent. The trade-off is you cannot fall back cleanly to the
-original 10-disk layout without another rebuild.
+original 9-disk layout without another rebuild.
 
 ### rsync throughput stuck at ~10 MB/s
 
