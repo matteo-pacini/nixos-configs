@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Multi-host NixOS/nix-darwin flake managing 7 build configurations across 5 physical hosts. Read `flake.nix` for host wiring and `README.md` for hardware details.
+Multi-host NixOS/nix-darwin flake managing 5 build configurations across 5 physical hosts. Read `flake.nix` for host wiring and `README.md` for hardware details.
 
 ## Verification
 
@@ -59,10 +59,10 @@ nix run nix-darwin -- switch --flake .#<Host>
 
 ## Secrets
 
-Only Nexus uses agenix secrets currently.
+Nexus, BrightFalls, and WorkLaptop use agenix secrets. NightSprings imports the agenix module but has no secrets today; CauldronLake does not use agenix.
 
 - Definitions: `secrets/secrets.nix`
-- Encrypted files: `secrets/nexus/*.age`
+- Encrypted files: `secrets/nexus/*.age`, `secrets/brightfalls/*.age`, `secrets/worklaptop/*.age`, `secrets/shared/*.age`
 - Re-key after changing `secrets.nix`:
   ```bash
   cd secrets && agenix --rekey -i /path/to/valid/identity
