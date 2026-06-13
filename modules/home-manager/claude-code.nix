@@ -14,13 +14,6 @@ let
   # a full model ID (e.g. "claude-opus-4-8") when you need a specific version.
   # Empty list = model does not support --effort.
   modelEfforts = {
-    fable = [
-      "low"
-      "medium"
-      "high"
-      "xhigh"
-      "max"
-    ];
     opus = [
       "low"
       "medium"
@@ -55,7 +48,6 @@ let
   # (`claude-<slug>` and `claude-<slug>-<effort>`). Pinned IDs get a compact
   # slug to avoid dash ambiguity with the effort suffix.
   modelAliasSlug = {
-    fable = "fable";
     opus = "opus";
     sonnet = "sonnet";
     haiku = "haiku";
@@ -68,7 +60,6 @@ let
   # When true, an additional set of `claude-<slug>-1m[-<effort>]` aliases is
   # generated, invoking the model with the `[1m]` suffix.
   model1mContext = {
-    fable = true;
     opus = true;
     sonnet = true;
     haiku = false;
