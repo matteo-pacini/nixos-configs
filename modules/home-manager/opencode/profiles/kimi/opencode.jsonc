@@ -67,6 +67,18 @@
             "think": { "reasoning": { "enabled": true } },
             "nothink": { "reasoning": { "enabled": false } }
           }
+        },
+
+        // kimi-k2.7-code shipped 2026-06-12. The opencode TUI validates an
+        // agent's model against its cached models.dev snapshot, which lags and
+        // flags this very new model "is not valid" (a warning) even though the
+        // CLI/live path resolves it fine. Declaring it here forces it into the
+        // merged provider model map so the TUI accepts it deterministically.
+        // Values mirror models.dev (opencode's catalog source of truth).
+        "moonshotai/kimi-k2.7-code": {
+          "name": "Kimi K2.7 Code",
+          "limit": { "context": 262144, "output": 262144 },
+          "cost": { "input": 0.95, "output": 4, "cache_read": 0.19 }
         }
       }
     }
