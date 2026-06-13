@@ -80,6 +80,10 @@ in
 
   services.fwupd.enable = true;
 
+  # mDNS discovery for phone mirroring (custom.phone.scrcpy);
+  # GNOME already enables avahi, this just makes the dependency explicit
+  services.avahi.enable = true;
+
   # fwupd-refresh.service runs as the sessionless `fwupd-refresh` user,
   # and refresh-remote defaults to auth_admin outside an active session,
   # so polkit denies it ("Failed to obtain auth") without this rule
