@@ -152,8 +152,9 @@ in
 
     # CLAUDE.md is assembled from the shared fragment base (../agents-md/),
     # refined with the Claude-only specializations: the @RTK.md include (after
-    # role/tone) and the model-delegation tier (after simplicity). Order matches
-    # the cascade documented in the repo's root CLAUDE.md.
+    # role/tone — Claude's hook rewrites invisibly, so it uses upstream's
+    # auto-refreshed rtk-awareness doc) and the model-delegation tier (after
+    # simplicity). Order matches the cascade documented in the root CLAUDE.md.
     home.file.".claude/CLAUDE.md".text = agentsMd.mkDoc {
       afterRoleTone = [ "@RTK.md\n" ];
       includeModelDelegation = true;
