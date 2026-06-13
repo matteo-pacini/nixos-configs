@@ -207,6 +207,17 @@ log in with the `ATTIC_TOKEN` repository secret and push build results
 to `main`. The login alias is hardcoded; there is no
 `ATTIC_CACHE_NAME` secret.
 
+`pr-build.yml` pushes the PR's candidate toplevel (`result`) so the
+post-merge master build in `build.yml` is a cache hit rather than a
+full rebuild. Because attic dedups chunks globally, this adds only the
+PR's delta over what `build.yml` already pushed — not a second copy of
+the closure. Merged paths get re-pinned by `build.yml`; abandoned-PR
+paths carry no special retention and simply age out under the
+server-wide GC window. This is why a separate short-retention "PR
+cache" was not created: global dedup already makes the second push
+disk-cheap, and a second cache would only add a substituter lookup per
+build plus its own token and upkeep.
+
 ## Cache Administration (on Nexus)
 
 ### One-shot authenticated admin session
@@ -364,3 +375,4 @@ Other synced machines pick up the atuin tombstones on their next sync.
 | 2026-06-10 | `attic-client` removed from systemPackages; push script + `wipe-user-nix-config.sh` added (#285) |
 | 2026-06-10 | BrightFalls adopted the cache (#286) |
 | 2026-06-10 | Push script generalized to `attic-push-closure`, defined once in `modules/shared/` (#287) |
+| 2026-06-13 | `pr-build.yml` pushes the PR candidate toplevel to `main` so post-merge master builds are cache hits (#304) |
