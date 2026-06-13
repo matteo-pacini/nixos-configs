@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
-# Refresh vendored RTK artifacts for Claude Code and OpenCode, pinned to the
-# rtk binary version from the flake's nixpkgs-master pin. The rtk binary embeds
-# an integrity hash for the Claude hook (rtk-rewrite.sh); pulling a hook from
+# Refresh vendored RTK artifacts for Claude Code, pinned to the rtk binary
+# version from the flake's nixpkgs-master pin. The rtk binary embeds an
+# integrity hash for the Claude hook (rtk-rewrite.sh); pulling a hook from
 # master while the binary lags behind upstream causes the runtime check to
-# fail, so always fetch from the tag the binary was built from. OpenCode's
-# plugin has no integrity check but is pinned for the same consistency reason.
-# (Claude uses RTK.md as its awareness prompt via @RTK.md; opencode uses a
-# separate fragment in agents-md.nix — see that file for why they differ.)
-# Overwrites claude-code/{RTK.md,rtk-rewrite.sh} and opencode/rtk.ts — any
-# local edits are lost.
+# fail, so always fetch from the tag the binary was built from.
+# Overwrites claude-code/{RTK.md,rtk-rewrite.sh} — any local edits are lost.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -26,4 +22,3 @@ BASE_URL="https://raw.githubusercontent.com/rtk-ai/rtk/v${VERSION}/hooks"
 
 curl -fsSL "$BASE_URL/claude/rtk-awareness.md" --output claude-code/RTK.md
 curl -fsSL "$BASE_URL/claude/rtk-rewrite.sh"   --output claude-code/rtk-rewrite.sh
-curl -fsSL "$BASE_URL/opencode/rtk.ts"         --output opencode/rtk.ts

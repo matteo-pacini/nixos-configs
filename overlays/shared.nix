@@ -72,8 +72,7 @@
     # nixpkgs lag sees the integrity check fail. The master pin lets us bump rtk
     # as soon as upstream tags a release that bundles the new hook. After a bump
     # re-sync the vendored hook with
-    # `modules/home-manager/update-rtk.sh` (refreshes both the Claude hook
-    # and the OpenCode plugin).
+    # `modules/home-manager/update-rtk.sh` (refreshes the Claude hook).
     rtk = masterPkgs.rtk;
 
     # openldap-2.6.13: the syncreplication tests are timing-sensitive and fail
