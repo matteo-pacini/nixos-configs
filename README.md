@@ -217,7 +217,7 @@ Scoped to this flake but written with options should you want to crib them:
 - **`custom.nix-core`** *(NixOS, Darwin)* — Trusted users, experimental features, extra platforms.
 - **`custom.kernel`** *(NixOS)* — Linux 7.0 with optional BORE scheduler patches.
 - **`custom.locale`** *(NixOS)* — Locale, timezone, console keymap and font.
-- **`custom.bluetooth`**, **`custom.fonts`** *(NixOS)* — Simple bundles.
+- **`custom.bluetooth`** *(NixOS)*, **`custom.fonts`** *(NixOS, Darwin)* — Simple bundles.
 - **`custom.nix-index`** *(NixOS, Darwin)* — Pre-built `nix-index` database and optional `comma` wrapper.
 - **`custom.system-defaults`** *(Darwin)* — Dock, Finder, Touch ID for `sudo`, dark mode.
 - **`custom.git`**, **`custom.ssh`**, **`custom.atuin`**, **`custom.shell-tools`**, **`custom.zsh`** *(Home Manager)* — Wrappers around their upstream counterparts with my preferences pre-applied.
