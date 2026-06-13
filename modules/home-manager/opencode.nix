@@ -38,11 +38,14 @@ let
 
   # Per-profile, fully isolated config directory in the Nix store.
   #
-  # opencode v1.16.2 tolerates a read-only OPENCODE_CONFIG_DIR: its npm
-  # install guard skips non-writable dirs and the .gitignore writer
-  # swallows PermissionDenied. File-based plugins are stat+read only.
-  # Both `plugin/` and `plugins/` are scanned (glob `{plugin,plugins}/*.{ts,js}`),
-  # so the store path can carry the rtk plugin directly.
+  # The dir is read-only (/nix/store). opencode's npm-install guard skips
+  # non-writable dirs and file-based plugins are stat+read only, so plugins
+  # load fine (both `plugin/` and `plugins/` are scanned). The ONE startup
+  # write opencode attempts into the config dir is a `.gitignore`
+  # (Config.ensureGitignore, gated by `existsSafe` then `Effect.orDie`): its
+  # catch only handles PermissionDenied, NOT the read-only-FS error, so on a
+  # store path it would crash config load. We pre-ship the `.gitignore` so the
+  # existsSafe check is satisfied and opencode never attempts the write.
   mkProfile =
     alias: p:
     let
@@ -51,6 +54,7 @@ let
         install -m444 ${p.config} "$out/opencode.jsonc"
         install -m444 ${agentsMd} "$out/AGENTS.md"
         install -m444 ${./opencode/rtk.ts} "$out/plugin/rtk.ts"
+        printf '%s\n' node_modules package.json package-lock.json bun.lock .gitignore > "$out/.gitignore"
       '';
     in
     pkgs.writeShellApplication {
