@@ -120,3 +120,15 @@ jobs:
           # 0.38.0 (pulled in 2026-05-27) uses the unstable cfg_select! macro.
           nix run github:faukah/dix/v1.4.2 -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # Cache the PR's candidate toplevel so the post-merge master build in
+      # build.yml is a cache hit. Chunks dedup globally with what build.yml
+      # already pushed, so this costs only the PR's delta; merged paths get
+      # re-pinned by build.yml, abandoned-PR paths age out under GC retention.
+      - uses: nick-fields/retry@v4
+        name: Push new configuration
+        with:
+          timeout_minutes: 60
+          max_attempts: 5
+          retry_on: error
+          command: nix run nixpkgs#attic-client -- push main result -j 3
