@@ -28,6 +28,7 @@
     efiSupport = true;
     device = "nodev";
     memtest86.enable = true;
+    configurationLimit = 5;
   };
   boot.loader.efi.canTouchEfiVariables = true;
 

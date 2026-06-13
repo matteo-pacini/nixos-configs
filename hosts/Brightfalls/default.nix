@@ -46,6 +46,7 @@
     efiSupport = true;
     device = "nodev";
     memtest86.enable = pkgs.stdenv.hostPlatform.isx86;
+    configurationLimit = 5;
   };
   boot.loader.efi.canTouchEfiVariables = true;
 

@@ -16,6 +16,11 @@ in
 {
   options.custom.nix-core = {
     enable = lib.mkEnableOption "Shared Nix and Nixpkgs configuration for Darwin hosts";
+    gc.deleteOlderThan = lib.mkOption {
+      type = lib.types.str;
+      default = "30d";
+      description = "Age passed to nix-collect-garbage --delete-older-than.";
+    };
     trustedUsers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "root" ];
@@ -52,6 +57,32 @@ in
           };
         };
         nixpkgs.config.allowUnfree = true;
+      }
+      {
+        # Scheduled GC + store optimisation via launchd. Darwin has no
+        # dates/persistent/randomizedDelaySec (removed options); launchd
+        # coalesces a missed calendar job and fires it once on next wake.
+        nix.gc = {
+          automatic = true;
+          interval = lib.mkDefault [
+            {
+              Weekday = 7;
+              Hour = 4;
+              Minute = 0;
+            }
+          ];
+          options = "--delete-older-than ${cfg.gc.deleteOlderThan}";
+        };
+        nix.optimise = {
+          automatic = true;
+          interval = lib.mkDefault [
+            {
+              Weekday = 7;
+              Hour = 5;
+              Minute = 0;
+            }
+          ];
+        };
       }
       # System-level so the substituter applies to every user (the
       # nix-daemon performs all downloads), with no flake nixConfig

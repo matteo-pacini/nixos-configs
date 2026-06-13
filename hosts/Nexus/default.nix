@@ -33,6 +33,7 @@
     # First SSD
     device = "/dev/disk/by-id/ata-CT2000MX500SSD1_2308E6B0D773";
     memtest86.enable = true;
+    configurationLimit = 5;
   };
 
   environment.systemPackages = with pkgs; [
