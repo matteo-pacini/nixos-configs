@@ -11,6 +11,7 @@ let
 in
 {
   reshade-steam-proton = super.callPackage ../packages/reshade-steam-proton.nix { };
+  optiscaler-client = super.callPackage ../packages/optiscaler-client.nix { };
 
   qemu = optimizedForBrightFalls (
     super.qemu.override ({
