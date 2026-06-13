@@ -8,9 +8,10 @@ instruction fragments are shared: they live in
 generator in `modules/home-manager/agents-md.nix`, which is consumed by
 **both** the claude-code and opencode modules. `claude-code.nix` refines
 the base with the `@RTK.md` include (after fragment 01) and the
-model-delegation tier (04); `opencode.nix` augments it with per-profile
-steering instead, dropping RTK and model-delegation. To change a section,
-edit the matching fragment in `modules/home-manager/agents-md/`:
+model-delegation tier (04); `opencode.nix` opts into a *different* RTK
+prompt via `needsRtkPrompt` (the integrations differ — see below) and
+drops model-delegation. To change a section, edit the matching fragment in
+`modules/home-manager/agents-md/`:
 
 - `01-role-tone.md` — role, tone, confidence
 - `02-working-on-code.md` — workflow, output format
@@ -28,7 +29,7 @@ weights conflicts:
 ```
 1. ROLE / TONE / COMMUNICATION   ← frames everything below
         ↓
-2. RTK.md INCLUSION              ← stable global token-efficiency rules
+2. RTK AWARENESS PROMPT          ← rtk shell-rewrite awareness (opt-in)
         ↓
 3. WORKING ON CODE / OUTPUT      ← specific workflow guidance
         ↓
@@ -47,7 +48,12 @@ overlaps; create a new numbered fragment only for a genuinely new
 layer, and weave it into the `mkDoc` cascade in
 `modules/home-manager/agents-md.nix` (shared by both consumers) — or, if
 it's tool-specific, inject it via the `afterRoleTone` / `afterSimplicity`
-hooks from `claude-code.nix` or `opencode.nix`. `RTK.md` is
-Claude-Code-specific: it lives in `modules/home-manager/claude-code/`,
-is `@`-included by claude-code only, and is deployed separately to
-`~/.claude/RTK.md`.
+hooks from `claude-code.nix` or `opencode.nix`. The two modules use
+*different* RTK prompts on purpose: Claude's hook rewrites invisibly, so
+claude-code `@`-includes upstream's `RTK.md` (in
+`modules/home-manager/claude-code/`, deployed to `~/.claude/RTK.md`);
+OpenCode's plugin rewrites visibly, so opencode opts into the `rtkPrompt`
+fragment in `agents-md.nix` via `needsRtkPrompt`. The rtk *executables*
+(the Claude `rtk-rewrite.sh` hook and the OpenCode `rtk.ts` plugin) and
+`RTK.md` are vendored and refreshed by
+`modules/home-manager/update-rtk.sh`.

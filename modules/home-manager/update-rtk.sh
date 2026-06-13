@@ -5,6 +5,8 @@
 # master while the binary lags behind upstream causes the runtime check to
 # fail, so always fetch from the tag the binary was built from. OpenCode's
 # plugin has no integrity check but is pinned for the same consistency reason.
+# (Claude uses RTK.md as its awareness prompt via @RTK.md; opencode uses a
+# separate fragment in agents-md.nix — see that file for why they differ.)
 # Overwrites claude-code/{RTK.md,rtk-rewrite.sh} and opencode/rtk.ts — any
 # local edits are lost.
 set -euo pipefail

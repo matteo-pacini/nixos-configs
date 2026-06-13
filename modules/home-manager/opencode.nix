@@ -24,14 +24,16 @@ let
   '';
 
   # opencode's auto-loaded AGENTS.md: the shared fragment base (../agents-md/)
-  # augmented with the per-profile Kimi steering. No RTK.md (the rtk.ts plugin
-  # rewrites bash transparently; the awareness prose is Claude-hook-specific)
-  # and no model-delegation (Claude model tiers).
+  # plus the RTK awareness prompt (so Kimi doesn't trip over the rtk.ts plugin
+  # VISIBLY rewriting its shell commands — it sees `rtk`-prefixed commands and
+  # `--- Changes ---` output) and the per-profile Kimi steering. No
+  # model-delegation (Claude model tiers).
   #
   # Placed at <OPENCODE_CONFIG_DIR>/AGENTS.md, this shadows ~/.claude/CLAUDE.md:
   # opencode's instruction loader takes the first existing file in
   # [<config>/AGENTS.md, ~/.claude/CLAUDE.md] and stops.
   sharedInstructions = (import ./agents-md.nix { inherit lib; }).mkDoc {
+    needsRtkPrompt = true;
     afterSimplicity = [ kimiReasoningBudget ];
   };
   agentsMd = pkgs.writeText "opencode-AGENTS.md" sharedInstructions;
