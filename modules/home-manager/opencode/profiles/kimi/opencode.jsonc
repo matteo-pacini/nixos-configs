@@ -43,42 +43,42 @@
   "small_model": "openrouter/google/gemini-2.5-flash-lite",
 
   // --------------------------------------------------------------------------
-  // provider.<id>.models.<model>.variants — named option presets, merged flat
-  // into the OpenRouter provider options (NO `options` wrapper in v1.16.2).
+  // provider.<id>.models — explicit pricing/limit overrides for EVERY model
+  // this profile uses. opencode's cached models.dev snapshot can lag (it briefly
+  // flagged the just-released kimi-k2.7-code as "is not valid"); declaring each
+  // model here forces it into the merged provider map (so the TUI accepts it)
+  // and pins cost + context/output limits for accurate usage/cost display
+  // regardless of catalog freshness. Numbers mirror models.dev (opencode's
+  // catalog source of truth) — note these are models.dev's figures, which may
+  // differ slightly from the OpenRouter marketing page; OpenRouter does the
+  // actual billing.
   //
-  // K2.6 thinking is BINARY (thinking.type enabled/disabled, no graded budget).
-  // The former fast/balanced/deep effort ladder was illusory: 20/21 OpenRouter
-  // K2.6 endpoints don't advertise reasoning_effort, so low/medium/high gave no
-  // reliable graded depth. Collapsed to an honest think/nothink pair.
-  //
-  // Only `plan` (a primary) consumes a variant at runtime — subagent variants
-  // don't apply (opencode #21632), and build/debug run always-thinking
-  // kimi-k2.7-code with no variant. So these live under k2.6 for `plan`.
-  //
-  // CAVEAT: K2.6 ships thinking-on and may be mandatory-reasoning. `nothink`
-  // (reasoning.enabled:false) is UNVERIFIED on the live OpenRouter route — it
-  // may 400 or be silently ignored. Test on the host before relying on it.
+  // No `variants` block: every agentic role runs thinking-on (k2.7-code for
+  // build/debug, k2.6 for plan/review — both default to thinking), so the old
+  // think/nothink effort presets are unused and were dropped.
   // --------------------------------------------------------------------------
   "provider": {
     "openrouter": {
       "models": {
-        "moonshotai/kimi-k2.6": {
-          "variants": {
-            "think": { "reasoning": { "enabled": true } },
-            "nothink": { "reasoning": { "enabled": false } }
-          }
-        },
-
-        // kimi-k2.7-code shipped 2026-06-12. The opencode TUI validates an
-        // agent's model against its cached models.dev snapshot, which lags and
-        // flags this very new model "is not valid" (a warning) even though the
-        // CLI/live path resolves it fine. Declaring it here forces it into the
-        // merged provider model map so the TUI accepts it deterministically.
-        // Values mirror models.dev (opencode's catalog source of truth).
         "moonshotai/kimi-k2.7-code": {
           "name": "Kimi K2.7 Code",
           "limit": { "context": 262144, "output": 262144 },
           "cost": { "input": 0.95, "output": 4, "cache_read": 0.19 }
+        },
+        "moonshotai/kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "limit": { "context": 262142, "output": 262142 },
+          "cost": { "input": 0.68, "output": 3.41, "cache_read": 0.34 }
+        },
+        "moonshotai/kimi-k2.5": {
+          "name": "Kimi K2.5",
+          "limit": { "context": 256000, "output": 262144 },
+          "cost": { "input": 0.375, "output": 2.025 }
+        },
+        "google/gemini-2.5-flash-lite": {
+          "name": "Gemini 2.5 Flash-Lite",
+          "limit": { "context": 1048576, "output": 65535 },
+          "cost": { "input": 0.1, "output": 0.4, "reasoning": 0.4, "cache_read": 0.01, "cache_write": 0.083333 }
         }
       }
     }

@@ -18,10 +18,11 @@
   //   * `steps` defaults to Infinity if unset. Always cap explicitly.
   //   * `permission.write` is NOT a canonical key; `edit` gates the
   //     {edit, write, patch} tool group.
-  //   * Reasoning depth: Kimi thinking is binary and effort levels are not
-  //     reliably graded on OpenRouter K2.* endpoints, so no effort hints are
-  //     relied upon. build/debug run always-thinking kimi-k2.7-code (reasoning
-  //     preserved across multi-turn tool calls); plan uses the `think` variant.
+  //   * Role split: build/debug run the coding specialist kimi-k2.7-code;
+  //     plan/review run the flagship kimi-k2.6 (leads agentic + coding
+  //     benchmarks); explore runs the cheap fast retriever kimi-k2.5. All run
+  //     thinking-on (Kimi thinking is binary, OpenRouter doesn't grade effort),
+  //     so no variants are used.
   // ==========================================================================
 
   "agent": {
@@ -46,8 +47,9 @@
     },
 
     // ------------------------------------------------------------------------
-    // plan — primary, read-only architecture/design. kimi-k2.6 with the `think`
-    //   variant (thinking on). top_p 0.95 explicit (k2.6 not on topP whitelist).
+    // plan — primary, read-only architecture/design. kimi-k2.6: the flagship
+    //   (leads agentic + coding benchmarks), thinking-on by default. temp 1.0
+    //   auto-injected; top_p 0.95 explicit (k2.6 not on the topP whitelist).
     // ------------------------------------------------------------------------
     "plan": {
       "description": "Architecture and planning specialist. Analyzes code, designs solutions, and creates implementation plans without modifying files. Use for: system design, code review preparation, technical decisions, refactoring strategies, and understanding complex codebases.",
@@ -55,7 +57,6 @@
       "model": "openrouter/moonshotai/kimi-k2.6",
       "temperature": 1.0,
       "top_p": 0.95,
-      "variant": "think",
       "steps": 20,
       "permission": {
         "edit": { "*": "deny" },
@@ -85,8 +86,9 @@
     },
 
     // ------------------------------------------------------------------------
-    // review — subagent, code quality + security review. kimi-k2.6 (GA). temp
-    //   1.0 auto-injected; top_p 0.95 explicit (k2.6 not on topP whitelist).
+    // review — subagent, code quality + security review. kimi-k2.6 (flagship).
+    //   temp 1.0 auto-injected; top_p 0.95 explicit (k2.6 not on the topP
+    //   whitelist).
     // ------------------------------------------------------------------------
     "review": {
       "description": "Code quality and security reviewer. Identifies bugs, security vulnerabilities, performance issues, and style violations. Use for: PR reviews, security audits, best practice enforcement, and spotting potential edge cases or anti-patterns.",
