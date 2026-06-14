@@ -1,0 +1,52 @@
+Backport a configurable OpenRouter Fusion panel to opencode.
+
+opencode 1.16.2 cannot configure a custom Fusion panel: the openrouter/fusion
+model only ever runs OpenRouter's default Quality preset, with no way to pick
+the analysis models or judge (anomalyco/opencode#32219). This backports the
+variants() mechanism from PR anomalyco/opencode#32332, generalized so the preset
+table is not hard-coded: openRouterFusionVariants() ships builtin quality/budget
+panels and merges any presets injected via the OPENCODE_FUSION_PRESETS env var
+(JSON: name -> { analysis_models, model }), so each profile supplies its own
+panel + judge without editing this patch.
+
+Targets opencode 1.16.2 (anomalyco/opencode).
+
+diff --git a/packages/opencode/src/provider/transform.ts b/packages/opencode/src/provider/transform.ts
+index 79cfa3e..9f039c8 100644
+--- a/packages/opencode/src/provider/transform.ts
++++ b/packages/opencode/src/provider/transform.ts
+@@ -637,7 +637,34 @@ function googleThinkingVariants(model: Provider.Model): Record<string, Record<st
+   )
+ }
+ 
++// OpenRouter Fusion presets exposed as model variants (backport of
++// anomalyco/opencode#32332, generalized). Builtin quality/budget plus any
++// presets injected via the OPENCODE_FUSION_PRESETS env var
++// (JSON: name -> { analysis_models, model }), so a profile ships its own panel
++// without editing this patch.
++function openRouterFusionVariants(): Record<string, Record<string, any>> {
++  const preset = (analysis: readonly string[], judge?: string) => ({
++    plugins: [{ id: "fusion", analysis_models: [...analysis], model: judge ?? analysis[0] }],
++  })
++  const out: Record<string, Record<string, any>> = {
++    quality: preset(["~anthropic/claude-opus-latest", "~openai/gpt-latest", "~google/gemini-pro-latest"]),
++    budget: preset(["~google/gemini-flash-latest", "~moonshotai/kimi-latest", "deepseek/deepseek-v4-pro"]),
++  }
++  try {
++    const injected = JSON.parse(process.env["OPENCODE_FUSION_PRESETS"] ?? "{}")
++    for (const [name, cfg] of Object.entries(injected)) {
++      const c = cfg as { analysis_models?: unknown; model?: unknown }
++      if (Array.isArray(c?.analysis_models))
++        out[name] = preset(c.analysis_models as string[], typeof c.model === "string" ? c.model : undefined)
++    }
++  } catch {}
++  return out
++}
++
+ export function variants(model: Provider.Model): Record<string, Record<string, any>> {
++  if (model.api.npm === "@openrouter/ai-sdk-provider" && model.api.id === "openrouter/fusion")
++    return openRouterFusionVariants()
++
+   if (!model.capabilities.reasoning) return {}
+ 
+   const id = model.id.toLowerCase()

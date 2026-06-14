@@ -7,6 +7,9 @@
 let
   cfg = config.custom.claude-code;
 
+  # Shared instruction-doc base, also consumed by the opencode module.
+  mkDoc = (import ./agents-md.nix { inherit lib; }).mkDoc;
+
   # Effort levels supported by each model. Source of truth:
   # https://code.claude.com/docs/en/model-config#adjust-effort-level
   # Keys are values passed to `claude --model` — aliases auto-track the latest
@@ -147,8 +150,13 @@ in
 
     home.file.".claude/settings.json".text = builtins.toJSON (baseSettings // cfg.extraSettings);
 
-    # CLAUDE.md pulls in RTK.md via the `@RTK.md` include line baked into it.
-    home.file.".claude/CLAUDE.md".source = ./claude-code/CLAUDE.md;
+    # CLAUDE.md is assembled from the shared base: @RTK.md include after role/tone
+    # (Claude's hook rewrites invisibly, so it pulls upstream's RTK.md) plus the
+    # Claude-only model-delegation tier.
+    home.file.".claude/CLAUDE.md".text = mkDoc {
+      afterRoleTone = [ "@RTK.md\n" ];
+      includeModelDelegation = true;
+    };
     home.file.".claude/RTK.md".source = ./claude-code/RTK.md;
 
     home.file.".claude/hooks/rtk-rewrite.sh" = {

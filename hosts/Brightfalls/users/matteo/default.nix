@@ -68,6 +68,11 @@
   custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
+  custom.opencode = {
+    enable = true;
+    profiles.kimi.enable = true;
+    profiles.fusion-test.enable = true;
+  };
   custom.phone.scrcpy.enable = true;
   custom.mpv.enable = true;
   custom.mpv.jellyfinShim.enable = true;
