@@ -226,7 +226,6 @@
             age.secrets."nexus/attic-env".file = ./secrets/nexus/attic-env.age;
             age.secrets."nexus/attic-netrc".file = ./secrets/nexus/attic-netrc.age;
             age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
-            age.secrets."nexus/claude.env".file = ./secrets/nexus/claude.env.age;
             age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
