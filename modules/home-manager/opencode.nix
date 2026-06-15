@@ -127,8 +127,16 @@ let
       # Catalog entries for the models this profile uses, with optional per-profile
       # display-name overrides (e.g. relabel the Fusion outer model as its panel+judge).
       names = profile.modelNames or { };
+      # Privacy: route every OpenRouter request only to Zero-Data-Retention,
+      # no-training providers. opencode forwards a model's options.provider verbatim
+      # to the OpenRouter request body.
+      routing.provider = {
+        zdr = true;
+        data_collection = "deny";
+      };
       providerModels = lib.mapAttrs (
-        slug: entry: entry // lib.optionalAttrs (names ? ${slug}) { name = names.${slug}; }
+        slug: entry:
+        entry // lib.optionalAttrs (names ? ${slug}) { name = names.${slug}; } // { options = routing; }
       ) (lib.genAttrs (profileModels profile) (slug: catalog.${slug}));
 
       opencodeConfig = pkgs.writeText "opencode-${alias}.json" (
