@@ -141,6 +141,7 @@
           ./modules/home-manager/starship.nix
           ./modules/home-manager/wezterm.nix
           ./modules/home-manager/claude-code.nix
+          ./modules/home-manager/opencode.nix
           ./modules/home-manager/phone-scrcpy.nix
           ./modules/home-manager/mpv
         ];
@@ -180,6 +181,10 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."brightfalls/attic-netrc".file = ./secrets/brightfalls/attic-netrc.age;
+            age.secrets."openrouter.env" = {
+              file = ./secrets/shared/openrouter.env.age;
+              owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it
+            };
           }
         ];
       };
@@ -244,6 +249,10 @@
             };
             age.secrets."nexus/geoip-license-key".file = ./secrets/nexus/geoip-license-key.age;
             age.secrets."nexus/n8n-env".file = ./secrets/nexus/n8n-env.age;
+            age.secrets."openrouter.env" = {
+              file = ./secrets/shared/openrouter.env.age;
+              owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it
+            };
           }
         ];
       };

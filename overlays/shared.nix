@@ -75,6 +75,23 @@
     # `modules/home-manager/update-rtk.sh` (refreshes the Claude hook).
     rtk = masterPkgs.rtk;
 
+    # opencode sourced from the master pin (1.16.2) so it matches the patches below.
+    opencode = masterPkgs.opencode.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        # OpenRouter Fusion bills the whole panel + judge upstream on the one outer
+        # request, but opencode's getUsage prices a turn as (outer-model rate ×
+        # tokens) and ignores the response usage.cost — a large undercount for
+        # Fusion. Prefer the authoritative providerMetadata.openrouter.usage.cost
+        # (usage accounting is force-enabled for the openrouter provider).
+        ../modules/home-manager/opencode/patches/openrouter-real-cost.patch
+        # opencode 1.16.2 can't configure a custom Fusion panel — openrouter/fusion
+        # only runs OpenRouter's default Quality preset (issue #32219). Backport
+        # PR #32332's variant mechanism, generalized to read presets from the
+        # OPENCODE_FUSION_PRESETS env var so each profile injects its own panel.
+        ../modules/home-manager/opencode/patches/openrouter-fusion-presets.patch
+      ];
+    });
+
     # openldap-2.6.13: the syncreplication tests are timing-sensitive and fail
     # on slow / sandboxed builders ("provider and consumer databases differ").
     # First test017 fell over, then surgically skipping it just exposed the

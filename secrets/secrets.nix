@@ -44,4 +44,10 @@ in
 
   # BrightFalls service secrets
   "brightfalls/attic-netrc.age".publicKeys = [ brightfalls ];
+
+  # Shared service secrets (decryptable by multiple hosts)
+  "shared/openrouter.env.age".publicKeys = [
+    brightfalls
+    nexus
+  ];
 }
