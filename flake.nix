@@ -352,6 +352,10 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."worklaptop/attic-netrc".file = ./secrets/worklaptop/attic-netrc.age;
+            age.secrets."openrouter.env" = {
+              file = ./secrets/shared/openrouter.env.age;
+              owner = "matteo.pacini"; # opencode launcher runs as the user; default root:root 0400 would block it
+            };
           }
           inputs.mac-app-util.darwinModules.default
           inputs.home-manager.darwinModules.home-manager

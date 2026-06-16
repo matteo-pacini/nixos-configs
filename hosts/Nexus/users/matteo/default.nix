@@ -15,7 +15,7 @@
   custom.opencode = {
     enable = true;
     profiles.kimi.enable = true;
-    profiles.fusion-test.enable = true;
+    profiles.glm.enable = true;
   };
 
   dracula.eza.enable = true;

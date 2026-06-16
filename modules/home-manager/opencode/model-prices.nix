@@ -3,19 +3,6 @@
 # Keys are bare OpenRouter ids; a profile's provider.openrouter.models is derived
 # from the models it references, so prices live here once.
 {
-  # OpenRouter Fusion router. Cost is variable (panel + judge billed per call) so
-  # models.dev lists none; the real charge arrives via the openrouter-real-cost patch.
-  "openrouter/fusion" = {
-    name = "Fusion";
-    limit = {
-      context = 128000;
-      output = 128000;
-    };
-    cost = {
-      input = 0;
-      output = 0;
-    };
-  };
   "moonshotai/kimi-k2.7-code" = {
     name = "Kimi K2.7 Code";
     limit = {
@@ -51,20 +38,9 @@
       output = 2.025;
     };
   };
-  "deepseek/deepseek-v4-pro" = {
-    name = "DeepSeek V4 Pro";
-    limit = {
-      context = 1048576;
-      output = 384000;
-    };
-    cost = {
-      input = 0.435;
-      output = 0.87;
-      cache_read = 0.003625;
-    };
-  };
+  # z-ai GLM family
   "z-ai/glm-5.1" = {
-    name = "GLM-5.1";
+    name = "GLM 5.1";
     limit = {
       context = 202752;
       output = 131072;
@@ -73,6 +49,30 @@
       input = 0.98;
       output = 3.08;
       cache_read = 0.182;
+    };
+  };
+  "z-ai/glm-5" = {
+    name = "GLM 5";
+    limit = {
+      context = 202752;
+      output = 131072;
+    };
+    cost = {
+      input = 0.60;
+      output = 1.92;
+      cache_read = 0.12;
+    };
+  };
+  "z-ai/glm-4.7-flash" = {
+    name = "GLM 4.7 Flash";
+    limit = {
+      context = 202752;
+      output = 16384;
+    };
+    cost = {
+      input = 0.06;
+      output = 0.40;
+      cache_read = 0.01;
     };
   };
   "google/gemini-2.5-flash" = {

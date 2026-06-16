@@ -5,19 +5,24 @@
 
   steering = [
     ''
-      ## Reasoning Budget
+      ## Output Discipline
 
       When a decision could go either way between brevity and edge-case safety,
       **choose brevity**. Stop self-critique loops once a workable answer is
       reached — do not re-litigate simplicity-vs-robustness trade-offs. If you
       have considered both sides once, commit and move on; the user can ask for
       the alternative if needed.
+
+      If a tool call errors, change approach before retrying — never repeat the
+      identical failing call. When you have enough context to act, act; don't
+      re-grep or re-read what's already in context.
     ''
   ];
 
-  # temperature=1.0 is the only value Moonshot K2.* accepts (else HTTP 400);
-  # top_p=0.95 is auto-injected by opencode only for k2.5, so k2.6/k2.7-code set
-  # it explicitly while k2.5 (explore) sets neither.
+  # temp 1.0 / top_p 0.95 = Moonshot's recommended sampling, not a hard lock:
+  # only their first-party/DigitalOcean/Fireworks endpoints reject overrides;
+  # the ZDR providers we route to accept them. explore (k2.5) omits both and
+  # inherits the same server-side defaults.
   roles = {
     build = {
       model = "openrouter/moonshotai/kimi-k2.7-code";

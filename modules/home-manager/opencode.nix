@@ -11,7 +11,7 @@ let
   # Built-in profiles: data lives in the module, hosts just toggle .enable.
   builtinProfiles = {
     kimi = import ./opencode/profiles/kimi.nix;
-    fusion-test = import ./opencode/profiles/fusion-test.nix;
+    glm = import ./opencode/profiles/glm.nix;
   };
 
   catalog = import ./opencode/model-prices.nix;
@@ -71,16 +71,6 @@ let
     };
   };
 
-  # Fusion agents run the openrouter/fusion router with a named variant. The
-  # patched transform.ts turns OPENCODE_FUSION_PRESETS (set by the launcher) into
-  # that variant — the custom panel + judge.
-  mkFusionRoles =
-    fusion:
-    lib.genAttrs fusion.agents (_: {
-      model = "openrouter/openrouter/fusion";
-      variant = fusion.preset;
-    });
-
   # Merge skeleton invariants with the profile's model + optional sampling
   # (variant/temp/top_p only when set). opencode's JSON key is snake_case top_p;
   # profiles write camelCase topP.
@@ -92,13 +82,12 @@ let
     // lib.optionalAttrs ((role.temperature or null) != null) { temperature = role.temperature; }
     // lib.optionalAttrs ((role.topP or null) != null) { top_p = role.topP; };
 
-  # Every model a profile touches (roles + default + small + fusion panel/judge),
-  # as bare ids — used to pull pricing from the shared catalog.
+  # Every model a profile touches (roles + default + small), as bare ids — used
+  # to pull pricing from the shared catalog.
   profileModels =
     profile:
     let
       strip = lib.removePrefix "openrouter/";
-      fusion = profile.fusion or null;
     in
     lib.unique (
       [
@@ -106,27 +95,16 @@ let
         (strip profile.smallModel)
       ]
       ++ map (r: strip r.model) (lib.attrValues (profile.roles or { }))
-      # openrouter/fusion: the id OpenRouter reports when the panel convenes; pin
-      # it so cost/limits resolve and the label applies even though no agent names it.
-      ++ lib.optionals (fusion != null) ([ "openrouter/fusion" fusion.judge ] ++ fusion.panel)
     );
 
   # A profile is a data attrset:
-  #   { defaultModel; smallModel; roles ? { }; steering ? [ ];
-  #     fusion ? { preset; agents; judge; panel }; modelNames ? { }; }
+  #   { defaultModel; smallModel; roles ? { }; steering ? [ ]; }
   # where roles.<name> = { model; variant ? null; temperature ? null; topP ? null; }.
   mkProfile =
     alias: profile:
     let
-      fusion = profile.fusion or null;
+      roles = profile.roles or { };
 
-      # Effective agent roles: explicit profile.roles plus the fusion agents,
-      # which run the openrouter/fusion router with the profile's preset variant.
-      roles = (profile.roles or { }) // lib.optionalAttrs (fusion != null) (mkFusionRoles fusion);
-
-      # Catalog entries for the models this profile uses, with optional per-profile
-      # display-name overrides (e.g. relabel the Fusion outer model as its panel+judge).
-      names = profile.modelNames or { };
       # Privacy: route every OpenRouter request only to Zero-Data-Retention,
       # no-training providers. opencode forwards a model's options.provider verbatim
       # to the OpenRouter request body.
@@ -135,8 +113,7 @@ let
         data_collection = "deny";
       };
       providerModels = lib.mapAttrs (
-        slug: entry:
-        entry // lib.optionalAttrs (names ? ${slug}) { name = names.${slug}; } // { options = routing; }
+        _slug: entry: entry // { options = routing; }
       ) (lib.genAttrs (profileModels profile) (slug: catalog.${slug}));
 
       opencodeConfig = pkgs.writeText "opencode-${alias}.json" (
@@ -184,18 +161,6 @@ let
           export XDG_STATE_HOME="$root/state"
           export XDG_CACHE_HOME="$root/cache"
           mkdir -p "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-        ''
-        + lib.optionalString (fusion != null) ''
-          export OPENCODE_FUSION_PRESETS=${
-            lib.escapeShellArg (
-              builtins.toJSON {
-                ${fusion.preset} = {
-                  analysis_models = fusion.panel;
-                  model = fusion.judge;
-                };
-              }
-            )
-          }
         ''
         + lib.optionalString (cfg.openrouterKeyFile != null) ''
           if [ -r "${cfg.openrouterKeyFile}" ]; then
