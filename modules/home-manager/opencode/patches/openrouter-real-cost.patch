@@ -10,7 +10,9 @@ providerMetadata.openrouter.usage.cost (opencode enables usage accounting for
 valid finite number; otherwise fall back to the existing per-token calculation,
 so this is a no-op for providers/turns that do not surface a real cost.
 
-Targets opencode 1.16.2 (anomalyco/opencode).
+Applies cleanly across opencode 1.16.2–1.17.7 (anomalyco/opencode) — the
+getUsage hunk context is unchanged over that range (verified with
+`git apply --check` against v1.17.7).
 
 --- a/packages/opencode/src/session/session.ts
 +++ b/packages/opencode/src/session/session.ts
