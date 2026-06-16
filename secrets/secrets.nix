@@ -49,5 +49,6 @@ in
   "shared/openrouter.env.age".publicKeys = [
     brightfalls
     nexus
+    worklaptop
   ];
 }
