@@ -33,6 +33,11 @@
   custom.starship.enable = true;
   custom.wezterm.enable = true;
   custom.claude-code.enable = true;
+  custom.opencode = {
+    enable = true;
+    profiles.kimi.enable = true;
+    profiles.glm.enable = true;
+  };
   custom.mpv.enable = true;
 
   home.stateVersion = "26.05";
