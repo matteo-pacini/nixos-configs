@@ -1,5 +1,7 @@
 # GLM profile — all-GLM agentic roster. Prices come from ../model-prices.nix.
-# glm-5.1: SWE-bench Pro SOTA (58.4), 8h autonomous execution. Primary coder.
+# glm-5.2: 1M-token context (vs 5.1's ~200K), vendor-claimed SWE-bench Pro 62.1
+#   (no independent verify). Primary coder for build + plan.
+# glm-5.1: SWE-bench Pro SOTA (58.4), 8h autonomous execution. Debug fallback.
 # glm-5: strong family code index, cheaper, good for read-only review.
 # glm-4.7-flash: ultra-cheap ($0.06/Mtok) for navigation and summaries.
 # Default sampling: temp=1.0, top_p=0.95 per Z.AI official recommendation.
@@ -33,17 +35,18 @@
   # tool-capable ZDR GLM endpoint exposes both temperature + top_p, no reject
   # pattern. explore (glm-4.7-flash) omits both and inherits server-side defaults.
   roles = {
-    # glm-5.1: SWE-bench Pro SOTA (58.4), 8h autonomous execution, strongest
-    # family agentic. Primary 50-step coder — cost $0.98/Mtok justified.
+    # glm-5.2: 1M-token context + vendor-claimed SWE-bench Pro 62.1 (vs 5.1's
+    # 58.4). Primary 50-step coder; ZDR-confirmed, $1.40/Mtok in.
     build = {
-      model = "openrouter/z-ai/glm-5.1";
+      model = "openrouter/z-ai/glm-5.2";
       temperature = 1.0;
       topP = 0.95;
     };
-    # glm-5.1: same agentic strength + thinking-on by default; plan is read-only
-    # so cost parity with build is fine for architecture sketches.
+    # glm-5.2: 1M-token context (vs 5.1's 202752) suits whole-codebase
+    # architecture sketches; plan is read-only so it can't poison the 50-step
+    # build chain. ZDR-confirmed (Z.AI/Io Net/Novita/Friendli, fp8, tools+temp+top_p).
     plan = {
-      model = "openrouter/z-ai/glm-5.1";
+      model = "openrouter/z-ai/glm-5.2";
       temperature = 1.0;
       topP = 0.95;
     };

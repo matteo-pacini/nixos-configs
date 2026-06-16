@@ -39,6 +39,18 @@
     };
   };
   # z-ai GLM family
+  "z-ai/glm-5.2" = {
+    name = "GLM 5.2";
+    limit = {
+      context = 1048576;
+      output = 131072;
+    };
+    cost = {
+      input = 1.4;
+      output = 4.4;
+      cache_read = 0.26;
+    };
+  };
   "z-ai/glm-5.1" = {
     name = "GLM 5.1";
     limit = {
