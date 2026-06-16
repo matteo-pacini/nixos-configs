@@ -1,0 +1,84 @@
+Show the whole-agent-tree cost total in the sidebar, next to the session title.
+
+opencode tracks cost per session. Subagents spawned by the Task tool are
+separate child sessions linked to the parent by parentID, and a parent's cost
+column is never rolled up with its descendants' (the projector's applyUsage in
+packages/core only increments the session whose part is being projected). So the
+sidebar "spent" line and the subagent footer both show per-agent cost only, and
+there is no single number for "what this whole run cost". Upstream is aware but
+has not fixed it: issue #11027 (bot-closed stale), RFC #12377 (maintainer-closed
+"completed" over objection), TUI feature #22103 (open), foundation PR #7763
+(open, unmerged).
+
+This adds a derived total — the current session walked up to its tree root, then
+summed over the root and every transitive descendant — rendered under the title
+in the sidebar (the right column where the session id lives). The existing
+per-agent cost in the Context section and the subagent footer is left untouched.
+This is purely client-side: the TUI's sync store already holds every session in
+the project (session.list runs without the `roots` filter), so no server, schema
+or SDK change is needed. It does inherit session.list's 100-row / 30-day window,
+so very deep/old trees can undercount — noted in the code comment.
+
+Targets the opencode TUI (anomalyco/opencode). Verified to apply cleanly against
+v1.17.7 with `git apply --check`.
+
+diff --git a/packages/tui/src/routes/session/sidebar.tsx b/packages/tui/src/routes/session/sidebar.tsx
+index 0c5d2b3..bfbcb16 100644
+--- a/packages/tui/src/routes/session/sidebar.tsx
++++ b/packages/tui/src/routes/session/sidebar.tsx
+@@ -9,6 +9,8 @@ import { usePluginRuntime } from "../../plugin/runtime"
+ import { getScrollAcceleration } from "../../util/scroll"
+ import { WorkspaceLabel } from "../../component/workspace-label"
+
++const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
++
+ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
+   const pluginRuntime = usePluginRuntime()
+   const project = useProject()
+@@ -16,6 +18,36 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
+   const { theme } = useTheme()
+   const tuiConfig = useTuiConfig()
+   const session = createMemo(() => sync.session.get(props.sessionID))
++  // Total cost across the whole agent tree (main session + every subagent).
++  // Subagents are separate sessions linked by parentID; the per-agent cost still
++  // shows in the Context / subagent footer. Walk up to the tree root so the
++  // number is stable whichever node is in view. Bounded by session.list's
++  // 100-row / 30-day window (context/sync.tsx), so very deep trees may undercount.
++  const totalCost = createMemo(() => {
++    const all = sync.data.session
++    let root = session()
++    const guard = new Set<string>()
++    while (root?.parentID && !guard.has(root.id)) {
++      guard.add(root.id)
++      const parent = all.find((s) => s.id === root!.parentID)
++      if (!parent) break
++      root = parent
++    }
++    if (!root) return 0
++    let total = 0
++    const seen = new Set<string>()
++    const stack = [root.id]
++    while (stack.length) {
++      const id = stack.pop()!
++      if (seen.has(id)) continue
++      seen.add(id)
++      const node = all.find((s) => s.id === id)
++      if (!node) continue
++      total += node.cost ?? 0
++      for (const child of all) if (child.parentID === id) stack.push(child.id)
++    }
++    return total
++  })
+   const workspace = () => {
+     const workspaceID = session()?.workspaceID
+     if (!workspaceID) return
+@@ -57,6 +89,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
+                 <text fg={theme.text}>
+                   <b>{session()!.title}</b>
+                 </text>
++                <Show when={totalCost() > 0}>
++                  <text fg={theme.textMuted}>{money.format(totalCost())} total</text>
++                </Show>
+                 <Show when={InstallationChannel !== "latest"}>
+                   <text fg={theme.textMuted}>{props.sessionID}</text>
+                 </Show>

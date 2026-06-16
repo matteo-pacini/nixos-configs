@@ -75,7 +75,8 @@
     # `modules/home-manager/update-rtk.sh` (refreshes the Claude hook).
     rtk = masterPkgs.rtk;
 
-    # opencode sourced from the master pin (1.16.2) so it matches the patch below.
+    # opencode sourced from the master pin (currently 1.17.7) so it matches the
+    # patches below, which apply cleanly across opencode 1.16.2–1.17.7.
     opencode = masterPkgs.opencode.overrideAttrs (old: {
       patches = (old.patches or [ ]) ++ [
         # opencode's getUsage prices a turn as (model rate × tokens) and ignores
@@ -84,6 +85,13 @@
         # for the openrouter provider) so per-turn cost reflects OpenRouter's real
         # billing.
         ../modules/home-manager/opencode/patches/openrouter-real-cost.patch
+        # Subagent (child-session) cost isn't rolled up into the parent, so no
+        # single number shows what a whole run cost. Render a derived whole-tree
+        # total in the sidebar next to the session title; per-agent cost stays as
+        # is. Client-side only (the TUI already holds every session). See header.
+        ../modules/home-manager/opencode/patches/subagent-total-cost.patch
+        # Caption "Matteo Pacini's Bespoke" above the home-screen logo.
+        ../modules/home-manager/opencode/patches/bespoke-caption.patch
       ];
     });
 

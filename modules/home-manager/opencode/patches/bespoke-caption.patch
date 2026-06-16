@@ -1,0 +1,40 @@
+Add a "Matteo Pacini's Bespoke" caption above the home-screen logo.
+
+Renders a muted caption line directly above the <Logo> on the home route, so the
+home screen reads "Matteo Pacini's Bespoke" / [opencode logo] -- "bespoke" as the
+adjective modifying the wordmark below. Pulls theme.textMuted (same tone as the
+sidebar's secondary text) via useTheme; nothing else on the home route changes.
+
+Targets the opencode TUI (anomalyco/opencode). Verified to apply cleanly against
+v1.17.7 with `git apply --check`.
+
+diff --git a/packages/tui/src/routes/home.tsx b/packages/tui/src/routes/home.tsx
+index d4145e2..c0c62cc 100644
+--- a/packages/tui/src/routes/home.tsx
++++ b/packages/tui/src/routes/home.tsx
+@@ -1,6 +1,7 @@
+ import { Prompt, type PromptRef } from "../component/prompt"
+ import { createEffect, createMemo, createSignal, onMount } from "solid-js"
+ import { Logo } from "../component/logo"
++import { useTheme } from "../context/theme"
+ import { useSync } from "../context/sync"
+ import { Toast } from "../ui/toast"
+ import { useArgs } from "../context/args"
+@@ -21,6 +22,7 @@ const placeholder = {
+ 
+ export function Home() {
+   const pluginRuntime = usePluginRuntime()
++  const { theme } = useTheme()
+   const sync = useSync()
+   const route = useRouteData("home")
+   const promptRef = usePromptRef()
+@@ -72,6 +74,9 @@ export function Home() {
+       <box flexGrow={1} alignItems="center" paddingLeft={2} paddingRight={2}>
+         <box flexGrow={1} minHeight={0} />
+         <box height={4} minHeight={0} flexShrink={1} />
++        <box flexShrink={0} paddingBottom={1}>
++          <text fg={theme.textMuted}>Matteo Pacini's Bespoke</text>
++        </box>
+         <box flexShrink={0}>
+           <pluginRuntime.Slot name="home_logo" mode="replace">
+             <Logo />
