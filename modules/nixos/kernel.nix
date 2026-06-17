@@ -22,13 +22,13 @@
 
   config = lib.mkIf config.custom.kernel.enable {
     # Kernel version used across all Linux hosts
-    boot.kernelPackages = pkgs.linuxPackages_7_0;
+    boot.kernelPackages = pkgs.linuxPackages_7_1;
 
     boot.kernelPatches =
       let
-        # Use pkgs.linuxPackages_7_0.kernel.version instead of config.boot.kernelPackages.kernel.version
+        # Use pkgs.linuxPackages_7_1.kernel.version instead of config.boot.kernelPackages.kernel.version
         # to avoid infinite recursion (boot.kernelPatches affects boot.kernelPackages)
-        kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_7_0.kernel.version;
+        kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_7_1.kernel.version;
         patchesDir = "${inputs.bore-scheduler-src}/patches/stable/linux-${kernelVersion}-bore";
 
         borePatches = lib.optionals config.custom.kernel.useBorePatches (
