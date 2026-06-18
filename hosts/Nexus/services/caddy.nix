@@ -1,4 +1,4 @@
-{ ... }:
+{ config, pkgs, ... }:
 let
   # Security headers applied to all virtual hosts
   securityHeaders = ''
@@ -14,6 +14,23 @@ in
 {
   services.caddy = {
     enable = true;
+
+    # Caddy built with the Route53 DNS provider so ACME can solve the
+    # DNS-01 challenge instead of HTTP-01 — no inbound port 80 needed.
+    package = pkgs.caddy.withPlugins {
+      plugins = [ "github.com/caddy-dns/route53@v1.6.2" ];
+      hash = "sha256-gYHZQQ8Ca3hTTVAeJ9vKzIi7O/iKShmBQR46G3aFY0c=";
+    };
+
+    # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY for the Route53 plugin.
+    # Same IAM user (router) and secret already used by r53-ddns.
+    environmentFile = config.age.secrets."nexus/route53-env".path;
+
+    # Solve every cert via DNS-01 over Route53. Plugin reads the AWS
+    # credentials from the environment (SDK default chain).
+    globalConfig = ''
+      acme_dns route53
+    '';
 
     # Email for Let's Encrypt ACME registration
     email = "m+acme@matteopacini.me";

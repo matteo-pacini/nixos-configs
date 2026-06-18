@@ -27,9 +27,9 @@
       # Access control is handled by Tailscale ACLs instead.
       trustedInterfaces = [ "tailscale0" ];
 
-      # Allow HTTP/HTTPS for Caddy (ACME certificate validation and web services)
+      # HTTPS only — Caddy solves ACME via the DNS-01 challenge (Route53),
+      # so no inbound port 80 is required for certificate validation.
       allowedTCPPorts = [
-        80 # HTTP (ACME challenges, redirects to HTTPS)
         443 # HTTPS (Caddy reverse proxy for all services)
       ]
       ++ config.services.openssh.ports
