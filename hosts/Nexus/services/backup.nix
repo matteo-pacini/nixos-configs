@@ -27,6 +27,7 @@ let
     "paperless-task-queue"
     "phpfpm-nextcloud"
     "nginx"
+    "open-design" # quiesce app.sqlite before rsync; restarted by cleanup trap
   ];
   affectedComposeTargets = [
     "nexus-n8n"
@@ -153,7 +154,7 @@ let
     ${notify} "Home Assistant services back online, starting full backup..."
   '';
 
-  backupJob = pkgs.writeShellScriptBin "backupJob_20" ''
+  backupJob = pkgs.writeShellScriptBin "backupJob_21" ''
     set -eo pipefail
     export TELEGRAM_ENV_FILE="${envFile}"
 
@@ -209,6 +210,8 @@ let
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
     # n8n - PostgreSQL database
     ''${RSYNC_CMD} /var/lib/postgresql_n8n ${backupDestination}/
+    # open-design - daemon state (app.sqlite, projects, artifacts, claude session)
+    ''${RSYNC_CMD} /var/lib/open-design ${backupDestination}/
     # nextcloud
     ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
 

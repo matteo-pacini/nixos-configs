@@ -93,6 +93,12 @@
     #####################
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+    ###############
+    # Open Design #
+    ###############
+    # No nixpkgs.follows: the daemon/web packages build against the flake's own
+    # pinned nixpkgs (the combo upstream tested), which is lower build risk.
+    open-design.url = "github:nexu-io/open-design";
   };
 
   outputs =
