@@ -150,18 +150,24 @@ in
 
           # LAN-only: no public A record exists, and this gates by source IP
           # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
-          @external not remote_ip 192.168.0.0/16 100.64.0.0/10 127.0.0.1/8
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
 
-          # Reference images / asset uploads for open-design
+          # Reference images / asset uploads for open-design. Match the
+          # daemon's projectUpload ceiling (server.ts: 200MB) so Caddy isn't
+          # the artificial bottleneck; leave headroom for multipart
+          # framing/boundary overhead.
           request_body {
-            max_size 32MB
+            max_size 210MB
           }
 
           # Reverse proxy to the open-design bundled Caddy (SPA + /api,
           # /artifacts, /frames → daemon 7457). flush_interval -1 keeps the
-          # SSE artifact stream unbuffered.
+          # SSE artifact stream unbuffered. The bundled Caddy's site is bound
+          # to 127.0.0.1:5174 and returns an empty 200 for any other Host, so
+          # rewrite the upstream Host (Caddy forwards the original by default).
           reverse_proxy 127.0.0.1:5174 {
+            header_up Host 127.0.0.1:5174
             flush_interval -1
           }
         '';
