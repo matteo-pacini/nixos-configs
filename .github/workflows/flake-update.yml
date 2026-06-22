@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v34
+        uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: |
             keep-outputs = true
