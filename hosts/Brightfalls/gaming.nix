@@ -55,6 +55,24 @@
     ppfeaturemask = "0xffffffff";
   };
 
+  # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
+  environment.systemPackages = [
+    (pkgs.writeShellScriptBin "single-monitor" ''
+      gdctl=${pkgs.mutter}/bin/gdctl
+
+      restore() {
+        "$gdctl" set \
+          --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 \
+          --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951
+      }
+      trap restore EXIT
+
+      "$gdctl" set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998
+
+      "$@"
+    '')
+  ];
+
   services.sunshine = {
     enable = true;
     openFirewall = true;
