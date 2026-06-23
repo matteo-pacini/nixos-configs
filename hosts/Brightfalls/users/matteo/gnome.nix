@@ -14,7 +14,6 @@ with lib.hm.gvariant;
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
-        "paperwm@paperwm.github.com"
       ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
@@ -47,10 +46,6 @@ with lib.hm.gvariant;
     "org/gnome/Console" = {
       use-system-font = false;
       custom-font = "FiraCode Nerd Font 14";
-    };
-    "org/gnome/shell/extensions/paperwm" = {
-      default-focus-mode = mkInt32 1;
-      open-window-position = mkInt32 0;
     };
   };
 

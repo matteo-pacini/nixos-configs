@@ -29,7 +29,6 @@
     [
       #Gnome
       gnomeExtensions.appindicator
-      gnomeExtensions.paperwm
       gnome-tweaks
       # Downloads
       aria2
