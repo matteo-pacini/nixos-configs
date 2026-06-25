@@ -200,7 +200,7 @@ in
             unit_of_measurement = "RPM";
             state_class = "measurement";
             icon = "mdi:fan";
-            scan_interval = 3;
+            scan_interval = 5;
           };
         }
       ];
@@ -264,6 +264,10 @@ in
         }
       ];
 
+      # Thin nudgers: they only move the helpers. The automations below push
+      # helper changes to the BMC, so editing the dropdown/slider directly
+      # applies too — no separate "apply" step. Duty is set before mode so a
+      # manual switch reads the new value and applies exactly once.
       "script fans" = {
         nexus_fan_increase = {
           alias = "Nexus Fan +10%";
@@ -279,7 +283,6 @@ in
               target.entity_id = "input_select.fan_mode";
               data.option = "manual";
             }
-            { service = "shell_command.fan_set"; }
           ];
         };
         nexus_fan_decrease = {
@@ -296,19 +299,6 @@ in
               target.entity_id = "input_select.fan_mode";
               data.option = "manual";
             }
-            { service = "shell_command.fan_set"; }
-          ];
-        };
-        nexus_fan_apply = {
-          alias = "Nexus Fan Apply Manual";
-          icon = "mdi:fan-chevron-up";
-          sequence = [
-            {
-              service = "input_select.select_option";
-              target.entity_id = "input_select.fan_mode";
-              data.option = "manual";
-            }
-            { service = "shell_command.fan_set"; }
           ];
         };
         nexus_fan_auto = {
@@ -320,20 +310,25 @@ in
               target.entity_id = "input_select.fan_mode";
               data.option = "auto";
             }
-            { service = "shell_command.fan_auto"; }
           ];
         };
       };
 
-      # After a cold Nexus reboot the iDRAC reverts to auto; re-assert whatever
-      # HA last had so the indicator and the BMC agree (the BMC can't be read).
+      # The helpers are the control surface; these push helper changes to the
+      # BMC. Flipping the dropdown to manual or moving the slider applies
+      # immediately, and a cold-reboot reset (iDRAC reverts to auto) is healed
+      # on HA start.
       "automation fans" = [
         {
-          alias = "Nexus Fan re-assert on HA start";
+          alias = "Nexus Fan apply mode (start + change)";
           trigger = [
             {
               platform = "homeassistant";
               event = "start";
+            }
+            {
+              platform = "state";
+              entity_id = "input_select.fan_mode";
             }
           ];
           action = [
@@ -353,6 +348,23 @@ in
               default = [ { service = "shell_command.fan_auto"; } ];
             }
           ];
+        }
+        {
+          alias = "Nexus Fan apply duty (manual only)";
+          trigger = [
+            {
+              platform = "state";
+              entity_id = "input_number.fan_duty";
+            }
+          ];
+          condition = [
+            {
+              condition = "state";
+              entity_id = "input_select.fan_mode";
+              state = "manual";
+            }
+          ];
+          action = [ { service = "shell_command.fan_set"; } ];
         }
       ];
 
