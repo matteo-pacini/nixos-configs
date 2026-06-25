@@ -255,8 +255,9 @@ in
           sensor = [
             {
               name = "Nexus Fan Duty Display";
-              state = "{{ '-' if is_state('input_select.fan_mode', 'auto') else (states('input_number.fan_duty') | int) }}";
-              unit_of_measurement = "%";
+              # No unit_of_measurement: with one set, HA treats the sensor as
+              # numeric and rejects the "- %" string. Bake the unit in instead.
+              state = "{{ '- %' if is_state('input_select.fan_mode', 'auto') else (states('input_number.fan_duty') | int) ~ ' %' }}";
               icon = "mdi:fan";
             }
           ];
