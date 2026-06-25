@@ -59,6 +59,9 @@
       reshade-steam-proton
       optiscaler-client
       heroic
+      # Path of Exile 2
+      exiled-exchange-2
+      path-of-building-poe2
       # Other
       discord
     ];

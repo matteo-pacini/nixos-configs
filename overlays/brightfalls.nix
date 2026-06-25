@@ -12,6 +12,8 @@ in
 {
   reshade-steam-proton = super.callPackage ../packages/reshade-steam-proton.nix { };
   optiscaler-client = super.callPackage ../packages/optiscaler-client.nix { };
+  exiled-exchange-2 = super.callPackage ../packages/exiled-exchange-2.nix { };
+  path-of-building-poe2 = super.callPackage ../packages/path-of-building-poe2.nix { };
 
   qemu = optimizedForBrightFalls (
     super.qemu.override ({
