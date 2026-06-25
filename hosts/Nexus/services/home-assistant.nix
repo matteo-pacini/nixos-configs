@@ -200,7 +200,7 @@ in
             unit_of_measurement = "RPM";
             state_class = "measurement";
             icon = "mdi:fan";
-            scan_interval = 30;
+            scan_interval = 3;
           };
         }
       ];
