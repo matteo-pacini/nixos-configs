@@ -1,6 +1,23 @@
 { pkgs, ... }:
 let
   systemctl = "${pkgs.systemd}/bin/systemctl";
+  ipmitool = "${pkgs.ipmitool}/bin/ipmitool";
+
+  # Dell PowerEdge R730xd iDRAC OEM fan control (raw 0x30 0x30 ...). These
+  # opcodes are write-only — the BMC won't report the duty/mode back — so HA
+  # owns the setpoint (input_number/input_select below) and reads real fan RPM
+  # via the command_line sensor as ground-truth feedback. hass reaches
+  # /dev/ipmi0 through the "ipmi" group + DeviceAllow exception (no sudo).
+  fanSet = pkgs.writeShellScript "nexus-fan-set" ''
+    ${ipmitool} raw 0x30 0x30 0x01 0x00
+    ${ipmitool} raw 0x30 0x30 0x02 0xff "$(printf '0x%02x' "$1")"
+  '';
+  fanAuto = pkgs.writeShellScript "nexus-fan-auto" ''
+    ${ipmitool} raw 0x30 0x30 0x01 0x01
+  '';
+  fanRpm = pkgs.writeShellScript "nexus-fan-rpm" ''
+    ${ipmitool} sdr type fan | ${pkgs.gawk}/bin/awk -F'|' '$5 ~ /RPM/ { gsub(/[^0-9]/, "", $5); s += $5; c++ } END { if (c) printf "%d", s / c }'
+  '';
 in
 {
   # Allow hass user to restart specific services via polkit (no sudo needed).
@@ -16,6 +33,18 @@ in
       }
     });
   '';
+
+  # Fan control: let the hardened hass service reach the Dell BMC at
+  # /dev/ipmi0 without sudo. Keeps NoNewPrivileges/RestrictSUIDSGID/
+  # ProtectSystem=strict intact; only grants the one device + group.
+  users.groups.ipmi = { };
+  services.udev.extraRules = ''
+    KERNEL=="ipmi*", GROUP="ipmi", MODE="0660"
+  '';
+  systemd.services.home-assistant.serviceConfig = {
+    SupplementaryGroups = [ "ipmi" ];
+    DeviceAllow = [ "/dev/ipmi0 rw" ];
+  };
 
   services.home-assistant = {
     enable = true;
@@ -164,6 +193,16 @@ in
             scan_interval = 5;
           };
         }
+        {
+          sensor = {
+            name = "Nexus Fan Speed";
+            command = "${fanRpm}";
+            unit_of_measurement = "RPM";
+            state_class = "measurement";
+            icon = "mdi:fan";
+            scan_interval = 30;
+          };
+        }
       ];
 
       homeassistant = {
@@ -182,7 +221,139 @@ in
       shell_command = {
         restart_zigbee2mqtt = "${systemctl} restart zigbee2mqtt";
         restart_mosquitto = "${systemctl} restart mosquitto";
+        # Forces manual mode, then applies the current input_number duty.
+        fan_set = "${fanSet} {{ states('input_number.fan_duty') | int }}";
+        fan_auto = "${fanAuto}";
       };
+
+      # Fan control state. The Dell BMC can't report duty/mode back, so HA is
+      # the source of truth; the "Nexus Fan Speed" sensor is the real readback.
+      input_number.fan_duty = {
+        name = "Nexus Fan Duty";
+        min = 0;
+        max = 100;
+        step = 10;
+        unit_of_measurement = "%";
+        icon = "mdi:fan";
+        mode = "slider";
+      };
+
+      input_select.fan_mode = {
+        name = "Nexus Fan Mode";
+        options = [
+          "auto"
+          "manual"
+        ];
+        icon = "mdi:fan-auto";
+      };
+
+      # Duty readout that shows "- %" in auto (the % is meaningless then).
+      # input_number can't hold a non-numeric value, so this is a separate
+      # display entity; keep input_number as the control (slider/buttons).
+      template = [
+        {
+          sensor = [
+            {
+              name = "Nexus Fan Duty Display";
+              state = "{{ '-' if is_state('input_select.fan_mode', 'auto') else (states('input_number.fan_duty') | int) }}";
+              unit_of_measurement = "%";
+              icon = "mdi:fan";
+            }
+          ];
+        }
+      ];
+
+      "script fans" = {
+        nexus_fan_increase = {
+          alias = "Nexus Fan +10%";
+          icon = "mdi:fan-plus";
+          sequence = [
+            {
+              service = "input_number.set_value";
+              target.entity_id = "input_number.fan_duty";
+              data.value = "{{ [ (states('input_number.fan_duty') | int) + 10, 100 ] | min }}";
+            }
+            {
+              service = "input_select.select_option";
+              target.entity_id = "input_select.fan_mode";
+              data.option = "manual";
+            }
+            { service = "shell_command.fan_set"; }
+          ];
+        };
+        nexus_fan_decrease = {
+          alias = "Nexus Fan -10%";
+          icon = "mdi:fan-minus";
+          sequence = [
+            {
+              service = "input_number.set_value";
+              target.entity_id = "input_number.fan_duty";
+              data.value = "{{ [ (states('input_number.fan_duty') | int) - 10, 0 ] | max }}";
+            }
+            {
+              service = "input_select.select_option";
+              target.entity_id = "input_select.fan_mode";
+              data.option = "manual";
+            }
+            { service = "shell_command.fan_set"; }
+          ];
+        };
+        nexus_fan_apply = {
+          alias = "Nexus Fan Apply Manual";
+          icon = "mdi:fan-chevron-up";
+          sequence = [
+            {
+              service = "input_select.select_option";
+              target.entity_id = "input_select.fan_mode";
+              data.option = "manual";
+            }
+            { service = "shell_command.fan_set"; }
+          ];
+        };
+        nexus_fan_auto = {
+          alias = "Nexus Fan Auto";
+          icon = "mdi:fan-auto";
+          sequence = [
+            {
+              service = "input_select.select_option";
+              target.entity_id = "input_select.fan_mode";
+              data.option = "auto";
+            }
+            { service = "shell_command.fan_auto"; }
+          ];
+        };
+      };
+
+      # After a cold Nexus reboot the iDRAC reverts to auto; re-assert whatever
+      # HA last had so the indicator and the BMC agree (the BMC can't be read).
+      "automation fans" = [
+        {
+          alias = "Nexus Fan re-assert on HA start";
+          trigger = [
+            {
+              platform = "homeassistant";
+              event = "start";
+            }
+          ];
+          action = [
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition = "state";
+                      entity_id = "input_select.fan_mode";
+                      state = "manual";
+                    }
+                  ];
+                  sequence = [ { service = "shell_command.fan_set"; } ];
+                }
+              ];
+              default = [ { service = "shell_command.fan_auto"; } ];
+            }
+          ];
+        }
+      ];
 
       logger = {
         default = "info";
