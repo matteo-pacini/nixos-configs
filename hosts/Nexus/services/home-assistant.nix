@@ -88,11 +88,12 @@ in
       "shelly"
       # SmartThings
       "smartthings"
+      # Volvo (core integration, OAuth via Application Credentials)
+      "volvo"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
       smartthinq-sensors
-      volvo_cars
       octopus_energy
       localtuya
       (pkgs.buildHomeAssistantComponent rec {
