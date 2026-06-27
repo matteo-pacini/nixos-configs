@@ -11,6 +11,7 @@ let
   nexus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICqoR66tb+LELPbehy1TJp0Y8hHVYPEgtg1WUDMILe/n";
   worklaptop = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtM6cXF6v03BIDdYeMYUHuuoLljzT2Lx+judeJSag8c";
   brightfalls = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFhrAwaSAjKS/FLYRZRNkgpRn8gZECa+Sc0t32gENbv1";
+  nightsprings = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPN4uiOzzFtelR6mzxIqRKG8PArHchOqL0U844UZSet4";
 in
 {
   # Nexus disk encryption secrets
@@ -44,6 +45,9 @@ in
 
   # BrightFalls service secrets
   "brightfalls/attic-netrc.age".publicKeys = [ brightfalls ];
+
+  # NightSprings service secrets
+  "nightsprings/attic-netrc.age".publicKeys = [ nightsprings ];
 
   # Shared service secrets (decryptable by multiple hosts)
   "shared/openrouter.env.age".publicKeys = [
