@@ -335,8 +335,11 @@
               mutableTaps = false;
             };
           }
-          inputs.agenix.nixosModules.default
-          { age.identityPaths = [ "/home/matteo/.age/NightSprings.txt" ]; }
+          inputs.agenix.darwinModules.default
+          {
+            age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            age.secrets."nightsprings/attic-netrc".file = ./secrets/nightsprings/attic-netrc.age;
+          }
         ];
       };
       ##############
