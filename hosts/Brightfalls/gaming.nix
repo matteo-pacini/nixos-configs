@@ -72,33 +72,4 @@
       "$@"
     '')
   ];
-
-  services.sunshine = {
-    enable = true;
-    openFirewall = true;
-    autoStart = true;
-    capSysAdmin = true;
-    applications = {
-      apps = [
-        {
-          name = "Desktop";
-          image-path = "desktop.png";
-        }
-      ];
-    };
-    settings = {
-      sunshine_name = "BrightFalls Sunshine";
-      global_prep_cmd = builtins.toJSON [
-        {
-          # Switch to HDMI for streaming (e.g., TV via capture card)
-          do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor HDMI-1 --mode 3840x2160@59.940";
-          # Restore dual DP monitors when streaming ends
-          undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951";
-        }
-      ];
-      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
-      fec_percentage = 10;
-      qp = 10;
-    };
-  };
 }
