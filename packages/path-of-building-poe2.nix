@@ -8,7 +8,7 @@
 }:
 
 let
-  version = "0.21.1";
+  version = "0.22.0";
   wine = "${wineWow64Packages.staging}/bin/wine";
   rsyncBin = "${rsync}/bin/rsync";
 
@@ -35,7 +35,7 @@ stdenvNoCC.mkDerivation {
 
   src = fetchzip {
     url = "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases/download/v${version}/PathOfBuildingCommunity-PoE2-Portable.zip";
-    hash = "sha256-HTnjO60JEOTbt7xQzlnTX36hzghtYqgGjWxH8LkF61I=";
+    hash = "sha256-WkN5CkG9myfaQe1foq5bO/AgH/4PdgKiQtP9CuSp644=";
     stripRoot = false;
   };
 
