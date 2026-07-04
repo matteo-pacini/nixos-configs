@@ -41,6 +41,8 @@ in
         programs.fzf = {
           enable = true;
           enableZshIntegration = true;
+          # atuin owns Ctrl-R
+          historyWidget.command = "";
         };
       }
       (lib.mkIf cfg.fzf.batPreview {

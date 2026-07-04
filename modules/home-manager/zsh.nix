@@ -32,6 +32,8 @@ in
       {
         programs.zsh = {
           enable = true;
+          # EDITOR=nvim would otherwise switch zsh to vi keymap
+          defaultKeymap = "emacs";
           enableCompletion = true;
           autosuggestion.enable = true;
           syntaxHighlighting.enable = true;
