@@ -17,6 +17,13 @@ let
   # a full model ID (e.g. "claude-opus-4-8") when you need a specific version.
   # Empty list = model does not support --effort.
   modelEfforts = {
+    fable = [
+      "low"
+      "medium"
+      "high"
+      "xhigh"
+      "max"
+    ];
     opus = [
       "low"
       "medium"
@@ -28,6 +35,7 @@ let
       "low"
       "medium"
       "high"
+      "xhigh"
       "max"
     ];
     haiku = [ ];
@@ -45,17 +53,25 @@ let
       "high"
       "max"
     ];
+    "claude-sonnet-4-6" = [
+      "low"
+      "medium"
+      "high"
+      "max"
+    ];
   };
 
   # Maps each modelEfforts key to the slug used in the shell alias name
   # (`claude-<slug>` and `claude-<slug>-<effort>`). Pinned IDs get a compact
   # slug to avoid dash ambiguity with the effort suffix.
   modelAliasSlug = {
+    fable = "fable";
     opus = "opus";
     sonnet = "sonnet";
     haiku = "haiku";
     "claude-opus-4-7" = "opus47";
     "claude-opus-4-6" = "opus46";
+    "claude-sonnet-4-6" = "sonnet46";
   };
 
   # Whether each model supports the 1M-token context window. Source:
@@ -63,11 +79,13 @@ let
   # When true, an additional set of `claude-<slug>-1m[-<effort>]` aliases is
   # generated, invoking the model with the `[1m]` suffix.
   model1mContext = {
+    fable = true;
     opus = true;
-    sonnet = true;
+    sonnet = false; # Sonnet 5 is natively 1M; no [1m] variant
     haiku = false;
     "claude-opus-4-7" = true;
     "claude-opus-4-6" = true;
+    "claude-sonnet-4-6" = true;
   };
 
   # Generate `claude-<slug>[-<effort>]` for the default context window, plus

@@ -1,4 +1,4 @@
-{ pkgs, config, ... }:
+{ pkgs, config, lib, ... }:
 {
   systemd.services.zigbee2mqtt = {
     serviceConfig = {
@@ -6,7 +6,7 @@
         config.age.secrets."nexus/zigbee2mqtt.env".path
       ];
       Restart = "on-failure";
-      RestartSec = "60";
+      RestartSec = lib.mkForce "60";
     };
     unitConfig = {
       StartLimitBurst = 3;
