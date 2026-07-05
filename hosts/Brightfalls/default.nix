@@ -56,6 +56,15 @@
     sshfs
   ];
 
+  # Disable suspend/hibernate (eGPU doesn't survive suspend)
+  # This also hides the suspend option in GNOME's power menu
+  systemd.sleep.settings.Sleep = {
+    AllowSuspend = "no";
+    AllowHibernation = "no";
+    AllowSuspendThenHibernate = "no";
+    AllowHybridSleep = "no";
+  };
+
   custom.locale.enable = true;
   custom.bluetooth.enable = true;
   custom.fonts.enable = true;
