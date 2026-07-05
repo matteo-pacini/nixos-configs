@@ -26,7 +26,7 @@
   };
 
   # VFIO specialisation for GPU passthrough
-  # Boot into "BrightFalls (with-vfio)" to enable GPU passthrough
+  # Boot the "NixOS - (VFIO - ...)" GRUB entry to enable GPU passthrough
   # VMs with names matching "NAME-with-gpu-XX" will trigger GPU passthrough
   # where XX is the number of 1GB hugepages to allocate
   specialisation = {
@@ -41,11 +41,8 @@
         hardware.amdgpu.overdrive.enable = lib.mkForce false;
 
         # Kernel params for IOMMU (required for GPU passthrough)
+        # (iommu=pt already set host-wide in hardware.nix; AMD-Vi is on by default)
         boot.kernelParams = [
-          # Enable AMD IOMMU for hardware virtualization and device isolation
-          "amd_iommu=on"
-          # Passthrough mode: only isolate devices assigned to VMs, better performance for host
-          "iommu=pt"
           # Allow interrupt remapping for devices without proper IOMMU support
           "vfio_iommu_type1.allow_unsafe_interrupts=1"
           # Ignore MSR access violations to prevent VM crashes (required for some AMD CPUs)
@@ -97,12 +94,13 @@
                   local urgency="''${3:-normal}"  # normal, low, critical
 
                   # Find the first logged-in graphical session user
+                  # (|| true: notifications must never abort the hook under errexit)
                   local user_name
-                  user_name=$(loginctl list-sessions --no-legend 2>/dev/null | head -1 | awk '{print $3}')
+                  user_name=$(loginctl list-sessions --no-legend 2>/dev/null | head -1 | awk '{print $3}' || true)
 
                   if [[ -n "$user_name" ]]; then
                     local uid
-                    uid=$(id -u "$user_name" 2>/dev/null)
+                    uid=$(id -u "$user_name" 2>/dev/null || true)
                     if [[ -n "$uid" ]] && [[ -S "/run/user/$uid/bus" ]]; then
                       sudo -u "$user_name" \
                         DISPLAY=:0 \
@@ -116,7 +114,7 @@
                 handle_error() {
                   local step="$1"
                   local exit_code="$2"
-                  notify_user "⚠️ GPU Passthrough Failed" "Step: $step\nExit code: $exit_code\nCheck /var/log/libvirt/libvirtd.log" "critical"
+                  notify_user "⚠️ GPU Passthrough Failed" "Step: $step (exit $exit_code) — check /var/log/libvirt/libvirtd.log" "critical"
                   exit "$exit_code"
                 }
 
@@ -276,10 +274,20 @@
                     # Wait before resetting GPU
                     sleep 3
 
-                    # PCI-level GPU reset (FLR/BACO — Navi 21 resets cleanly, no vendor-reset needed)
-                    echo "[$GUEST_NAME] Triggering GPU reset..."
-                    echo 1 > /sys/bus/pci/devices/0000:07:00.0/reset || true
-                    sleep 3
+                    # PCI secondary bus reset (reset_method = bus; Navi 21 resets
+                    # cleanly, no vendor-reset needed). Never reset a device that is
+                    # still bound to amdgpu — that wedges the driver (ring timeouts).
+                    RELEASE_GPU_DRIVER="none"
+                    if [[ -e /sys/bus/pci/devices/0000:07:00.0/driver ]]; then
+                      RELEASE_GPU_DRIVER=$(basename "$(readlink /sys/bus/pci/devices/0000:07:00.0/driver)")
+                    fi
+                    if [[ "$RELEASE_GPU_DRIVER" == "amdgpu" ]]; then
+                      echo "[$GUEST_NAME] GPU still bound to amdgpu, skipping bus reset"
+                    else
+                      echo "[$GUEST_NAME] Triggering GPU reset..."
+                      echo 1 > /sys/bus/pci/devices/0000:07:00.0/reset || true
+                      sleep 3
+                    fi
 
                     # Reattach GPU devices to host
                     echo "[$GUEST_NAME] Reattaching GPU devices..."
@@ -310,9 +318,11 @@
                       rm -f /tmp/vfio-bound-consoles
                     fi
 
-                    # Restart display manager
-                    echo "[$GUEST_NAME] Starting display manager..."
-                    systemctl start display-manager.service || true
+                    # Restart display manager (restart, not start: after a skipped
+                    # prepare GDM may still be running against a vanished GPU and
+                    # must be forced to re-initialize)
+                    echo "[$GUEST_NAME] Restarting display manager..."
+                    systemctl restart display-manager.service || true
 
                     # Restore CPU allocation to all cores (0-15)
                     echo "[$GUEST_NAME] Restoring CPU allocation..."

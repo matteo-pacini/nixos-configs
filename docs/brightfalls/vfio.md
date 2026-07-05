@@ -46,7 +46,7 @@ detach/reattach at VM start/stop. There is no boot-time
 desktop works normally in VFIO mode until a passthrough VM starts.
 
 ```
-GRUB: "BrightFalls (with-vfio)"        GRUB: "BrightFalls" (default)
+GRUB: "NixOS - (VFIO - …)"             GRUB: "NixOS" (default)
         │                                      │
         ▼                                      ▼
 GNOME desktop, normal use              no passthrough available
@@ -65,16 +65,21 @@ allocate XX × 1G hugepages (≤10 retries, compaction between tries)
         ▼  VM runs — host headless, SSH only, CPUs 1-7,9-15 for VM
         │
         ▼  hook "release" (VM shutdown)
-unload vfio modules → sysfs PCI reset (FLR/BACO) on 07:00.0
-→ nodedev-reattach both functions → modprobe amdgpu
-→ rebind vtconsoles → start display-manager
+unload vfio modules → PCI bus reset on 07:00.0 (skipped if amdgpu
+still bound) → nodedev-reattach both functions → modprobe amdgpu
+→ rebind vtconsoles → restart display-manager
 → unpin CPUs (0-15) → free hugepages → stop libvirt-nosleep
 ```
 
-Every phase sends a GNOME notification (`notify-send` to the first
-logged-in session) and any failed critical step aborts with a
-critical-urgency notification pointing at
-`/var/log/libvirt/libvirtd.log`.
+The hook sends GNOME notifications where a session exists to receive
+them (best effort — during most of the flow the desktop session is
+down). Failure semantics differ by phase: in **prepare**, any failed
+critical step aborts the VM start with a critical-urgency
+notification pointing at `/var/log/libvirt/libvirtd.log`; in
+**release**, every step is deliberately best-effort (`|| true`) so
+the hook restores as much of the host as possible — release failures
+are therefore *silent* and show up as symptoms (see
+*Troubleshooting*), not notifications.
 
 ### Why this design and not early vfio-pci bind
 
@@ -82,19 +87,29 @@ An early-bind specialisation (vfio-pci claims the GPU from initrd)
 never exercises the AMD reset path and is the most reliable pattern —
 but on this host it would mean **no display at all** from boot, since
 the iGPU is inert. The hook approach keeps the desktop until the VM
-actually starts. Navi 21 (RDNA2) resets cleanly via FLR/BACO, which
-makes runtime detach/reattach viable; on a card with reset-bug
-trouble the early-bind pattern would be the fallback.
+actually starts. Navi 21 (RDNA2) resets cleanly via PCI secondary
+bus reset (`cat /sys/bus/pci/devices/0000:07:00.0/reset_method` →
+`bus`; the card advertises no FLR, and BACO is only reachable through
+a loaded amdgpu), which makes runtime detach/reattach viable; on a
+card with reset-bug trouble the early-bind pattern would be the
+fallback.
 
 ## Usage
 
-1. Reboot and pick **BrightFalls (with-vfio)** in GRUB.
+1. Reboot and pick the **NixOS - (VFIO - …)** entry in GRUB (the
+   specialisation is labelled by its name and date, not by hostname).
 2. Name the VM with the convention `NAME-with-gpu-XX` where `XX` is
    the number of 1 GiB hugepages to allocate (= guest RAM in GiB),
-   e.g. `win11-with-gpu-16`.
+   e.g. `win11-with-gpu-16`. **Run only one `-with-gpu` VM at a
+   time** — the hook is stateless and a second VM's prepare/release
+   would reset the GPU and free the hugepages out from under the
+   first.
 3. In the domain XML: pass through hostdevs `0000:07:00.0` and
-   `0000:07:00.1`; point the GPU hostdev at the VBIOS with
-   `<rom file="/run/libvirt/vbios/rx6800xt.rom"/>`; enable
+   `0000:07:00.1` with **`managed='no'`** (the hook owns
+   detach/reattach ordering; with `managed='yes'` libvirt reattaches
+   the GPU on VM stop on its own schedule, racing the hook's
+   reset-then-reattach sequence); point the GPU hostdev at the VBIOS
+   with `<rom file="/run/libvirt/vbios/rx6800xt.rom"/>`; enable
    `<memoryBacking><hugepages/></memoryBacking>`; pin vCPUs to host
    CPUs 1-7 and 9-15 (`<cputune>`) — the hook reserves 0 and 8 for
    the host.
@@ -114,14 +129,20 @@ Only active in VFIO mode (`system.nixos.tags = [ "with-vfio" ]`):
 - **Disabled services** (conflict with passthrough):
   `services.sunshine`, `services.lact`,
   `hardware.amdgpu.overdrive` — all `mkForce false`.
-- **Kernel params**: `amd_iommu=on`, `iommu=pt`,
+- **Kernel params**:
   `vfio_iommu_type1.allow_unsafe_interrupts=1`, `kvm.ignore_msrs=1`,
-  `default_hugepagesz=1G`, `hugepagesz=1G`. Hugepages are *not*
+  `default_hugepagesz=1G`, `hugepagesz=1G` (AMD-Vi is on by default
+  and `iommu=pt` is already set host-wide in `hardware.nix`).
+  Hugepages are *not*
   allocated at boot — the hook allocates them per-VM and frees them
   on release, so RAM is not wasted while no VM runs.
 - **VBIOS**: `extra/Asus.RX6800XT.16384.201104.rom` is linked to
   `/run/libvirt/vbios/rx6800xt.rom` via tmpfiles. Needed because the
-  eGPU's ROM is shadowed after host boot.
+  eGPU's ROM is shadowed after host boot. Verified valid (2026-07):
+  `55 AA` option-ROM magic, PCIR vendor/device `1002:73bf` (matches
+  the passed GPU), legacy-image checksum 0, image chain = 1 x86
+  legacy + 2 UEFI GOP images, correctly terminated. Dump identifies
+  as ASUS TUF RX6800XT O16G (`NAVI21EXT`, part `115-D412BS0-101`).
 - **libvirt logging**: qemu warnings+ to
   `/var/log/libvirt/libvirtd.log`.
 - **libvirt-nosleep.service**: systemd-inhibit block on sleep while a
@@ -138,9 +159,12 @@ The hook script is installed declaratively via
 
 | Change | Reason |
 |--------|--------|
-| Dropped `vendor-reset` module | Supports only Polaris/Vega/Navi10-14 — not Navi 21. Also fails to build on kernels ≥ 6.17 (host runs 7.x). Plain sysfs reset (FLR/BACO) is sufficient for RDNA2. |
+| Dropped `vendor-reset` module | Supports only Polaris/Vega/Navi10-14 — not Navi 21. Unmaintained, with build breakage reported across recent kernels (host runs 7.x). Plain PCI bus reset is sufficient for RDNA2. |
 | `fuser` wait-loop before `modprobe -r amdgpu` | Fixed `sleep`s raced against session teardown; any process still holding `/dev/dri/*` made the unload fail. Now waits up to 30 s and hard-fails with a notification instead of proceeding blind. |
 | Prepare-phase vfio-pci safety net | If a previous release failed, the GPU is still bound to vfio-pci at the next start. The hook now detects this and skips the display-manager/unbind/detach steps instead of erroring out. |
+| Release resets only an unbound GPU | The bus reset is skipped when the GPU is still bound to amdgpu (possible after a prepare that failed early) — resetting a device under a live driver wedges it (ring timeouts, reboot-only). |
+| `systemctl restart` display-manager on release | Plain `start` no-ops if GDM survived a skipped prepare and is running against a vanished GPU; `restart` forces re-initialization. |
+| Notification lookups guarded | `loginctl`/`id` command substitutions in the notify helper run under `set -e`; a hiccup there used to be able to abort the whole release path. Now `\|\| true`-guarded. |
 | Dropped USB controller `c8:00.3` detach | Address no longer exists after PCI renumbering. See *Known gaps*. |
 | `systemd.sleep.settings.Sleep` instead of `extraConfig` | `extraConfig` is an eval-time assertion failure on NixOS 26.11. |
 | Removed `isVM` plumbing | The VM build variants were removed in `c06162b`. |
@@ -156,16 +180,33 @@ mkForced off in this specialisation). Kill it and start the VM again.
 **VM start fails at `unload_amdgpu`.** Same cause as above if fuser
 missed a kernel-side user. `dmesg | tail` will name the blocker.
 
+**Any failed prepare leaves the host degraded.** A prepare that
+aborts after stopping the display manager exits with GDM down, host
+CPUs pinned to 0,8, hugepages allocated and libvirt-nosleep running —
+the hook does not roll these back, and whether libvirt then invokes
+the release phase is version-dependent. Recover over SSH:
+
+```bash
+systemctl restart display-manager.service
+systemctl set-property --runtime -- user.slice AllowedCPUs=0-15
+systemctl set-property --runtime -- system.slice AllowedCPUs=0-15
+systemctl set-property --runtime -- init.scope AllowedCPUs=0-15
+echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages
+systemctl stop libvirt-nosleep.service
+```
+
 **Screen stays black after VM shutdown.** The release path failed
-partway. Over SSH, check `dmesg` for `amdgpu` ring timeouts
-(`ring gfx timeout`, error `-110`) — that is a failed GPU reset and
-only a host reboot recovers it. If dmesg is clean, retry manually:
+partway — and release failures are silent by design (every step is
+`|| true`), so there is no notification to expect. Over SSH, check
+`dmesg` for `amdgpu` ring timeouts (`ring gfx timeout`, error
+`-110`) — that is a failed GPU reset and only a host reboot recovers
+it. If dmesg is clean, retry manually:
 
 ```bash
 virsh nodedev-reattach pci_0000_07_00_0
 virsh nodedev-reattach pci_0000_07_00_1
 modprobe amdgpu
-systemctl start display-manager.service
+systemctl restart display-manager.service
 ```
 
 **GPU stuck on vfio-pci after a failed release.** Not fatal: the next
@@ -214,6 +255,12 @@ as above.
 - **CPU pinning is convention, not enforcement**: the hook restricts
   host slices to CPUs 0,8 but the guest's `<cputune>` pinning must be
   maintained by hand in the domain XML.
+- **No concurrency guard**: the hook is stateless; hugepage
+  allocation is absolute (not additive) and any release resets the
+  GPU and frees the pool regardless of other guests. One `-with-gpu`
+  VM at a time (also stated in *Usage*).
+- **Failed prepare is not rolled back**: see *Troubleshooting* for
+  the manual recovery sequence.
 
 ## History
 
