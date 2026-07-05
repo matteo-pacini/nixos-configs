@@ -75,6 +75,7 @@ nix fmt
 - Per-host **znver4** overlay tuning the system for Zen 4
 - **Full-disk encryption** (LUKS2) using vault-based keyfile unlock
 - KVM/QEMU virtualization, **Sunshine** for game streaming, **LACT** for GPU control
+- **VFIO single-GPU passthrough** of the eGPU to VMs via a boot specialisation — see the [VFIO Handbook](docs/brightfalls/vfio.md)
 - Suspend disabled (the eGPU never recovers cleanly)
 
 </details>
@@ -234,6 +235,7 @@ Scoped to this flake but written with options should you want to crib them:
 ## Documentation
 
 - [`AGENTS.md`](AGENTS.md) — Development workflow, conventions, and gotchas for working in this repo.
+- [VFIO Handbook](docs/brightfalls/vfio.md) — BrightFalls single-GPU passthrough (specialisation, hook flow, troubleshooting).
 - [Diskpool Handbook](docs/nexus/diskpool-handbook.md) — Nexus storage architecture (LUKS, mergerfs, SnapRAID).
 - [Paperless-ngx Recovery](docs/nexus/paperless-ngx-recovery.md) — Disaster recovery for the document archive.
 

@@ -38,6 +38,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
 - CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
 - **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals, and append a row to the Changelog at the bottom) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
+- **BrightFalls VFIO changes require doc updates.** If you touch the VFIO specialisation or qemu hook in `hosts/Brightfalls/virtualization.nix` (PCI addresses, hook phases, VM naming convention), update `docs/brightfalls/vfio.md` (topology table, flow diagram, troubleshooting commands reference specific addresses).
 
 ## Hosts
 
@@ -83,4 +84,5 @@ Only Nexus uses agenix secrets currently.
 | Custom packages | `packages/` |
 | Agenix secret definitions | `secrets/secrets.nix` |
 | Nexus storage docs | `docs/nexus/` |
+| BrightFalls VFIO docs | `docs/brightfalls/` |
 | CI/CD | `.github/workflows/` |
