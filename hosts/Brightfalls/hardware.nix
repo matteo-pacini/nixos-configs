@@ -39,6 +39,16 @@
     "pci=realloc,assign-busses,pcie_bus_perf"
   ];
 
+  # Fix intermittent poweroff hang: ABBA deadlock on dm->dc_lock in 7.1's
+  # amdgpu_dm_ism.c. Backport of mainline 3714fe242592 (in v7.2-rc1, not
+  # tagged for stable). Drop when kernel >= 7.2.
+  boot.kernelPatches = [
+    {
+      name = "amdgpu-ism-dc-lock-deadlock";
+      patch = ./patches/amdgpu-ism-dc-lock-deadlock.patch;
+    }
+  ];
+
   hardware.cpu.amd.updateMicrocode = true;
   hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableRedistributableFirmware = true;
