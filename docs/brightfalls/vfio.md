@@ -75,11 +75,12 @@ The hook sends GNOME notifications where a session exists to receive
 them (best effort — during most of the flow the desktop session is
 down). Failure semantics differ by phase: in **prepare**, any failed
 critical step aborts the VM start with a critical-urgency
-notification pointing at `/var/log/libvirt/libvirtd.log`; in
+notification pointing at `/var/log/libvirt/gpu-passthrough-hook.log`; in
 **release**, every step is deliberately best-effort (`|| true`) so
 the hook restores as much of the host as possible — release failures
 are therefore *silent* and show up as symptoms (see
-*Troubleshooting*), not notifications.
+*Troubleshooting*), not notifications. Both phases leave a full
+`set -x` trace in `/var/log/libvirt/gpu-passthrough-hook.log`.
 
 ### Why this design and not early vfio-pci bind
 
@@ -144,7 +145,15 @@ Only active in VFIO mode (`system.nixos.tags = [ "with-vfio" ]`):
   legacy + 2 UEFI GOP images, correctly terminated. Dump identifies
   as ASUS TUF RX6800XT O16G (`NAVI21EXT`, part `115-D412BS0-101`).
 - **libvirt logging**: qemu warnings+ to
-  `/var/log/libvirt/libvirtd.log`.
+  `/var/log/libvirt/libvirtd.log`. Note libvirt discards hook
+  stdout/stderr unconditionally (no output buffer is passed to hook
+  invocations) — only a generic one-line error reaches libvirtd.log
+  when a hook fails, and nothing at all on success.
+- **hook logging**: the hook redirects its own stdout/stderr
+  (including the `set -x` trace) to
+  `/var/log/libvirt/gpu-passthrough-hook.log`, one timestamped
+  header per invocation. Appends forever, no rotation — volume is a
+  few KB per VM start/stop, revisit if it ever matters.
 - **libvirt-nosleep.service**: systemd-inhibit block on sleep while a
   passthrough VM runs (belt-and-braces — suspend is also disabled
   host-wide in `hosts/Brightfalls/default.nix`, because the eGPU
@@ -207,7 +216,8 @@ systemctl stop libvirt-nosleep.service
 
 **Screen stays black after VM shutdown.** The release path failed
 partway — and release failures are silent by design (every step is
-`|| true`), so there is no notification to expect. Over SSH, check
+`|| true`), so there is no notification to expect. Check
+`/var/log/libvirt/gpu-passthrough-hook.log` for the trace, and
 `dmesg` for `amdgpu` ring timeouts (`ring gfx timeout`, error
 `-110`) — that is a failed GPU reset and only a host reboot recovers
 it. If dmesg is clean, retry manually:

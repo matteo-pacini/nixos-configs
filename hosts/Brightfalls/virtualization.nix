@@ -106,6 +106,10 @@ let
         tail -n 200 "/var/log/libvirt/qemu/$VM_NAME.log" 2>/dev/null || echo "VM-specific QEMU log not found"
         echo ""
 
+        echo "--- /var/log/libvirt/gpu-passthrough-hook.log (last 300 lines) ---"
+        tail -n 300 /var/log/libvirt/gpu-passthrough-hook.log 2>/dev/null || echo "gpu-passthrough-hook.log not found"
+        echo ""
+
         # --- Section 4: Kernel Logs (Current Boot) ---
         echo "========================================================================"
         echo "SECTION 4: KERNEL LOGS - CURRENT BOOT"
@@ -326,6 +330,10 @@ in
               ];
 
               text = ''
+                # libvirt discards hook stdout/stderr (virRunScript passes no
+                # output buffer) — self-log or every trace below is lost
+                exec >> /var/log/libvirt/gpu-passthrough-hook.log 2>&1
+                echo "=== $(date -Is) guest=$1 op=$2 pid=$$ ==="
                 set -x  # Enable debug tracing
 
                 GUEST_NAME="$1"
@@ -358,7 +366,7 @@ in
                 handle_error() {
                   local step="$1"
                   local exit_code="$2"
-                  notify_user "⚠️ GPU Passthrough Failed" "Step: $step (exit $exit_code) — check /var/log/libvirt/libvirtd.log" "critical"
+                  notify_user "⚠️ GPU Passthrough Failed" "Step: $step (exit $exit_code) — check /var/log/libvirt/gpu-passthrough-hook.log" "critical"
                   exit "$exit_code"
                 }
 
