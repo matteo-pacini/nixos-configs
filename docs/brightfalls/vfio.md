@@ -171,6 +171,16 @@ The hook script is installed declaratively via
 
 ## Troubleshooting
 
+**Collect everything first.** The VFIO specialisation ships
+`vfio-collect-logs` — it dumps GPU/PCI state, IOMMU groups, libvirt
+and QEMU logs, kernel logs for the current *and previous* boot (for
+post-crash analysis), hook execution traces and hugepages state into
+a single timestamped file:
+
+```bash
+sudo vfio-collect-logs <vm-name> [output-dir]   # default output: $HOME
+```
+
 **VM start fails, notification "Step: gpu_busy_after_wait".**
 Something still holds the GPU 30 s after GDM stopped. Find it over
 SSH: `fuser -v /dev/dri/card* /dev/dri/renderD*`. Usual suspects:
