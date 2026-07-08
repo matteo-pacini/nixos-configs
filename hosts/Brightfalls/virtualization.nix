@@ -17,7 +17,8 @@ let
       if [ $# -lt 2 ]; then
         echo "Usage: vfio-vm-skeleton <base-name> <ram-gib> [disk.qcow2] [install.iso]" >&2
         echo "Example: vfio-vm-skeleton win11 16 /mnt/games/VMs/win11.qcow2 ~/Downloads/windows-11.iso" >&2
-        echo "Define with: vfio-vm-skeleton win11 16 ... | virsh define /dev/stdin" >&2
+        echo "Define with: vfio-vm-skeleton win11 16 ... | virsh -c qemu:///system define /dev/stdin" >&2
+        echo "(qemu:///system is required — the session daemon has no swtpm or PCI passthrough)" >&2
         exit 1
       fi
 
