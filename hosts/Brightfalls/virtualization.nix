@@ -260,14 +260,22 @@ in
 
   programs.virt-manager.enable = true;
 
+  # libvirt 12.4 resolves its compiled-in default qemu user eagerly at
+  # driver init (virGetUserID in virQEMUDriverConfigNew, before qemu.conf
+  # is read) — 'libvirt-qemu' must exist or libvirtd dies at boot
+  users.users.libvirt-qemu = {
+    isSystemUser = true;
+    group = "libvirt-qemu";
+  };
+  users.groups.libvirt-qemu = { };
+
   virtualisation.libvirtd = {
     enable = true;
     qemu = {
       package = pkgs.qemu_kvm;
       runAsRoot = true;
-      # runAsRoot omits user/group from qemu.conf, falling back to libvirt's
-      # compiled-in default 'libvirt-qemu' — a user that doesn't exist on
-      # NixOS. QEMU state driver init then fails and libvirtd exits at boot.
+      # runAsRoot omits user/group from qemu.conf; pin them so VMs run as
+      # root regardless of libvirt's compiled-in default (libvirt-qemu)
       verbatimConfig = ''
         namespaces = []
         user = "root"
