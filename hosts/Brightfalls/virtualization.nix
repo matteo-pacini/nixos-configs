@@ -7,6 +7,148 @@ let
   # 1G hugepages reserved at boot in the VFIO specialisation
   staticHugepages = 16;
 
+  # Generate a passthrough-ready domain XML skeleton on stdout
+  vfio-vm-skeleton = pkgs.writeShellApplication {
+    name = "vfio-vm-skeleton";
+
+    runtimeInputs = with pkgs; [ coreutils ];
+
+    text = ''
+      if [ $# -lt 2 ]; then
+        echo "Usage: vfio-vm-skeleton <base-name> <ram-gib> [disk.qcow2] [install.iso]" >&2
+        echo "Example: vfio-vm-skeleton win11 16 /mnt/games/VMs/win11.qcow2 ~/Downloads/windows-11.iso" >&2
+        echo "Define with: vfio-vm-skeleton win11 16 ... | virsh define /dev/stdin" >&2
+        exit 1
+      fi
+
+      BASE_NAME="$1"
+      RAM_GIB="$2"
+      DISK="''${3:-}"
+      ISO="''${4:-}"
+
+      if ! [[ "$RAM_GIB" =~ ^[0-9]+$ ]] || [ "$RAM_GIB" -lt 1 ] || [ "$RAM_GIB" -gt ${toString staticHugepages} ]; then
+        echo "ram-gib must be 1..${toString staticHugepages} (the boot-reserved hugepage pool)" >&2
+        exit 1
+      fi
+
+      VM_NAME="$BASE_NAME-with-gpu-$RAM_GIB"
+
+      cat <<EOF
+      <domain type="kvm">
+        <name>$VM_NAME</name>
+        <memory unit="GiB">$RAM_GIB</memory>
+        <memoryBacking>
+          <hugepages>
+            <page size="1" unit="GiB"/>
+          </hugepages>
+        </memoryBacking>
+        <vcpu placement="static">14</vcpu>
+        <cputune>
+          <vcpupin vcpu="0" cpuset="1"/>
+          <vcpupin vcpu="1" cpuset="9"/>
+          <vcpupin vcpu="2" cpuset="2"/>
+          <vcpupin vcpu="3" cpuset="10"/>
+          <vcpupin vcpu="4" cpuset="3"/>
+          <vcpupin vcpu="5" cpuset="11"/>
+          <vcpupin vcpu="6" cpuset="4"/>
+          <vcpupin vcpu="7" cpuset="12"/>
+          <vcpupin vcpu="8" cpuset="5"/>
+          <vcpupin vcpu="9" cpuset="13"/>
+          <vcpupin vcpu="10" cpuset="6"/>
+          <vcpupin vcpu="11" cpuset="14"/>
+          <vcpupin vcpu="12" cpuset="7"/>
+          <vcpupin vcpu="13" cpuset="15"/>
+          <emulatorpin cpuset="0,8"/>
+        </cputune>
+        <os>
+          <type arch="x86_64" machine="q35">hvm</type>
+          <loader readonly="yes" type="pflash">/run/libvirt/nix-ovmf/edk2-x86_64-secure-code.fd</loader>
+          <boot dev="hd"/>
+        </os>
+        <features>
+          <acpi/>
+          <apic/>
+          <hyperv mode="custom">
+            <relaxed state="on"/>
+            <vapic state="on"/>
+            <spinlocks state="on" retries="8191"/>
+            <vpindex state="on"/>
+            <runtime state="on"/>
+            <synic state="on"/>
+            <stimer state="on"/>
+            <frequencies state="on"/>
+            <tlbflush state="off"/>
+            <ipi state="off"/>
+            <avic state="on"/>
+          </hyperv>
+          <vmport state="off"/>
+        </features>
+        <cpu mode="host-passthrough" check="none" migratable="on">
+          <topology sockets="1" dies="1" clusters="1" cores="7" threads="2"/>
+          <cache mode="passthrough"/>
+        </cpu>
+        <clock offset="localtime">
+          <timer name="hpet" present="yes"/>
+          <timer name="hypervclock" present="yes"/>
+        </clock>
+        <pm>
+          <suspend-to-mem enabled="no"/>
+          <suspend-to-disk enabled="no"/>
+        </pm>
+        <devices>
+          <emulator>/run/libvirt/nix-emulators/qemu-system-x86_64</emulator>
+      EOF
+
+      if [ -n "$DISK" ]; then
+        cat <<EOF
+          <disk type="file" device="disk">
+            <driver name="qemu" type="qcow2"/>
+            <source file="$DISK"/>
+            <target dev="sda" bus="sata"/>
+          </disk>
+      EOF
+      fi
+
+      if [ -n "$ISO" ]; then
+        cat <<EOF
+          <disk type="file" device="cdrom">
+            <driver name="qemu" type="raw"/>
+            <source file="$ISO"/>
+            <target dev="sdb" bus="sata"/>
+            <readonly/>
+          </disk>
+      EOF
+      fi
+
+      cat <<EOF
+          <controller type="usb" model="qemu-xhci" ports="15"/>
+          <interface type="network">
+            <source network="default"/>
+            <model type="virtio"/>
+          </interface>
+          <console type="pty"/>
+          <tpm model="tpm-crb">
+            <backend type="emulator"/>
+          </tpm>
+          <sound model="ich9"/>
+          <hostdev mode="subsystem" type="pci" managed="no">
+            <source>
+              <address domain="0" bus="7" slot="0" function="0"/>
+            </source>
+            <rom bar="on" file="/run/libvirt/vbios/rx6800xt.rom"/>
+          </hostdev>
+          <hostdev mode="subsystem" type="pci" managed="no">
+            <source>
+              <address domain="0" bus="7" slot="0" function="1"/>
+            </source>
+            <rom bar="off"/>
+          </hostdev>
+        </devices>
+      </domain>
+      EOF
+    '';
+  };
+
   # Debug log collection script for GPU passthrough troubleshooting
   vfio-collect-logs = pkgs.writeShellApplication {
     name = "vfio-collect-logs";
@@ -299,8 +441,11 @@ in
       configuration = {
         system.nixos.tags = [ "with-vfio" ];
 
-        # Debug log collection script for GPU passthrough troubleshooting
-        environment.systemPackages = [ vfio-collect-logs ];
+        # Debug log collection + domain XML skeleton generator
+        environment.systemPackages = [
+          vfio-collect-logs
+          vfio-vm-skeleton
+        ];
 
         # Disable services that conflict with GPU passthrough
         services.sunshine.enable = lib.mkForce false;
