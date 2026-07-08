@@ -4,6 +4,9 @@
   ...
 }:
 let
+  # 1G hugepages reserved at boot in the VFIO specialisation
+  staticHugepages = 16;
+
   # Debug log collection script for GPU passthrough troubleshooting
   vfio-collect-logs = pkgs.writeShellApplication {
     name = "vfio-collect-logs";
@@ -289,7 +292,7 @@ in
   # VFIO specialisation for GPU passthrough
   # Boot the "NixOS - (VFIO - ...)" GRUB entry to enable GPU passthrough
   # VMs with names matching "NAME-with-gpu-XX" will trigger GPU passthrough
-  # where XX is the number of 1GB hugepages to allocate
+  # where XX is the guest RAM in GiB (must fit the boot-reserved hugepage pool)
   specialisation = {
     VFIO = {
       inheritParentConfig = true;
@@ -311,9 +314,10 @@ in
           "vfio_iommu_type1.allow_unsafe_interrupts=1"
           # Ignore MSR access violations to prevent VM crashes (required for some AMD CPUs)
           "kvm.ignore_msrs=1"
-          # Set default hugepage size to 1GB (allocation done dynamically in QEMU hook)
+          # Reserve 1GB hugepages for VM memory at boot
           "default_hugepagesz=1G"
           "hugepagesz=1G"
+          "hugepages=${toString staticHugepages}"
         ];
 
         # Make VBIOS available at runtime for GPU passthrough
@@ -406,50 +410,13 @@ in
 
                     echo "[$GUEST_NAME] Preparing GPU passthrough with $HUGEPAGES_COUNT hugepages..."
 
-                    # Allocate hugepages dynamically with retries
-                    echo "[$GUEST_NAME] Allocating $HUGEPAGES_COUNT x 1GB hugepages..."
-
-                    MAX_RETRIES=10
-                    ALLOCATED=0
-
-                    for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
-                      echo "[$GUEST_NAME] Hugepages allocation attempt $attempt/$MAX_RETRIES..."
-
-                      # Drop caches and compact memory to maximize chance of allocation
-                      sync
-                      echo 3 > /proc/sys/vm/drop_caches || true
-                      echo 1 > /proc/sys/vm/compact_memory || true
-
-                      # Wait for compaction to complete (longer on later attempts)
-                      sleep $((attempt + 2))
-
-                      # Attempt allocation
-                      echo "$HUGEPAGES_COUNT" > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
-
-                      # Check result
-                      ALLOCATED=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
-                      echo "[$GUEST_NAME] Attempt $attempt: allocated $ALLOCATED / $HUGEPAGES_COUNT hugepages"
-
-                      if [[ "$ALLOCATED" -ge "$HUGEPAGES_COUNT" ]]; then
-                        echo "[$GUEST_NAME] Hugepages allocation successful!"
-                        break
-                      fi
-
-                      if [[ "$attempt" -lt "$MAX_RETRIES" ]]; then
-                        echo "[$GUEST_NAME] Allocation incomplete, retrying..."
-                        # Reset hugepages before retry
-                        echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
-                        sleep 2
-                      fi
-                    done
-
-                    # Final verification after all retries
-                    if [[ "$ALLOCATED" -lt "$HUGEPAGES_COUNT" ]]; then
-                      # Reset hugepages on failure
-                      echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
-                      handle_error "hugepages_verify (got $ALLOCATED, wanted $HUGEPAGES_COUNT after $MAX_RETRIES attempts)" 1
+                    # Hugepages are reserved at boot (hugepages=${toString staticHugepages});
+                    # just verify the pool covers this VM
+                    FREE_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/free_hugepages)
+                    if [[ "$HUGEPAGES_COUNT" -gt "$FREE_HUGEPAGES" ]]; then
+                      handle_error "hugepages_pool (need $HUGEPAGES_COUNT, free $FREE_HUGEPAGES of ${toString staticHugepages})" 1
                     fi
-                    echo "[$GUEST_NAME] Allocated $ALLOCATED x 1GB hugepages"
+                    echo "[$GUEST_NAME] Hugepages available: $FREE_HUGEPAGES free, need $HUGEPAGES_COUNT"
 
                     # Prevent system sleep during VM operation
                     run_or_fail "start_nosleep" systemctl start libvirt-nosleep.service
@@ -597,10 +564,6 @@ in
                     systemctl set-property --runtime -- user.slice AllowedCPUs=0-15 || true
                     systemctl set-property --runtime -- system.slice AllowedCPUs=0-15 || true
                     systemctl set-property --runtime -- init.scope AllowedCPUs=0-15 || true
-
-                    # Free hugepages
-                    echo "[$GUEST_NAME] Freeing hugepages..."
-                    echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages || true
 
                     # Allow system sleep again
                     systemctl stop libvirt-nosleep.service || true

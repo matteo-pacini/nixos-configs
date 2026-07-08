@@ -53,7 +53,7 @@ GNOME desktop, normal use              no passthrough available
         │
         │  virsh start NAME-with-gpu-XX
         ▼  hook "prepare"
-allocate XX × 1G hugepages (≤10 retries, compaction between tries)
+verify XX × 1G hugepages are free (pool of 16 reserved at boot)
 → start libvirt-nosleep → pin host slices to CPUs 0,8
 → [skip to vfio load if GPU already on vfio-pci]
 → stop display-manager → unbind fb vtconsoles
@@ -68,7 +68,7 @@ allocate XX × 1G hugepages (≤10 retries, compaction between tries)
 unload vfio modules → PCI bus reset on 07:00.0 (skipped if amdgpu
 still bound) → nodedev-reattach both functions → modprobe amdgpu
 → rebind vtconsoles → restart display-manager
-→ unpin CPUs (0-15) → free hugepages → stop libvirt-nosleep
+→ unpin CPUs (0-15) → stop libvirt-nosleep
 ```
 
 The hook sends GNOME notifications where a session exists to receive
@@ -100,11 +100,11 @@ fallback.
 1. Reboot and pick the **NixOS - (VFIO - …)** entry in GRUB (the
    specialisation is labelled by its name and date, not by hostname).
 2. Name the VM with the convention `NAME-with-gpu-XX` where `XX` is
-   the number of 1 GiB hugepages to allocate (= guest RAM in GiB),
-   e.g. `win11-with-gpu-16`. **Run only one `-with-gpu` VM at a
+   the guest RAM in GiB, e.g. `win11-with-gpu-16`. It must fit the
+   16-page hugepage pool reserved at boot (`staticHugepages` in
+   `virtualization.nix`). **Run only one `-with-gpu` VM at a
    time** — the hook is stateless and a second VM's prepare/release
-   would reset the GPU and free the hugepages out from under the
-   first.
+   would reset the GPU out from under the first.
 3. In the domain XML: pass through hostdevs `0000:07:00.0` and
    `0000:07:00.1` with **`managed='no'`** (the hook owns
    detach/reattach ordering; with `managed='yes'` libvirt reattaches
@@ -123,6 +123,82 @@ fallback.
 The VM domain XML itself is not managed declaratively (see the
 NixVirt flake if that ever becomes desirable).
 
+## Guest XML reference
+
+The parts of the domain XML that are specific to this host
+(`win11-with-gpu-16`, 16 GiB / 14 vCPUs). Host CPU is a Ryzen 9
+8945HS: 8 cores × 2 threads, SMT sibling pairs `N,N+8`. The hook
+keeps core 0 (threads 0,8) for the host, so the guest gets cores 1-7
+as 7 cores × 2 threads, pinned to the real sibling pairs:
+
+```xml
+<memory unit="GiB">16</memory>
+<memoryBacking>
+  <hugepages>
+    <page size="1" unit="GiB"/>
+  </hugepages>
+</memoryBacking>
+
+<vcpu placement="static">14</vcpu>
+<cputune>
+  <!-- adjacent vcpu pairs = one physical core (threads N,N+8) -->
+  <vcpupin vcpu="0"  cpuset="1"/>  <vcpupin vcpu="1"  cpuset="9"/>
+  <vcpupin vcpu="2"  cpuset="2"/>  <vcpupin vcpu="3"  cpuset="10"/>
+  <vcpupin vcpu="4"  cpuset="3"/>  <vcpupin vcpu="5"  cpuset="11"/>
+  <vcpupin vcpu="6"  cpuset="4"/>  <vcpupin vcpu="7"  cpuset="12"/>
+  <vcpupin vcpu="8"  cpuset="5"/>  <vcpupin vcpu="9"  cpuset="13"/>
+  <vcpupin vcpu="10" cpuset="6"/>  <vcpupin vcpu="11" cpuset="14"/>
+  <vcpupin vcpu="12" cpuset="7"/>  <vcpupin vcpu="13" cpuset="15"/>
+  <emulatorpin cpuset="0,8"/>
+</cputune>
+
+<cpu mode="host-passthrough" check="none" migratable="on">
+  <topology sockets="1" dies="1" clusters="1" cores="7" threads="2"/>
+  <cache mode="passthrough"/>
+</cpu>
+
+<!-- Hyper-V enlightenments for a Windows guest; spinlocks state="on"
+     requires the retries attribute or libvirt rejects the XML -->
+<features>
+  <acpi/>
+  <apic/>
+  <hyperv mode="custom">
+    <relaxed state="on"/>
+    <vapic state="on"/>
+    <spinlocks state="on" retries="8191"/>
+    <vpindex state="on"/>
+    <runtime state="on"/>
+    <synic state="on"/>
+    <stimer state="on"/>
+    <frequencies state="on"/>
+    <tlbflush state="off"/>
+    <ipi state="off"/>
+    <avic state="on"/>
+  </hyperv>
+  <vmport state="off"/>
+</features>
+
+<clock offset="localtime">
+  <timer name="hpet" present="yes"/>
+  <timer name="hypervclock" present="yes"/>
+</clock>
+
+<!-- GPU + its audio function; managed='no' — the hook owns
+     detach/reattach ordering. ROM only on the GPU function. -->
+<hostdev mode="subsystem" type="pci" managed="no">
+  <source>
+    <address domain="0" bus="7" slot="0" function="0"/>
+  </source>
+  <rom bar="on" file="/run/libvirt/vbios/rx6800xt.rom"/>
+</hostdev>
+<hostdev mode="subsystem" type="pci" managed="no">
+  <source>
+    <address domain="0" bus="7" slot="0" function="1"/>
+  </source>
+  <rom bar="off"/>
+</hostdev>
+```
+
 ## Specialisation details
 
 Only active in VFIO mode (`system.nixos.tags = [ "with-vfio" ]`):
@@ -132,11 +208,14 @@ Only active in VFIO mode (`system.nixos.tags = [ "with-vfio" ]`):
   `hardware.amdgpu.overdrive` — all `mkForce false`.
 - **Kernel params**:
   `vfio_iommu_type1.allow_unsafe_interrupts=1`, `kvm.ignore_msrs=1`,
-  `default_hugepagesz=1G`, `hugepagesz=1G` (AMD-Vi is on by default
-  and `iommu=pt` is already set host-wide in `hardware.nix`).
-  Hugepages are *not*
-  allocated at boot — the hook allocates them per-VM and frees them
-  on release, so RAM is not wasted while no VM runs.
+  `default_hugepagesz=1G`, `hugepagesz=1G`, `hugepages=16` (AMD-Vi is
+  on by default and `iommu=pt` is already set host-wide in
+  `hardware.nix`). The 16 × 1 GiB hugepage pool is reserved at boot
+  and held for the whole VFIO session — of the ~29 GiB the host has
+  (32 GiB minus the 780M iGPU carve-out), ~13 GiB remain for the
+  host. The hook only verifies the pool covers the VM; it never
+  allocates or frees pages. Size is `staticHugepages` in
+  `virtualization.nix`.
 - **VBIOS**: `extra/Asus.RX6800XT.16384.201104.rom` is linked to
   `/run/libvirt/vbios/rx6800xt.rom` via tmpfiles. Needed because the
   eGPU's ROM is shadowed after host boot. Verified valid (2026-07):
@@ -168,6 +247,7 @@ The hook script is installed declaratively via
 
 | Change | Reason |
 |--------|--------|
+| Static 16 × 1G hugepage pool at boot (`hugepages=16`) | Dynamic per-VM allocation could not assemble 16 contiguous 1 GiB blocks once the session had fragmented memory (best effort 12/16); boot-time reservation always succeeds. Hook only verifies pool size. |
 | Dropped `vendor-reset` module | Supports only Polaris/Vega/Navi10-14 — not Navi 21. Unmaintained, with build breakage reported across recent kernels (host runs 7.x). Plain PCI bus reset is sufficient for RDNA2. |
 | `fuser` wait-loop before `modprobe -r amdgpu` | Fixed `sleep`s raced against session teardown; any process still holding `/dev/dri/*` made the unload fail. Now waits up to 30 s and hard-fails with a notification instead of proceeding blind. |
 | Prepare-phase vfio-pci safety net | If a previous release failed, the GPU is still bound to vfio-pci at the next start. The hook now detects this and skips the display-manager/unbind/detach steps instead of erroring out. |
@@ -201,7 +281,7 @@ missed a kernel-side user. `dmesg | tail` will name the blocker.
 
 **Any failed prepare leaves the host degraded.** A prepare that
 aborts after stopping the display manager exits with GDM down, host
-CPUs pinned to 0,8, hugepages allocated and libvirt-nosleep running —
+CPUs pinned to 0,8 and libvirt-nosleep running —
 the hook does not roll these back, and whether libvirt then invokes
 the release phase is version-dependent. Recover over SSH:
 
@@ -210,7 +290,6 @@ systemctl restart display-manager.service
 systemctl set-property --runtime -- user.slice AllowedCPUs=0-15
 systemctl set-property --runtime -- system.slice AllowedCPUs=0-15
 systemctl set-property --runtime -- init.scope AllowedCPUs=0-15
-echo 0 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages
 systemctl stop libvirt-nosleep.service
 ```
 
@@ -233,10 +312,12 @@ systemctl restart display-manager.service
 `prepare` detects it and goes straight to VM start. To recover the
 desktop instead, run the manual reattach above.
 
-**Hugepage allocation fails (notification "hugepages_verify").**
-Memory too fragmented even after 10 compaction retries. Close
-memory-heavy apps or reboot, or use a smaller `XX`. Rule of thumb:
-`XX` must fit in free RAM at VM start.
+**VM start fails, notification "hugepages_pool".** `XX` exceeds the
+free pages in the boot-reserved pool — either the VM name asks for
+more than 16, or another `-with-gpu` VM is holding pages. Use a
+smaller `XX`, or raise `staticHugepages` in `virtualization.nix` and
+rebuild (each page permanently takes 1 GiB from the host for the
+whole VFIO session).
 
 **Wrong monitor primary after GNOME comes back.** Known mutter 50
 regression (it can ignore the HDMI-1 `<disabled>` entry in
