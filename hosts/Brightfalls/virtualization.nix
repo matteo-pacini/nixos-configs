@@ -265,6 +265,14 @@ in
     qemu = {
       package = pkgs.qemu_kvm;
       runAsRoot = true;
+      # runAsRoot omits user/group from qemu.conf, falling back to libvirt's
+      # compiled-in default 'libvirt-qemu' — a user that doesn't exist on
+      # NixOS. QEMU state driver init then fails and libvirtd exits at boot.
+      verbatimConfig = ''
+        namespaces = []
+        user = "root"
+        group = "root"
+      '';
       swtpm.enable = true;
       vhostUserPackages = [ pkgs.virtiofsd ];
     };
