@@ -16,6 +16,8 @@ from the unmerged `um890pro-vfio` branch (tip `a3d8144`).
 | dGPU HDMI audio | `0000:07:00.1` | `1002:ab28` | 22 | `snd_hda_intel` |
 | iGPU video (Radeon 780M) | `0000:0a:00.0` | `1002:1900` | 23 | *none bound* |
 | iGPU HDMI audio | `0000:0a:00.1` | `1002:1640` | 24 | `snd_hda_intel` |
+| USB xHCI (desk hub chain + BT radio) | `0000:0a:00.3` | `1022:15b9` | 26 | `xhci_hcd` |
+| USB xHCI (gamepad ports) | `0000:0c:00.4` | `1022:15c1` | 34 | `xhci_hcd` |
 
 - The eGPU hangs off Thunderbolt: `00:02.4 → 05:00.0 → 06:00.0 →
   07:00.0` (own PCIe switch). Video and audio functions sit in their
@@ -26,7 +28,8 @@ from the unmerged `um890pro-vfio` branch (tip `a3d8144`).
   passthrough: while the VM owns the GPU the host is reachable via
   SSH only.
 - PCI addresses have been renumbered before (the old back-USB
-  controller `c8:00.3` no longer exists — see *Known gaps*). If
+  controller `c8:00.3` no longer exists — see *Changes vs the
+  original*). If
   passthrough suddenly fails with "node device not found", re-check
   addresses:
 
@@ -197,6 +200,23 @@ as 7 cores × 2 threads, pinned to the real sibling pairs:
   </source>
   <rom bar="off"/>
 </hostdev>
+
+<!-- USB controllers, whole-controller passthrough (each is alone in
+     its IOMMU group; plain xhci, so managed='yes' is safe — no hook
+     involvement). 0a:00.3 carries the desk hub chain (keyboard,
+     mouse, Modi DAC, mic, Titan key) AND the internal Bluetooth
+     radio — the host loses BT while the VM runs. 0c:00.4 owns the
+     gamepad ports. -->
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x0000" bus="0x0a" slot="0x00" function="0x3"/>
+  </source>
+</hostdev>
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x0000" bus="0x0c" slot="0x00" function="0x4"/>
+  </source>
+</hostdev>
 ```
 
 ## Specialisation details
@@ -254,7 +274,7 @@ The hook script is installed declaratively via
 | Release resets only an unbound GPU | The bus reset is skipped when the GPU is still bound to amdgpu (possible after a prepare that failed early) — resetting a device under a live driver wedges it (ring timeouts, reboot-only). |
 | `systemctl restart` display-manager on release | Plain `start` no-ops if GDM survived a skipped prepare and is running against a vanished GPU; `restart` forces re-initialization. |
 | Notification lookups guarded | `loginctl`/`id` command substitutions in the notify helper run under `set -e`; a hiccup there used to be able to abort the whole release path. Now `\|\| true`-guarded. |
-| Dropped USB controller `c8:00.3` detach | Address no longer exists after PCI renumbering. See *Known gaps*. |
+| USB controllers passed as `managed='yes'` hostdevs instead of hook detach | Old `c8:00.3` vanished in PCI renumbering; today `0a:00.3` (desk hub + BT) and `0c:00.4` (gamepad) are each alone in their IOMMU group and are plain xhci — libvirt's own detach/reattach is safe, no hook ordering needed. See *Guest XML reference*. |
 | `systemd.sleep.settings.Sleep` instead of `extraConfig` | `extraConfig` is an eval-time assertion failure on NixOS 26.11. |
 | Removed `isVM` plumbing | The VM build variants were removed in `c06162b`. |
 
@@ -340,13 +360,6 @@ as above.
 
 ## Known gaps / future work
 
-- **USB passthrough**: the original hook detached back-panel USB
-  controller `c8:00.3` for the VM. That address is gone; current
-  candidates are `0a:00.3`, `0a:00.4` (APU bus) and `0c:00.3`,
-  `0c:00.4` (each in its own IOMMU group). Identify which controller
-  owns the physical ports you want (plug a device, `readlink
-  /sys/bus/usb/devices/usb*` → PCI address) and re-add the
-  detach/reattach pair to the hook.
 - **Looking Glass**: unusable here — it needs a host GPU to display
   the client, and the iGPU cannot drive a monitor.
 - **iGPU investigation**: `0a:00.0` has no driver bound at all

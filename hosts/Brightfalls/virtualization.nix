@@ -143,6 +143,19 @@ let
             </source>
             <rom bar="off"/>
           </hostdev>
+          <!-- USB controller 0a:00.3: desk hub chain (keyboard, mouse,
+               Modi DAC, mic, Titan key) + internal Bluetooth radio -->
+          <hostdev mode="subsystem" type="pci" managed="yes">
+            <source>
+              <address domain="0x0000" bus="0x0a" slot="0x00" function="0x3"/>
+            </source>
+          </hostdev>
+          <!-- USB controller 0c:00.4: gamepad ports -->
+          <hostdev mode="subsystem" type="pci" managed="yes">
+            <source>
+              <address domain="0x0000" bus="0x0c" slot="0x00" function="0x4"/>
+            </source>
+          </hostdev>
         </devices>
       </domain>
       EOF
