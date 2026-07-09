@@ -3,6 +3,12 @@ _:
   custom.git = {
     enable = true;
     diffMergeTool = "nvimdiff";
+    signing = {
+      enable = true;
+      allowedSignersContent = ''
+        * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtI1woCI1+svEObVH/zT+fp0R11loXEhEBYyuNtBJzN
+      '';
+    };
   };
 
   custom.ssh = {
