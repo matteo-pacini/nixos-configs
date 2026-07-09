@@ -73,7 +73,7 @@ nix fmt
 - GNOME on Wayland
 - Linux 7.0 with **BORE** scheduler patches
 - Per-host **znver4** overlay tuning the system for Zen 4
-- **Full-disk encryption** (LUKS2) using vault-based keyfile unlock
+- **Dual-boot** with Windows 11 (systemd-boot, shared ESP)
 - KVM/QEMU virtualization, **Sunshine** for game streaming, **LACT** for GPU control
 - Suspend disabled (the eGPU never recovers cleanly)
 
@@ -82,33 +82,32 @@ nix fmt
 <details>
 <summary><strong>Disk Layout</strong></summary>
 
-Single 4 TB NVMe partitioned with [disko](https://github.com/nix-community/disko):
+Single 4 TB NVMe partitioned with [disko](https://github.com/nix-community/disko), unencrypted (gaming PC), dual-booting Windows 11:
 
-| Mount | Size | FS | Encryption |
-|-------|------|----|------------|
-| `/boot` | 1 GB | FAT32 | none |
-| `/vault` | 64 MB | ext2 | LUKS2 (password) |
-| `swap` | 36 GB | swap | LUKS2 (keyfile) |
-| `/` | 200 GB | ext4 | LUKS2 (keyfile) |
-| `/home` | 1 TB | ext4 | LUKS2 (keyfile) |
-| `/games` | ~2.7 TB | XFS | LUKS2 (keyfile) |
+| Mount | Size | FS | Notes |
+|-------|------|----|-------|
+| `/boot` | 1 GB | FAT32 | EFI System Partition (shared with Windows) |
+| `swap` | 36 GB | swap | hibernation |
+| `/` | 200 GB | ext4 | NixOS system |
+| `/home` | 1 TB | ext4 | configs & code |
+| — | 16 MB | — | Microsoft Reserved (Windows 11) |
+| — | 512 GB | NTFS | Windows 11 (Win installer formats) |
+| `/games` | ~1.9 TB | XFS | Steam library |
 
-You enter the vault password once at boot. Everything else unlocks automatically from the keyfile stored in `/vault`. Initrd SSH on port `2222` is available for remote unlock.
+systemd-boot auto-detects the Windows Boot Manager on the shared ESP and lists it as a boot entry.
 
 **Fresh install:**
 
 ```bash
-# 1. Stage vault password and a random keyfile
-echo -n "your-vault-password" > /tmp/vault.key
-dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
-
-# 2. Partition, format, and mount
+# 1. Partition, format, and mount (WIPES DISK, incl. Windows)
 sudo nix run github:nix-community/disko/latest -- \
   --mode destroy,format,mount \
   --flake github:matteo-pacini/nixos-configs#BrightFalls
 
-# 3. Install
+# 2. Install
 sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
+
+# 3. Boot a Windows 11 USB and install into the 512 GB slot
 ```
 
 </details>
