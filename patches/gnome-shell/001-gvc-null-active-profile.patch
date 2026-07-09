@@ -1,0 +1,50 @@
+gvc: guard NULL active_profile in update_card
+=============================================
+
+Problem
+-------
+gnome-shell 50.2 segfaults ~3s into session start (SIGSEGV in libgvc.so,
+_pa_context_get_card_info_by_index_cb), killing the autologin session and
+dropping to the GDM greeter. Racy: only some boots hit it.
+
+Root cause
+----------
+During startup pipewire-pulse (>=1.6.x) can transiently emit a card with
+ports but zero profiles — it logs "card N port M profiles inconsistent
+(0 < X)" (module-protocol-pulse). libpulse then hands gvc a pa_card_info
+with active_profile == NULL, and update_card() dereferences
+info->active_profile->name unconditionally. Observed on the AMD dGPU
+HDMI/DP audio card, whose profile enumeration races display init.
+
+Unfixed upstream as of 2026-07-09: the deref is present on libgvc master
+(rev 0a4eda0, vendored by gnome-shell 50.2/50.3/main), and pipewire
+1.6.6/1.6.7 do not fix the zero-profiles race. No upstream issue filed
+for this signature; nearest relatives are gvc MR !36 and issue #46.
+
+Fix
+---
+NULL-guard both active_profile derefs, mirroring how nixpkgs PR #482791
+carried gvc MR !31 patches on the vendored subproject. Drop when the
+vendored gvc grows the guard upstream.
+--- a/subprojects/gvc/gvc-mixer-control.c
++++ b/subprojects/gvc/gvc-mixer-control.c
+@@ -2608,7 +2608,8 @@
+                 struct pa_card_profile_info pi = info->profiles[i];
+                 gboolean is_default;
+ 
+-                is_default = (g_strcmp0 (pi.name, info->active_profile->name) == 0);
++                is_default = (info->active_profile != NULL &&
++                              g_strcmp0 (pi.name, info->active_profile->name) == 0);
+                 g_debug ("\tProfile '%s': %d sources %d sinks%s",
+                          pi.name, pi.n_sources, pi.n_sinks,
+                          is_default ? " (Current)" : "");
+@@ -2646,7 +2647,8 @@
+         gvc_mixer_card_set_profiles (card, profile_list);
+         gvc_mixer_card_set_name (card, pa_proplist_gets (info->proplist, "device.description"));
+         gvc_mixer_card_set_icon_name (card, pa_proplist_gets (info->proplist, "device.icon_name"));
+-        gvc_mixer_card_set_profile (card, info->active_profile->name);
++        if (info->active_profile != NULL)
++                gvc_mixer_card_set_profile (card, info->active_profile->name);
+ 
+         if (is_new) {
+                 g_hash_table_insert (control->priv->cards,

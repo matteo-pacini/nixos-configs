@@ -156,6 +156,19 @@
       doCheck = false;
     });
 
+    # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
+    # subproject — update_card() derefs pa_card_info.active_profile->name, but
+    # pipewire-pulse can transiently report a card with zero profiles during
+    # bring-up ("profiles inconsistent"), making active_profile NULL. Kills the
+    # autologin session on the GNOME hosts (BrightFalls, CauldronLake).
+    # Unfixed on libgvc master and pipewire 1.6.7 as of 2026-07-09; see the
+    # patch header for full context. Drop once the vendored gvc gains the guard.
+    gnome-shell = super.gnome-shell.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        ../patches/gnome-shell/001-gvc-null-active-profile.patch
+      ];
+    });
+
     # jellyfin-tui: cover art flickers on every redraw when launched inside a
     # zellij pane because zellij's Kitty/Sixel passthrough is unreliable
     # (zellij-org/zellij#2814, #2576). The patch forces Picker::halfblocks() when
