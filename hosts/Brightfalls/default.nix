@@ -39,16 +39,17 @@
     };
   };
 
-  # Boot loader
-
-  boot.loader.grub = {
+  # Boot loader — systemd-boot auto-detects Windows Boot Manager on the shared ESP (dual boot, no os-prober)
+  boot.loader.systemd-boot = {
     enable = true;
-    efiSupport = true;
-    device = "nodev";
     memtest86.enable = pkgs.stdenv.hostPlatform.isx86;
     configurationLimit = 5;
   };
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.timeout = 5;
+
+  # Dual boot: match Windows' localtime RTC so the clock doesn't skew each boot
+  time.hardwareClockInLocalTime = true;
 
   # System Packages
 
