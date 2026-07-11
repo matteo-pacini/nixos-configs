@@ -35,6 +35,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 
 - **New `.nix` files must be `git add`ed before `nix build`.** The flake reads from the git store; untracked files are invisible.
 - **Don't use `nix flake check` as a blanket validation.** It tries to build every output and fails on cross-platform configs from your current host. Use the targeted `nix build` (local platform) + `nix eval` (foreign platform) commands above instead.
+- **`InstallerISO` fails pure eval by design.** It bakes the attic netrc token at build time and needs `--impure` + `ATTIC_NETRC_FILE=<decrypted netrc>`. Never add it to CI. See `hosts/InstallerISO/default.nix`.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
 - CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
 - **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals, and append a row to the Changelog at the bottom) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
@@ -55,14 +56,14 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **Per-host CPU overlays** in `overlays/<host>.nix` (e.g. `znver4`, `apple-m4`). Shared overlays live in `overlays/shared.nix`.
 - **Darwin hosts** get extra modules NixOS hosts do not: `mac-app-util`, `xcodes` (NightSprings only), and `nix-homebrew`.
 - **Shared Home Manager modules** are loaded on all hosts via `homeManagerModules.default` in `flake.nix`.
-- **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_0` and optionally applies BORE scheduler patches from `bore-scheduler-src`.
+- **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_1` and optionally applies BORE scheduler patches from `bore-scheduler-src`.
 
 ## Secrets
 
-Only Nexus uses agenix secrets currently.
+All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), every host has an attic netrc, and `secrets/shared/` holds cross-host secrets.
 
 - Definitions: `secrets/secrets.nix`
-- Encrypted files: `secrets/nexus/*.age`
+- Encrypted files: `secrets/<host>/*.age` and `secrets/shared/*.age`
 - Re-key after changing `secrets.nix`:
   ```bash
   cd secrets && agenix --rekey -i /path/to/valid/identity

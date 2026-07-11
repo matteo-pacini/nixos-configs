@@ -1,22 +1,30 @@
 # Disk configuration for BrightFalls (physical machine)
 #
 # Hardware: Minisforum UM890 Pro (Zen4) + DEG1 eGPU Dock
-# Single 4TB NVMe, unencrypted (gaming PC), dual-boot with Windows 11.
+# Single 4TB NVMe, full-disk encryption: one LUKS2 container holding an
+# LVM volume group, so volumes can be resized later (lvresize + resize2fs)
+# without touching the partition table or the LUKS layer.
 #
 # Layout:
-#   - boot:  1GB    vfat   EFI System Partition (shared with Windows)
-#   - swap:  36GB   swap   Hibernation support
-#   - root:  200GB  ext4   NixOS system
-#   - home:  600GB  ext4   Configs & code repos
-#   - msr:   16MB   -      Microsoft Reserved (Windows 11)
-#   - win:   512GB  ntfs   Windows 11 (unformatted; Win installer formats)
-#   - games: ~2.5TB xfs    Steam library
+#   - boot: 2GB   vfat  EFI System Partition
+#   - luks: rest  LUKS2 "cryptroot" (AES-256-XTS, argon2id)
+#       └ LVM VG "brightfalls"
+#           - root:  200GB    ext4  NixOS system
+#           - home:  600GB    ext4  Configs & code repos
+#           - swap:  36GB     swap  Hibernation support
+#           - games: ~2.8TB   ext4  Steam library
+#
+# Security:
+#   - LUKS2 with argon2id (4GB memory) — brute-force hostile
+#   - AES-256-XTS (--key-size 512): ~128-bit effective post-Grover,
+#     i.e. quantum-resistant; purely symmetric, no TPM/PKI involved
+#   - LVM lives *inside* the container: volume names/sizes not visible at rest
 #
 # Install:
 #   1. Set `device` below to the real NVMe by-id path.
-#   2. sudo disko --mode destroy,format,mount   (WIPES DISK, incl. Windows)
-#   3. sudo nixos-install --flake ...
-#   4. Boot a Windows 11 USB, install into the 512G unformatted slot.
+#   2. echo -n '<passphrase>' > /tmp/luks.password
+#   3. sudo disko --mode destroy,format,mount   (WIPES DISK)
+#   4. sudo nixos-install --flake ...
 #
 { ... }:
 {
@@ -29,9 +37,10 @@
           type = "gpt";
           partitions = {
 
-            # Part 1: EFI Boot partition - 1GB - vfat (shared with Windows)
+            # Part 1: EFI Boot partition - 2GB - vfat
+            # 2G: 5 generations x 2 entries (wifi specialisation) x BORE initrds + memtest
             boot = {
-              size = "1G";
+              size = "2G";
               type = "EF00";
               content = {
                 type = "filesystem";
@@ -41,71 +50,117 @@
               };
             };
 
-            # Part 2: Swap partition - 36GB (hibernation: RAM + headroom)
-            swap = {
-              size = "36G";
-              content = {
-                type = "swap";
-              };
-            };
-
-            # Part 3: Root partition - 200GB - ext4
-            root = {
-              size = "200G";
-              content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/";
-                mountOptions = [
-                  "defaults"
-                  "noatime"
-                ];
-              };
-            };
-
-            # Part 4: Home partition - 600GB - ext4
-            home = {
-              size = "600G";
-              content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/home";
-                mountOptions = [
-                  "defaults"
-                  "noatime"
-                ];
-              };
-            };
-
-            # Part 5: Microsoft Reserved - 16MB - no filesystem (Windows 11)
-            msr = {
-              size = "16M";
-              type = "0C01";
-            };
-
-            # Part 6: Windows 11 - 512GB - NTFS, unformatted
-            # Left unformatted; the Windows installer creates the NTFS
-            # filesystem here and its own WinRE recovery partition.
-            windows = {
-              size = "512G";
-              type = "0700";
-            };
-
-            # Part 7: Games partition - remaining space (~2.5TB) - XFS
-            games = {
+            # Part 2: LUKS2 container - rest of disk - LVM inside
+            luks = {
               size = "100%";
               content = {
-                type = "filesystem";
-                format = "xfs";
-                mountpoint = "/mnt/games";
-                mountOptions = [
-                  "defaults"
-                  "noatime"
+                type = "luks";
+                name = "cryptroot";
+                # Install-time only; boot unlock prompts for the passphrase
+                passwordFile = "/tmp/luks.password";
+                settings = {
+                  allowDiscards = true;
+                };
+                extraFormatArgs = [
+                  "--type"
+                  "luks2"
+                  "--cipher"
+                  "aes-xts-plain64"
+                  "--hash"
+                  "sha512"
+                  "--key-size"
+                  "512"
+                  "--pbkdf"
+                  "argon2id"
+                  "--pbkdf-memory"
+                  "4194304"
+                  "--pbkdf-parallel"
+                  "8"
+                  "--iter-time"
+                  "3000"
+                  "--sector-size"
+                  "4096"
                 ];
+                content = {
+                  type = "lvm_pv";
+                  vg = "brightfalls";
+                };
               };
             };
 
           };
+        };
+      };
+    };
+
+    lvm_vg = {
+      brightfalls = {
+        type = "lvm_vg";
+        lvs = {
+
+          # Root volume - 200GB - ext4
+          root = {
+            size = "200G";
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              mountpoint = "/";
+              mountOptions = [
+                "defaults"
+                "noatime"
+              ];
+            };
+          };
+
+          # Home volume - 600GB - ext4
+          home = {
+            size = "600G";
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              # -m 1: non-system volume, 1% anti-fragmentation reserve (default 5% = ~30G)
+              extraArgs = [
+                "-m"
+                "1"
+              ];
+              mountpoint = "/home";
+              mountOptions = [
+                "defaults"
+                "noatime"
+              ];
+            };
+          };
+
+          # Swap volume - 36GB (hibernation: RAM + headroom)
+          swap = {
+            size = "36G";
+            content = {
+              type = "swap";
+              resumeDevice = true;
+            };
+          };
+
+          # Games volume - ~2.8TB - ext4
+          # ext4 (not xfs) so it can shrink as well as grow
+          # 98%FREE keeps ~55G of VG extents free: LVM snapshots, e2scrub, grow headroom
+          games = {
+            size = "98%FREE";
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              # -m 0: no root-reserve on pure data volume (default 5% = ~140G wasted)
+              extraArgs = [
+                "-m"
+                "0"
+              ];
+              mountpoint = "/mnt/games";
+              mountOptions = [
+                "defaults"
+                "noatime"
+              ];
+            };
+          };
+
         };
       };
     };

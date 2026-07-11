@@ -16,7 +16,7 @@
 
 ## Overview
 
-Five build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_0`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) (Nexus only, today).
+Five build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_1`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) across all hosts.
 
 | Host | Platform | Role | User |
 |------|----------|------|------|
@@ -71,9 +71,9 @@ nix fmt
 <summary><strong>Software</strong></summary>
 
 - GNOME on Wayland
-- Linux 7.0 with **BORE** scheduler patches
+- Linux 7.1 with **BORE** scheduler patches
 - Per-host **znver4** overlay tuning the system for Zen 4
-- **Dual-boot** with Windows 11 (systemd-boot, shared ESP)
+- **Full-disk encryption** (LUKS2 + LVM, remote unlock over SSH)
 - KVM/QEMU virtualization, **Sunshine** for game streaming, **LACT** for GPU control
 - Suspend disabled (the eGPU never recovers cleanly)
 
@@ -82,39 +82,42 @@ nix fmt
 <details>
 <summary><strong>Disk Layout</strong></summary>
 
-Single 4 TB NVMe partitioned with [disko](https://github.com/nix-community/disko), unencrypted (gaming PC), dual-booting Windows 11:
+Single 4 TB NVMe partitioned with [disko](https://github.com/nix-community/disko). Full-disk encryption: one LUKS2 container (AES-256-XTS, argon2id) holding an LVM volume group, so volumes resize with `lvresize` + `resize2fs` — no partition or LUKS surgery:
 
 | Mount | Size | FS | Notes |
 |-------|------|----|-------|
-| `/boot` | 1 GB | FAT32 | EFI System Partition (shared with Windows) |
-| `swap` | 36 GB | swap | hibernation |
-| `/` | 200 GB | ext4 | NixOS system |
-| `/home` | 1 TB | ext4 | configs & code |
-| — | 16 MB | — | Microsoft Reserved (Windows 11) |
-| — | 512 GB | NTFS | Windows 11 (Win installer formats) |
-| `/games` | ~1.9 TB | XFS | Steam library |
+| `/boot` | 2 GB | FAT32 | EFI System Partition |
+| — | rest | LUKS2 | `cryptroot` container, LVM VG `brightfalls` inside |
+| `/` | 200 GB LV | ext4 | NixOS system |
+| `/home` | 600 GB LV | ext4 | configs & code |
+| `swap` | 36 GB LV | swap | hibernation |
+| `/mnt/games` | ~2.8 TB LV | ext4 | Steam library |
 
-systemd-boot auto-detects the Windows Boot Manager on the shared ESP and lists it as a boot entry.
+One passphrase at boot unlocks everything; the initrd also runs SSH on port 2222 for remote unlock.
 
-**Fresh install:**
+**Fresh install** (boot the [InstallerISO](#installeriso--custom-install-media) — ships disko and the attic cache):
 
 ```bash
-# 1. Partition, format, and mount (WIPES DISK, incl. Windows)
-sudo nix run github:nix-community/disko/latest -- \
-  --mode destroy,format,mount \
+# 1. Stage the LUKS passphrase (install-time only)
+echo -n '<passphrase>' > /tmp/luks.password
+
+# 2. Partition, format, and mount (WIPES DISK)
+sudo disko --mode destroy,format,mount \
   --flake github:matteo-pacini/nixos-configs#BrightFalls
 
-# 2. Install
-sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
+# 3. Pre-generate the initrd SSH host key
+sudo mkdir -p /mnt/etc/secrets/initrd
+sudo ssh-keygen -t ed25519 -N "" -f /mnt/etc/secrets/initrd/ssh_host_ed25519_key
 
-# 3. Boot a Windows 11 USB and install into the 512 GB slot
+# 4. Install
+sudo nixos-install --flake github:matteo-pacini/nixos-configs#BrightFalls
 ```
 
 </details>
 
 ### CauldronLake — Razer Blade
 
-Travel gaming laptop running NixOS. Intel CPU + NVIDIA GPU (Optimus, PRIME render offload), GNOME on Linux 7.0, Steam with Proton.
+Travel gaming laptop running NixOS. Intel CPU + NVIDIA GPU (Optimus, PRIME render offload), GNOME on Linux 7.1, Steam with Proton.
 
 ### Nexus — Home Server
 
@@ -162,7 +165,7 @@ See the [Diskpool Handbook](docs/nexus/diskpool-handbook.md) for the full storag
 <summary><strong>Software</strong></summary>
 
 - Headless (no desktop)
-- Linux 7.0, legacy BIOS boot
+- Linux 7.1, legacy BIOS boot
 - aarch64 binfmt emulation for cross-compilation
 - smartd monitoring + dual-UPS [`apcupsd-multi`](modules/nixos/apcupsd-multi.nix)
 - Secrets managed with [agenix](https://github.com/ryantm/agenix)
@@ -176,6 +179,19 @@ Personal laptop. nix-darwin + nix-homebrew, declaratively managed Xcode versions
 ### WorkLaptop — MacBook Pro M4
 
 Work machine. nix-darwin + nix-homebrew, Docker via Colima, Tailscale.
+
+### InstallerISO — Custom Install Media
+
+Minimal NixOS installer ISO with [disko](https://github.com/nix-community/disko) on the PATH and the private attic cache pre-configured — the netrc token is **baked into the image**, so installs substitute from the cache with zero setup. Keep the ISO private.
+
+Local x86_64-linux builds only (impure, needs a host holding the decrypted netrc); deliberately absent from CI:
+
+```bash
+sudo ATTIC_NETRC_FILE=/run/agenix/brightfalls/attic-netrc \
+  nix build --impure .#nixosConfigurations.InstallerISO.config.system.build.isoImage
+```
+
+The image lands in `result/iso/`. Config: `hosts/InstallerISO/default.nix`.
 
 ---
 
@@ -214,7 +230,7 @@ First activation requires Apple ID authentication; subsequent runs are automatic
 Scoped to this flake but written with options should you want to crib them:
 
 - **`custom.nix-core`** *(NixOS, Darwin)* — Trusted users, experimental features, extra platforms.
-- **`custom.kernel`** *(NixOS)* — Linux 7.0 with optional BORE scheduler patches.
+- **`custom.kernel`** *(NixOS)* — Linux 7.1 with optional BORE scheduler patches.
 - **`custom.locale`** *(NixOS)* — Locale, timezone, console keymap and font.
 - **`custom.bluetooth`**, **`custom.fonts`** *(NixOS / Darwin)* — Simple bundles.
 - **`custom.system-defaults`** *(Darwin)* — Dock, Finder, Touch ID for `sudo`, dark mode.
@@ -233,6 +249,7 @@ Scoped to this flake but written with options should you want to crib them:
 ## Documentation
 
 - [`AGENTS.md`](AGENTS.md) — Development workflow, conventions, and gotchas for working in this repo.
+- [BrightFalls Install Handbook](docs/brightfalls/install-handbook.md) — Fresh install: backup, disko, encryption, restore, post-boot checks.
 - [Diskpool Handbook](docs/nexus/diskpool-handbook.md) — Nexus storage architecture (LUKS, mergerfs, SnapRAID).
 - [Paperless-ngx Recovery](docs/nexus/paperless-ngx-recovery.md) — Disaster recovery for the document archive.
 

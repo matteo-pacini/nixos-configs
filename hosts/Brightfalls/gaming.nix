@@ -11,6 +11,9 @@
 
   hardware.steam-hardware.enable = true;
 
+  # Steam library volume: fresh mkfs.ext4 on reinstall leaves it root-owned
+  systemd.tmpfiles.rules = [ "d /mnt/games 0755 matteo users -" ];
+
   programs.steam = {
     enable = true;
     package = pkgs.steam.override {

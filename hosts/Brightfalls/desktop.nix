@@ -7,7 +7,7 @@
   services.desktopManager.gnome.enable = true;
 
   services.displayManager = {
-    # Single-user gaming box
+    # Makes sense to me as the whole system is encrypted
     autoLogin = {
       enable = true;
       user = "matteo";
