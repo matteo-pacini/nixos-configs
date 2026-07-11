@@ -30,16 +30,19 @@ let
     "script-opts/smart-native-screenshot.conf"
   ];
 
-  baseConf =
-    {
-      shader_pack_enable = false;
-      transcode_hdr = false;
-      transcode_dolby_vision = false;
-      mpv_ext = isDarwin;
-    }
-    // lib.optionalAttrs isDarwin {
-      mpv_ext_path = "${pkgs.mpv}/bin/mpv";
-    };
+  baseConf = {
+    shader_pack_enable = false;
+    transcode_hdr = false;
+    transcode_dolby_vision = false;
+    mpv_ext = isDarwin;
+    # Retry the server connection every 30s for this many minutes before
+    # giving up and blocking on the login window (upstream default is 0,
+    # i.e. a single attempt).
+    connect_retry_mins = 5;
+  }
+  // lib.optionalAttrs isDarwin {
+    mpv_ext_path = "${pkgs.mpv}/bin/mpv";
+  };
 
   baseConfFile = pkgs.writeText "jellyfin-mpv-shim-conf.json" (builtins.toJSON baseConf);
 in
@@ -91,6 +94,13 @@ in
       };
       Service = {
         Type = "simple";
+        # network-online.target is a no-op in the user manager (nothing
+        # activates it there), so gate on NetworkManager connectivity
+        # instead. On timeout the unit fails and Restart=on-failure turns
+        # this into an indefinite retry. Without the gate the shim starts
+        # before the network is up, fails its single connection attempt,
+        # and blocks forever on the login window without exiting.
+        ExecStartPre = "${pkgs.networkmanager}/bin/nm-online -q --timeout=60";
         ExecStart = "${pkgs.jellyfin-mpv-shim}/bin/jellyfin-mpv-shim";
         Restart = "on-failure";
         RestartSec = 5;
