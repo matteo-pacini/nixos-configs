@@ -291,6 +291,22 @@
           }
         ];
       };
+      #################
+      # Installer ISO #
+      #################
+      # Local x86_64-linux impure builds only (bakes the attic netrc token);
+      # deliberately absent from CI. See hosts/InstallerISO/default.nix.
+      nixosConfigurations."InstallerISO" = inputs.nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {
+          inherit inputs;
+        };
+        modules = [
+          "${inputs.nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+          self.nixosModules.default
+          ./hosts/InstallerISO
+        ];
+      };
       ######################
       # Macbook Pro M1 Max #
       ######################

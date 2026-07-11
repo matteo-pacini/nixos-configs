@@ -39,4 +39,12 @@ in
   environment.systemPackages = [
     inputs.disko.packages.x86_64-linux.disko
   ];
+
+  # `ssh nexus` from the live installer (restore files from the pool)
+  programs.ssh.extraConfig = ''
+    Host nexus
+      HostName nexus.home.internal
+      User matteo
+      Port 1788
+  '';
 }
