@@ -48,6 +48,29 @@ rsync -a nexus:/diskpool/pc-backups/brightfalls/ /mnt/home/matteo/restore/
 
 ## 3. After first boot
 
+- **Recovery keyslot**: add a second high-entropy passphrase (slot 1),
+  stash it offline (password manager / paper) — one keyslot is a single
+  point of failure:
+
+  ```bash
+  sudo cryptsetup luksAddKey /dev/nvme0n1p2
+  sudo cryptsetup luksDump /dev/nvme0n1p2   # confirm 2 keyslots
+  ```
+
+- **LUKS header backup** — header corruption kills all 4 TB regardless
+  of passphrase. Re-do after any keyslot change:
+
+  ```bash
+  sudo cryptsetup luksHeaderBackup /dev/nvme0n1p2 \
+    --header-backup-file /root/brightfalls-luks-header.img
+  rsync -a /root/brightfalls-luks-header.img nexus:/diskpool/pc-backups/brightfalls/
+  ```
+
+- **Pin the initrd unlock host key**: the port-2222 host key lives on
+  the unencrypted ESP — anyone with disk access can steal it and
+  impersonate the unlock prompt. First `ssh -p 2222` pins the
+  fingerprint; NEVER type the LUKS passphrase past a host-key-changed
+  warning.
 - **Re-key agenix**: the fresh install has a new host key. Put the new
   `/etc/ssh/ssh_host_ed25519_key.pub` into `secrets/secrets.nix`, then
   `cd secrets && agenix --rekey -i <valid identity>` — until then

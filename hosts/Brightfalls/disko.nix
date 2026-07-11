@@ -6,7 +6,7 @@
 # without touching the partition table or the LUKS layer.
 #
 # Layout:
-#   - boot: 1GB   vfat  EFI System Partition
+#   - boot: 2GB   vfat  EFI System Partition
 #   - luks: rest  LUKS2 "cryptroot" (AES-256-XTS, argon2id)
 #       └ LVM VG "brightfalls"
 #           - root:  200GB    ext4  NixOS system
@@ -37,9 +37,10 @@
           type = "gpt";
           partitions = {
 
-            # Part 1: EFI Boot partition - 1GB - vfat
+            # Part 1: EFI Boot partition - 2GB - vfat
+            # 2G: 5 generations x 2 entries (wifi specialisation) x BORE initrds + memtest
             boot = {
-              size = "1G";
+              size = "2G";
               type = "EF00";
               content = {
                 type = "filesystem";
@@ -74,7 +75,7 @@
                   "--pbkdf-memory"
                   "4194304"
                   "--pbkdf-parallel"
-                  "4"
+                  "8"
                   "--iter-time"
                   "3000"
                   "--sector-size"
@@ -117,6 +118,11 @@
             content = {
               type = "filesystem";
               format = "ext4";
+              # -m 1: non-system volume, 1% anti-fragmentation reserve (default 5% = ~30G)
+              extraArgs = [
+                "-m"
+                "1"
+              ];
               mountpoint = "/home";
               mountOptions = [
                 "defaults"
@@ -134,13 +140,19 @@
             };
           };
 
-          # Games volume - remaining space (~2.8TB) - ext4
+          # Games volume - ~2.8TB - ext4
           # ext4 (not xfs) so it can shrink as well as grow
+          # 98%FREE keeps ~55G of VG extents free: LVM snapshots, e2scrub, grow headroom
           games = {
-            size = "100%FREE";
+            size = "98%FREE";
             content = {
               type = "filesystem";
               format = "ext4";
+              # -m 0: no root-reserve on pure data volume (default 5% = ~140G wasted)
+              extraArgs = [
+                "-m"
+                "0"
+              ];
               mountpoint = "/mnt/games";
               mountOptions = [
                 "defaults"

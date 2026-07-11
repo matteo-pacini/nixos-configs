@@ -42,6 +42,7 @@
   # Boot loader
   boot.loader.systemd-boot = {
     enable = true;
+    editor = false; # no console kernel-cmdline editing
     memtest86.enable = pkgs.stdenv.hostPlatform.isx86;
     configurationLimit = 5;
   };

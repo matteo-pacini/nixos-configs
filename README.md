@@ -86,7 +86,7 @@ Single 4 TB NVMe partitioned with [disko](https://github.com/nix-community/disko
 
 | Mount | Size | FS | Notes |
 |-------|------|----|-------|
-| `/boot` | 1 GB | FAT32 | EFI System Partition |
+| `/boot` | 2 GB | FAT32 | EFI System Partition |
 | — | rest | LUKS2 | `cryptroot` container, LVM VG `brightfalls` inside |
 | `/` | 200 GB LV | ext4 | NixOS system |
 | `/home` | 600 GB LV | ext4 | configs & code |
