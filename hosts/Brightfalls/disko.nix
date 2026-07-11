@@ -145,6 +145,9 @@
           # 98%FREE keeps ~55G of VG extents free: LVM snapshots, e2scrub, grow headroom
           games = {
             size = "98%FREE";
+            # Must be created after the fixed-size LVs or it eats their space;
+            # disko only auto-defers sizes containing "100%", not 98%FREE
+            priority = 2000;
             content = {
               type = "filesystem";
               format = "ext4";
