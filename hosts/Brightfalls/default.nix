@@ -16,7 +16,6 @@
     ./printer.nix
     ./virtualization.nix
     ./specialisations.nix
-    ./win11-snapshots.nix
   ];
 
   custom.kernel = {
@@ -40,7 +39,7 @@
     };
   };
 
-  # Boot loader — systemd-boot auto-detects Windows Boot Manager on the shared ESP (dual boot, no os-prober)
+  # Boot loader
   boot.loader.systemd-boot = {
     enable = true;
     memtest86.enable = pkgs.stdenv.hostPlatform.isx86;
@@ -48,9 +47,6 @@
   };
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.timeout = 5;
-
-  # Dual boot: match Windows' localtime RTC so the clock doesn't skew each boot
-  time.hardwareClockInLocalTime = true;
 
   # System Packages
 
