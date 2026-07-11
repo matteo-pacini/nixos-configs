@@ -75,7 +75,7 @@
                   "--pbkdf-memory"
                   "4194304"
                   "--pbkdf-parallel"
-                  "8"
+                  "4"
                   "--iter-time"
                   "3000"
                   "--sector-size"
