@@ -16,6 +16,7 @@
     ./printer.nix
     ./virtualization.nix
     ./specialisations.nix
+    ./win11-snapshots.nix
   ];
 
   custom.kernel = {
