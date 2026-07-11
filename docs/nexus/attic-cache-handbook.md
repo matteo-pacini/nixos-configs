@@ -103,6 +103,16 @@ with `--store` gets a 401 **by design** — that is not a fault.
    and `age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];`).
 5. Enable `custom.nix-core.atticCache` as above; rebuild.
 
+### The installer ISO exception
+
+`nixosConfigurations.InstallerISO` also enables `atticCache`, but has no
+host SSH key, so agenix can't decrypt a netrc at boot. Instead the ISO
+**bakes** an existing host's decrypted netrc into the image at build
+time (`ATTIC_NETRC_FILE` + `--impure`, see
+`hosts/InstallerISO/default.nix`) with `netrcFile = "/etc/nix/netrc"`.
+The token sits world-readable in the ISO's nix store — keep the image
+private.
+
 ## Authentication & Tokens
 
 - The **server** signs and verifies client tokens (RS256 JWTs) with a
