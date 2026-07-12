@@ -20,7 +20,7 @@
       openssh.authorizedKeys.keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIID8wJBTqQWKLy0RxQDuw8PAvD/KwYxSBcWHS434E3ar matteo@NightSprings"
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFPfaTw8AYPvjul32mIt64juaOn8wjmlJoplWxCzCZhi matteo.pacini@WorkLaptop"
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDu9ZMKYAfbVvEvu4KKwwGaUc3XT3FxZlSIgE1jOpN7G matteo@BrightFalls"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII41DfeCBUgravmkVpw+s8S5det4ly7d7wcKg/IivxTi matteo@BrightFalls"
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINm/ozPgRTmYmOVgkdNOw2deEOzBjoA4gGWLjWzrEC+u Pixel"
       ];
     };
