@@ -99,6 +99,14 @@
     # No nixpkgs.follows: the daemon/web packages build against the flake's own
     # pinned nixpkgs (the combo upstream tested), which is lower build risk.
     open-design.url = "github:nexu-io/open-design";
+    ############
+    # SLSsteam #
+    ############
+    # Steamclient mod (BrightFalls only). Consumed as the `wrapped` package
+    # (steam + LD_AUDIT preload) plus its home-manager module in
+    # hosts/Brightfalls/users/matteo/gaming.nix.
+    sls-steam.url = "github:AceSLS/SLSsteam";
+    sls-steam.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =

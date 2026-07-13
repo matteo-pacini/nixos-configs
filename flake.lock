@@ -765,6 +765,7 @@
         "nur": "nur",
         "nvf": "nvf",
         "open-design": "open-design",
+        "sls-steam": "sls-steam",
         "sublime-dracula-theme": "sublime-dracula-theme",
         "xcode-dracula-theme": "xcode-dracula-theme"
       }
@@ -789,6 +790,26 @@
       "original": {
         "owner": "thomashoneyman",
         "repo": "slimlock",
+        "type": "github"
+      }
+    },
+    "sls-steam": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1783779952,
+        "narHash": "sha256-I1b0MCaVG8oWhqXmrt3CKY0MYrQVjXNP03ipDyCdJms=",
+        "owner": "AceSLS",
+        "repo": "SLSsteam",
+        "rev": "d35a69790bad24c060f89d1c910f9f118f529d5b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AceSLS",
+        "repo": "SLSsteam",
         "type": "github"
       }
     },
