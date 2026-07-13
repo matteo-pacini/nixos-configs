@@ -32,7 +32,10 @@ let
     name = "steam-sls";
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
+      real_home="$HOME"
       ${slsHomeSetup}
+      # Reuse the real home's MangoHud config; the isolated HOME has none.
+      export MANGOHUD_CONFIGFILE="$real_home/.config/MangoHud/MangoHud.conf"
       export LD_AUDIT="${slsSteam}/library-inject.so:${slsSteam}/SLSsteam.so"
 
       # System-profile FHS steam (the DRI_PRIME/gamescope-overridden one).
