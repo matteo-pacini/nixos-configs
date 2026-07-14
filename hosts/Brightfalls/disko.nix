@@ -38,7 +38,7 @@
           partitions = {
 
             # Part 1: EFI Boot partition - 2GB - vfat
-            # 2G: 5 generations x 2 entries (wifi specialisation) x BORE initrds + memtest
+            # 2G: 5 generations x 3 entries (wifi + without-umip specialisations) x BORE initrds + memtest
             boot = {
               size = "2G";
               type = "EF00";
