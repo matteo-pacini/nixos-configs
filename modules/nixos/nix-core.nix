@@ -12,6 +12,11 @@ let
     inherit pkgs;
     netrcFile = cfg.atticCache.netrcFile;
   };
+
+  atticCli = import ../shared/attic-cli.nix {
+    inherit pkgs;
+    netrcFile = cfg.atticCache.netrcFile;
+  };
 in
 {
   options.custom.nix-core = {
@@ -101,6 +106,7 @@ in
 
         environment.systemPackages = lib.optionals (cfg.atticCache.netrcFile != null) [
           atticPushClosure
+          atticCli
         ];
       })
     ]

@@ -19,7 +19,7 @@ Cloudflare R2 deployment. Migrated 2026-06-09/10 (PRs #282–#287).
 | Server JWT secret | agenix `nexus/attic-env` |
 | Client tokens (netrc) | agenix `<host>/attic-netrc`, one per adopter host |
 | Admin CLI (server) | `atticd-atticadm` (on Nexus) |
-| Push helper (clients) | `attic-push-closure <store-path>...` |
+| Push helper (clients) | `attic-push-closure <cache> <store-path>...` |
 
 ## Architecture Overview
 
@@ -193,8 +193,8 @@ Rules that make this safe where `attic use` is not:
 ### `attic-push-closure` (adopter hosts)
 
 ```bash
-sudo attic-push-closure /run/current-system     # the usual case
-sudo attic-push-closure ./result                # a build output
+sudo attic-push-closure main /run/current-system     # the usual case
+sudo attic-push-closure main ./result                # a build output
 ```
 
 Defined once in `modules/shared/attic-push-closure.nix`. It is
@@ -386,3 +386,4 @@ Other synced machines pick up the atuin tombstones on their next sync.
 | 2026-06-10 | BrightFalls adopted the cache (#286) |
 | 2026-06-10 | Push script generalized to `attic-push-closure`, defined once in `modules/shared/` (#287) |
 | 2026-06-13 | `pr-build.yml` pushes the PR candidate toplevel to `main` so post-merge master builds are cache hits (#304) |
+| 2026-07-16 | `attic-push-closure` takes the cache name as its first argument (was hardcoded to `main`) |
