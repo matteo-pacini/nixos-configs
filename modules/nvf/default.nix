@@ -148,6 +148,15 @@
       formatOnSave = true;
       lightbulb.enable = true;
       trouble.enable = true;
+      servers.rust-analyzer.settings."rust-analyzer" = {
+        cargo.allFeatures = true;
+        checkOnSave = true;
+        check = {
+          command = "clippy";
+          extraArgs = [ "--no-deps" ];
+        };
+        procMacro.enable = true;
+      };
     };
     autocomplete.nvim-cmp.enable = true;
     assistant.copilot = {
@@ -252,7 +261,7 @@
           enable = true;
           type = [
             "ruff"
-            "ruff-check"
+            "ruff-fix"
           ];
         };
         extraDiagnostics.enable = false;
@@ -265,17 +274,6 @@
       html.enable = true;
       rust = {
         enable = true;
-        lsp.opts = ''
-          ['rust-analyzer'] = {
-            cargo = { allFeatures = true },
-            checkOnSave = true,
-            check = {
-              command = "clippy",
-              extraArgs = { "--no-deps" },
-            },
-            procMacro = { enable = true },
-          },
-        '';
         extensions.crates-nvim.enable = true;
       };
     };
