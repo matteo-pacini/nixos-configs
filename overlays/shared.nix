@@ -113,6 +113,24 @@
       doCheck = false;
     });
 
+    # patool-4.0.5: 12 tests fail because file's new landlock sandbox can't
+    # posix_spawn the bzip2/xz helpers, so `file --uncompress` misdetects
+    # t.tar.bz2 as application/x-bzip2 instead of application/x-tar. Cascades
+    # into bottles on the gaming hosts (BrightFalls, CauldronLake), killing
+    # their full system builds in CI.
+    #
+    # Upstream fix relaxes file's landlock sandbox, already merged:
+    #   Fix: https://github.com/NixOS/nixpkgs/pull/540742 (merged to staging
+    #        2026-07-11, in staging-next as of 2026-07-18)
+    # Drop this override once that PR reaches nixos-unstable.
+    pythonPackagesExtensions = (super.pythonPackagesExtensions or [ ]) ++ [
+      (_: pyprev: {
+        patool = pyprev.patool.overridePythonAttrs (_: {
+          doCheck = false;
+        });
+      })
+    ];
+
     # fwupd-2.1.1: two test cases fail in the Nix build sandbox because they
     # expect a running desktop session:
     #   - fu-engine-gtypes-test: FuPluginLogind aborts with
