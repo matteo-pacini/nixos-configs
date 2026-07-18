@@ -105,7 +105,10 @@ in
         };
       })
       (lib.mkIf (cfg.signing.enable && cfg.signing.allowedSignersContent != "") {
-        home.file."${cfg.signing.allowedSignersFile}".text = cfg.signing.allowedSignersContent;
+        # home.file keys are $HOME-relative and don't expand "~", so strip the
+        # prefix here; git expands the "~" form in gpg.ssh.allowedSignersFile.
+        home.file."${lib.removePrefix "~/" cfg.signing.allowedSignersFile}".text =
+          cfg.signing.allowedSignersContent;
       })
       (lib.mkIf (cfg.includes != [ ]) {
         programs.git.includes = cfg.includes;
