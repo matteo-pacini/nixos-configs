@@ -39,7 +39,11 @@
       listen = "127.0.0.1:8080"; # Exposed via Caddy only
       api-endpoint = "https://cache.matteopacini.me/";
 
-      database.url = "postgresql:///atticd?host=/run/postgresql";
+      # user= must be explicit: since attic-0-unstable-2026-07-06
+      # (SeaORM 2.0 / sqlx 0.9 bump) a username-less URL makes the
+      # client connect as "anonymous", breaking peer auth.
+      # https://github.com/zhaofengli/attic/issues/352
+      database.url = "postgresql:///atticd?host=/run/postgresql&user=atticd";
 
       storage = {
         type = "local";
