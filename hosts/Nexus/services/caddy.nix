@@ -172,6 +172,32 @@ in
           }
         '';
       };
+
+      "photos.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
+        extraConfig = ''
+          ${securityHeaders}
+
+          # LAN-only: no public A record exists, and this gates by source IP
+          # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
+          respond @external 403
+
+          # Immich uploads each asset in a single request (no client-side
+          # chunking), so the ceiling must clear the largest video/motion
+          # photo. Generous, matching the other large-upload hosts.
+          request_body {
+            max_size 20GB
+          }
+
+          # Reverse proxy to Immich (port tracks services.immich.port)
+          # WebSocket support (real-time events) is automatic
+          reverse_proxy 127.0.0.1:${toString config.services.immich.port}
+        '';
+      };
     };
   };
 }

@@ -88,7 +88,7 @@ let
   restic-b2 = pkgs.writeShellScriptBin "restic-b2" ''
     set -euo pipefail
 
-    REPOS="matteo debora fabrizio config"
+    REPOS="matteo debora fabrizio config immich"
 
     if [[ $# -lt 2 ]]; then
       echo "Usage: restic-b2 <repo> <restic command...>"
@@ -104,6 +104,7 @@ let
       debora)    REPO_URL="${b2Endpoint}/debora-nexus-backup" ;;
       fabrizio)  REPO_URL="${b2Endpoint}/fabrizio-nexus-backup" ;;
       config)    REPO_URL="${b2Endpoint}/config-nexus-backup" ;;
+      immich)    REPO_URL="${b2Endpoint}/immich-nexus-backup" ;;
       *)
         echo "Unknown repo: $REPO_NAME"
         echo "Available repos: $REPOS"
@@ -259,6 +260,7 @@ in
     "restic-backups-matteo".after = [ "backup-job.service" ];
     "restic-backups-debora".after = [ "backup-job.service" ];
     "restic-backups-fabrizio".after = [ "backup-job.service" ];
+    "restic-backups-immich".after = [ "backup-job.service" ];
   };
 
   services.restic.backups = {
@@ -343,6 +345,36 @@ in
       extraBackupArgs = b2ExtraBackupArgs;
       timerConfig = {
         OnCalendar = "*-*-* 06:00:00";
+        Persistent = true;
+      };
+    };
+
+    # Immich photo library — backed up in place (not via the rsync →
+    # /diskpool/configuration path) to avoid duplicating the library onto
+    # the pool. Only original content is whitelisted; thumbs/ and
+    # encoded-video/ are regenerable and deliberately omitted. The DB
+    # itself rides the pg_dumpall → config repo pipeline separately.
+    # https://docs.immich.app/administration/backup-and-restore/
+    immich = {
+      initialize = true;
+      user = "root";
+      repository = "${b2Endpoint}/immich-nexus-backup";
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
+      paths = [
+        "/diskpool/immich/library" # originals when storage template is on
+        "/diskpool/immich/upload" # originals in the default (template-off) layout
+        "/diskpool/immich/profile" # user avatars
+        "/diskpool/immich/backups" # immich's own metadata-only DB dumps
+      ];
+      exclude = personalExcludes;
+      pruneOpts = personalRetention;
+      runCheck = true;
+      checkOpts = [ "--read-data-subset=2%" ];
+      extraOptions = b2ExtraOptions;
+      extraBackupArgs = b2ExtraBackupArgs;
+      timerConfig = {
+        OnCalendar = "*-*-* 06:30:00";
         Persistent = true;
       };
     };

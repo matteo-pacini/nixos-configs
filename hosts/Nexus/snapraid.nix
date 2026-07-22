@@ -28,6 +28,11 @@ in
       "*.unrecoverable"
       "/tmp/"
       "/lost+found/"
+      # Immich regenerable caches: constantly rewritten (thumbnail/transcode
+      # jobs) so they churn parity under a live sync, and are rebuilt on demand
+      # anyway. Also omitted from the immich restic repo for the same reason.
+      "/immich/thumbs/"
+      "/immich/encoded-video/"
     ];
     touchBeforeSync = true;
     scrub = {

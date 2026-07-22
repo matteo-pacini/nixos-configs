@@ -23,6 +23,8 @@
   dracula.bat.enable = true;
 
   home.packages = with pkgs; [
+    # Development
+    gh
   ];
 
   home.stateVersion = "26.05";

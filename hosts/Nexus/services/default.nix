@@ -27,6 +27,7 @@
     ./atuin.nix
     ./mosh.nix
     ./attic.nix
+    ./immich.nix
   ];
 
   systemd.tmpfiles.rules = [
