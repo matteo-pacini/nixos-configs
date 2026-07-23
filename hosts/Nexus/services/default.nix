@@ -28,6 +28,7 @@
     ./mosh.nix
     ./attic.nix
     ./immich.nix
+    ./tailscale-r53.nix
   ];
 
   systemd.tmpfiles.rules = [
