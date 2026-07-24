@@ -16,7 +16,7 @@
 
 ## Overview
 
-Five build configurations across five physical machines. Linux hosts run NixOS on `linuxPackages_7_1`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) across all hosts.
+Six build configurations (five hosts plus an installer ISO) across five physical machines. Linux hosts run NixOS on `linuxPackages_7_1`; Darwin hosts use nix-darwin with Homebrew taps pinned through `nix-homebrew`. Home Manager is shared across both. Secrets are managed with [agenix](https://github.com/ryantm/agenix) across all hosts.
 
 | Host | Platform | Role | User |
 |------|----------|------|------|
@@ -239,10 +239,10 @@ Scoped to this flake but written with options should you want to crib them:
 
 ## Packages
 
-`overlays/shared.nix` exposes a few custom packages:
+Custom packages live in `packages/` and the overlays:
 
-- **`reshade-steam-proton`** — ReShade installer for Linux games running under Wine/Proton.
-- **`claude-code`** — Vendored from nixpkgs master with a wrapper that puts Node.js and `rtk` on PATH and toggles auto-compact + prompt caching.
+- **`reshade-steam-proton`** — ReShade installer for Linux games running under Wine/Proton. Defined in `packages/`, wired via `overlays/brightfalls.nix`.
+- **`claude-code`** — Vendored from nixpkgs master via `overlays/shared.nix` with a wrapper that puts Node.js on PATH and toggles auto-compact + prompt caching.
 
 ---
 

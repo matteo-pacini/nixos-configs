@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Multi-host NixOS/nix-darwin flake managing 7 build configurations across 5 physical hosts. Read `flake.nix` for host wiring and `README.md` for hardware details.
+Multi-host NixOS/nix-darwin flake managing 6 build configurations (5 hosts + InstallerISO) across 5 physical hosts. Read `flake.nix` for host wiring and `README.md` for hardware details.
 
 ## Verification
 
@@ -60,10 +60,10 @@ nix run nix-darwin -- switch --flake .#<Host>
 
 ## Secrets
 
-All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), every host has an attic netrc, and `secrets/shared/` holds cross-host secrets.
+All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), and every host except CauldronLake has an attic netrc.
 
 - Definitions: `secrets/secrets.nix`
-- Encrypted files: `secrets/<host>/*.age` and `secrets/shared/*.age`
+- Encrypted files: `secrets/<host>/*.age`
 - Re-key after changing `secrets.nix`:
   ```bash
   cd secrets && agenix --rekey -i /path/to/valid/identity

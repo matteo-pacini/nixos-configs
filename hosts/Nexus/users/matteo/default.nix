@@ -12,11 +12,6 @@
   custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
-  custom.opencode = {
-    enable = true;
-    profiles.kimi.enable = true;
-    profiles.glm.enable = true;
-  };
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;
