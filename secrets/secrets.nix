@@ -37,7 +37,6 @@ in
   "nexus/zigbee2mqtt.env.age".publicKeys = [ nexus ];
   "nexus/nextcloud-admin-password.age".publicKeys = [ nexus ];
   "nexus/geoip-license-key.age".publicKeys = [ nexus ];
-  "nexus/backblaze-b2.env.age".publicKeys = [ nexus ];
   "nexus/n8n-env.age".publicKeys = [ nexus ];
 
   # WorkLaptop service secrets
@@ -48,11 +47,4 @@ in
 
   # NightSprings service secrets
   "nightsprings/attic-netrc.age".publicKeys = [ nightsprings ];
-
-  # Shared service secrets (decryptable by multiple hosts)
-  "shared/openrouter.env.age".publicKeys = [
-    brightfalls
-    nexus
-    worklaptop
-  ];
 }

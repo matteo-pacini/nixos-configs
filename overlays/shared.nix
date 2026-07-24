@@ -26,18 +26,10 @@
     # `nix flake update nixpkgs-master`.
     #
     # Wrapper additions on top of upstream (last reviewed against v2.1.123):
-    #   - PATH: nodejs, rtk, and jq are bundled onto claude's wrapped PATH
-    #     instead of being installed user-wide.
-    #       * nodejs: so RTK's claude-code hook (and any other node-based hook
-    #         under ~/.claude/hooks) can find `node`. Also satisfies the
-    #         statusLine command (`npx -y ccstatusline@latest`).
-    #       * rtk: needed by ~/.claude/hooks/rtk-rewrite.sh, which rewrites bash
-    #         commands inside Claude sessions. Subprocesses spawned by claude
-    #         inherit this PATH, so `rtk <cmd>` invocations from inside a session
-    #         resolve. NOT on the user's interactive shell PATH by design.
-    #       * jq: needed by the rtk-rewrite hook to parse/emit JSON. macOS has
-    #         /usr/bin/jq but NixOS hosts don't install it by default.
-    #     This is unrelated to upstream bugs — pure local-tooling concern.
+    #   - PATH: nodejs is bundled onto claude's wrapped PATH instead of being
+    #     installed user-wide. It satisfies the statusLine command
+    #     (`npx -y ccstatusline@latest`). This is unrelated to upstream bugs —
+    #     pure local-tooling concern.
     #   - CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000: partial workaround for the
     #     autocompact threshold collapsing on Opus 4.7 [1m] variants
     #     (https://github.com/anthropics/claude-code/issues/43989, OPEN). The
@@ -60,39 +52,9 @@
     claude-code = masterPkgs.claude-code.overrideAttrs (old: {
       postInstall = (old.postInstall or "") + ''
         wrapProgram $out/bin/claude \
-          --prefix PATH : ${super.nodejs}/bin:${self.rtk}/bin:${super.jq}/bin \
+          --prefix PATH : ${super.nodejs}/bin \
           --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000
       '';
-    });
-
-    # rtk: sourced from the nixpkgs-master input (see masterPkgs above) so we
-    # track upstream faster than the flake's nixos-unstable pin. The rtk binary
-    # embeds an expected hash for the bundled rtk-rewrite.sh hook; when upstream
-    # pushes a hook content change ahead of a binary release, anyone on a
-    # nixpkgs lag sees the integrity check fail. The master pin lets us bump rtk
-    # as soon as upstream tags a release that bundles the new hook. After a bump
-    # re-sync the vendored hook with
-    # `modules/home-manager/update-rtk.sh` (refreshes the Claude hook).
-    rtk = masterPkgs.rtk;
-
-    # opencode sourced from the master pin (currently 1.17.7) so it matches the
-    # patches below, which apply cleanly across opencode 1.16.2–1.17.7.
-    opencode = masterPkgs.opencode.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [
-        # opencode's getUsage prices a turn as (model rate × tokens) and ignores
-        # the authoritative response usage.cost. Prefer
-        # providerMetadata.openrouter.usage.cost (usage accounting is force-enabled
-        # for the openrouter provider) so per-turn cost reflects OpenRouter's real
-        # billing.
-        ../modules/home-manager/opencode/patches/openrouter-real-cost.patch
-        # Subagent (child-session) cost isn't rolled up into the parent, so no
-        # single number shows what a whole run cost. Render a derived whole-tree
-        # total in the sidebar next to the session title; per-agent cost stays as
-        # is. Client-side only (the TUI already holds every session). See header.
-        ../modules/home-manager/opencode/patches/subagent-total-cost.patch
-        # Caption "Matteo Pacini's Bespoke" above the home-screen logo.
-        ../modules/home-manager/opencode/patches/bespoke-caption.patch
-      ];
     });
 
     # openldap-2.6.13: the syncreplication tests are timing-sensitive and fail

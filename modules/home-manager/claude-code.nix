@@ -7,9 +7,6 @@
 let
   cfg = config.custom.claude-code;
 
-  # Shared instruction-doc base, also consumed by the opencode module.
-  mkDoc = (import ./agents-md.nix { inherit lib; }).mkDoc;
-
   # Effort levels supported by each model. Source of truth:
   # https://code.claude.com/docs/en/model-config#adjust-effort-level
   # Keys are values passed to `claude --model` — aliases auto-track the latest
@@ -79,7 +76,7 @@ let
   # When true, an additional set of `claude-<slug>-1m[-<effort>]` aliases is
   # generated, invoking the model with the `[1m]` suffix.
   model1mContext = {
-    fable = true;
+    fable = false; # Fable 5 is natively 1M; no [1m] variant
     opus = true;
     sonnet = false; # Sonnet 5 is natively 1M; no [1m] variant
     haiku = false;
@@ -117,19 +114,6 @@ let
       commit = "";
       pr = "";
     };
-    hooks = {
-      PreToolUse = [
-        {
-          matcher = "Bash";
-          hooks = [
-            {
-              type = "command";
-              command = "~/.claude/hooks/rtk-rewrite.sh";
-            }
-          ];
-        }
-      ];
-    };
     statusLine = {
       type = "command";
       # Relies on nodejs being on claude's PATH (set in overlays/shared.nix).
@@ -141,23 +125,22 @@ let
 in
 {
   options.custom.claude-code = {
-    enable = lib.mkEnableOption "Claude Code with managed settings.json, ccstatusline, CLAUDE.md, and bundled rtk";
+    enable = lib.mkEnableOption "Claude Code with managed settings.json and ccstatusline";
 
     extraSettings = lib.mkOption {
       type = lib.types.attrs;
       default = { };
       description = ''
         Extra keys merged into ~/.claude/settings.json on top of the base
-        settings (hooks + statusLine). Use this for per-host overrides
+        settings (attribution + statusLine). Use this for per-host overrides
         like permissions.allow, enabledPlugins, effortLevel, etc.
       '';
     };
   };
 
   config = lib.mkIf cfg.enable {
-    # rtk is NOT installed user-wide — it's bundled onto claude's wrapped PATH
-    # via overlays/shared.nix so it's only visible inside Claude sessions
-    # (where ~/.claude/hooks/rtk-rewrite.sh consumes it). Same story for nodejs.
+    # nodejs is NOT installed user-wide — it's bundled onto claude's wrapped
+    # PATH via overlays/shared.nix (needed by the npx-based statusLine).
     home.packages = [ pkgs.claude-code ];
 
     # Aliases are set on zsh directly (every host enables it). Has no effect
@@ -167,19 +150,5 @@ in
     home.file.".config/ccstatusline/settings.json".source = ./claude-code/ccstatusline.json;
 
     home.file.".claude/settings.json".text = builtins.toJSON (baseSettings // cfg.extraSettings);
-
-    # CLAUDE.md is assembled from the shared base: @RTK.md include after role/tone
-    # (Claude's hook rewrites invisibly, so it pulls upstream's RTK.md) plus the
-    # Claude-only model-delegation tier.
-    home.file.".claude/CLAUDE.md".text = mkDoc {
-      afterRoleTone = [ "@RTK.md\n" ];
-      includeModelDelegation = true;
-    };
-    home.file.".claude/RTK.md".source = ./claude-code/RTK.md;
-
-    home.file.".claude/hooks/rtk-rewrite.sh" = {
-      source = ./claude-code/rtk-rewrite.sh;
-      executable = true;
-    };
   };
 }
