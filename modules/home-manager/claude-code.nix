@@ -7,106 +7,6 @@
 let
   cfg = config.custom.claude-code;
 
-  # Effort levels supported by each model. Source of truth:
-  # https://code.claude.com/docs/en/model-config#adjust-effort-level
-  # Keys are values passed to `claude --model` — aliases auto-track the latest
-  # version (https://code.claude.com/docs/en/model-config#model-aliases); pin
-  # a full model ID (e.g. "claude-opus-4-8") when you need a specific version.
-  # Empty list = model does not support --effort.
-  modelEfforts = {
-    fable = [
-      "low"
-      "medium"
-      "high"
-      "xhigh"
-      "max"
-    ];
-    opus = [
-      "low"
-      "medium"
-      "high"
-      "xhigh"
-      "max"
-    ];
-    sonnet = [
-      "low"
-      "medium"
-      "high"
-      "xhigh"
-      "max"
-    ];
-    haiku = [ ];
-    # Pinned legacy versions (still available; not evergreen aliases).
-    "claude-opus-4-7" = [
-      "low"
-      "medium"
-      "high"
-      "xhigh"
-      "max"
-    ];
-    "claude-opus-4-6" = [
-      "low"
-      "medium"
-      "high"
-      "max"
-    ];
-    "claude-sonnet-4-6" = [
-      "low"
-      "medium"
-      "high"
-      "max"
-    ];
-  };
-
-  # Maps each modelEfforts key to the slug used in the shell alias name
-  # (`claude-<slug>` and `claude-<slug>-<effort>`). Pinned IDs get a compact
-  # slug to avoid dash ambiguity with the effort suffix.
-  modelAliasSlug = {
-    fable = "fable";
-    opus = "opus";
-    sonnet = "sonnet";
-    haiku = "haiku";
-    "claude-opus-4-7" = "opus47";
-    "claude-opus-4-6" = "opus46";
-    "claude-sonnet-4-6" = "sonnet46";
-  };
-
-  # Whether each model supports the 1M-token context window. Source:
-  # https://code.claude.com/docs/en/model-config#extended-context
-  # When true, an additional set of `claude-<slug>-1m[-<effort>]` aliases is
-  # generated, invoking the model with the `[1m]` suffix.
-  model1mContext = {
-    fable = false; # Fable 5 is natively 1M; no [1m] variant
-    opus = true;
-    sonnet = false; # Sonnet 5 is natively 1M; no [1m] variant
-    haiku = false;
-    "claude-opus-4-7" = true;
-    "claude-opus-4-6" = true;
-    "claude-sonnet-4-6" = true;
-  };
-
-  # Generate `claude-<slug>[-<effort>]` for the default context window, plus
-  # `claude-<slug>-1m[-<effort>]` when the model supports 1M context. The
-  # model arg is single-quoted so zsh doesn't glob the `[1m]` brackets.
-  claudeAliases = lib.listToAttrs (
-    lib.concatMap (
-      model:
-      let
-        slug = modelAliasSlug.${model};
-        mkVariants =
-          modelArg: slugSuffix:
-          let
-            baseCmd = "claude --model '${modelArg}'";
-          in
-          [ (lib.nameValuePair "claude-${slug}${slugSuffix}" baseCmd) ]
-          ++ map (
-            effort: lib.nameValuePair "claude-${slug}${slugSuffix}-${effort}" "${baseCmd} --effort ${effort}"
-          ) modelEfforts.${model};
-      in
-      mkVariants model "" ++ lib.optionals model1mContext.${model} (mkVariants "${model}[1m]" "-1m")
-    ) (lib.attrNames modelEfforts)
-  );
-
   baseSettings = {
     # Empty strings disable commit Co-Authored-By trailers and PR-body
     # attribution at the harness level (replaces deprecated includeCoAuthoredBy).
@@ -125,7 +25,7 @@ let
 in
 {
   options.custom.claude-code = {
-    enable = lib.mkEnableOption "Claude Code with managed settings.json and ccstatusline";
+    enable = lib.mkEnableOption "Claude Code with managed settings.json, ccstatusline, and CLAUDE.md";
 
     extraSettings = lib.mkOption {
       type = lib.types.attrs;
@@ -143,12 +43,23 @@ in
     # PATH via overlays/shared.nix (needed by the npx-based statusLine).
     home.packages = [ pkgs.claude-code ];
 
-    # Aliases are set on zsh directly (every host enables it). Has no effect
-    # on a host where programs.zsh.enable is false.
-    programs.zsh.shellAliases = claudeAliases;
-
     home.file.".config/ccstatusline/settings.json".source = ./claude-code/ccstatusline.json;
 
-    home.file.".claude/settings.json".text = builtins.toJSON (baseSettings // cfg.extraSettings);
+    # Copied (not symlinked) into place: Claude Code writes to this file at
+    # runtime (/model, /config, effort), which errors on a read-only store
+    # symlink. Each activation clobbers runtime edits — declared state wins.
+    home.activation.claudeSettings =
+      let
+        settingsFile = pkgs.writeText "claude-settings.json" (
+          builtins.toJSON (baseSettings // cfg.extraSettings)
+        );
+      in
+      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        run mkdir -p "$HOME/.claude"
+        run install -m 644 "${settingsFile}" "$HOME/.claude/settings.json"
+      '';
+
+    # Vendored global instruction doc for Claude Code.
+    home.file.".claude/CLAUDE.md".source = ./claude-code/CLAUDE.md;
   };
 }
