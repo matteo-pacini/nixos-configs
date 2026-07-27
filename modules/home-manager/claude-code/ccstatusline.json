@@ -47,8 +47,8 @@
       {
         "id": "232557df-7ff5-46d4-8bc6-b78efb9f91c9",
         "type": "tokens-output",
-        "color": "hex:F8F8F2",
-        "backgroundColor": "hex:6272A4"
+        "color": "hex:282A36",
+        "backgroundColor": "hex:BD93F9"
       },
       {
         "id": "tot-speed-01",
@@ -64,16 +64,25 @@
         "color": "hex:282A36",
         "backgroundColor": "hex:FF79C6",
         "metadata": {
-          "display": "slider"
+          "display": "compact"
         }
       },
       {
         "id": "3a320f3c-c0da-4482-9bee-6fba9f507498",
         "type": "weekly-usage",
         "color": "hex:282A36",
-        "backgroundColor": "hex:FF79C6",
+        "backgroundColor": "hex:BD93F9",
         "metadata": {
-          "display": "slider"
+          "display": "compact"
+        }
+      },
+      {
+        "id": "b7e1c4a2-9d3f-4e6a-8c21-1f5a2d9e7b40",
+        "type": "fable-weekly-usage",
+        "color": "hex:282A36",
+        "backgroundColor": "hex:FF92DF",
+        "metadata": {
+          "display": "compact"
         }
       },
       {
@@ -96,16 +105,16 @@
   "powerline": {
     "enabled": true,
     "separators": [
-      ""
+      "\ue0b0"
     ],
     "separatorInvertBackground": [
       false
     ],
     "startCaps": [
-      ""
+      "\ue0b6"
     ],
     "endCaps": [
-      ""
+      "\ue0b4"
     ],
     "autoAlign": false,
     "continueThemeAcrossLines": false,
