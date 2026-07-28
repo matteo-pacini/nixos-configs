@@ -10,6 +10,7 @@
     ./snapraid.nix
     ./mdadm.nix
     ./storage-tuning.nix
+    ./hd-idle.nix
   ];
 
   custom.kernel.enable = true;

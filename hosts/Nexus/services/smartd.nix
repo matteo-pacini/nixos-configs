@@ -26,7 +26,11 @@
     in
     {
       enable = true;
-      defaults.autodetected = "-a -o on -s S/../.././02";
+      # -n standby,q: skip the ~30-min attribute polls when a disk is spun
+      # down (so polling doesn't wake sleeping HDDs), q silences the skip log.
+      # The daily short self-test (-s S) still wakes disks at 02:00, which is
+      # already inside the nightly backup/sync window.
+      defaults.autodetected = "-a -o on -s S/../.././02 -n standby,q";
       notifications = {
         mail = {
           enable = true;
