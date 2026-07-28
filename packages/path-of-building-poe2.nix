@@ -35,7 +35,7 @@ stdenvNoCC.mkDerivation {
 
   src = fetchzip {
     url = "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases/download/v${version}/PathOfBuildingCommunity-PoE2-Portable.zip";
-    hash = "sha256-fhkNO2YZGwlBapzU0SOU033zdNbW5Zq08jZvPZ6Buvc=";
+    hash = "sha256-HI5VBD8EgAJK21MWmhBFH6MwiOKX7231mL9W5upzF60=";
     stripRoot = false;
   };
 
