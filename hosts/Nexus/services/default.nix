@@ -12,7 +12,6 @@
     ./n8n
     ./ddns.nix
     ./caddy.nix
-    ./open-design.nix
     ./fail2ban.nix
     ./tailscale.nix
     ./zigbee2mqtt.nix

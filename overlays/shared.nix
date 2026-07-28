@@ -57,60 +57,6 @@
       '';
     });
 
-    # openldap-2.6.13: the syncreplication tests are timing-sensitive and fail
-    # on slow / sandboxed builders ("provider and consumer databases differ").
-    # First test017 fell over, then surgically skipping it just exposed the
-    # next one (test019-syncreplication-cascade). The failure cascades into
-    # bottles / lutris / wine FHS envs pulled in by the gaming hosts
-    # (BrightFalls, CauldronLake), killing their full system builds in CI.
-    #
-    # Disabling the check phase entirely until upstream lands a real fix —
-    # going test-by-test is whack-a-mole.
-    #   Issue: https://github.com/NixOS/nixpkgs/issues/516392 (CLOSED, links to PR)
-    #   Fix:   https://github.com/NixOS/nixpkgs/pull/516445   (OPEN as of 2026-05-05,
-    #          only patches test017 — won't fully unbreak us; revisit when
-    #          upstream addresses test019 too)
-    # Drop this override once nixos-unstable ships a build that passes checks.
-    openldap = super.openldap.overrideAttrs (_: {
-      doCheck = false;
-    });
-
-    # patool-4.0.5: 12 tests fail because file's new landlock sandbox can't
-    # posix_spawn the bzip2/xz helpers, so `file --uncompress` misdetects
-    # t.tar.bz2 as application/x-bzip2 instead of application/x-tar. Cascades
-    # into bottles on the gaming hosts (BrightFalls, CauldronLake), killing
-    # their full system builds in CI.
-    #
-    # Upstream fix relaxes file's landlock sandbox, already merged:
-    #   Fix: https://github.com/NixOS/nixpkgs/pull/540742 (merged to staging
-    #        2026-07-11, in staging-next as of 2026-07-18)
-    # Drop this override once that PR reaches nixos-unstable.
-    pythonPackagesExtensions = (super.pythonPackagesExtensions or [ ]) ++ [
-      (_: pyprev: {
-        patool = pyprev.patool.overridePythonAttrs (_: {
-          doCheck = false;
-        });
-      })
-    ];
-
-    # fwupd-2.1.1: two test cases fail in the Nix build sandbox because they
-    # expect a running desktop session:
-    #   - fu-engine-gtypes-test: FuPluginLogind aborts with
-    #     "GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Permission
-    #     denied" when it tries to call logind.Inhibit (no logind in sandbox).
-    #   - fwupd-client-test:     killed by SIGABRT (related fallout).
-    # Affects the gaming hosts (CauldronLake / BrightFalls) that pull fwupd
-    # in transitively, killing the system build in CI.
-    #
-    # Skipping the check phase until upstream nixpkgs gets a fix. There's no
-    # tracking issue specific to this; the next-version bump PR doesn't
-    # address tests either, so don't expect it to land a fix on its own.
-    #   2.1.2 bump:    https://github.com/NixOS/nixpkgs/pull/513368 (OPEN, x86_64-linux only)
-    # Drop this once nixos-unstable ships a fwupd whose checkPhase passes.
-    fwupd = super.fwupd.overrideAttrs (_: {
-      doCheck = false;
-    });
-
     # xdg-desktop-portal-1.20.4: two integration tests fail in the Nix build
     # sandbox because the validator helpers (xdg-desktop-portal-validate-sound
     # and -validate-icon) shell out to bwrap, which tries to create a nested
@@ -121,14 +67,17 @@
     #   - integration/notification    (pytest test_sound_fd: "invalid sound:
     #                                  The sound data is invalid (36)" because
     #                                  the validator subprocess died)
-    # Same family as openldap/fwupd above — environment-driven, not a real
-    # package bug. Affects the gaming Linux hosts (CauldronLake / BrightFalls)
-    # that pull xdg-desktop-portal in via their desktop closure.
+    # Environment-driven, not a real package bug. Affects the gaming Linux
+    # hosts (CauldronLake / BrightFalls) that pull xdg-desktop-portal in via
+    # their desktop closure.
     #
-    # Skipping the check phase until upstream nixpkgs ships a fix. The closest
-    # tracking issue is open with no comments and was filed for a different
-    # trigger (a custom enableGeoLocation override), but the failing test is
-    # the same one:
+    # Skipping the check phase until upstream ships a fix. Status as of
+    # 2026-07-28: nixos-unstable still packages 1.20.4 with no relevant
+    # change; the package's XDP_TEST_IN_CI escape hatch does not cover these
+    # two tests; upstream 1.21.x/1.22.x release notes mention nothing about
+    # the bwrap/nested-userns failures. The closest tracking issue is open
+    # with no activity and was filed for a different trigger (a custom
+    # enableGeoLocation override), but the failing test is the same one:
     #   Issue: https://github.com/NixOS/nixpkgs/issues/511228 (OPEN)
     # Drop this override once nixos-unstable ships an xdg-desktop-portal whose
     # checkPhase passes inside the build sandbox.

@@ -37,8 +37,11 @@
   ];
 
   # Fix intermittent poweroff hang: ABBA deadlock on dm->dc_lock in 7.1's
-  # amdgpu_dm_ism.c. Backport of mainline 3714fe242592 (in v7.2-rc1, not
-  # tagged for stable). Drop when kernel >= 7.2.
+  # amdgpu_dm_ism.c. Backport of mainline 3714fe242592 (in v7.2-rc1, no
+  # Cc: stable tag). Status as of 2026-07-28: not backported to any 7.1.y
+  # (checked ChangeLogs through 7.1.5); 7.2 is at rc5, final expected
+  # ~2026-08-16, and nixpkgs has no linuxPackages_7_2 yet.
+  # Drop when kernel >= 7.2.
   boot.kernelPatches = [
     {
       name = "amdgpu-ism-dc-lock-deadlock";
