@@ -15,9 +15,18 @@ let
   #
   # Command API is per-disk because the pool is mixed and all drives sit
   # behind a SAS HBA (lsblk reports no TRAN): the two He10 SAS drives take
-  # SCSI STOP UNIT (-c scsi), the WD SATA drives take ATA STANDBY (-c ata).
-  # A libata (SATA) disk exposes an /dev/disk/by-id/ata-* alias; a SAS disk
-  # does not — that presence is the transport signal.
+  # SCSI START STOP UNIT (-c scsi), the WD SATA drives take ATA STANDBY
+  # (-c ata). A libata (SATA) disk exposes an /dev/disk/by-id/ata-* alias;
+  # a SAS disk does not — that presence is the transport signal.
+  #
+  # SAS drives additionally need -p 3 (STANDBY power condition). hd-idle's
+  # default power_condition=0 issues a plain STOP UNIT, which parks a SAS
+  # LU in a state it cannot leave without an explicit START UNIT: every
+  # subsequent read returns NOT READY 04/02, which this HBA (megaraid_sas,
+  # allow_restart=0 on SAS end devices) surfaces as EIO rather than
+  # recovering. That killed the ext4 on disk0+disk2 on 2026-07-28. A power
+  # condition auto-transitions back to active inside the drive on media
+  # access — measured ~10s to first read, with nothing in the kernel log.
   spindown = pkgs.writeShellScript "hd-idle-spindown" ''
     set -euo pipefail
 
@@ -54,7 +63,11 @@ let
       fi
       [ -n "$id" ] || id="/dev/$name"
 
-      args+=(-a "$id" -c "$ctype" -i ${toString idleSeconds})
+      pc=()
+      if [ "$ctype" = scsi ]; then
+        pc=(-p 3)
+      fi
+      args+=(-a "$id" -c "$ctype" "''${pc[@]}" -i ${toString idleSeconds})
     done
 
     echo "hd-idle: ''${args[*]}"
@@ -93,6 +106,10 @@ let
         [ -n "$id" ] || id="/dev/$name"
         if [ "$type" = ata ]; then
           state=$(hdparm -C "$id" | awk -F'is: *' '/drive state/{print $2}')
+        # FIXME: only detects a *stopped* SAS LU (NOT READY 04/02). Since the
+        # daemon switched to -p 3, a parked drive sits in a STANDBY power
+        # condition and answers sense normally, so it reads as "active" here
+        # even with the motor down. Needs a real power-condition probe.
         elif sdparm --command=sense "$id" 2>&1 | grep -qiE 'not ready|initializing'; then
           state="standby (stopped)"
         else
