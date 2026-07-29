@@ -698,6 +698,8 @@ it already moved.
 ## Related documents
 
 - [Diskpool Handbook](diskpool-handbook.md) — steady-state layout
+- [Diskpool Handbook § Idle Spindown](diskpool-handbook.md#idle-spindown-hd-idle) —
+  hd-idle, SAS vs SATA standby, and recovery from a read-only branch
 - [Paperless-ngx Recovery](paperless-ngx-recovery.md)
 - `hosts/Nexus/services/backup.nix` — canonical service list
 - `hosts/Nexus/hardware-extra.nix` — LUKS, fileSystems, mergerfs mount
