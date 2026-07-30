@@ -52,20 +52,20 @@ in
 
     autoStart = lib.mkOption {
       type = lib.types.bool;
-      default = !isDarwin;
+      default = true;
       description = ''
-        Launch shim on login via systemd user service (Linux only).
-        Darwin has no equivalent — launch manually or add a launchd agent
-        at the system level.
+        Launch shim on login: systemd user service on Linux, launchd
+        agent (gui domain / Aqua session) on Darwin.
       '';
     };
   };
 
-  # Skip entirely on Darwin: the shim's embedded libmpv backend is broken
-  # upstream on macOS, jellyfin-mpv-shim's python-mpv dep fails to build
-  # because its test suite requires Xvfb, and home-manager cannot manage
-  # launchd agents for auto-start anyway.
-  config = lib.mkIf (cfg.enable && shimCfg.enable && !isDarwin) {
+  # Darwin notes: nixpkgs marks the package Linux-only and its python-mpv
+  # dep can't pass tests there — overlays/shared.nix lifts both. The shim's
+  # embedded libmpv backend is broken upstream on macOS, so we run the
+  # external-mpv backend (mpv_ext, upstream default on darwin since 2.10.0;
+  # kept explicit below alongside the store path).
+  config = lib.mkIf (cfg.enable && shimCfg.enable) {
     home.packages = [ pkgs.jellyfin-mpv-shim ];
 
     # Reuse the mpv config tree — single source of truth.
@@ -111,6 +111,21 @@ in
         Environment = [ "MESA_VK_DEVICE_SELECT=!llvmpipe" ];
       };
       Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    # No network gate on Darwin: launchd's KeepAlive.NetworkState is
+    # documented as no longer implemented, and connect_retry_mins above
+    # already covers a slow network at login.
+    launchd.agents.jellyfin-mpv-shim = lib.mkIf (isDarwin && shimCfg.autoStart) {
+      enable = true;
+      config = {
+        ProgramArguments = [ "${pkgs.jellyfin-mpv-shim}/bin/jellyfin-mpv-shim" ];
+        RunAtLoad = true;
+        # Restart on crash/nonzero exit, stay dead on clean quit from the tray.
+        KeepAlive.SuccessfulExit = false;
+        ProcessType = "Interactive";
+        LimitLoadToSessionType = "Aqua";
+      };
     };
   };
 }
