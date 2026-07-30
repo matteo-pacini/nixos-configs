@@ -161,6 +161,9 @@ fi
 sshcfg=()
 if [ "$(uname)" = "Darwin" ]; then
   sshcfg=(-F /dev/null)
+  # git pull/push below shell out to the same broken ssh; pin them to the
+  # rotated key and skip user config there too.
+  export GIT_SSH_COMMAND="ssh -F /dev/null -i $KEY -o IdentitiesOnly=yes"
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
