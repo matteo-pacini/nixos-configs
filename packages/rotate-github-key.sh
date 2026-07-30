@@ -156,22 +156,12 @@ if [ -n "$NIXFILE" ]; then
   run gh ssh-key add "$KEY.pub" --title "$TITLE" --type signing
 fi
 
-# -F /dev/null on darwin only: the pinned nixpkgs openssh chokes on Apple-only
-# options (e.g. UseKeychain) in ~/.ssh/config; verification needs no user config.
-sshcfg=()
-if [ "$(uname)" = "Darwin" ]; then
-  sshcfg=(-F /dev/null)
-  # git pull/push below shell out to the same broken ssh; pin them to the
-  # rotated key and skip user config there too.
-  export GIT_SSH_COMMAND="ssh -F /dev/null -i $KEY -o IdentitiesOnly=yes"
-fi
-
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "[dry-run] ssh -T ${sshcfg[*]} -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new git@github.com"
+  echo "[dry-run] ssh -T -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new git@github.com"
 else
   # ssh -T exits 1 against github.com even on success — match the banner.
   # accept-new: don't hang on fresh installs with an empty known_hosts.
-  ssh_out="$(ssh -T "${sshcfg[@]}" -i "$KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new git@github.com 2>&1 || true)"
+  ssh_out="$(ssh -T -i "$KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new git@github.com 2>&1 || true)"
   if ! grep -q "successfully authenticated" <<<"$ssh_out"; then
     printf '%s\n' "$ssh_out" >&2
     echo "verification FAILED — restoring previous key. The new key was left on GitHub for inspection." >&2

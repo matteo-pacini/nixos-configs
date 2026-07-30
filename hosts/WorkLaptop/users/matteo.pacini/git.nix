@@ -43,7 +43,6 @@
     enable = true;
     extraConfig = ''
       AddKeysToAgent yes
-      UseKeychain yes
       IdentitiesOnly yes
     '';
     identitiesOnly = false;
