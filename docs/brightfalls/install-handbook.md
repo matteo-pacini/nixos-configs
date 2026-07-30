@@ -3,7 +3,7 @@
 Fresh install of BrightFalls: single 4 TB NVMe, one LUKS2 container
 (AES-256-XTS, argon2id 4 GB) holding LVM VG `brightfalls` — root / home /
 swap / games, all ext4. One passphrase unlocks everything; the initrd runs
-SSH on port 2222 for remote unlock. Layout: `hosts/Brightfalls/disko.nix`.
+SSH on port 2222 for remote unlock. Layout: `hosts/BrightFalls/disko.nix`.
 
 Install from the [InstallerISO](../../README.md#installeriso--custom-install-media)
 — it ships disko, the private attic cache (token baked in), and the

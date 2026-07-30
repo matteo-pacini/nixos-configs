@@ -20,6 +20,7 @@
   home.packages = with pkgs; [
     # Development
     gh
+    rotate-github-key
   ];
 
   home.stateVersion = "26.05";

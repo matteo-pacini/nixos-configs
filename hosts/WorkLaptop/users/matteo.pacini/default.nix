@@ -21,6 +21,7 @@
     tree
     # Development
     gh
+    rotate-github-key
     # Window Management
     loopwm
     # Music

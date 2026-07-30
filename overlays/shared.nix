@@ -21,6 +21,10 @@
       '';
     });
 
+    # Per-host GitHub SSH key rotation (auth + signing). self.callPackage so it
+    # picks up the telemetry-wrapped gh above.
+    rotate-github-key = self.callPackage ../packages/rotate-github-key.nix { };
+
     # Claude Code: sourced from the nixpkgs-master input (see masterPkgs above)
     # so we track upstream faster than the flake's nixos-unstable pin. Bump with
     # `nix flake update nixpkgs-master`.

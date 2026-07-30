@@ -36,6 +36,7 @@
       _1password-gui
       # Development
       gh
+      rotate-github-key
       # Other
       nix-output-monitor
       # Virtualisation

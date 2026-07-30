@@ -16,7 +16,7 @@ let
     BRIDGE_UID=$(id -u "$BRIDGE_USER")
     FIFO=/run/user/$BRIDGE_UID/mqtt2brightfalls.fifo
 
-    echo "Starting MQTT Brightfalls script..."
+    echo "Starting MQTT BrightFalls script..."
 
     if [[ ! -p $FIFO ]]; then
         echo "Creating FIFO at $FIFO"
@@ -97,7 +97,7 @@ in
   '';
 
   systemd.services.mqtt2brightfalls = {
-    description = "MQTT to Brightfalls bridge service";
+    description = "MQTT to BrightFalls bridge service";
     wantedBy = [ "graphical.target" ];
     after = [
       "graphical.target"

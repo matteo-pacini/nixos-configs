@@ -159,13 +159,13 @@
             nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/brightfalls.nix) ];
           }
           self.nixosModules.default
-          ./hosts/Brightfalls
+          ./hosts/BrightFalls
           inputs.home-manager.nixosModules.home-manager
           {
             home-manager.backupFileExtension = "backup";
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.users.matteo = import ./hosts/Brightfalls/users/matteo;
+            home-manager.users.matteo = import ./hosts/BrightFalls/users/matteo;
             home-manager.extraSpecialArgs = {
               inherit inputs;
             };
@@ -175,7 +175,7 @@
             ];
           }
           inputs.disko.nixosModules.disko
-          ./hosts/Brightfalls/disko.nix
+          ./hosts/BrightFalls/disko.nix
           inputs.agenix.nixosModules.default
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
