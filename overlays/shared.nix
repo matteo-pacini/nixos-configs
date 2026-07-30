@@ -102,6 +102,49 @@
       ];
     });
 
+    # jellyfin-mpv-shim: nixpkgs marks it Linux-only, and its python-mpv dep
+    # backs most tests with pyvirtualdisplay-spawned Xvfb while only
+    # providing the xvfb binary on Linux, so those tests can never pass on
+    # Darwin. Disable exactly the display-backed tests (40 of 44 in v1.0.8;
+    # the four display-free TestLifecycle ones still run) and lift the shim's
+    # platform gate: builds and runs fine on aarch64-darwin (verified
+    # 2026-07-30 against v2.10.0: builds, registers as a cast target, plays).
+    # Linux hosts pass through untouched. Drop once nixpkgs supports darwin
+    # in pkgs/by-name/je/jellyfin-mpv-shim/package.nix.
+    jellyfin-mpv-shim =
+      if super.stdenv.hostPlatform.isDarwin then
+        (super.jellyfin-mpv-shim.override {
+          python3Packages = super.python3Packages.overrideScope (
+            _: pysuper: {
+              mpv = pysuper.mpv.overridePythonAttrs (old: {
+                disabledTestPaths = (old.disabledTestPaths or [ ]) ++ [
+                  "tests/test_mpv.py::TestProperties"
+                  "tests/test_mpv.py::ObservePropertyTest"
+                  "tests/test_mpv.py::KeyBindingTest"
+                  "tests/test_mpv.py::TestStreams"
+                  "tests/test_mpv.py::CommandTests"
+                  "tests/test_mpv.py::RegressionTests"
+                  "tests/test_mpv.py::TestLifecycle::test_log_handler"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_event"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_event_shutdown"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_property_event_overflow"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_property_negative"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_property_positive"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_property_shutdown"
+                  "tests/test_mpv.py::TestLifecycle::test_wait_for_shutdown"
+                ];
+              });
+            }
+          );
+        }).overridePythonAttrs
+          (old: {
+            meta = old.meta // {
+              platforms = old.meta.platforms ++ super.lib.platforms.darwin;
+            };
+          })
+      else
+        super.jellyfin-mpv-shim;
+
     # jellyfin-tui: cover art flickers on every redraw when launched inside a
     # zellij pane because zellij's Kitty/Sixel passthrough is unreliable
     # (zellij-org/zellij#2814, #2576). The patch forces Picker::halfblocks() when
