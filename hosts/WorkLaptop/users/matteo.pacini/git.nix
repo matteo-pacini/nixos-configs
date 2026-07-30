@@ -6,7 +6,7 @@
     signing = {
       enable = true;
       allowedSignersContent = ''
-        * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO+saZuvP72LcanCjTiXxPcGDBG7of8AJ2gxw/8o1rvI
+        * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDg9ccDSuBw5RACHU5kMX/vKcIDdPGCO7z1bIfjlWoEO
       '';
     };
     extraAliases = {
