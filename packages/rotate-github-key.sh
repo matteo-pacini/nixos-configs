@@ -72,9 +72,8 @@ case "${name,,}" in
     NIXFILE="hosts/WorkLaptop/users/matteo.pacini/git.nix"
     ;;
   nexus)
-    # No commit signing on Nexus: auth key only, no repo edit, no rebuild.
     FLAKE_HOST=Nexus
-    NIXFILE=""
+    NIXFILE="hosts/Nexus/users/matteo/git.nix"
     ;;
   *)
     if [ -n "$HOST_OVERRIDE" ]; then
