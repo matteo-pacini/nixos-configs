@@ -11,8 +11,6 @@
 # Guardrails:
 #   - Same-repo PRs only (forks never reach base secrets here).
 #   - Max 3 autofix commits per PR, tracked via "[claude-autofix]" commit marker.
-#   - Eval failures auto-fixed; build-only failures need the "autofix-build" label
-#     (usually upstream breakage Claude cannot fix; macOS minutes are expensive).
 #   - "no-autofix" label disables entirely.
 #   - No attic/agenix secrets in this job; Claude's tools are allowlisted.
 
@@ -84,18 +82,6 @@ jobs:
             exit 0
           fi
           echo "attempt=$((ATTEMPTS + 1))" >> "$GITHUB_OUTPUT"
-
-          FAILED_JOBS=$(gh run view "$RUN_ID" --json jobs \
-            -q '.jobs[] | select(.conclusion=="failure") | .name')
-          echo "Failed jobs:"
-          echo "$FAILED_JOBS"
-          if ! echo "$FAILED_JOBS" | grep -q '^eval' \
-             && ! echo "$LABELS" | grep -qx 'autofix-build'; then
-            gh pr comment "$PR_NUMBER" --body \
-              "Build failure, not eval. No autofix — often upstream breakage. Add \`autofix-build\` label to opt in."
-            exit 0
-          fi
-
           echo "proceed=true" >> "$GITHUB_OUTPUT"
 
       - name: Capture failure logs
