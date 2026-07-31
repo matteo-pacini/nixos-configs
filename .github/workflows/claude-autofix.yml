@@ -158,7 +158,7 @@ jobs:
           allowed_bots: "nixos-configs-autofix,github-actions"
           claude_args: >-
             --model opus
-            --max-turns 30
+            --max-turns 80
             --allowedTools "Read,Edit,Write,Grep,Glob,WebSearch,WebFetch,Bash(git:*),Bash(nix eval:*),Bash(nix build:*),Bash(nix log:*),Bash(nix fmt:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh search:*)"
           prompt: |
             Respond terse like smart caveman. All technical substance stay. Only
