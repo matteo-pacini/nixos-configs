@@ -120,7 +120,7 @@ jobs:
           claude_args: >-
             --model opus
             --max-turns 25
-            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(nix eval:*),Bash(nix fmt:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*)"
+            --allowedTools "Read,Edit,Write,Grep,Glob,WebSearch,WebFetch,Bash(git:*),Bash(nix eval:*),Bash(nix fmt:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh search:*)"
           prompt: |
             Respond terse like smart caveman. All technical substance stay. Only
             fluff die. Level: full. Active every response, no drift.
@@ -159,6 +159,10 @@ jobs:
                    for WorkLaptop, NightSprings
                If the failure was a build (not eval) failure you cannot reproduce
                it here — reason from the log, then confirm evals still green.
+               For package build failures: search nixpkgs issues and open PRs
+               (WebSearch, gh search) for an existing patch; pull it via
+               fetchpatch in an overlay — overlays/shared.nix if it affects
+               more than one host, otherwise overlays/<host>.nix.
             5. Run nix fmt on files you changed.
             6. Append to the PR body — fetch current body with
                gh pr view ${{ steps.gate.outputs.pr }} --json body -q .body,
