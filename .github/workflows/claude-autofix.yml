@@ -158,8 +158,8 @@ jobs:
           allowed_bots: "nixos-configs-autofix,github-actions"
           claude_args: >-
             --model opus
-            --max-turns 80
-            --allowedTools "Read,Edit,Write,Grep,Glob,WebSearch,WebFetch,Bash(git:*),Bash(nix eval:*),Bash(nix build:*),Bash(nix log:*),Bash(nix fmt:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh search:*)"
+            --max-turns 50
+            --allowedTools "Read,Edit,Write,Grep,Glob,WebSearch,WebFetch,Bash(git:*),Bash(nix eval:*),Bash(nix build:*),Bash(nix log:*),Bash(nix fmt:*),Bash(nix flake update:*),Bash(nix flake lock:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh search:*)"
           prompt: |
             Respond terse like smart caveman. All technical substance stay. Only
             fluff die. Level: full. Active every response, no drift.
@@ -189,18 +189,36 @@ jobs:
 
             1. Read /tmp/ci-failure.log — failing jobs' logs, truncated to last
                50KB. Diagnose root cause.
-            2. Fix with minimal diff. Touch only what the error requires. No
+            2. FIRST check the PR body for previous "## Autofix attempt"
+               sections. If a previous attempt already addressed this same
+               failure and it still fails, do NOT retry the same class of fix —
+               comment on the PR requesting human intervention (gh pr comment),
+               then stop.
+            3. Fix with minimal diff. Touch only what the error requires. No
                refactors, no drive-by cleanup.
-            3. git add any new .nix files BEFORE running nix eval — the flake
+            4. git add any new .nix files BEFORE running nix eval — the flake
                reads from the git store; untracked files are invisible.
-            4. For eval failures, verify all five configs eval green (all work
+            5. For eval failures, verify all five configs eval green (all work
                on Linux):
                  nix eval ".#nixosConfigurations.<H>.config.system.build.toplevel.drvPath" --raw
                    for BrightFalls, Nexus, CauldronLake
                  nix eval ".#darwinConfigurations.<H>.config.system.build.toplevel.drvPath" --raw
                    for WorkLaptop, NightSprings
-            5. For package build failures: reproduce by building ONLY the failing
-               derivation (from the log), e.g.
+            6. For KERNEL failures (BORE scheduler patch rot, linuxPackages,
+               cpupower, anything patching kernel source): NEVER build kernel
+               derivations here — far too slow for this runner. Fix at source:
+               bump the relevant flake input (e.g.
+               `nix flake update bore-scheduler-src`) or adjust
+               modules/nixos/kernel.nix. MANDATORY: after ANY `nix flake update`,
+               verify the updated bore-scheduler-src actually ships a BORE patch
+               series for the NEW kernel version — read the input's patch
+               files/directories in the nix store and match the kernel version
+               string exactly. If no matching patch series exists, do NOT push
+               the bump: comment on the PR requesting human intervention and
+               stop. If it matches, confirm all five evals green; CI's next run
+               does the real build.
+            7. For other package build failures: reproduce by building ONLY the
+               failing derivation (from the log), e.g.
                  nix build .#<systemAttr>.<Host>.pkgs.<pkg> or the store .drv path
                — never the whole toplevel. Skip reproduction if the package is
                massive (browsers, LLVM, webkit class); reason from the log
@@ -210,14 +228,15 @@ jobs:
                otherwise overlays/<host>.nix. Verify the fix by rebuilding the
                failing derivation (unless massive), then confirm all five evals
                still green.
-            6. Run nix fmt on files you changed.
-            7. Append to the PR body — fetch current body with
+            8. Run nix fmt on files you changed.
+            9. Append to the PR body — fetch current body with
                gh pr view ${{ needs.route.outputs.pr }} --json body -q .body,
                concatenate, then gh pr edit --body. NEVER replace existing body.
                New section: "## Autofix attempt ${{ needs.route.outputs.attempt }}"
-               with terse summary: what broke, what fixed, what verified.
-            8. Commit in repo style (fix(host):, chore:, ...). Commit message MUST
-               contain the marker "[claude-autofix]". Push to the current branch.
-               Push is the LAST action — after the PR body edit.
-            9. If you cannot fix with confidence: do NOT push guesses. Comment
-               findings on the PR with gh pr comment, then stop.
+               with terse summary: what broke, what fixed, what verified — enough
+               detail that a future attempt can recognise the same failure.
+            10. Commit in repo style (fix(host):, chore:, ...). Commit message
+                MUST contain the marker "[claude-autofix]". Push to the current
+                branch. Push is the LAST action — after the PR body edit.
+            11. If you cannot fix with confidence: do NOT push guesses. Comment
+                findings on the PR with gh pr comment, then stop.
