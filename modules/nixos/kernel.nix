@@ -28,15 +28,17 @@
       let
         # Use pkgs.linuxPackages_7_1.kernel.version instead of config.boot.kernelPackages.kernel.version
         # to avoid infinite recursion (boot.kernelPatches affects boot.kernelPackages)
-        kernelVersion = lib.versions.majorMinor pkgs.linuxPackages_7_1.kernel.version;
-        patchesDir = "${inputs.bore-scheduler-src}/patches/stable/linux-${kernelVersion}-bore";
+        kernelVersion = pkgs.linuxPackages_7_1.kernel.version;
+        # Stable BORE series still targets 7.1-rc1 and rots on 7.1.5; use the
+        # exact-version testing patch until upstream promotes a stable series.
+        testingPatch = "${inputs.bore-scheduler-src}/patches/testing/0001-linux${kernelVersion}-bore-6.8.0.patch";
 
-        borePatches = lib.optionals config.custom.kernel.useBorePatches (
-          lib.mapAttrsToList (name: _: {
-            name = "bore-${name}";
-            patch = "${patchesDir}/${name}";
-          }) (builtins.readDir patchesDir)
-        );
+        borePatches = lib.optionals config.custom.kernel.useBorePatches [
+          {
+            name = "bore-testing-${kernelVersion}";
+            patch = testingPatch;
+          }
+        ];
       in
       borePatches;
   };
