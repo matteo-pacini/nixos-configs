@@ -71,7 +71,7 @@ nix fmt
 <summary><strong>Software</strong></summary>
 
 - GNOME on Wayland
-- Linux 7.1 with **BORE** scheduler patches
+- Linux 7.1
 - Per-host **znver4** overlay tuning the system for Zen 4
 - **Full-disk encryption** (LUKS2 + LVM, remote unlock over SSH)
 - KVM/QEMU virtualization, **Sunshine** for game streaming, **LACT** for GPU control
@@ -230,7 +230,7 @@ First activation requires Apple ID authentication; subsequent runs are automatic
 Scoped to this flake but written with options should you want to crib them:
 
 - **`custom.nix-core`** *(NixOS, Darwin)* — Trusted users, experimental features, extra platforms.
-- **`custom.kernel`** *(NixOS)* — Linux 7.1 with optional BORE scheduler patches.
+- **`custom.kernel`** *(NixOS)* — Linux 7.1.
 - **`custom.locale`** *(NixOS)* — Locale, timezone, console keymap and font.
 - **`custom.bluetooth`**, **`custom.fonts`** *(NixOS / Darwin)* — Simple bundles.
 - **`custom.system-defaults`** *(Darwin)* — Dock, Finder, Touch ID for `sudo`, dark mode.
@@ -263,4 +263,3 @@ Built on top of excellent projects from the Nix community:
 - [disko](https://github.com/nix-community/disko)
 - [nix-homebrew](https://github.com/zhaofengli/nix-homebrew)
 - [nvf](https://github.com/NotAShelf/nvf)
-- [BORE Scheduler](https://github.com/firelzrd/bore-scheduler)

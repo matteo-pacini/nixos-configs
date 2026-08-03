@@ -23,23 +23,6 @@
         "type": "github"
       }
     },
-    "bore-scheduler-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1785248677,
-        "narHash": "sha256-SzzbWPBOuwAgrL7JgesF3L2aCJgBOVGuvy5ynS24Adk=",
-        "owner": "firelzrd",
-        "repo": "bore-scheduler",
-        "rev": "6a52aac2deab3faebcae97a34bb3eec4b3c2967e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "firelzrd",
-        "repo": "bore-scheduler",
-        "rev": "6a52aac2deab3faebcae97a34bb3eec4b3c2967e",
-        "type": "github"
-      }
-    },
     "brew-src": {
       "flake": false,
       "locked": {
@@ -587,7 +570,6 @@
     "root": {
       "inputs": {
         "agenix": "agenix",
-        "bore-scheduler-src": "bore-scheduler-src",
         "colorls-dracula-theme": "colorls-dracula-theme",
         "disko": "disko",
         "dracula-wallpaper": "dracula-wallpaper",

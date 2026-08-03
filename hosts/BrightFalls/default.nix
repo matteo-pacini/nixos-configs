@@ -18,10 +18,7 @@
     ./specialisations.nix
   ];
 
-  custom.kernel = {
-    enable = true;
-    useBorePatches = true;
-  };
+  custom.kernel.enable = true;
 
   custom.nix-core = {
     enable = true;

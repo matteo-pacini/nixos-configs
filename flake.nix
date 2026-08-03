@@ -72,13 +72,6 @@
       url = "github:rafaelmardojai/firefox-gnome-theme";
       flake = false;
     };
-    ##################
-    # Bore Scheduler #
-    ##################
-    bore-scheduler-src = {
-      url = "github:firelzrd/bore-scheduler?rev=6a52aac2deab3faebcae97a34bb3eec4b3c2967e";
-      flake = false;
-    };
     ################
     # Mac App Util #
     ################

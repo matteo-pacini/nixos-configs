@@ -56,7 +56,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **Per-host CPU overlays** in `overlays/<host>.nix` (e.g. `znver4`, `apple-m4`). Shared overlays live in `overlays/shared.nix`.
 - **Darwin hosts** get extra modules NixOS hosts do not: `mac-app-util`, `xcodes` (NightSprings only), and `nix-homebrew`.
 - **Shared Home Manager modules** are loaded on all hosts via `homeManagerModules.default` in `flake.nix`.
-- **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_1` and optionally applies BORE scheduler patches from `bore-scheduler-src`.
+- **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_1`.
 
 ## Secrets
 
