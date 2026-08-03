@@ -53,6 +53,34 @@
     }
   ];
 
+  # Both monitors sit behind a DisplayPort KVM. Without this, switching away
+  # hot-unplugs both outputs: XWayland collapses its root window to 0x0 and
+  # Steam/CEF latch broken geometry until restart. Forcing connector status
+  # (video=...:e) plus a firmware EDID keeps amdgpu reporting both monitors
+  # connected (emulated virtual sink, no link training), so the compositor
+  # never sees the unplug. EDIDs captured from the real panels via
+  # /sys/class/drm/card1-DP-*/edid. Cost: real unplugs are invisible too;
+  # re-capture EDID if a monitor is replaced.
+  hardware.display = {
+    edid.packages = [
+      (pkgs.runCommand "edid-kvm-monitors" { } ''
+        mkdir -p $out/lib/firmware/edid
+        cp ${./edid/pg278qr.bin} $out/lib/firmware/edid/pg278qr.bin
+        cp ${./edid/u2719d.bin} $out/lib/firmware/edid/u2719d.bin
+      '')
+    ];
+    outputs."DP-1" = {
+      # ASUS ROG PG278QR
+      edid = "pg278qr.bin";
+      mode = "e";
+    };
+    outputs."DP-2" = {
+      # Dell U2719D
+      edid = "u2719d.bin";
+      mode = "e";
+    };
+  };
+
   hardware.cpu.amd.updateMicrocode = true;
   hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableRedistributableFirmware = true;
