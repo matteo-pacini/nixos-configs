@@ -1,0 +1,84 @@
+jellyfin-mpv-shim: treat a session without remote control as disconnected
+=========================================================================
+
+Problem
+-------
+The shim silently disappears from Jellyfin's cast menu while still looking
+healthy. The device keeps showing up in the server's Dashboard → Devices
+list, playback cannot be started against it any more, and the shim never
+recovers on its own. Only a full restart of the process brings it back.
+
+Observed on a Darwin host (launchd agent) after ~24h uptime across
+sleep/wake and network changes: the process held one CLOSE_WAIT socket to
+the server, the server reported the session with `SupportsRemoteControl:
+false`, and `LastActivityDate` had gone stale by over an hour while a
+browser session on the same server kept ticking.
+
+Root cause
+----------
+The shim's own health check (`ClientManager.validate_client`, called every
+`health_check_interval` seconds — 300 by default) decides whether it is
+still connected by looking for its own `DeviceId` in `GET /Sessions`:
+
+    for f_client in client_list:
+        if f_client.get("DeviceId") == settings.client_uuid:
+            break
+    else:
+        ... force a reconnect ...
+
+Presence in that list is not the same thing as being controllable. Jellyfin
+keeps a session listed for as long as the HTTP session is alive, but only
+reports `SupportsRemoteControl: true` while a session controller with media
+control — in practice, the shim's WebSocket — is attached.
+
+When the WebSocket dies without a clean close (sleep/wake, roaming between
+networks, a NAT or VPN dropping the connection), `WebSocketDisconnect` is
+never delivered, so the reconnect path in `setup_client` never fires. The
+health check then finds the `DeviceId` still listed, concludes everything is
+fine, and returns True forever. The session stays half-dead: visible in the
+dashboard, invisible in the cast menu.
+
+This is the failure class described upstream in
+https://github.com/jellyfin/jellyfin-mpv-shim/issues/461 (OPEN). The 2.10.0
+health check was added for the related #344 / #410 reports but still only
+checks presence, so it does not cover this case.
+
+Fix
+---
+Require `SupportsRemoteControl` in addition to the `DeviceId` match. A
+listed-but-uncontrollable session now takes the existing not-in-list branch,
+which tears the client down and emits `WebSocketDisconnect` — driving the
+reconnect logic that already exists in `setup_client`. Recovery therefore
+happens within one health-check interval instead of never.
+
+The log message is widened to cover both cases so the reason stays clear in
+the logs.
+
+Applies to all platforms: this is the same wedge on Linux, it has simply
+only been observed on a Darwin host so far.
+
+Drop this patch once upstream's health check checks controllability.
+
+--- a/jellyfin_mpv_shim/clients.py
++++ b/jellyfin_mpv_shim/clients.py
+@@ -364,12 +364,18 @@ class ClientManager(object):
+             return True
+ 
+         for f_client in client_list:
+-            if f_client.get("DeviceId") == settings.client_uuid:
++            # Presence alone is not enough: the server keeps the session
++            # listed after the WebSocket dies, but drops remote control with
++            # it. Without this check a half-dead session reads as healthy and
++            # the reconnect below never runs.
++            if f_client.get("DeviceId") == settings.client_uuid and f_client.get(
++                "SupportsRemoteControl"
++            ):
+                 break
+         else:
+             if not dry_run:
+                 log.warning(
+-                    "Client is not actually connected. (It does not show in the client list.)"
++                    "Client is not actually connected. (It does not show in the client list, or cannot be remote controlled.)"
+                 )
+                 # WebSocketDisconnect doesn't always happen here.
+                 client.callback = lambda *_: None
