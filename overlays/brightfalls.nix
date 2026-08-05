@@ -15,6 +15,21 @@ in
   exiled-exchange-2 = super.callPackage ../packages/exiled-exchange-2.nix { };
   path-of-building-poe2 = super.callPackage ../packages/path-of-building-poe2.nix { };
 
+  # MangoHud renders exec= output with font_secondary (font_size * 0.55 by
+  # default) and paints the whole string in text_color, so the gamepad battery
+  # line is half the height of the CPU/GPU rows and has no coloured label.
+  # font_size_secondary= would fix the height, but that font is shared, so it
+  # also enlarges every other secondary element (gamemode, resolution,
+  # engine_version…) and can overlap columns (MangoHud#1913), and it still
+  # cannot colour the label. The patch adds a separate exec2= that renders in
+  # the primary font and splits on the first space, label in engine_color and
+  # value in text_color, exactly like the built-in fields.
+  mangohud = super.mangohud.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [
+      ../patches/mangohud/001-exec2-styled-like-builtin-fields.patch
+    ];
+  });
+
   qemu = optimizedForBrightFalls (
     super.qemu.override ({
       hostCpuTargets = [
