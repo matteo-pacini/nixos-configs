@@ -37,7 +37,7 @@
       ++ lib.optionals config.services.nzbget.enable [ 6789 ]
       ++ lib.unique (map (l: l.port) config.services.mosquitto.listeners);
 
-      # Admin web UIs (paperless, zigbee2mqtt, radarr, sonarr): trusted-device
+      # Admin web UIs (paperless, zigbee2mqtt, radarr, sonarr, bazarr): trusted-device
       # VLAN + WorkLaptop only. Guest and IoT VLANs and WAN are blocked.
       # Tailnet bypasses via trustedInterfaces.
       extraInputRules =
@@ -47,6 +47,7 @@
             config.services.zigbee2mqtt.settings.frontend.port
             config.services.radarr.settings.server.port
             config.services.sonarr.settings.server.port
+            config.services.bazarr.listenPort
           ];
         in
         ''

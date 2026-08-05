@@ -21,6 +21,7 @@ let
     "nzbhydra2"
     "radarr"
     "sonarr"
+    "bazarr"
     "paperless-web"
     "paperless-scheduler"
     "paperless-consumer"
@@ -202,6 +203,8 @@ let
     ''${RSYNC_CMD} ${config.services.radarr.dataDir} ${backupDestination}/
     # sonarr
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
+    # bazarr (provider credentials live in its UI-managed config)
+    ''${RSYNC_CMD} ${config.services.bazarr.dataDir} ${backupDestination}/
     # paperless - data directory
     ''${RSYNC_CMD} ${config.services.paperless.dataDir} ${backupDestination}/
     # paperless - media directory
