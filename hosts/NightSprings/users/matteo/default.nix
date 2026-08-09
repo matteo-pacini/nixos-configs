@@ -23,8 +23,6 @@
     # Development
     gh
     rotate-github-key
-    # Social
-    element-desktop
     # Music
     jellyfin-tui
     # Window Management

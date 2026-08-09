@@ -17,7 +17,6 @@
       "1password"
       "mullvadvpn"
       "dash"
-      "element"
       "telegram"
       "whatsapp"
       "sf-symbols"

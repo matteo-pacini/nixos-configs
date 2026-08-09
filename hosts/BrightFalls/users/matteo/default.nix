@@ -49,7 +49,6 @@
       prismlauncher
       # Other
       telegram-desktop
-      element-desktop
       # Music
       jellyfin-tui
     ]

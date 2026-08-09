@@ -50,7 +50,7 @@ jobs:
     needs: [eval]
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - host: BrightFalls
