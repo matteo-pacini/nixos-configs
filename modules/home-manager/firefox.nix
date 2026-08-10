@@ -81,6 +81,9 @@ in
               "places.history.enabled" = cfg.history.enable;
               "browser.chrome.site_icons" = true;
 
+              # Allow Local Network Access to the UniFi dashboard without prompting
+              "network.lna.skip-domains" = "*.id.ui.direct";
+
               # Sponsored content & new-tab "Popular today / Health / Entertainment"
               "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;
               "browser.newtabpage.activity-stream.showSponsored" = false;
