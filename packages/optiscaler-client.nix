@@ -22,13 +22,13 @@
 
 buildDotnetModule (finalAttrs: {
   pname = "optiscaler-client";
-  version = "1.0.5";
+  version = "1.0.6";
 
   src = fetchFromGitHub {
     owner = "Agustinm28";
     repo = "Optiscaler-Client";
-    rev = "5072a0761bb6dfbf7e52cc9e4b5c0cde49e1d209";
-    hash = "sha256-1Cs6DHR7f5MtklmKY96+uOi4esFP2VkAWsR/j9bwdqs=";
+    rev = "5e0796200ecaa05cf730c8beaaf1dbbc30e42eb8";
+    hash = "sha256-UaNoVZLEk9/L5TMZHEILurm9ECacWVzsh7aZXap3cHs=";
   };
 
   dotnet-sdk = dotnetCorePackages.sdk_10_0;
