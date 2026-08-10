@@ -46,9 +46,12 @@ in
     DeviceAllow = [ "/dev/ipmi0 rw" ];
   };
 
+  # openFirewall reads config.http.server_port, which no longer exists now
+  # that the http block moved to UI storage — open the default port directly.
+  networking.firewall.allowedTCPPorts = [ 8123 ];
+
   services.home-assistant = {
     enable = true;
-    openFirewall = true;
     extraComponents = [
       # Components required to complete the onboarding
       "analytics"
@@ -400,14 +403,11 @@ in
         };
       };
 
-      http = {
-        use_x_forwarded_for = true;
-        server_host = "0.0.0.0";
-        server_port = 8123;
-        trusted_proxies = [ "127.0.0.1" ];
-        # Disable built-in IP banning - handled by fail2ban instead
-        ip_ban_enabled = false;
-      };
+      # YAML http config is deprecated (removed in HA 2027.2.0). The old
+      # block (use_x_forwarded_for, trusted_proxies 127.0.0.1, ip_ban_enabled
+      # false for fail2ban) was imported into /var/lib/hass/.storage and now
+      # lives outside version control; restore it via Settings > System >
+      # Network if /var/lib/hass is ever rebuilt from scratch.
 
       frontend = {
         themes = "!include_dir_merge_named themes";
