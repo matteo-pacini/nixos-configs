@@ -23,7 +23,7 @@ in
         background-opacity = 0.9;
         background-blur = 30;
         theme = "Dracula";
-        macos-titlebar-style = "hidden";
+        macos-titlebar-style = "tabs";
         confirm-close-surface = false;
         keybind = [
           "ctrl+cmd+f=toggle_fullscreen"
