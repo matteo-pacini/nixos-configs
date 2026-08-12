@@ -132,7 +132,7 @@
           ./modules/home-manager/nvf.nix
           ./modules/home-manager/vscode.nix
           ./modules/home-manager/starship.nix
-          ./modules/home-manager/wezterm.nix
+          ./modules/home-manager/ghostty.nix
           ./modules/home-manager/claude-code.nix
           ./modules/home-manager/phone-scrcpy.nix
           ./modules/home-manager/mpv

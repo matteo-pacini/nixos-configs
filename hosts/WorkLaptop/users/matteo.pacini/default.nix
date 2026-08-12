@@ -32,7 +32,7 @@
   custom.zellij.enable = true;
   custom.vscode.enable = true;
   custom.starship.enable = true;
-  custom.wezterm.enable = true;
+  custom.ghostty.enable = true;
   custom.claude-code.enable = true;
   custom.mpv.enable = true;
   custom.mpv.jellyfinShim.enable = true;
