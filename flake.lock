@@ -316,6 +316,22 @@
         "type": "github"
       }
     },
+    "linuwux-runtime": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786640992,
+        "narHash": "sha256-pGcJuuJs9iSJuc6kRORJEXHh+tUva2900SF6ktp0RXs=",
+        "owner": "brcly",
+        "repo": "linuwux-runtime",
+        "rev": "dfaea18b4ff53c8d683c361d6b83ed8804e88c71",
+        "type": "github"
+      },
+      "original": {
+        "owner": "brcly",
+        "repo": "linuwux-runtime",
+        "type": "github"
+      }
+    },
     "mac-app-util": {
       "inputs": {
         "cl-nix-lite": "cl-nix-lite",
@@ -577,6 +593,7 @@
         "home-manager": "home-manager_2",
         "homebrew-cask": "homebrew-cask",
         "homebrew-core": "homebrew-core",
+        "linuwux-runtime": "linuwux-runtime",
         "mac-app-util": "mac-app-util",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",

@@ -58,8 +58,12 @@
     ppfeaturemask = "0xffffffff";
   };
 
-  # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
   environment.systemPackages = [
+    # Preload shim, referenced from Steam launch options as
+    # LD_PRELOAD=/run/current-system/sw/lib/liblinuwux.so
+    pkgs.linuwux-runtime
+
+    # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
     (pkgs.writeShellScriptBin "single-monitor" ''
       gdctl=${pkgs.mutter}/bin/gdctl
 
