@@ -1,0 +1,200 @@
+ananicy-cpp 1.2.0: include <cstring>/<cstdint> instead of relying on fmt
+========================================================================
+
+Problem
+-------
+The BrightFalls closure stopped building on the 2026-08-13 flake update
+(PR #364), failing to compile ananicy-cpp:
+
+    src/utility/argument_parsing/argument.cpp:24:3: error: no member named
+      'memset' in namespace 'std'; did you mean simply 'memset'?
+       24 |   std::memset(buffer.get(), 0, sz);
+          |   ^~~~~~~~~~~
+    .../glibc-2.42-67-dev/include/bits/string_fortified.h:57:8: note:
+      'memset' declared here
+
+Root cause
+----------
+ananicy-cpp reaches `std::memset` and the <cstdint> integer aliases
+(`std::int32_t`/`std::uint32_t`) through a transitive include rather than
+including those headers itself. Every affected translation unit includes some
+fmt header, and fmt was what supplied them. fmt 12.2.0 stopped:
+
+    fmt/format.h, 12.1.0            fmt/format.h, 12.2.0
+      #include <cstdint>  // uint32_t  -->  #include <string.h>  // memcpy
+      #include <cstring>  // std::memcpy
+
+<string.h> declares `memset` in the global namespace only, so `std::memset`
+no longer resolves, and the <cstdint> aliases disappear outright. Hence the
+two error classes this patch fixes.
+
+Note the glibc 2.42 attribution in both upstream PRs below is a red herring —
+it is the note line in the diagnostic, not the trigger. The nixpkgs revs
+either side of this update carry identical glibc (2.42-67) and clang
+(21.1.8); fmt 12.1.0 -> 12.2.0 is the only relevant change. The old
+derivation still builds and is substitutable from cache.nixos.org
+(a3r2blx88i85m9rnhb4xg5x0798zjbbm), which is why CI's "Build latest
+configuration" step passed while "Build new configuration" failed.
+
+ananicy-cpp also carried a comparable include fix once before (nixpkgs
+84a953fb0, "ananicy-cpp: fix build w/ glibc-2.42"); the 1.1.1 -> 1.2.0 bump
+(nixpkgs 6517c55b3) dropped it.
+
+Upstream status
+---------------
+Verbatim diff of upstream MR ananicy-cpp!43, "fix: add missing <cstring> and
+<cstdint> headers for glibc 2.42" (OPEN as of 2026-08-14):
+  https://gitlab.com/ananicy-cpp/ananicy-cpp/-/merge_requests/43
+
+nixpkgs carries the same fix in PR #552211 (OPEN, one approval, green
+nixpkgs-review on x86_64-linux):
+  https://github.com/NixOS/nixpkgs/pull/552211
+
+The <unistd.h> hunks come from the same MR; they fix getpid()/getuid() under
+GCC 16 on Fedora, found by upstream CI, and are unrelated to our failure.
+
+Drop this override once #552211 reaches nixos-unstable. Vendored rather than
+fetchpatch'd on purpose: the nixpkgs PR points fetchpatch at the live MR
+`.diff` URL, whose content (and therefore hash) changes if the MR branch gets
+new commits.
+
+Applies cleanly alongside the nixpkgs-side match-wrappers.patch, which only
+touches src/worker.cpp.
+
+diff --git a/src/config.cpp b/src/config.cpp
+index 4a53e2f6a0523cf95ec6adc24fecee6b3063ee74..ce9eb3fe36673407a889b836801f17f4e423cc4a 100644
+--- a/src/config.cpp
++++ b/src/config.cpp
+@@ -6,6 +6,7 @@
+ #include "core/priority.hpp"
+ 
+ #include <chrono> // for system_clock::now
++#include <cstdint>
+ #include <fstream>
+ 
+ #include <fmt/chrono.h>
+diff --git a/src/platform/linux/backtrace.cpp b/src/platform/linux/backtrace.cpp
+index fed73c58815fc0bd4e518ec4297c785ca9c5fa6e..93759784c5e8d36736536c27b830af114e77c428 100644
+--- a/src/platform/linux/backtrace.cpp
++++ b/src/platform/linux/backtrace.cpp
+@@ -1,5 +1,6 @@
+ #include "utility/backtrace.hpp"
+ 
++#include <cstdint>
+ #include <cstdlib>    // for free
+ #include <cxxabi.h>   // for abi::__cxa_demangle
+ #include <execinfo.h> // for backtrace, backtrace_symbols
+diff --git a/src/platform/linux/cgroups.cpp b/src/platform/linux/cgroups.cpp
+index 4f4d535b9a6d5d1cf68be618042315c9a2ec589a..c5766d28f1eb8b57bfde1f954fac407a1138d71c 100644
+--- a/src/platform/linux/cgroups.cpp
++++ b/src/platform/linux/cgroups.cpp
+@@ -1,6 +1,7 @@
+ #include "core/cgroups.hpp"
+ #include "utility/mounts.hpp"
+ 
++#include <cstdint>
+ #include <filesystem>  // for path
+ #include <fstream>     // for ifstream
+ #include <mutex>       // for mutex, lock_guard
+diff --git a/src/platform/linux/debug.cpp b/src/platform/linux/debug.cpp
+index 1cbfb482dcada4d96dcda13cfafdafd8606c90ce..b8bd8aeaffa717bf50f8e25eb53925f5265e99e6 100644
+--- a/src/platform/linux/debug.cpp
++++ b/src/platform/linux/debug.cpp
+@@ -1,4 +1,5 @@
+ #include "utility/debug.hpp"
++
+ #include "core/cgroups.hpp"
+ #include "service.hpp"
+ #include "utility/utils.hpp"
+@@ -7,6 +8,7 @@
+ #include <iostream>    // for cout
+ #include <string>      // for string
+ #include <string_view> // for string_view
++#include <unistd.h>
+ 
+ #include <fmt/format.h>
+ 
+diff --git a/src/platform/linux/process.cpp b/src/platform/linux/process.cpp
+index d84cecfec68ef6dc700a201041614401d0477286..ab6a9adb97974bf7133c0f1761d90eaa83b46232 100644
+--- a/src/platform/linux/process.cpp
++++ b/src/platform/linux/process.cpp
+@@ -14,6 +14,7 @@
+ #include <filesystem> // for path
+ #include <fstream>    // for ifstream
+ #include <thread>     // for jthread
++#include <unistd.h>
+ 
+ #include <fmt/format.h>
+ #include <fmt/ranges.h>
+diff --git a/src/platform/linux/singleton_process.cpp b/src/platform/linux/singleton_process.cpp
+index 92ab2ab40b0895c203594434d380d48f6637f499..9c7a6fd85d4670335d48562c9c6c227d68528a6d 100644
+--- a/src/platform/linux/singleton_process.cpp
++++ b/src/platform/linux/singleton_process.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include <cerrno>
+ #include <chrono>
++#include <cstring>
+ #include <fcntl.h> /* For O_* constants */
+ #include <sys/ipc.h>
+ #include <sys/mman.h>
+diff --git a/src/platform/systemd/service.cpp b/src/platform/systemd/service.cpp
+index d716481eb8d2fd7533852e51cd3541e0549d7252..060232156f8265900849e1462df156f31061da65 100644
+--- a/src/platform/systemd/service.cpp
++++ b/src/platform/systemd/service.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include <systemd/sd-daemon.h>
+ #include <systemd/sd-login.h>
++#include <unistd.h>
+ 
+ #include <spdlog/spdlog.h>
+ 
+diff --git a/src/tests/unit-core.cpp b/src/tests/unit-core.cpp
+index b71e03398d7c99b182f7330fe57333be8c007e70..b9db9a029ec462da9bb63e81502374e8f51fd842 100644
+--- a/src/tests/unit-core.cpp
++++ b/src/tests/unit-core.cpp
+@@ -9,6 +9,7 @@
+ 
+ #include <filesystem>
+ #include <fstream>
++#include <unistd.h>
+ 
+ #include <spdlog/spdlog.h>
+ 
+diff --git a/src/tests/unit-cpuset.cpp b/src/tests/unit-cpuset.cpp
+index 31ac770a6e64cb74f090285e97226dba89594dbc..daaa11c861df22e6c7dc9b8b9d7cfc41778366fe 100644
+--- a/src/tests/unit-cpuset.cpp
++++ b/src/tests/unit-cpuset.cpp
+@@ -5,6 +5,7 @@
+ #include "core/x3d.hpp"
+ 
+ #include <spdlog/spdlog.h>
++#include <unistd.h>
+ 
+ TEST_SUITE_BEGIN("CpuSet");
+ 
+diff --git a/src/utility/argument_parsing/argument.cpp b/src/utility/argument_parsing/argument.cpp
+index 954a58843b17b90715e5d27ee34bdfe94067d2ff..cf3a331558a89a1b732a18b52f47c63e422085ac 100644
+--- a/src/utility/argument_parsing/argument.cpp
++++ b/src/utility/argument_parsing/argument.cpp
+@@ -1,6 +1,7 @@
+ #include "utility/argument_parser.hpp"
+ 
+ #include <cstdlib>
++#include <cstring>
+ #include <cxxabi.h>
+ #include <iostream>
+ #include <memory>
+diff --git a/src/utility/argument_parsing/argument_parser.cpp b/src/utility/argument_parsing/argument_parser.cpp
+index c51f85149682757dd7def21e80f8cee8755c6e06..b91139a81a385f74bcb88c167bef6ff9082b3c11 100644
+--- a/src/utility/argument_parsing/argument_parser.cpp
++++ b/src/utility/argument_parsing/argument_parser.cpp
+@@ -1,6 +1,7 @@
+ #include "utility/argument_parser.hpp"
+ 
+ #include <algorithm>
++#include <cstdint>
+ #include <cxxabi.h>
+ #include <functional>
+ #include <iostream>
