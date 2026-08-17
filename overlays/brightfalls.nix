@@ -49,10 +49,11 @@
     # write-up, including why the glibc 2.42 attribution in both PRs below is
     # a red herring (glibc and clang are identical either side of the break).
     #
-    # Upstream fix, both OPEN as of 2026-08-14 — the patch is the verbatim MR
-    # diff, so this override becomes redundant the moment the nixpkgs one lands:
-    #   nixpkgs: https://github.com/NixOS/nixpkgs/pull/552211 (OPEN)
-    #   upstream: https://gitlab.com/ananicy-cpp/ananicy-cpp/-/merge_requests/43 (OPEN)
+    # Upstream fix — the patch is the verbatim MR diff, so this override becomes
+    # redundant the moment the nixpkgs one reaches the nixos-unstable channel:
+    #   nixpkgs: https://github.com/NixOS/nixpkgs/pull/552211 (MERGED 2026-08-16
+    #     as 74c1eb32, still 4 commits ahead of the e5bdc4a pin as of 2026-08-17)
+    #   upstream: https://gitlab.com/ananicy-cpp/ananicy-cpp/-/merge_requests/43
     #
     # To drop this: once nixos-unstable carries #552211, delete this attribute
     # and patches/ananicy-cpp/. Inspect the effective patch list with
