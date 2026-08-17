@@ -86,15 +86,6 @@
     #####################
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
-    ###################
-    # linuwux-runtime #
-    ###################
-    # Plain source tree (no flake of its own); built by
-    # packages/linuwux-runtime.nix into liblinuwux.so.
-    linuwux-runtime = {
-      url = "github:brcly/linuwux-runtime";
-      flake = false;
-    };
   };
 
   outputs =
@@ -158,7 +149,7 @@
         };
         modules = [
           {
-            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/brightfalls.nix { inherit inputs; }) ];
+            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/brightfalls.nix) ];
           }
           self.nixosModules.default
           ./hosts/BrightFalls
