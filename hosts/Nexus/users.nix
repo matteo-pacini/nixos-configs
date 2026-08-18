@@ -9,6 +9,8 @@
   users.users = {
     "matteo" = {
       isNormalUser = true;
+      # Start the herdr server user service at boot, not at first SSH login
+      linger = true;
       extraGroups = [
         "wheel"
         "media"

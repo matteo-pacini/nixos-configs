@@ -135,6 +135,7 @@
           ./modules/home-manager/ghostty.nix
           ./modules/home-manager/claude-code.nix
           ./modules/home-manager/phone-scrcpy.nix
+          ./modules/home-manager/herdr.nix
           ./modules/home-manager/mpv
         ];
       };
