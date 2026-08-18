@@ -1,0 +1,71 @@
+pam_gdm: accept systemd-cached LUKS passphrases without a trailing NUL
+
+GDM 50.2 (commit 4ecd58d, MR !384) hardened pam_gdm's walk over the
+kernel-keyring payload by rejecting any payload whose last byte is not
+NUL. But systemd deliberately chops the trailing NUL off the password
+blob it caches under the "cryptsetup" key (src/shared/ask-password-api.c,
+add_to_keyring: "chop off the final NUL byte"), so the check rejects
+every systemd-cached LUKS passphrase. pam_gdm then returns
+PAM_AUTHINFO_UNAVAIL, the gdm-autologin PAM stack's
+[success=ok default=1] jump skips pam_gnome_keyring, and the login
+keyring stays locked on autologin.
+
+Instead of rejecting an unterminated payload, copy it into a buffer one
+byte larger and NUL-terminate it, keeping the bounded walk.
+
+Upstream report: https://gitlab.gnome.org/GNOME/gdm/-/issues/1091
+Drop this patch once a gdm release containing an upstream fix reaches
+nixos-unstable.
+
+--- a/pam_gdm/pam_gdm.c
++++ b/pam_gdm/pam_gdm.c
+@@ -19,6 +19,7 @@
+  */
+ #include <config.h>
+ 
++#include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+ 
+@@ -71,16 +72,36 @@
+         /*
+             The payload is a NUL-separated list of passwords, but the blob
+             returned by the kernel is not guaranteed to be NUL-terminated.
+-            Reject a payload whose final entry is not terminated within the
+-            buffer so that walking it below cannot read past the end.
++            systemd deliberately chops the trailing NUL off the payload it
++            caches (src/shared/ask-password-api.c, add_to_keyring), so a
++            missing terminator is the normal case, not an error: re-terminate
++            a copy instead of rejecting it, so the walk below stays in bounds.
+         */
+-        if (cached_passwords_length == 0 ||
+-            ((char *) cached_passwords)[cached_passwords_length - 1] != '\0') {
+-                gdm_pam_zero_buffer (cached_passwords, cached_passwords_length);
++        if (cached_passwords_length == 0) {
+                 free (cached_passwords);
+                 return PAM_AUTHINFO_UNAVAIL;
+         }
+ 
++        if (((char *) cached_passwords)[cached_passwords_length - 1] != '\0') {
++                char *terminated;
++
++                terminated = malloc (cached_passwords_length + 1);
++                if (terminated == NULL) {
++                        gdm_pam_zero_buffer (cached_passwords, cached_passwords_length);
++                        free (cached_passwords);
++                        return PAM_AUTHINFO_UNAVAIL;
++                }
++
++                memcpy (terminated, cached_passwords, cached_passwords_length);
++                terminated[cached_passwords_length] = '\0';
++
++                gdm_pam_zero_buffer (cached_passwords, cached_passwords_length);
++                free (cached_passwords);
++
++                cached_passwords = terminated;
++                cached_passwords_length += 1;
++        }
++
+         /*
+             Find the last password in the NUL-separated list of passwords.
+             Multiple passwords are returned either when the user enters an
