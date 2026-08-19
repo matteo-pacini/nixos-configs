@@ -316,6 +316,7 @@
               inputs.nvf.homeManagerModules.default
               self.homeManagerModules.default
               self.homeManagerModules.xcodes
+              self.homeManagerModules.sleepmode
             ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
@@ -371,6 +372,7 @@
               inputs.mac-app-util.homeManagerModules.default
               inputs.nvf.homeManagerModules.default
               self.homeManagerModules.default
+              self.homeManagerModules.sleepmode
             ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
@@ -389,6 +391,7 @@
       };
       homeManagerModules = {
         xcodes = import ./modules/home-manager/darwin/xcodes.nix;
+        sleepmode = import ./modules/home-manager/darwin/sleepmode.nix;
       };
 
       formatter = {

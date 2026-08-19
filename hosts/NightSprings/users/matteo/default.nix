@@ -34,6 +34,7 @@
   custom.ghostty.enable = true;
   custom.claude-code.enable = true;
   custom.herdr.enable = true;
+  custom.sleepmode.enable = true;
   custom.mpv.enable = true;
   custom.mpv.jellyfinShim.enable = true;
 
