@@ -19,6 +19,22 @@ in
         # ~/.ssh/config is a read-only Home Manager symlink (custom.ssh),
         # so herdr must not try to edit it when adding remote hosts.
         remote.manage_ssh_config = false;
+        # Closing a worktree subspace leaves the checkout on disk; deleting it
+        # is a separate action that ships unbound. Displaces close_tab, which
+        # holds this chord by default.
+        keys.remove_worktree = "prefix+shift+x";
+        # Claude panes get a third row for the context meter. The $context
+        # token and the "claude - <model> (<effort>)" agent label are reported
+        # by the statusLine wrapper in modules/home-manager/claude-code.nix.
+        ui.sidebar.agents.rows_by_agent.claude = [
+          [
+            "state_icon"
+            "workspace"
+            "tab"
+          ]
+          [ "agent" ]
+          [ "$context" ]
+        ];
       };
     };
 

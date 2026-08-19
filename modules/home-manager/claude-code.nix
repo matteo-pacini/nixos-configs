@@ -7,6 +7,14 @@
 let
   cfg = config.custom.claude-code;
 
+  # Wraps ccstatusline so a herdr pane also gets the model/effort label and a
+  # context-usage token in its sidebar. No-ops outside herdr.
+  statusLine = pkgs.writeShellApplication {
+    name = "claude-statusline";
+    runtimeInputs = [ pkgs.jq ];
+    text = builtins.readFile ./claude-code/herdr-statusline.sh;
+  };
+
   baseSettings = {
     # Empty strings disable commit Co-Authored-By trailers and PR-body
     # attribution at the harness level (replaces deprecated includeCoAuthoredBy).
@@ -17,7 +25,7 @@ let
     statusLine = {
       type = "command";
       # Relies on nodejs being on claude's PATH (set in overlays/shared.nix).
-      command = "npx -y ccstatusline@latest";
+      command = lib.getExe statusLine;
       padding = 0;
       refreshInterval = 10;
     };
