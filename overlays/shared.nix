@@ -165,17 +165,5 @@
             platforms = old.meta.platforms ++ super.lib.platforms.darwin;
           };
       });
-
-    # jellyfin-tui: cover art flickers on every redraw when launched inside a
-    # zellij pane because zellij's Kitty/Sixel passthrough is unreliable
-    # (zellij-org/zellij#2814, #2576). The patch forces Picker::halfblocks() when
-    # the ZELLIJ env var is set, so the art renders as ordinary colored cells
-    # instead of out-of-band graphics escapes. See the patch header for full
-    # context. Drop this once zellij implements the Kitty graphics protocol.
-    jellyfin-tui = super.jellyfin-tui.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [
-        ../patches/jellyfin-tui/001-zellij-halfblocks.patch
-      ];
-    });
   }
 )

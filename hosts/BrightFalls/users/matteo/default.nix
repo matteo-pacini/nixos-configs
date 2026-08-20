@@ -68,7 +68,6 @@
 
   custom.nvf.enable = true;
   custom.ghostty.enable = true;
-  custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
   custom.herdr.enable = true;
