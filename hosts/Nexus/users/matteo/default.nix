@@ -12,6 +12,8 @@
   custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
+  custom.codex.enable = true;
+  custom.opencode.enable = true;
   custom.herdr.enable = true;
   custom.herdr.server = true;
 
