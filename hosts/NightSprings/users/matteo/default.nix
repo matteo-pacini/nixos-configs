@@ -32,6 +32,8 @@
   custom.starship.enable = true;
   custom.ghostty.enable = true;
   custom.claude-code.enable = true;
+  custom.codex.enable = true;
+  custom.opencode.enable = true;
   custom.herdr.enable = true;
   custom.sleepmode.enable = true;
   custom.mpv.enable = true;

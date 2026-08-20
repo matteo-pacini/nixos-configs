@@ -47,4 +47,12 @@ in
 
   # NightSprings service secrets
   "nightsprings/attic-netrc.age".publicKeys = [ nightsprings ];
+
+  # Shared service secrets (decryptable by multiple hosts)
+  "shared/openrouter.env.age".publicKeys = [
+    brightfalls
+    nexus
+    nightsprings
+    worklaptop
+  ];
 }

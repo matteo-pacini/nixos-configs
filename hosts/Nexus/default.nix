@@ -37,6 +37,10 @@
     configurationLimit = 5;
   };
 
+  # Headless host that only ever sees remote terminals: install every
+  # terminal's terminfo so ssh sessions (xterm-ghostty et al.) resolve TERM.
+  environment.enableAllTerminfo = true;
+
   environment.systemPackages = with pkgs; [
     terminus_font
     mergerfs

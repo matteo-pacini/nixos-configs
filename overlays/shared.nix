@@ -61,6 +61,27 @@
       '';
     });
 
+    # opencode sourced from the master pin (currently 1.18.18) so it matches the
+    # patches below, which apply cleanly across opencode 1.16.2–1.18.18
+    # (re-verified with `git apply --check` against 1.18.18 on 2026-08-20).
+    # Upstream still hasn't fixed OpenRouter cost reporting (PR #37525 closed
+    # unmerged; issues #18440/#454 closed stale, bug still live).
+    opencode = masterPkgs.opencode.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        # opencode's getUsage prices a turn as (model rate × tokens) and ignores
+        # the authoritative response usage.cost. Prefer
+        # providerMetadata.openrouter.usage.cost (usage accounting is force-enabled
+        # for the openrouter provider) so per-turn cost reflects OpenRouter's real
+        # billing.
+        ../modules/home-manager/opencode/patches/openrouter-real-cost.patch
+        # Subagent (child-session) cost isn't rolled up into the parent, so no
+        # single number shows what a whole run cost. Render a derived whole-tree
+        # total in the sidebar next to the session title; per-agent cost stays as
+        # is. Client-side only (the TUI already holds every session). See header.
+        ../modules/home-manager/opencode/patches/subagent-total-cost.patch
+      ];
+    });
+
     # xdg-desktop-portal-1.20.4: two integration tests fail in the Nix build
     # sandbox because the validator helpers (xdg-desktop-portal-validate-sound
     # and -validate-icon) shell out to bwrap, which tries to create a nested

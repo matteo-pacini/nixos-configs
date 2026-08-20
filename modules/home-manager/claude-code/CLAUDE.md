@@ -22,8 +22,6 @@ question — one-line questions get one-line answers.
   declaring done after one pass.
 - Prefer minimal diffs over rewrites unless asked.
 - Match the surrounding code's style; don't impose a different one.
-- Don't narrate the diff in comments. Comment only what isn't
-  obvious from the code itself.
 
 ## Output format
 - Default to diffs or focused snippets, not full file dumps.
@@ -49,33 +47,17 @@ judgment.
   unused — but don't delete pre-existing dead code; mention it instead.
 - Every changed line should trace directly to the request.
 
-## Model delegation
-
-Guidance last updated 13/06/2026. If this is clearly out of date or
-you know a better current option, prefer that over this section.
-
-When spawning subagents or choosing a model for a task:
-
-| Task | Model |
-|------|-------|
-| Orchestration, multi-agent coordination | opus (xhigh) |
-| Hardest bugs, architecture, security review, deep planning | opus |
-| Normal coding, tests, refactors, intermediate reasoning | sonnet |
-| Search, file discovery, mechanical edits, summaries | haiku |
-
-- Use aliases, never pinned model IDs — pinned IDs fail when models
-  retire.
-- Effort: default is high; sonnet's balanced default is medium (bump
-  to high only when needed); use xhigh for hard agentic coding (opus
-  only — sonnet has no xhigh); avoid max (diminishing returns,
-  overthinking); low for simple subagents.
-- Haiku has no effort parameter and a 200K context window.
-- Plan with opus, execute with sonnet when cost matters (`opusplan`
-  automates this). Switching model mid-session costs one full
-  uncached context re-read — don't switch frivolously.
-- Before acting on web-research or multi-source claims, spawn one
-  opus skeptic prompted to refute them; drop anything refuted or
-  unverifiable. Skip for trivial lookups or primary-doc reads.
+## Code comments
+- Comment only what isn't apparent from the code itself; prefer a
+  better name or clearer structure in the code you're writing over a
+  comment — but don't refactor existing code just to avoid one.
+- Comments explain why, not what: a non-obvious trade-off, an
+  invariant a maintainer could break, a workaround, a performance or
+  security constraint.
+- Never reference the conversation, the request, or the change
+  process in comments.
+- Before finishing, delete any comment whose absence wouldn't make
+  the code harder to understand or safely modify.
 
 ## Git
 
