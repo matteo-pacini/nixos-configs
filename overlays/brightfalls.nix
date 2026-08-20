@@ -30,34 +30,6 @@ in
     ];
   });
 
-  # ananicy-cpp 1.2.0 reaches std::memset and the <cstdint> integer aliases
-  # through fmt rather than including those headers itself, and fmt 12.2.0
-  # swapped <cstring>/<cstdint> in fmt/format.h for <string.h> — which only
-  # declares memset in the global namespace. Breaks the build on any rev
-  # carrying fmt >= 12.2.0. Pulled in by services.ananicy on this host
-  # (hosts/BrightFalls/gaming.nix). See the patch header for the full
-  # write-up, including why the glibc 2.42 attribution in both PRs below is
-  # a red herring (glibc and clang are identical either side of the break).
-  #
-  # Upstream fix — the patch is the verbatim MR diff, so this override becomes
-  # redundant the moment the nixpkgs one reaches the nixos-unstable channel:
-  #   nixpkgs: https://github.com/NixOS/nixpkgs/pull/552211 (MERGED 2026-08-16
-  #     as 74c1eb32, still 4 commits ahead of the e5bdc4a pin as of 2026-08-17)
-  #   upstream: https://gitlab.com/ananicy-cpp/ananicy-cpp/-/merge_requests/43
-  #
-  # To drop this: once nixos-unstable carries #552211, delete this attribute
-  # and patches/ananicy-cpp/. Inspect the effective patch list with
-  #   nix eval .#nixosConfigurations.BrightFalls.pkgs.ananicy-cpp.patches
-  # which prints nixpkgs' own patches alongside ours. #552211 fetchpatches the
-  # very same MR diff, so once it lands ours is byte-identical to a patch
-  # already applied and the build fails with a reversed/already-applied hunk —
-  # that failure is the signal it is time to go, not a new bug.
-  ananicy-cpp = super.ananicy-cpp.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [
-      ../patches/ananicy-cpp/001-missing-cstring-cstdint-includes.patch
-    ];
-  });
-
   # GDM 50.2's hardened pam_gdm rejects any kernel-keyring payload whose last
   # byte is not NUL — but systemd deliberately strips that trailing NUL from
   # the LUKS passphrase it caches (ask-password-api.c, add_to_keyring). Result:
