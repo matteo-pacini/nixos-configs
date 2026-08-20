@@ -7,7 +7,7 @@
 let
   cfg = config.custom.mpv;
   shimCfg = cfg.jellyfinShim;
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
   shimConfigDir =
     if isDarwin then "Library/Application Support/jellyfin-mpv-shim" else ".config/jellyfin-mpv-shim";

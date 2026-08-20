@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.custom.mpv;
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
   videoOutput =
     if isDarwin then
