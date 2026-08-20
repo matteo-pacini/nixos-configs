@@ -141,7 +141,6 @@
     ];
     utility.smart-splits = {
       enable = true;
-      setupOpts.multiplexer_integration = "zellij";
     };
     lsp = {
       enable = true;

@@ -29,7 +29,6 @@
     loopwm
   ];
   custom.nvf.enable = true;
-  custom.zellij.enable = true;
   custom.starship.enable = true;
   custom.ghostty.enable = true;
   custom.claude-code.enable = true;

@@ -29,7 +29,6 @@
   ];
 
   custom.nvf.enable = true;
-  custom.zellij.enable = true;
   custom.vscode.enable = true;
   custom.starship.enable = true;
   custom.ghostty.enable = true;

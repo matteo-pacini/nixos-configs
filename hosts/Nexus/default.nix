@@ -47,6 +47,8 @@
     screen
   ];
 
+  console.packages = [ pkgs.terminus_font ];
+
   custom.locale = {
     enable = true;
     consoleFont = "ter-v24n";

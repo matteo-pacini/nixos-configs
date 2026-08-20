@@ -9,7 +9,7 @@ let
   inherit (lib) mkEnableOption;
   cfg = config.dracula;
   wallpaper =
-    if pkgs.stdenv.isDarwin then
+    if pkgs.stdenv.hostPlatform.isDarwin then
       "${inputs.dracula-wallpaper}/first-collection/macos.png"
     else
       "${inputs.dracula-wallpaper}/first-collection/nixos.png";
