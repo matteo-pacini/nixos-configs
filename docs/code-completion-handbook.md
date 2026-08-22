@@ -113,9 +113,18 @@ to CUDA 13 drops Pascal entirely and this breaks; the escape hatch is
 `acceleration = "vulkan"`, which the NVIDIA 580 driver supports fine on
 this card.
 
-**BrightFalls needs `device` set.** The 780M iGPU also advertises Vulkan,
-so llama.cpp may pick it over the 6800 XT. Get the name from
-`llama-server --list-devices` on that host and set it.
+**BrightFalls pins `device = "Vulkan0"`.** The 780M iGPU also advertises
+Vulkan, so without this llama.cpp may pick it over the 6800 XT:
+
+```
+Vulkan0: AMD Radeon RX 6800 XT (RADV NAVI21) (16368 MiB, 14798 MiB free)
+Vulkan1: AMD Radeon 780M Graphics (RADV PHOENIX) (16976 MiB, 16888 MiB free)
+```
+
+Note the iGPU reports the larger total — it is addressing system RAM, not
+dedicated VRAM, so size is not a safe way to tell the two apart. Re-check
+the numbering with `--list-devices` if the hardware changes; enumeration
+order is stable in practice but not guaranteed.
 
 ## Commands
 
@@ -151,6 +160,16 @@ curl -s http://127.0.0.1:8012/props      # active model and context size
 curl -s http://127.0.0.1:8012/slots      # per-slot KV cache state
 llama-server --list-devices              # backend device names, for `device`
 ```
+
+`llama-server` is not on `PATH` unless the module is enabled for that
+host. To check devices before then, from the repo root:
+
+```bash
+nix-shell -E 'let p = (builtins.getFlake (toString ./.)).inputs.nixpkgs.legacyPackages.x86_64-linux; in p.mkShell { packages = [ (p.llama-cpp.override { vulkanSupport = true; }) ]; }' --run 'llama-server --list-devices'
+```
+
+Swap the override for `cudaSupport = true` on an NVIDIA host. This builds
+the same derivation the host config pins, so nothing is wasted.
 
 **First start downloads the weights** — up to 18.56 GB on NightSprings —
 so `/health` will not answer until that finishes. Watch the logs. Weights

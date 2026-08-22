@@ -71,11 +71,12 @@
 
   # RX 6800 XT, 16 GB. 14B at Q4_K_M (~8.4 GB) plus a q8_0 KV cache at 32k
   # (~3.2 GB) leaves the rest for games.
-  # device: the 780M iGPU also advertises Vulkan, so pin the dGPU with the
-  # name from `llama-server --list-devices`.
+  # The 780M iGPU also advertises Vulkan (as Vulkan1), so pin the dGPU
+  # explicitly rather than letting llama.cpp pick.
   custom.code-completion-model = {
     enable = true;
     acceleration = "vulkan";
+    device = "Vulkan0";
     model.repo = "bartowski/Qwen2.5-Coder-14B-GGUF";
   };
   custom.ghostty.enable = true;
