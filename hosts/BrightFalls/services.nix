@@ -73,6 +73,23 @@ in
 
   services.fstrim.enable = true;
 
+  # GNOME already pulls in xdg-desktop-portal-gnome and sets XDG_DATA_DIRS,
+  # so enabling the service is all that is needed here.
+  services.flatpak.enable = true;
+
+  # flatpak ships no remotes out of the box. remote-add fetches the
+  # .flatpakrepo over the network, hence the ordering.
+  systemd.services.flatpak-repo = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    path = [ pkgs.flatpak ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    '';
+  };
+
   # https://discourse.nixos.org/t/connected-to-mullvadvpn-but-no-internet-connection/35803/8?u=lion
   services.resolved.enable = true;
   services.mullvad-vpn.enable = true;
