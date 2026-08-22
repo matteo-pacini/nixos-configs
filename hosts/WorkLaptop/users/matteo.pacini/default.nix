@@ -29,6 +29,14 @@
   ];
 
   custom.nvf.enable = true;
+  custom.nvf.completion.enable = true;
+
+  # M4 Pro, 24 GB unified. 7B at Q4_K_M (~4.7 GB) plus a q8_0 KV cache sits
+  # well inside the default Metal VRAM cap.
+  custom.code-completion-model = {
+    enable = true;
+    model.repo = "QuantFactory/Qwen2.5-Coder-7B-GGUF";
+  };
   custom.vscode.enable = true;
   custom.starship.enable = true;
   custom.ghostty.enable = true;
