@@ -158,10 +158,6 @@
       };
     };
     autocomplete.nvim-cmp.enable = true;
-    assistant.copilot = {
-      enable = true;
-      cmp.enable = true;
-    };
     spellcheck = {
       enable = true;
       languages = [
