@@ -184,9 +184,10 @@ Suggestions appear as ghost text automatically as you type.
 |-----|--------|
 | `<C-y>` | Accept full suggestion |
 | `<C-g>` | Accept one line |
-| `<C-b>` | Accept one word |
+| `<leader>ll]` | Accept one word |
 | `<C-j>` / `<C-k>` | Cycle suggestions |
 | `<leader>llf` | Trigger manually |
+| `<leader>lld` | Toggle the debug pane |
 
 `<Tab>` and `<S-Tab>` are **not** used — nvf binds those to nvim-cmp for
 next/previous item, so llama.vim's defaults for accept-full and
