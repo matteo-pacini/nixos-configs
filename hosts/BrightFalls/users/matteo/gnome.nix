@@ -17,7 +17,7 @@ with lib.hm.gvariant;
       ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
-        "org.gnome.Console.desktop"
+        "com.mitchellh.ghostty.desktop"
         "code.desktop"
         "org.telegram.desktop.desktop"
         "firefox.desktop"
@@ -42,10 +42,6 @@ with lib.hm.gvariant;
     };
     "org/gnome/desktop/notifications" = {
       show-banners = false;
-    };
-    "org/gnome/Console" = {
-      use-system-font = false;
-      custom-font = "FiraCode Nerd Font 14";
     };
   };
 
