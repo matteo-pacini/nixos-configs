@@ -47,22 +47,41 @@ judgment.
   unused — but don't delete pre-existing dead code; mention it instead.
 - Every changed line should trace directly to the request.
 
-## Code comments
-- Comment only what isn't apparent from the code itself; prefer a
-  better name or clearer structure in the code you're writing over a
-  comment — but don't refactor existing code just to avoid one.
-- Comments explain why, not what: a non-obvious trade-off, an
-  invariant a maintainer could break, a workaround, a performance or
-  security constraint.
-- Never reference the conversation, the request, or the change
-  process in comments.
-- Before finishing, delete any comment whose absence wouldn't make
-  the code harder to understand or safely modify.
+## Comments
+
+A comment must be true, and must stay true after the next refactor. An inaccurate
+comment is worse than no comment — this outranks everything else here.
+
+Follow the language's documentation convention for public API surface (Go doc
+comments, docstrings, Javadoc, rustdoc). Document the contract: what a caller
+needs to know in order to use it, without describing the implementation. This is
+required and does not count against terseness.
+
+Inside a function body, comment only what the code cannot say:
+- Why this approach rather than the obvious one.
+- An invariant or constraint a future editor would plausibly break
+  (ordering, locking, precision, a rate limit, an off-by-one that is deliberate).
+- A workaround, with a link to the issue / RFC / CVE that explains it.
+- `TODO(<issue>)`, `Deprecated:`, and pragma or lint directives — always fine.
+
+Do not write a comment that:
+- Restates the line below it. If renaming a variable makes the line clear, rename
+  it — but never split a function apart merely to avoid writing a comment.
+- Refers to this conversation, my request, the diff, or how the code used to be.
+  Comments describe the code as it stands, not how it got here. Anything I need
+  to know about the change goes in your reply or the commit body, not the file.
+
+  bad:   # switched to a set for the O(1) lookup you asked about
+  good:  # set, not list: this runs once per row in the import loop
+
+Length follows content: one clause for a caveat, a paragraph for a genuinely
+subtle algorithm. Never pad, never summarise the obvious, never leave one stale.
 
 ## Git
 
 - **Commits**: always commit as the default git author.
 - **Pull requests**: when asked to open a PR, create a new branch first unless told to use the current one. Stage and commit only the changes relevant to this conversation — if other files are modified or staged, ask before including them. Open the PR with the `gh` CLI.
+- **Stacks**: when asked to create/edit/work on a Github PR stack, use `gh stack` to handle stack ops, rather than manually invoking `git`.
 
 ## Non-negotiables
 - No "you're absolutely right" reversals — push back if I'm wrong.
