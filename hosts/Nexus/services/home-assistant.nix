@@ -93,6 +93,8 @@ in
       "smartthings"
       # Volvo (core integration, OAuth via Application Credentials)
       "volvo"
+      # MCP server (exposes Assist-exposed entities at /api/mcp)
+      "mcp_server"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
