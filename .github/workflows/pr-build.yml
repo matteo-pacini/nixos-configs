@@ -111,14 +111,20 @@ jobs:
         run: |
           nix build ".#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./result --fallback
 
+      # Pinned to v1.4.2: dix HEAD fails to build because libsqlite3-sys
+      # 0.38.0 (pulled in 2026-05-27) uses the unstable cfg_select! macro.
+      - name: Build dix
+        continue-on-error: true
+        id: dix
+        run: nix build github:faukah/dix/v1.4.2 -o dix-result
+
       - name: Compare configurations
+        if: steps.dix.outcome == 'success'
         run: |
 
           echo "## Diff" >> "$GITHUB_STEP_SUMMARY"
           echo '```diff' >> "$GITHUB_STEP_SUMMARY"
-          # Pinned to v1.4.2: dix HEAD fails to build because libsqlite3-sys
-          # 0.38.0 (pulled in 2026-05-27) uses the unstable cfg_select! macro.
-          nix run github:faukah/dix/v1.4.2 -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
+          ./dix-result/bin/dix ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       # Cache the PR's candidate toplevel so the post-merge master build in
