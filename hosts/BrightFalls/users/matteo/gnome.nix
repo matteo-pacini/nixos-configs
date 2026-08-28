@@ -14,6 +14,7 @@ with lib.hm.gvariant;
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
+        "magunetto@matteopacini.me"
       ];
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
@@ -34,6 +35,9 @@ with lib.hm.gvariant;
     "org/gnome/settings-daemon/plugins/power" = {
       power-button-action = "interactive";
       sleep-inactive-ac-type = "nothing";
+    };
+    "org/gnome/shell/extensions/magunetto" = {
+      show-radial-menu = [ "<Alt>z" ];
     };
     "org/gnome/mutter" = {
       check-alive-timeout = mkUint32 10000;

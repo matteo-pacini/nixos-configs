@@ -2,6 +2,7 @@
   pkgs,
   lib,
   config,
+  inputs,
   ...
 }:
 {
@@ -30,6 +31,7 @@
       #Gnome
       gnomeExtensions.appindicator
       gnome-tweaks
+      inputs.magunetto.packages.${stdenv.hostPlatform.system}.default
       # Downloads
       aria2
       # Security

@@ -339,6 +339,29 @@
         "type": "github"
       }
     },
+    "magunetto": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "openspec": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1787955743,
+        "narHash": "sha256-rKg0nSUp1HMM9+pRYvgAaHxF/9Vu/LvS9wT1tRVDUs4=",
+        "owner": "matteo-pacini",
+        "repo": "Magunetto",
+        "rev": "d2177ee4727d0b2306e6a74e4381818e804fdc1f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "matteo-pacini",
+        "repo": "Magunetto",
+        "type": "github"
+      }
+    },
     "mnw": {
       "locked": {
         "lastModified": 1780772958,
@@ -578,6 +601,7 @@
         "homebrew-cask": "homebrew-cask",
         "homebrew-core": "homebrew-core",
         "mac-app-util": "mac-app-util",
+        "magunetto": "magunetto",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nix-index-database": "nix-index-database",

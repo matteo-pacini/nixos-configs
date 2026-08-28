@@ -86,6 +86,14 @@
     #####################
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+    #############
+    # Magunetto #
+    #############
+    magunetto.url = "github:matteo-pacini/Magunetto";
+    magunetto.inputs.nixpkgs.follows = "nixpkgs";
+    # Only used by Magunetto's own devShell; following avoids pulling a second
+    # nixpkgs into this lock.
+    magunetto.inputs.openspec.follows = "nixpkgs";
   };
 
   outputs =
