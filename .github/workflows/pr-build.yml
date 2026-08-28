@@ -116,7 +116,9 @@ jobs:
 
           echo "## Diff" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          nix store diff-closures ./old-result ./result >> "$GITHUB_STEP_SUMMARY"
+          # diff-closures always emits ANSI color codes, even when piped
+          nix store diff-closures ./old-result ./result \
+            | sed -e 's/\x1b\[[0-9;]*m//g' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       # Cache the PR's candidate toplevel so the post-merge master build in
