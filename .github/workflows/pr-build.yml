@@ -115,10 +115,10 @@ jobs:
         run: |
 
           echo "## Diff" >> "$GITHUB_STEP_SUMMARY"
-          echo '```diff' >> "$GITHUB_STEP_SUMMARY"
-          # Pinned to v1.4.2: dix HEAD fails to build because libsqlite3-sys
-          # 0.38.0 (pulled in 2026-05-27) uses the unstable cfg_select! macro.
-          nix run github:faukah/dix/v1.4.2 -- ./old-result ./result >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          # diff-closures always emits ANSI color codes, even when piped
+          nix store diff-closures ./old-result ./result \
+            | sed -e 's/\x1b\[[0-9;]*m//g' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       # Cache the PR's candidate toplevel so the post-merge master build in
