@@ -41,7 +41,6 @@ with lib.hm.gvariant;
     };
     "org/gnome/mutter" = {
       check-alive-timeout = mkUint32 10000;
-      experimental-features = [ "variable-refresh-rate" ];
       edge-tiling = false;
     };
     "org/gnome/desktop/notifications" = {
