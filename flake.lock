@@ -349,11 +349,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787955743,
-        "narHash": "sha256-rKg0nSUp1HMM9+pRYvgAaHxF/9Vu/LvS9wT1tRVDUs4=",
+        "lastModified": 1788000395,
+        "narHash": "sha256-4aOvPhlykIALUZAe82ORSNTOZwi2jWQa2WYnnLD1VpQ=",
         "owner": "matteo-pacini",
         "repo": "Magunetto",
-        "rev": "d2177ee4727d0b2306e6a74e4381818e804fdc1f",
+        "rev": "bd11d2982b22ed1a3a5d5536933e99022693aa59",
         "type": "github"
       },
       "original": {
