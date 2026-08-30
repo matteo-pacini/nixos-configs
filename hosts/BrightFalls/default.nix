@@ -49,6 +49,14 @@
     sshfs
   ];
 
+  # Force-installs the Claude in Chrome extension into Chromium. Chromium
+  # reads managed policy only from compiled-in /etc paths, so this cannot
+  # live next to custom.claude-code.chrome.enable in Home Manager.
+  programs.chromium = {
+    enable = true;
+    extensions = [ "fcoeoabgfenejglbffodgkkbkcdhcgfn" ];
+  };
+
   custom.locale.enable = true;
   custom.bluetooth.enable = true;
   custom.fonts.enable = true;
