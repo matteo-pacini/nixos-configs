@@ -82,6 +82,8 @@ in
       "shell_command"
       # UPS
       "apcupsd"
+      # Long-term metrics export to VictoriaMetrics (Influx v1 line protocol)
+      "influxdb"
       # Voice
       "whisper"
       "piper"
@@ -210,6 +212,92 @@ in
           };
         }
       ];
+
+      # Parallel export to VictoriaMetrics, which speaks the InfluxDB v1 line
+      # protocol on its main port. This is the long-term archive; the recorder
+      # below keeps only a short window (see purge_keep_days).
+      #
+      # Filters mirror recorder.exclude — no point paying to store the entities
+      # Postgres already refuses.
+      influxdb = {
+        api_version = 1;
+        host = "127.0.0.1";
+        port = 8428;
+        max_retries = 3;
+        measurement_attr = "entity_id";
+        tags_attributes = [
+          "friendly_name"
+          "unit_of_measurement"
+          "state_class"
+          "device_class"
+        ];
+        # Attributes that are constant, huge, or non-numeric. hvac_action is
+        # deliberately NOT ignored: it is what binary_sensor.needs_heating keys
+        # off, so without it no heating analysis is possible after the fact.
+        ignore_attributes = [
+          "icon"
+          "source"
+          "options"
+          "editable"
+          "min"
+          "max"
+          "step"
+          "mode"
+          "marker_type"
+          "preset_modes"
+          "supported_features"
+          "supported_color_modes"
+          "effect_list"
+          "attribution"
+          "assumed_state"
+          "state_open"
+          "state_closed"
+          "writable"
+          "stateExtra"
+          "event"
+          "ip_address"
+          "device_file"
+          "unitOfMeasure"
+          "color_mode"
+          "hs_color"
+          "rgb_color"
+          "xy_color"
+          "value"
+          "writeable"
+          "dataCorrect"
+          "dayname"
+        ];
+        include = {
+          domains = [
+            "sensor"
+            "binary_sensor"
+            "light"
+            "switch"
+            "cover"
+            "climate"
+            "input_boolean"
+            "input_select"
+            "number"
+            "lock"
+            "weather"
+          ];
+        };
+        exclude = {
+          entity_globs = [
+            "sensor.clock*"
+            "sensor.date*"
+            "sensor.glances*"
+            "sensor.time*"
+            "sensor.uptime*"
+            "sensor.dwd_weather_warnings_*"
+            "weather.weatherstation"
+            "binary_sensor.*_smartphone_*"
+            "sensor.*_smartphone_*"
+            "sensor.adguard_home_*"
+            "binary_sensor.*_internet_access"
+          ];
+        };
+      };
 
       homeassistant = {
         name = "Frenches Farm Drive 49 HASS";
@@ -381,7 +469,12 @@ in
 
       recorder = {
         db_url = "postgresql://@/hass";
-        purge_keep_days = 365;
+        # Raw states cost ~60 MB/day in Postgres; a year of them is ~22 GB and
+        # nothing in the UI reaches past a few weeks. Long-term statistics live
+        # in separate tables and are NEVER purged, so year-scale trends survive
+        # regardless of this value. Full-resolution history is kept in
+        # VictoriaMetrics instead (see the influxdb block above).
+        purge_keep_days = 30;
         auto_purge = true;
         auto_repack = true;
         exclude = {

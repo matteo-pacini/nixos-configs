@@ -35,6 +35,7 @@ in
       # Sonarr databases (main + log)
       "sonarr-main"
       "sonarr-log"
+      "grafana"
     ];
     ensureUsers = [
       {
@@ -56,6 +57,10 @@ in
       # Sonarr user (ownership set via script, db names don't match username)
       {
         name = "sonarr";
+      }
+      {
+        name = "grafana";
+        ensureDBOwnership = true;
       }
     ];
   };

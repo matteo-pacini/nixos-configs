@@ -29,6 +29,8 @@
     ./attic.nix
     ./immich.nix
     ./tailscale-r53.nix
+    ./victoriametrics.nix
+    ./grafana.nix
   ];
 
   systemd.tmpfiles.rules = [

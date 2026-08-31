@@ -14,6 +14,7 @@ let
     "zigbee2mqtt"
     "mosquitto"
     "home-assistant"
+    "victoriametrics"
   ];
   affectedServices = [
     "jellyfin"
@@ -144,6 +145,8 @@ let
     ''${RSYNC_CMD} ${config.services.mosquitto.dataDir} ${backupDestination}/
     # home-assistant
     ''${RSYNC_CMD} ${config.services.home-assistant.configDir} ${backupDestination}/
+    # victoriametrics (long-term metrics archive; DynamicUser StateDirectory)
+    ''${RSYNC_CMD} /var/lib/victoriametrics ${backupDestination}/
 
     # Special case: PostgreSQL
     # Does not need to be stopped, just backed up
