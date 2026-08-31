@@ -11,6 +11,13 @@
       # LAN networks
       "192.168.10.0/24" # HOME VLAN
       "192.168.20.0/24" # GUEST VLAN
+      # Tailnet. Devices here are already authenticated by Tailscale before
+      # they reach Caddy, so banning them buys nothing — and the caddy-http-auth
+      # failregex matches 403 as well as 401, which the LAN-only vhosts
+      # (grafana, photos) return by design to anyone outside the allowlist.
+      # With bantime-increment overalljails, a few mistyped passwords would
+      # otherwise lock this machine out of every service at once.
+      "100.64.0.0/10"
     ];
     bantime = "1h";
     bantime-increment = {
