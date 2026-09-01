@@ -283,7 +283,9 @@ class BudgetSankeyCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; }
+        /* Container, not viewport: the header stacks whenever the card itself
+           is narrow — on a phone, and equally in a narrow desktop column. */
+        :host { display: block; container-type: inline-size; }
         .card {
           background: ${VIZ.card};
           border: 1px solid ${VIZ.borderSubtle};
@@ -325,6 +327,17 @@ class BudgetSankeyCard extends HTMLElement {
         .lab em { flex:0 0 auto; width:7px; height:7px; border-radius:2px; align-self:center; }
         .lab i { font:500 11px ${FONT_MONO}; color:${VIZ.textMuted}; font-style:normal; font-variant-numeric:tabular-nums; flex:0 0 auto; }
         @media (max-width: 600px) { .rail { width:min(140px,42%); flex-basis:min(140px,42%); } }
+        /* Stacked in source order: in, then out, then left. The threshold is
+           560px because three tabular-nums amounts plus their labels do not fit
+           on one line below that — which includes a phone and also a card in a
+           two-column sections view, where the card is only ~355px wide. */
+        @container (max-width: 560px) {
+          .head { flex-direction:column; align-items:stretch; gap:12px; }
+          .stats { flex-direction:column; align-items:stretch; gap:6px; }
+          .stats > div { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+          .totlab { margin-bottom:0; }
+          .stats .tot.sm { font-size:20px; }
+        }
       </style>
       <div class="card">
         <div class="head">
