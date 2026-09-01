@@ -67,14 +67,26 @@ function spread(items, min, top, bottom) {
   return items;
 }
 
-// Pure layout: returns ribbon paths, node rects, leaf labels and group chips.
-// hover is a node id, or null. W/H are the SVG user-space box, not pixels.
-function layout(spec, key, W, H, rootColor, hover, showAmounts) {
-  const gap = 7;
+// Pure layout: returns ribbon paths, node rects, leaf labels, group chips and
+// the height the chart actually needs. hover is a node id, or null.
+//
+// Hbase sets the scale (pixels per pound); the chart then grows to whatever
+// height the gaps and minimum bar sizes require, rather than being squeezed
+// into Hbase. Squeezing was the bug: clamping small leaves to a minimum height
+// made the stack overflow, and spreading the labels back apart slid them out of
+// their group's band, so a Subscriptions row could sit level with the Credit
+// cards chip.
+//
+// GAP is deliberately >= LABEL_MIN - MIN_LEAF, so two adjacent minimum-height
+// leaves are already further apart than spread() would ever push their labels.
+// That is what keeps every label pinned to its own bar.
+function layout(spec, key, W, Hbase, rootColor, hover, showAmounts) {
+  const GAP = 14; // between leaves of the same group
+  const GROUP_GAP = 30; // between groups, so the boundary is unmistakable
+  const MIN_LEAF = 3;
+  const LABEL_MIN = 16;
   const nw = 14;
   const padL = 6;
-  const pctX = (v) => ((v / W) * 100).toFixed(3) + "%";
-  const pctY = (v) => ((v / H) * 100).toFixed(3) + "%";
 
   const leaves = [];
   spec.groups.forEach((g, gi) => {
@@ -86,17 +98,19 @@ function layout(spec, key, W, H, rootColor, hover, showAmounts) {
   if (!leaves.length) return null;
 
   const total = leaves.reduce((s, l) => s + l.v, 0);
-  const scale = Math.max(0, H - gap * (leaves.length - 1)) / (total || 1);
+  const scale = Hbase / (total || 1);
   let y = 0;
+  let prevG = null;
   leaves.forEach((l) => {
-    l.h = Math.max(2.5, l.v * scale);
+    if (prevG !== null) y += l.g === prevG ? GAP : GROUP_GAP;
+    l.h = Math.max(MIN_LEAF, l.v * scale);
     l.y = y;
-    y += l.h + gap;
+    y += l.h;
+    prevG = l.g;
   });
-  const shift = (H - (y - gap)) / 2;
-  leaves.forEach((l) => {
-    l.y += shift;
-  });
+  const H = y;
+  const pctX = (v) => ((v / W) * 100).toFixed(3) + "%";
+  const pctY = (v) => ((v / H) * 100).toFixed(3) + "%";
 
   const x0 = padL;
   const x1 = padL + (W - padL - nw) / 2;
@@ -105,7 +119,7 @@ function layout(spec, key, W, H, rootColor, hover, showAmounts) {
   const groups = spec.groups.map((g, gi) => {
     const own = leaves.filter((l) => l.g === gi);
     const v = own.reduce((s, l) => s + l.v, 0);
-    const h = Math.max(2.5, v * scale);
+    const h = Math.max(MIN_LEAF, v * scale);
     const last = own[own.length - 1];
     const mid = (own[0].y + last.y + last.h) / 2;
     return {
@@ -161,7 +175,7 @@ function layout(spec, key, W, H, rootColor, hover, showAmounts) {
     .concat(groups, leaves.map((l) => ({ id: l.id, x: x2, y: l.y, w: nw, h: l.h, color: l.color })))
     .map((n) => ({ id: n.id, x: n.x, y: n.y, w: n.w, h: n.h, color: n.color }));
 
-  const labels = spread(leaves.map((l) => ({ y: l.y + l.h / 2, l })), 16, 8, H - 8).map((it) => {
+  const labels = spread(leaves.map((l) => ({ y: l.y + l.h / 2, l })), LABEL_MIN, 0, H).map((it) => {
     const l = it.l;
     const rel = !hover || hover === l.id || hover === key + "-g" + l.g;
     return {
@@ -201,7 +215,7 @@ function layout(spec, key, W, H, rootColor, hover, showAmounts) {
     stroke: hover === root.id ? VIZ.borderStrong : VIZ.borderSubtle,
   });
 
-  return { ribbons, nodes, labels, chips, total };
+  return { ribbons, nodes, labels, chips, total, height: H };
 }
 
 const esc = (s) =>
@@ -256,6 +270,8 @@ class BudgetSankeyCard extends HTMLElement {
   _render() {
     if (!this._config) return;
     const c = this._config;
+    // chart_height now sets the scale, not a hard height: layout() returns the
+    // height it actually needs and the card grows to it.
     const H = c.chart_height || 620;
     const W = 470;
     const accent = resolveColor(c.accent) || VIZ.moneyOut;
@@ -327,6 +343,13 @@ class BudgetSankeyCard extends HTMLElement {
         .lab em { flex:0 0 auto; width:7px; height:7px; border-radius:2px; align-self:center; }
         .lab i { font:500 11px ${FONT_MONO}; color:${VIZ.textMuted}; font-style:normal; font-variant-numeric:tabular-nums; flex:0 0 auto; }
         @media (max-width: 600px) { .rail { width:min(140px,42%); flex-basis:min(140px,42%); } }
+        /* Roomier type once the card has the width for it. */
+        @container (min-width: 561px) {
+          .lab, .lab i { font-size:12.5px; }
+          .chip b { font-size:13px; }
+          .chip i { font-size:12px; }
+          .rail { width:min(240px,45%); flex-basis:min(240px,45%); }
+        }
         /* Stacked in source order: in, then out, then left. The threshold is
            560px because three tabular-nums amounts plus their labels do not fit
            on one line below that — which includes a phone and also a card in a
@@ -356,7 +379,7 @@ class BudgetSankeyCard extends HTMLElement {
         </div>
         <div class="body">
           <div class="plot">
-            <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
+            <svg viewBox="0 0 ${W} ${l.height}" width="100%" height="${l.height}" preserveAspectRatio="none">
               ${l.ribbons.map((r) => `<path d="${r.d}" fill="${r.color}" opacity="${r.op}"></path>`).join("")}
               ${l.nodes
                 .map(
