@@ -71,6 +71,15 @@ in
             Strict-Transport-Security "max-age=31536000; includeSubDomains"
           }
 
+          # LAN + tailnet only. n8n's UI has its own login, but the Paperless
+          # document agent is reached through webhook paths that take no
+          # credentials, so without this gate the archive is queryable by
+          # anyone who learns the URL. Home Assistant calls n8n over loopback
+          # (webhook_conversation -> 127.0.0.1:5678), so nothing here needs to
+          # be reachable from outside.
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
+          respond @external 403
+
           # Larger limit for workflow imports/exports and webhook payloads
           request_body {
             max_size 16MB
