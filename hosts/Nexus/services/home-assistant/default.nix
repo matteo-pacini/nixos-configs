@@ -52,6 +52,20 @@ in
 
   services.home-assistant = {
     enable = true;
+
+    # Symlinked into ${configDir}/blueprints/automation. Blueprints only supply
+    # the template; each automation built from one is still created in the UI
+    # and lives in .storage.
+    # NOTE: these land flat in blueprints/automation/, whereas the copies HA
+    # already has sit under blueprints/automation/matteo-pacini/. Automations
+    # built from the old path keep working until they are repointed; nothing
+    # here deletes those files (the module only reaps store symlinks at depth 2).
+    blueprints.automation = [
+      ./blueprints/automation/socket-auto-recover.yaml
+      ./blueprints/automation/door_warning_blueprint.yaml
+      ./blueprints/automation/sonoff_trvzb_external_temp_sync.yaml
+    ];
+
     extraComponents = [
       # Components required to complete the onboarding
       "analytics"
@@ -82,6 +96,8 @@ in
       "shell_command"
       # UPS
       "apcupsd"
+      # Long-term metrics export to VictoriaMetrics (Influx v1 line protocol)
+      "influxdb"
       # Voice
       "whisper"
       "piper"
@@ -95,10 +111,18 @@ in
       "volvo"
       # MCP server (exposes Assist-exposed entities at /api/mcp)
       "mcp_server"
+      # Subscribes to a remote .ics feed. Configured through the UI, so the
+      # feed URL and its API key live in .storage and stay out of this repo.
+      "remote_calendar"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
-      smartthinq-sensors
+      # Patched so a failed setup raises ConfigEntryNotReady instead of
+      # reporting success. See the patch header for why upstream stopped doing
+      # that and why the reason does not apply here.
+      (smartthinq-sensors.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ./patches/smartthinq-sensors-retry-setup.patch ];
+      }))
       octopus_energy
       localtuya
       (pkgs.buildHomeAssistantComponent rec {
@@ -138,6 +162,32 @@ in
       mushroom
       mini-graph-card
       button-card
+      clock-weather-card
+      # Not in nixpkgs at all. Ships two chunks: the card lazily imports
+      # ./editor.js, so both must land in the merged lovelace module dir.
+      # No other module here ships an editor.js, so the buildEnv merge is safe.
+      (pkgs.buildNpmPackage rec {
+        pname = "calendar-card-pro";
+        version = "4.0.0";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "alexpfau";
+          repo = "calendar-card-pro";
+          tag = "v${version}";
+          hash = "sha256-ZwCJZHRoyie/WkwsNATD5iDlDqJOIPg35C/gwCOap0I=";
+        };
+
+        npmDepsHash = "sha256-+HILd9NxNmMoW6VkDdUW4CGQ4xAUjQ0+V5qMHyafmow=";
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir $out
+          cp dist/calendar-card-pro.js dist/editor.js $out/
+
+          runHook postInstall
+        '';
+      })
       # In nixpkgs master but not yet in our pin; drop this inline copy
       # once the pin advances past NixOS/nixpkgs#525127.
       (pkgs.buildNpmPackage rec {
@@ -210,6 +260,92 @@ in
           };
         }
       ];
+
+      # Parallel export to VictoriaMetrics, which speaks the InfluxDB v1 line
+      # protocol on its main port. This is the long-term archive; the recorder
+      # below keeps only a short window (see purge_keep_days).
+      #
+      # Filters mirror recorder.exclude — no point paying to store the entities
+      # Postgres already refuses.
+      influxdb = {
+        api_version = 1;
+        host = "127.0.0.1";
+        port = 8428;
+        max_retries = 3;
+        measurement_attr = "entity_id";
+        tags_attributes = [
+          "friendly_name"
+          "unit_of_measurement"
+          "state_class"
+          "device_class"
+        ];
+        # Attributes that are constant, huge, or non-numeric. hvac_action is
+        # deliberately NOT ignored: it is what binary_sensor.needs_heating keys
+        # off, so without it no heating analysis is possible after the fact.
+        ignore_attributes = [
+          "icon"
+          "source"
+          "options"
+          "editable"
+          "min"
+          "max"
+          "step"
+          "mode"
+          "marker_type"
+          "preset_modes"
+          "supported_features"
+          "supported_color_modes"
+          "effect_list"
+          "attribution"
+          "assumed_state"
+          "state_open"
+          "state_closed"
+          "writable"
+          "stateExtra"
+          "event"
+          "ip_address"
+          "device_file"
+          "unitOfMeasure"
+          "color_mode"
+          "hs_color"
+          "rgb_color"
+          "xy_color"
+          "value"
+          "writeable"
+          "dataCorrect"
+          "dayname"
+        ];
+        include = {
+          domains = [
+            "sensor"
+            "binary_sensor"
+            "light"
+            "switch"
+            "cover"
+            "climate"
+            "input_boolean"
+            "input_select"
+            "number"
+            "lock"
+            "weather"
+          ];
+        };
+        exclude = {
+          entity_globs = [
+            "sensor.clock*"
+            "sensor.date*"
+            "sensor.glances*"
+            "sensor.time*"
+            "sensor.uptime*"
+            "sensor.dwd_weather_warnings_*"
+            "weather.weatherstation"
+            "binary_sensor.*_smartphone_*"
+            "sensor.*_smartphone_*"
+            "sensor.adguard_home_*"
+            "binary_sensor.*_internet_access"
+          ];
+        };
+      };
 
       homeassistant = {
         name = "Frenches Farm Drive 49 HASS";
@@ -381,7 +517,12 @@ in
 
       recorder = {
         db_url = "postgresql://@/hass";
-        purge_keep_days = 365;
+        # Raw states cost ~60 MB/day in Postgres; a year of them is ~22 GB and
+        # nothing in the UI reaches past a few weeks. Long-term statistics live
+        # in separate tables and are NEVER purged, so year-scale trends survive
+        # regardless of this value. Full-resolution history is kept in
+        # VictoriaMetrics instead (see the influxdb block above).
+        purge_keep_days = 30;
         auto_purge = true;
         auto_repack = true;
         exclude = {

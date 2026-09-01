@@ -17,7 +17,7 @@
     ./tailscale.nix
     ./zigbee2mqtt.nix
     ./mosquitto.nix
-    ./home-assistant.nix
+    ./home-assistant
     ./ups.nix
     ./postgresql.nix
     ./geoipupdate.nix
@@ -29,6 +29,8 @@
     ./attic.nix
     ./immich.nix
     ./tailscale-r53.nix
+    ./victoriametrics.nix
+    ./grafana.nix
   ];
 
   systemd.tmpfiles.rules = [

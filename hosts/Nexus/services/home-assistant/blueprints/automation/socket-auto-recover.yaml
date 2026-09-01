@@ -1,0 +1,209 @@
+blueprint:
+  name: Socket auto-recover
+  description: >-
+    Turns a smart socket back on when it switches itself off unattended.
+
+    Written for the Tuya TS011F plugs, which occasionally drop their relay on
+    their own, but works for any switch.
+
+    Only add sockets that are meant to stay energised. Do NOT add a socket that
+    something else legitimately switches — in particular the two driven by
+    generic_hygrostat (garage dehumidifier, first floor corridor). The
+    "unattended only" check below cannot tell a hygrostat apart from a firmware
+    glitch, because neither carries a user context, so this automation would
+    fight the hygrostat every cycle.
+
+    This treats a symptom on purpose. The plug's own power_outage_memory setting
+    would be the better fix, but on these units it does not survive the power
+    cut it is meant to protect against, so recovery has to happen from outside
+    the device.
+  domain: automation
+  input:
+    sockets:
+      name: Sockets to watch
+      description: Sockets that should always stay on.
+      selector:
+        entity:
+          filter:
+            domain: switch
+          multiple: true
+
+    unattended_only:
+      name: Only recover unattended switch-offs
+      description: >-
+        Ignore switch-offs that carry a user context (someone used the UI or a
+        physical control) or a parent context (another automation did it). Leave
+        this on unless you want the socket forced on no matter who turned it off.
+      default: true
+      selector:
+        boolean:
+
+    min_on_seconds:
+      name: Minimum on-time before recovering
+      description: >-
+        If the socket was on for less than this before dropping, treat it as
+        flapping and stop rather than fighting it. A plug that flaps needs
+        replacing, not retrying.
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+          mode: box
+
+    recover_after_unavailable:
+      name: Recover a socket that comes back from unavailable already off
+      description: >-
+        A mains cut looks like on -> unavailable -> off, because these plugs lose
+        their power_outage_memory setting across the outage. But a Zigbee mesh or
+        zigbee2mqtt hiccup looks identical from Home Assistant's side, and when
+        the socket was already off before the dropout it simply re-reports off.
+        The trigger cannot tell those apart, so this is off by default.
+
+        Turn it on only for sockets that must never be off — a router, an ONT, a
+        server. For those, off is always wrong, so recovering is right whatever
+        caused it. Leave it off for sockets that are legitimately switched off
+        (a dishwasher, desk sockets), or every mesh hiccup turns them back on.
+      default: false
+      selector:
+        boolean:
+
+    startup_grace:
+      name: Ignore switch-offs just after Home Assistant starts
+      description: >-
+        Entities settle into their real states for a while after a restart.
+        Recovery is skipped until Home Assistant has been up this long.
+      default: 300
+      selector:
+        number:
+          min: 0
+          max: 1800
+          unit_of_measurement: seconds
+          mode: box
+
+    retries:
+      name: Recovery attempts
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: slider
+
+    retry_delay:
+      name: Delay between attempts
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: seconds
+          mode: box
+
+    recovered_action:
+      name: When recovered
+      description: >-
+        Runs once the socket is back on. Available variables are socket and
+        socket_name.
+      default: []
+      selector:
+        action:
+
+    failed_action:
+      name: When recovery failed
+      description: Runs when the socket is still off after every attempt.
+      default: []
+      selector:
+        action:
+
+    flapping_action:
+      name: When ignored as flapping
+      description: Runs instead of recovery when the socket dropped too soon after coming on.
+      default: []
+      selector:
+        action:
+
+# Per-socket runs must not block each other: one flapping socket should never
+# stop another from being recovered.
+# max must exceed the number of sockets watched: a mesh-wide event drops them
+# all at once, and max_exceeded silent means the surplus is discarded without a
+# log line. 25 covers every socket in the house with room to spare.
+mode: parallel
+max: 25
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    entity_id: !input sockets
+    to: "off"
+
+variables:
+  unattended_only: !input unattended_only
+  recover_after_unavailable: !input recover_after_unavailable
+  min_on_seconds: !input min_on_seconds
+  startup_grace: !input startup_grace
+  retries: !input retries
+  socket: "{{ trigger.entity_id }}"
+  socket_name: "{{ state_attr(trigger.entity_id, 'friendly_name') or trigger.entity_id }}"
+
+conditions:
+  # unknown -> off is always a restart artefact: Home Assistant re-reads the
+  # retained state and republishes it, which is not a measurement of anything.
+  # unavailable -> off is gated behind its own option, because a genuine outage
+  # and a mesh hiccup are indistinguishable here. See recover_after_unavailable.
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state is not none
+         and trigger.from_state.state != 'unknown'
+         and (trigger.from_state.state != 'unavailable'
+              or recover_after_unavailable) }}
+
+  # After a restart, entities take a while to settle into real states.
+  - condition: template
+    value_template: >-
+      {{ states('sensor.uptime') in ['unknown', 'unavailable']
+         or (now() - (states('sensor.uptime') | as_datetime)).total_seconds()
+            > startup_grace }}
+
+  # user_id set means a person acted; parent_id set means another automation
+  # did. Neither set means the device reported the change by itself, which is
+  # the only case worth recovering.
+  - condition: template
+    value_template: >-
+      {{ not unattended_only
+         or (trigger.to_state.context.user_id is none
+             and trigger.to_state.context.parent_id is none) }}
+
+actions:
+  # Only meaningful when the socket was actually on beforehand. Coming back from
+  # unavailable says nothing about how long it ran.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state.state == 'on'
+             and (trigger.to_state.last_changed
+                  - trigger.from_state.last_changed).total_seconds() < min_on_seconds }}
+    then:
+      - sequence: !input flapping_action
+      - stop: Socket dropped too soon after coming on; treating as flapping.
+
+  - repeat:
+      sequence:
+        - action: switch.turn_on
+          target:
+            entity_id: "{{ socket }}"
+        - delay:
+            seconds: !input retry_delay
+      # Bounded on purpose. An unbounded retry loop keeps commanding a socket
+      # that is unplugged or has tripped for a reason.
+      until:
+        - condition: template
+          value_template: >-
+            {{ is_state(socket, 'on') or repeat.index >= retries }}
+
+  - if:
+      - condition: template
+        value_template: "{{ is_state(socket, 'on') }}"
+    then: !input recovered_action
+    else: !input failed_action

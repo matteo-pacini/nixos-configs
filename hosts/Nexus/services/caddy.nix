@@ -140,6 +140,25 @@ in
         '';
       };
 
+      "grafana.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
+        extraConfig = ''
+          ${securityHeaders}
+
+          # LAN-only: no public A record exists, and this gates by source IP
+          # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
+          respond @external 403
+
+          # Reverse proxy to Grafana (loopback; see services.grafana settings).
+          # WebSocket support (live panels) is automatic.
+          reverse_proxy 127.0.0.1:${toString config.services.grafana.settings.server.http_port}
+        '';
+      };
+
       "photos.matteopacini.me" = {
         logFormat = ''
           output file /var/log/caddy/access.log

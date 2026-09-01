@@ -1,0 +1,100 @@
+blueprint:
+  name: Sonoff TRVZB External Temperature Sensor Sync
+  description: >
+    Forwards a temperature sensor's value to a Sonoff TRZVB via Zigbee2MQTT.
+    On each sensor update, publishes:
+      {"external_temperature_input": <number>}
+    to zigbee2mqtt/<TRV friendly name>/set (derived from the selected device).
+  domain: automation
+  input:
+    temp_sensor:
+      name: Temperature sensor
+      description: The room temperature sensor to forward to the TRV.
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+
+    trv_device:
+      name: TRV device (from Zigbee2MQTT)
+      description: Pick the TRV device; its device name (Z2M friendly name) builds the topic.
+      selector:
+        device:
+          integration: mqtt
+
+    base_topic:
+      name: Zigbee2MQTT base topic
+      description: Root topic used by Zigbee2MQTT.
+      default: zigbee2mqtt
+      selector:
+        text:
+
+    qos:
+      name: MQTT QoS
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 2
+          step: 1
+          mode: slider
+
+    retain:
+      name: Retain message
+      default: false
+      selector:
+        boolean:
+
+mode: single
+
+# Make inputs available to templates
+variables:
+  _temp_sensor: !input temp_sensor
+  _trv_device: !input trv_device
+  _base_topic: !input base_topic
+
+  # Use the device's original name (Zigbee2MQTT friendly name)
+  _friendly_name: >-
+    {{ device_attr(_trv_device, 'name') | default('', true) }}
+
+  # Final MQTT topic: base/friendly_name/set
+  _mqtt_topic: >-
+    {{ _base_topic ~ '/' ~ _friendly_name ~ '/set' }}
+
+trigger:
+  - platform: state
+    entity_id: !input temp_sensor
+    to:
+    not_from:
+      - "unknown"
+      - "unavailable"
+
+# Only publish when we have a number and a non-empty friendly name
+condition:
+  - condition: template
+    value_template: >-
+      {{ states(_temp_sensor) | float(default=None) is not none }}
+  - condition: template
+    value_template: >-
+      {{ _friendly_name | length > 0 }}
+
+action:
+  # Set temperature source to external (if not already set)
+  - service: mqtt.publish
+    data:
+      topic: "{{ _mqtt_topic }}"
+      qos: !input qos
+      retain: !input retain
+      payload: >-
+        {{ {'temperature_sensor_select': 'external'} | tojson }}
+
+  # Publish the external temperature value
+  - service: mqtt.publish
+    data:
+      topic: "{{ _mqtt_topic }}"
+      qos: !input qos
+      retain: !input retain
+      payload: >-
+        {{ {'external_temperature_input':
+              (states(_temp_sensor) | float(0))}
+           | tojson }}

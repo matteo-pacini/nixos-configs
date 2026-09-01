@@ -237,6 +237,19 @@
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
 
+            age.secrets."nexus/grafana-admin-password" = {
+              file = ./secrets/nexus/grafana-admin-password.age;
+              owner = "grafana";
+              group = "grafana";
+              mode = "770";
+            };
+            age.secrets."nexus/grafana-secret-key" = {
+              file = ./secrets/nexus/grafana-secret-key.age;
+              owner = "grafana";
+              group = "grafana";
+              mode = "770";
+            };
+
             age.secrets."nexus/zigbee2mqtt.env" = {
               file = ./secrets/nexus/zigbee2mqtt.env.age;
               owner = "zigbee2mqtt";

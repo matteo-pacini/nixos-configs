@@ -11,6 +11,13 @@
       # LAN networks
       "192.168.10.0/24" # HOME VLAN
       "192.168.20.0/24" # GUEST VLAN
+      # Tailnet. Devices here are already authenticated by Tailscale before
+      # they reach Caddy, so banning them buys nothing — and the caddy-http-auth
+      # failregex matches 403 as well as 401, which the LAN-only vhosts
+      # (grafana, photos) return by design to anyone outside the allowlist.
+      # With bantime-increment overalljails, a few mistyped passwords would
+      # otherwise lock this machine out of every service at once.
+      "100.64.0.0/10"
     ];
     bantime = "1h";
     bantime-increment = {
@@ -127,12 +134,16 @@
   # Matches 404 (Not Found) and 400 (Bad Request) responses
   # Ignores services with dedicated auth jails, and the binary cache:
   # 404s on narinfo lookups are normal operation (cache misses), not
-  # bot probing
+  # bot probing.
+  # grafana and photos are single-page apps: they probe for optional plugin
+  # assets and API endpoints on every load, so a handful of 404s is normal
+  # operation. With maxretry = 2 that was enough to ban a legitimate user
+  # mid-session.
   environment.etc."fail2ban/filter.d/caddy-botsearch.conf".text = ''
     [Definition]
     failregex = "client_ip":"<HOST>"(?:.*)"status":(?:404|400)
     datepattern = "ts":{Epoch}
-    ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n|cache)\.matteopacini\.me"
+    ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n|cache|grafana|photos)\.matteopacini\.me"
   '';
 
   # Custom filter for n8n authentication failures (JSON format)
