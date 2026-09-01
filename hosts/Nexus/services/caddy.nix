@@ -168,6 +168,42 @@ in
         '';
       };
 
+      "metrics.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
+        extraConfig = ''
+          ${securityHeaders}
+
+          # Read-only window onto VictoriaMetrics for n8n's metrics agent.
+          # n8n runs in a podman container, so it cannot reach the archive's
+          # loopback listener; this vhost is the only way in.
+          #
+          # Everything is wrapped in `route` so the directives run top to
+          # bottom. Caddy's default ordering puts reverse_proxy after respond
+          # but handle before it, and a gate that runs after the thing it
+          # guards is not a gate.
+          route {
+            # LAN, tailnet, the podman bridge, and the host itself. No public
+            # A record exists; this gates by source IP so the shared,
+            # WAN-forwarded :443 cannot reach it.
+            @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 10.89.0.0/24 127.0.0.1/8
+            respond @external 403
+
+            # VictoriaMetrics takes no credentials, so the allowlist is the
+            # only thing standing between this vhost and /api/v1/write or
+            # /api/v1/admin/tsdb/delete_series. A stray write corrupts a
+            # series the recorder can no longer rebuild: it keeps 30 days
+            # (see purge_keep_days) and this archive keeps 100 years.
+            @readonly path /api/v1/query /api/v1/query_range /api/v1/series /api/v1/labels /api/v1/label/*
+            reverse_proxy @readonly 127.0.0.1:${builtins.elemAt (builtins.split ":" config.services.victoriametrics.listenAddress) 2}
+
+            respond "victoriametrics: read-only proxy" 403
+          }
+        '';
+      };
+
       "photos.matteopacini.me" = {
         logFormat = ''
           output file /var/log/caddy/access.log
