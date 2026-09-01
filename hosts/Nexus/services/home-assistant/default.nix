@@ -111,6 +111,9 @@ in
       "volvo"
       # MCP server (exposes Assist-exposed entities at /api/mcp)
       "mcp_server"
+      # Subscribes to a remote .ics feed. Configured through the UI, so the
+      # feed URL and its API key live in .storage and stay out of this repo.
+      "remote_calendar"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
