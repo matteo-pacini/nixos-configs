@@ -159,6 +159,7 @@ in
       mushroom
       mini-graph-card
       button-card
+      clock-weather-card
       # In nixpkgs master but not yet in our pin; drop this inline copy
       # once the pin advances past NixOS/nixpkgs#525127.
       (pkgs.buildNpmPackage rec {
