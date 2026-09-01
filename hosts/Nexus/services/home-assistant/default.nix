@@ -214,6 +214,17 @@ in
 
         passthru.entrypoint = "trashcard.js";
       })
+      # Hand-written, no build step: a single file served straight out of the
+      # merged module dir. Ported from a Claude Design document, so there is no
+      # upstream to track. Only the renderer lives here — the budget figures it
+      # draws are configured on the card in the UI and stay in .storage, out of
+      # this public repository.
+      # `version` is the ?cache-buster in the generated resource URL — bump it
+      # on every edit to the .js or browsers keep serving the old card.
+      (pkgs.runCommandLocal "budget-sankey-card" {
+        version = "1";
+        passthru.entrypoint = "budget-sankey-card.js";
+      } "install -Dm444 ${./lovelace/budget-sankey-card.js} $out/budget-sankey-card.js")
     ];
     extraPackages =
       python3Packages: with python3Packages; [
