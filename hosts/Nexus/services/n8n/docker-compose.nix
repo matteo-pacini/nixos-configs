@@ -133,7 +133,7 @@
       ExecStop = "podman network rm -f nexus-n8n_default";
     };
     script = ''
-      podman network inspect nexus-n8n_default || podman network create nexus-n8n_default
+      podman network inspect nexus-n8n_default || podman network create --subnet=${import ./bridge-subnet.nix} nexus-n8n_default
     '';
     partOf = [ "podman-compose-nexus-n8n-root.target" ];
     wantedBy = [ "podman-compose-nexus-n8n-root.target" ];

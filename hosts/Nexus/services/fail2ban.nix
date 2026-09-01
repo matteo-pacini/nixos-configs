@@ -1,4 +1,8 @@
 { config, ... }:
+let
+  # n8n's podman network — see the file for why this is not a literal.
+  podmanSubnet = import ./n8n/bridge-subnet.nix;
+in
 {
   services.fail2ban = {
     enable = true;
@@ -28,7 +32,7 @@
       # duration or a bad step with 400 — which caddy-botsearch bans on at
       # maxretry 2. Without this the agent firewalls itself out on its second
       # bad guess, and overalljails escalates that to 64 days.
-      "10.89.0.0/24"
+      podmanSubnet
     ];
     bantime = "1h";
     bantime-increment = {

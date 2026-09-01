@@ -1,5 +1,8 @@
 { config, pkgs, ... }:
 let
+  # n8n's podman network — see the file for why this is not a literal.
+  podmanSubnet = import ./n8n/bridge-subnet.nix;
+
   # Security headers applied to all virtual hosts
   securityHeaders = ''
     header {
@@ -190,7 +193,7 @@ in
             # record is ever added it should CNAME to nexus-ts like grafana,
             # and this source-IP gate stays the thing that actually enforces
             # reachability on the shared, WAN-forwarded :443.
-            @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 10.89.0.0/24 127.0.0.1/8
+            @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
             respond @external 403
 
             # VictoriaMetrics takes no credentials, so the allowlist is the
