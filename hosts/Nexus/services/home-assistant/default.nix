@@ -163,6 +163,31 @@ in
       mini-graph-card
       button-card
       clock-weather-card
+      # Not in nixpkgs at all. Ships two chunks: the card lazily imports
+      # ./editor.js, so both must land in the merged lovelace module dir.
+      # No other module here ships an editor.js, so the buildEnv merge is safe.
+      (pkgs.buildNpmPackage rec {
+        pname = "calendar-card-pro";
+        version = "4.0.0";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "alexpfau";
+          repo = "calendar-card-pro";
+          tag = "v${version}";
+          hash = "sha256-ZwCJZHRoyie/WkwsNATD5iDlDqJOIPg35C/gwCOap0I=";
+        };
+
+        npmDepsHash = "sha256-+HILd9NxNmMoW6VkDdUW4CGQ4xAUjQ0+V5qMHyafmow=";
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir $out
+          cp dist/calendar-card-pro.js dist/editor.js $out/
+
+          runHook postInstall
+        '';
+      })
       # In nixpkgs master but not yet in our pin; drop this inline copy
       # once the pin advances past NixOS/nixpkgs#525127.
       (pkgs.buildNpmPackage rec {
