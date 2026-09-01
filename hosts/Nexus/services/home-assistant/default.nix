@@ -114,7 +114,12 @@ in
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
-      smartthinq-sensors
+      # Patched so a failed setup raises ConfigEntryNotReady instead of
+      # reporting success. See the patch header for why upstream stopped doing
+      # that and why the reason does not apply here.
+      (smartthinq-sensors.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ./patches/smartthinq-sensors-retry-setup.patch ];
+      }))
       octopus_energy
       localtuya
       (pkgs.buildHomeAssistantComponent rec {

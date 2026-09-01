@@ -1,0 +1,46 @@
+Restore ConfigEntryNotReady on setup failure.
+
+Upstream raised ConfigEntryNotReady here for years, until PR #965
+("Configurable scan interval", first released in v0.43.0) replaced it with
+`return True`. That PR's goal was to survive LG's 24 hour ban for polling more
+often than every 300 s: keeping the entry loaded leaves number.scan_interval
+usable, so a banned user can lower their polling rate without editing YAML.
+
+That trade does not apply here. LG returns UseOfficialAPIError transiently at
+startup and an immediate reload of the same entry succeeds, so this account is
+not banned. With `return True` the entry is marked loaded and Home Assistant
+never retries, which left every washer entity unavailable from the 02:02 nightly
+restart until the next one: seven outages of exactly 24.0 h in 30 days, 25% of
+the month. Raising ConfigEntryNotReady restores the built in retry with
+exponential backoff and recovers within minutes instead.
+
+Cost of this patch: while the entry is retrying, number.scan_interval does not
+exist. Our interval is already the 300 s default that PR #965 made safe, and the
+same value stays editable through the integration's options flow, so we do not
+need the entity to be present during an outage.
+
+Revisit on every version bump: if upstream reinstates the retry, or ties it to
+an option, drop this patch.
+
+--- a/custom_components/smartthinq_sensors/__init__.py
++++ b/custom_components/smartthinq_sensors/__init__.py
+@@ -284,9 +284,7 @@
+             _LOGGER.warning(
+                 "Connection not available. ThinQ platform not ready", exc_info=exc
+             )
+-        # Keep the entry loaded so the number entity is usable and the user
+-        # can adjust scan_interval; reload the entry once LG is reachable.
+-        return True
++        raise ConfigEntryNotReady("ThinQ platform not ready") from exc
+
+     if not client.has_devices:
+         _LOGGER.error("No ThinQ devices found. Component setup aborted")
+@@ -304,7 +302,7 @@
+                 "Connection not available. ThinQ platform not ready", exc_info=exc
+             )
+         await client.close()
+-        return True
++        raise ConfigEntryNotReady("ThinQ platform not ready") from exc
+
+     if discovered_devices is None:
+         await client.close()
