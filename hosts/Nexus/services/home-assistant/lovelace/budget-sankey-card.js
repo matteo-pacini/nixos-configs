@@ -163,6 +163,11 @@ function layout(spec, key, W, H, rootColor, hover, showAmounts) {
       id: l.id,
       top: pctY(it.y),
       name: l.name,
+      // Carries the group colour at a fixed size. The leaf's own node rect is
+      // as short as 2.5px for small amounts, and spread() pushes labels off
+      // their group's vertical band, so without this a label can sit level
+      // with a neighbouring group's chip and look like it belongs to it.
+      dot: l.color,
       amount: showAmounts ? fmt(l.v) : "",
       tip: spec.groups[l.g].name + " → " + l.name + "  " + fmt(l.v),
       fill: hover ? (rel ? VIZ.textPrimary : VIZ.textMuted) : VIZ.textSecondary,
@@ -290,6 +295,7 @@ class BudgetSankeyCard extends HTMLElement {
           transition:color 140ms cubic-bezier(.2,.8,.2,1);
         }
         .lab span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .lab em { flex:0 0 auto; width:7px; height:7px; border-radius:2px; align-self:center; }
         .lab i { font:500 11px ${FONT_MONO}; color:${VIZ.textMuted}; font-style:normal; font-variant-numeric:tabular-nums; flex:0 0 auto; }
         @media (max-width: 600px) { .rail { width:min(140px,42%); flex-basis:min(140px,42%); } }
       </style>
@@ -328,7 +334,7 @@ class BudgetSankeyCard extends HTMLElement {
             ${l.labels
               .map(
                 (lb) =>
-                  `<div class="lab" data-id="${lb.id}" title="${esc(lb.tip)}" style="top:${lb.top};color:${lb.fill}"><span>${esc(
+                  `<div class="lab" data-id="${lb.id}" title="${esc(lb.tip)}" style="top:${lb.top};color:${lb.fill}"><em style="background:${lb.dot}"></em><span>${esc(
                     lb.name
                   )}</span><i>${lb.amount}</i></div>`
               )
