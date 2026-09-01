@@ -22,6 +22,7 @@ const VIZ = {
   textSecondary: "#b9bcd0",
   textMuted: "#6272a4",
   moneyOut: "#ff5555",
+  moneyIn: "#50fa7b",
   pending: "#ffb86c",
   accent: "#bd93f9",
   shadow1: "0 1px 2px rgba(15,16,22,.5)",
@@ -34,8 +35,12 @@ const FONT_DISPLAY = '"Space Grotesk","Helvetica Neue",sans-serif';
 const FONT_BODY = '"IBM Plex Sans","Helvetica Neue",sans-serif';
 const FONT_MONO = '"JetBrains Mono","SFMono-Regular",ui-monospace,monospace';
 
+// Sign goes outside the symbol: -£417.33, not £-417.33. Only "left over" can
+// ever be negative.
 const fmt = (v) =>
-  "£" + v.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  (v < 0 ? "-" : "") +
+  "£" +
+  Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Accepts a palette token ("viz-5"), a semantic name ("money-out"), or any raw
 // CSS colour. Tokens keep the budget YAML free of hex codes.
@@ -233,6 +238,9 @@ class BudgetSankeyCard extends HTMLElement {
       });
       return { name: g.name, color: resolveColor(g.color), items };
     });
+    if (config.income != null && !Number.isFinite(Number(config.income))) {
+      throw new Error("budget-sankey-card: `income` must be a number");
+    }
     this._config = Object.assign({}, config, { groups });
     this._hover = null;
     this._render();
@@ -256,6 +264,23 @@ class BudgetSankeyCard extends HTMLElement {
     const l = layout(spec, c.key || "b", W, H, accent, this._hover, showAmounts);
     if (!l) return;
 
+    // With `income` set the header becomes in / out / left; without it, the
+    // single total it has always shown. The yearly card omits income, so it is
+    // unaffected.
+    const income = c.income == null ? null : Number(c.income);
+    const stats =
+      income == null
+        ? [{ label: c.total_label || "TOTAL", value: fmt(l.total), color: accent }]
+        : [
+            { label: c.income_label || "IN", value: fmt(income), color: VIZ.moneyIn },
+            { label: c.total_label || "OUT", value: fmt(l.total), color: accent },
+            {
+              label: c.left_label || "LEFT",
+              value: fmt(income - l.total),
+              color: income - l.total >= 0 ? VIZ.moneyIn : VIZ.moneyOut,
+            },
+          ];
+
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
@@ -274,8 +299,10 @@ class BudgetSankeyCard extends HTMLElement {
         .head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:16px; }
         .title { margin:0; font:600 20px/1.3 ${FONT_DISPLAY}; letter-spacing:-.01em; }
         .sub { margin:4px 0 0; font:400 12px/1.3 ${FONT_BODY}; color:${VIZ.textMuted}; }
+        .stats { display:flex; gap:20px; flex-wrap:wrap; justify-content:flex-end; }
         .totlab { font:500 11px ${FONT_MONO}; letter-spacing:.06em; color:${VIZ.textMuted}; margin-bottom:4px; text-align:right; }
         .tot { font:700 28px ${FONT_MONO}; letter-spacing:-.02em; color:${accent}; font-variant-numeric:tabular-nums; text-align:right; }
+        .stats .tot.sm { font-size:22px; }
         .body { display:flex; align-items:stretch; width:100%; }
         .plot { position:relative; flex:1; min-width:0; }
         svg { display:block; }
@@ -305,10 +332,14 @@ class BudgetSankeyCard extends HTMLElement {
             <h2 class="title">${esc(c.title || "Budget")}</h2>
             ${c.subtitle ? `<p class="sub">${esc(c.subtitle)}</p>` : ""}
           </div>
-          <div>
-            <div class="totlab">${esc(c.total_label || "TOTAL")}</div>
-            <div class="tot">${fmt(l.total)}</div>
-          </div>
+          <div class="stats">${stats
+            .map(
+              (s) =>
+                `<div><div class="totlab">${esc(s.label)}</div><div class="tot${
+                  stats.length > 1 ? " sm" : ""
+                }" style="color:${s.color}">${s.value}</div></div>`
+            )
+            .join("")}</div>
         </div>
         <div class="body">
           <div class="plot">
