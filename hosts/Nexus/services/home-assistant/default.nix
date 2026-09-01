@@ -52,6 +52,20 @@ in
 
   services.home-assistant = {
     enable = true;
+
+    # Symlinked into ${configDir}/blueprints/automation. Blueprints only supply
+    # the template; each automation built from one is still created in the UI
+    # and lives in .storage.
+    # NOTE: these land flat in blueprints/automation/, whereas the copies HA
+    # already has sit under blueprints/automation/matteo-pacini/. Automations
+    # built from the old path keep working until they are repointed; nothing
+    # here deletes those files (the module only reaps store symlinks at depth 2).
+    blueprints.automation = [
+      ./blueprints/automation/socket-auto-recover.yaml
+      ./blueprints/automation/door_warning_blueprint.yaml
+      ./blueprints/automation/sonoff_trvzb_external_temp_sync.yaml
+    ];
+
     extraComponents = [
       # Components required to complete the onboarding
       "analytics"

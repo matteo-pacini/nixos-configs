@@ -17,7 +17,7 @@
     ./tailscale.nix
     ./zigbee2mqtt.nix
     ./mosquitto.nix
-    ./home-assistant.nix
+    ./home-assistant
     ./ups.nix
     ./postgresql.nix
     ./geoipupdate.nix

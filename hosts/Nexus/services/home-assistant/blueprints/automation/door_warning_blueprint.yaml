@@ -1,0 +1,91 @@
+blueprint:
+  name: Door Left Open – Repeating Notification (Matteo & Debora)
+  description: >
+    Sends repeating notifications to Matteo's and Debora's phones while
+    the selected door sensor is open. Message uses the sensor's friendly name.
+  domain: automation
+
+  input:
+    door_sensor:
+      name: Door sensor
+      description: Binary sensor for the door contact.
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class:
+            - door
+            - opening
+
+    open_delay:
+      name: Time the door must stay open before notifying
+      description: Duration the door must be open before notifications start.
+      default:
+        minutes: 2
+      selector:
+        duration: {}
+
+    repeat_delay:
+      name: Time between repeats
+      description: How long to wait before sending the reminder again.
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 3600
+          unit_of_measurement: seconds
+          mode: box
+
+    max_notifications:
+      name: Maximum notifications
+      description: >-
+        Stop after this many reminders for a single opening. 0 repeats for as
+        long as the door stays open.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+
+mode: single
+
+trigger:
+  - platform: state
+    entity_id: !input door_sensor
+    to: "on"
+    for: !input open_delay
+
+variables:
+  door_sensor: !input door_sensor
+  door_name: "{{ state_attr(door_sensor, 'friendly_name') or door_sensor }}"
+  max_notifications: !input max_notifications
+
+condition: []
+
+action:
+  - repeat:
+      sequence:
+        # Matteo's Pixel 9 Pro Fold
+        - service: notify.mobile_app_pixel_9_pro_fold
+          data:
+            title: "Warning"
+            message: "{{ door_name }} is open"
+
+        # Debora's iPhone
+        - service: notify.mobile_app_iphone_15_di_debora
+          data:
+            title: "Warning"
+            message: "{{ door_name }} is open"
+
+        - delay:
+            seconds: !input repeat_delay
+
+      # Must exit on anything that is not "on", not just on "off". These sensors
+      # come from SmartThings, which goes unavailable from time to time; testing
+      # for "off" alone never matches "unavailable", so a door open when the
+      # integration dropped would notify every repeat_delay for ever.
+      until:
+        - condition: template
+          value_template: >-
+            {{ not is_state(door_sensor, 'on')
+               or (max_notifications > 0 and repeat.index >= max_notifications) }}
