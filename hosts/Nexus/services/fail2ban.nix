@@ -11,13 +11,24 @@
       # LAN networks
       "192.168.10.0/24" # HOME VLAN
       "192.168.20.0/24" # GUEST VLAN
-      # Tailnet. Devices here are already authenticated by Tailscale before
-      # they reach Caddy, so banning them buys nothing — and the caddy-http-auth
-      # failregex matches 403 as well as 401, which the LAN-only vhosts
-      # (grafana, photos) return by design to anyone outside the allowlist.
-      # With bantime-increment overalljails, a few mistyped passwords would
-      # otherwise lock this machine out of every service at once.
+      # Tailnet, both families. Devices here are already authenticated by
+      # Tailscale before they reach Caddy, so banning them buys nothing — and
+      # the caddy-http-auth failregex matches 403 as well as 401, which the
+      # LAN-only vhosts (grafana, photos, n8n, metrics) return by design to
+      # anyone outside the allowlist. With bantime-increment overalljails, a
+      # few mistyped passwords would otherwise lock this machine out of every
+      # service at once. Caddy listens dual-stack and every Tailscale node
+      # holds an address in both ranges, so exempting only the v4 one leaves
+      # half the exemption unwritten.
       "100.64.0.0/10"
+      "fd7a:115c:a1e0::/48"
+      # Podman bridge. n8n runs here and reaches Caddy like any other client,
+      # so its requests are subject to both caddy jails. The metrics agent
+      # writes MetricsQL, and VictoriaMetrics answers a malformed query, a bad
+      # duration or a bad step with 400 — which caddy-botsearch bans on at
+      # maxretry 2. Without this the agent firewalls itself out on its second
+      # bad guess, and overalljails escalates that to 64 days.
+      "10.89.0.0/24"
     ];
     bantime = "1h";
     bantime-increment = {
@@ -139,11 +150,15 @@
   # assets and API endpoints on every load, so a handful of 404s is normal
   # operation. With maxretry = 2 that was enough to ban a legitimate user
   # mid-session.
+  # metrics answers a malformed MetricsQL query with 400, which is a routine
+  # result of an agent composing a query, not bot probing. The podman ignoreIP
+  # entry already covers the only client that reaches it, so this is the
+  # second lock on the same door.
   environment.etc."fail2ban/filter.d/caddy-botsearch.conf".text = ''
     [Definition]
     failregex = "client_ip":"<HOST>"(?:.*)"status":(?:404|400)
     datepattern = "ts":{Epoch}
-    ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n|cache|grafana|photos)\.matteopacini\.me"
+    ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n|cache|grafana|photos|metrics)\.matteopacini\.me"
   '';
 
   # Custom filter for n8n authentication failures (JSON format)
