@@ -185,9 +185,11 @@ in
           # but handle before it, and a gate that runs after the thing it
           # guards is not a gate.
           route {
-            # LAN, tailnet, the podman bridge, and the host itself. No public
-            # A record exists; this gates by source IP so the shared,
-            # WAN-forwarded :443 cannot reach it.
+            # LAN, tailnet, the podman bridge, and the host itself. Nothing
+            # resolves this name today except n8n's --add-host entry; if a
+            # record is ever added it should CNAME to nexus-ts like grafana,
+            # and this source-IP gate stays the thing that actually enforces
+            # reachability on the shared, WAN-forwarded :443.
             @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 10.89.0.0/24 127.0.0.1/8
             respond @external 403
 
