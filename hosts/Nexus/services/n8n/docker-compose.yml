@@ -57,4 +57,15 @@ services:
       - "home.matteopacini.me:192.168.10.14"
       - "n8n.matteopacini.me:192.168.10.14"
       - "jellyfin.matteopacini.me:192.168.10.14"
+      # Read-only VictoriaMetrics proxy for the metrics agent (see caddy.nix).
+      - "metrics.matteopacini.me:192.168.10.14"
 
+
+networks:
+  # Pinned so the subnet survives the teardown/recreate cycle. caddy.nix and
+  # fail2ban.nix both depend on the value; it lives in bridge-subnet.nix and
+  # must be kept in step with this block if compose2nix is ever re-run.
+  default:
+    ipam:
+      config:
+        - subnet: 10.89.0.0/24
