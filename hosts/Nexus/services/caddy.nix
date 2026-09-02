@@ -215,7 +215,17 @@ in
           format json
         '';
         extraConfig = ''
-          ${securityHeaders}
+          header {
+            -Server  # Hide Caddy version (security hardening)
+            X-Content-Type-Options nosniff
+            X-Frame-Options SAMEORIGIN
+            # same-origin rather than the shared no-referrer: under
+            # no-referrer Chrome sends "Origin: null" on form POSTs, and
+            # Django rejects the Paperless login with "Origin checking
+            # failed". Cross-origin requests still send no referrer.
+            Referrer-Policy same-origin
+            Strict-Transport-Security "max-age=31536000; includeSubDomains"
+          }
 
           # LAN + tailnet only. The name CNAMEs to nexus-ts, a 100.x address
           # nothing off-tailnet can route, and this source-IP gate is what
