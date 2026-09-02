@@ -227,10 +227,12 @@ in
             Strict-Transport-Security "max-age=31536000; includeSubDomains"
           }
 
-          # LAN + tailnet only. The name CNAMEs to nexus-ts, a 100.x address
-          # nothing off-tailnet can route, and this source-IP gate is what
-          # keeps the shared, WAN-forwarded :443 off the document archive.
-          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
+          # LAN, tailnet and the podman bridge. The name CNAMEs to nexus-ts, a
+          # 100.x address nothing off-tailnet can route, and this source-IP
+          # gate is what keeps the shared, WAN-forwarded :443 off the document
+          # archive. n8n's document agent reaches Paperless through this vhost
+          # and arrives from the bridge, not a LAN address.
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
           respond @external 403
 
           # Documents are uploaded whole through the web UI; the ceiling has

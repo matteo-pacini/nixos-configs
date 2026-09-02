@@ -59,6 +59,8 @@ services:
       - "jellyfin.matteopacini.me:192.168.10.14"
       # Read-only VictoriaMetrics proxy for the metrics agent (see caddy.nix).
       - "metrics.matteopacini.me:192.168.10.14"
+      # Paperless behind Caddy; the document agent's tools call it by name.
+      - "docs.matteopacini.me:192.168.10.14"
 
 
 networks:
