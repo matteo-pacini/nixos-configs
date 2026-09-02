@@ -209,6 +209,32 @@ in
         '';
       };
 
+      "docs.matteopacini.me" = {
+        logFormat = ''
+          output file /var/log/caddy/access.log
+          format json
+        '';
+        extraConfig = ''
+          ${securityHeaders}
+
+          # LAN + tailnet only. The name CNAMEs to nexus-ts, a 100.x address
+          # nothing off-tailnet can route, and this source-IP gate is what
+          # keeps the shared, WAN-forwarded :443 off the document archive.
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
+          respond @external 403
+
+          # Documents are uploaded whole through the web UI; the ceiling has
+          # to clear the largest scan.
+          request_body {
+            max_size 1GB
+          }
+
+          # Reverse proxy to Paperless (port tracks services.paperless.port).
+          # WebSocket (/ws/status consumer progress) is automatic.
+          reverse_proxy 127.0.0.1:${toString config.services.paperless.port}
+        '';
+      };
+
       "photos.matteopacini.me" = {
         logFormat = ''
           output file /var/log/caddy/access.log

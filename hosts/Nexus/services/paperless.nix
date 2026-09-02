@@ -37,6 +37,9 @@
     enable = true;
     address = "0.0.0.0";
     port = 28981;
+    # Sets PAPERLESS_URL, without which Django rejects the login POST's CSRF
+    # origin when reached through Caddy. configureNginx stays off.
+    domain = "docs.matteopacini.me";
     mediaDir = "/diskpool/paperless";
 
     # Database configuration
