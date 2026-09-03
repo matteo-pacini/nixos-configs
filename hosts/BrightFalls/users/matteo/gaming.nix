@@ -9,17 +9,6 @@
     '';
   };
 
-  home.file."scripts/pad-battery.py" = {
-    executable = true;
-    text =
-      builtins.replaceStrings
-        [ "#!/usr/bin/env python3" ]
-        [
-          "#!${pkgs.python3}/bin/python3"
-        ]
-        (builtins.readFile ./scripts/pad-battery.py);
-  };
-
   home.file.".config/MangoHud/MangoHud.conf".source = ./MangoHud.conf;
 
   home.packages = [
