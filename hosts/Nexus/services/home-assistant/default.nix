@@ -222,7 +222,7 @@ in
       # `version` is the ?cache-buster in the generated resource URL — bump it
       # on every edit to the .js or browsers keep serving the old card.
       (pkgs.runCommandLocal "budget-sankey-card" {
-        version = "4";
+        version = "5";
         passthru.entrypoint = "budget-sankey-card.js";
       } "install -Dm444 ${./lovelace/budget-sankey-card.js} $out/budget-sankey-card.js")
     ];

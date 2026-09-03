@@ -302,23 +302,27 @@ class BudgetSankeyCard extends HTMLElement {
         /* Container, not viewport: the header stacks whenever the card itself
            is narrow — on a phone, and equally in a narrow desktop column. */
         :host { display: block; container-type: inline-size; }
+        /* Chrome comes from the active Home Assistant theme, not the Dracula
+           palette below: the card sits among stock ha-cards, so a hardcoded
+           surface reads as a foreign panel. Only the sankey itself is Dracula.
+           Fallbacks match HA's own defaults for when a theme omits a var. */
         .card {
-          background: ${VIZ.card};
-          border: 1px solid ${VIZ.borderSubtle};
-          border-top: 2px solid ${accent};
-          border-radius: 8px;
-          box-shadow: ${VIZ.shadow1};
+          background: var(--ha-card-background, var(--card-background-color, #1c1c1c));
+          border: var(--ha-card-border-width, 1px) solid
+                  var(--ha-card-border-color, var(--divider-color, #474747));
+          border-radius: var(--ha-card-border-radius, 12px);
+          box-shadow: var(--ha-card-box-shadow, none);
           padding: 18px 20px 22px;
-          color: ${VIZ.textPrimary};
+          color: var(--primary-text-color, ${VIZ.textPrimary});
           font: 400 14px/1.55 ${FONT_BODY};
           box-sizing: border-box;
           overflow: hidden;
         }
         .head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:16px; }
         .title { margin:0; font:600 20px/1.3 ${FONT_DISPLAY}; letter-spacing:-.01em; }
-        .sub { margin:4px 0 0; font:400 12px/1.3 ${FONT_BODY}; color:${VIZ.textMuted}; }
+        .sub { margin:4px 0 0; font:400 12px/1.3 ${FONT_BODY}; color:var(--secondary-text-color, ${VIZ.textMuted}); }
         .stats { display:flex; gap:20px; flex-wrap:wrap; justify-content:flex-end; }
-        .totlab { font:500 11px ${FONT_MONO}; letter-spacing:.06em; color:${VIZ.textMuted}; margin-bottom:4px; text-align:right; }
+        .totlab { font:500 11px ${FONT_MONO}; letter-spacing:.06em; color:var(--secondary-text-color, ${VIZ.textMuted}); margin-bottom:4px; text-align:right; }
         .tot { font:700 28px ${FONT_MONO}; letter-spacing:-.02em; color:${accent}; font-variant-numeric:tabular-nums; text-align:right; }
         .stats .tot.sm { font-size:22px; }
         .body { display:flex; align-items:stretch; width:100%; }
