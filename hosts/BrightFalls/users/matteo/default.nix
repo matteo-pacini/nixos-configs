@@ -59,7 +59,6 @@
       bottles
       pcsx2
       reshade-steam-proton
-      optiscaler-client
       heroic
       # Path of Exile 2
       exiled-exchange-2
