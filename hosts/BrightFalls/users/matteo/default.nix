@@ -69,6 +69,7 @@
 
   custom.nvf.enable = true;
   custom.ghostty.enable = true;
+  custom.nushell.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
   custom.claude-code.chrome.enable = true;

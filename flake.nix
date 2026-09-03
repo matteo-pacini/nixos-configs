@@ -135,6 +135,7 @@
           ./modules/home-manager/ssh.nix
           ./modules/home-manager/atuin.nix
           ./modules/home-manager/zsh.nix
+          ./modules/home-manager/nushell.nix
           ./modules/home-manager/shell-tools.nix
           ./modules/home-manager/nvf.nix
           ./modules/home-manager/vscode.nix

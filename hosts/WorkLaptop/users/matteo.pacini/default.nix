@@ -30,6 +30,14 @@
 
   custom.nvf.enable = true;
   custom.vscode.enable = true;
+  custom.nushell = {
+    enable = true;
+    darwinAliases = true;
+    extraAliases = {
+      c = "${lib.getExe config.programs.vscode.package}";
+      cr = "${lib.getExe config.programs.vscode.package} -r";
+    };
+  };
   custom.starship.enable = true;
   custom.ghostty.enable = true;
   custom.claude-code.enable = true;

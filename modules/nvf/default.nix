@@ -247,6 +247,7 @@
         };
       };
       bash.enable = true;
+      nu.enable = true;
       markdown.enable = true;
       typescript.enable = true;
       go.enable = true;
