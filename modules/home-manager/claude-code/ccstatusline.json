@@ -55,39 +55,106 @@
         "type": "total-speed",
         "color": "hex:282A36",
         "backgroundColor": "hex:8BE9FD"
+      },
+      {
+        "id": "cache-timer-01",
+        "type": "cache-timer",
+        "color": "hex:282A36",
+        "backgroundColor": "hex:FFB86C",
+        "metadata": {
+          "ttlSeconds": "3600"
+        }
       }
     ],
     [
       {
-        "id": "78b190b4-ed3d-4882-9f1d-f538638ef572",
-        "type": "session-usage",
+        "id": "lbl-session",
+        "type": "custom-text",
+        "customText": "S ",
+        "merge": "no-padding",
         "color": "hex:282A36",
         "backgroundColor": "hex:FF79C6",
         "metadata": {
-          "display": "compact"
+          "hide": "merge-target-hidden"
+        }
+      },
+      {
+        "id": "78b190b4-ed3d-4882-9f1d-f538638ef572",
+        "type": "session-usage",
+        "rawValue": true,
+        "numberFormat": {
+          "style": "whole"
+        },
+        "color": "hex:282A36",
+        "backgroundColor": "hex:FF79C6"
+      },
+      {
+        "id": "lbl-weekly",
+        "type": "custom-text",
+        "customText": "W ",
+        "merge": "no-padding",
+        "color": "hex:282A36",
+        "backgroundColor": "hex:BD93F9",
+        "metadata": {
+          "hide": "merge-target-hidden"
         }
       },
       {
         "id": "3a320f3c-c0da-4482-9bee-6fba9f507498",
         "type": "weekly-usage",
+        "rawValue": true,
+        "numberFormat": {
+          "style": "whole"
+        },
         "color": "hex:282A36",
-        "backgroundColor": "hex:BD93F9",
+        "backgroundColor": "hex:BD93F9"
+      },
+      {
+        "id": "lbl-opus",
+        "type": "custom-text",
+        "customText": "O ",
+        "merge": "no-padding",
+        "color": "hex:282A36",
+        "backgroundColor": "hex:8BE9FD",
         "metadata": {
-          "display": "compact"
+          "hide": "merge-target-hidden"
+        }
+      },
+      {
+        "id": "9c1d4b77-0a52-4f38-9a6e-2b8c5d3e1f04",
+        "type": "weekly-opus-usage",
+        "rawValue": true,
+        "numberFormat": {
+          "style": "whole"
+        },
+        "color": "hex:282A36",
+        "backgroundColor": "hex:8BE9FD"
+      },
+      {
+        "id": "lbl-fable",
+        "type": "custom-text",
+        "customText": "F ",
+        "merge": "no-padding",
+        "color": "hex:282A36",
+        "backgroundColor": "hex:FF92DF",
+        "metadata": {
+          "hide": "merge-target-hidden"
         }
       },
       {
         "id": "b7e1c4a2-9d3f-4e6a-8c21-1f5a2d9e7b40",
         "type": "fable-weekly-usage",
+        "rawValue": true,
+        "numberFormat": {
+          "style": "whole"
+        },
         "color": "hex:282A36",
-        "backgroundColor": "hex:FF92DF",
-        "metadata": {
-          "display": "compact"
-        }
+        "backgroundColor": "hex:FF92DF"
       },
       {
         "id": "5372d63d-a8c2-4e28-b47d-57b21cdccbbb",
         "type": "reset-timer",
+        "rawValue": true,
         "color": "hex:F8F8F2",
         "backgroundColor": "hex:44475A",
         "metadata": {
