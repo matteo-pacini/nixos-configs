@@ -138,6 +138,22 @@ in
       programs.firefox.profiles.default = {
         userChrome = ''
           @import "firefox-gnome-theme/userChrome.css";
+
+          /* The theme forces --panel-background-color on every <menupopup> and its
+             `menulist > menupopup` exception reverts the element's background but not
+             that variable. Popups paint through ::part(content), which reads the
+             variable, so <select> dropdowns get the GNOME menu background behind
+             combobox-coloured option text and turn unreadable.
+
+             .in-menulist is set by Firefox on menulist popups (toolkit menupopup.js),
+             and is the hook upstream is converging on:
+             https://github.com/rafaelmardojai/firefox-gnome-theme/pull/1108
+             Drop this once that lands; until then it is a no-op against a fixed theme. */
+          menupopup.in-menulist {
+            --panel-background: revert !important;
+            --panel-background-color: revert !important;
+            --panel-text-color: revert !important;
+          }
         '';
 
         userContent = ''
