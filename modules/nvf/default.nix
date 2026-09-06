@@ -158,9 +158,16 @@
       };
     };
     autocomplete.nvim-cmp.enable = true;
-    assistant.copilot = {
+    formatter.conform-nvim = {
       enable = true;
-      cmp.enable = true;
+      setupOpts = {
+        formatters.nufmt = {
+          command = lib.getExe pkgs.nufmt;
+          args = [ "--stdin" ];
+          stdin = true;
+        };
+        formatters_by_ft.nu = [ "nufmt" ];
+      };
     };
     spellcheck = {
       enable = true;
