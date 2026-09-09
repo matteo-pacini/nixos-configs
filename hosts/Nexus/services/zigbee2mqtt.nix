@@ -1,4 +1,9 @@
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 {
   systemd.services.zigbee2mqtt = {
     serviceConfig = {
@@ -37,6 +42,13 @@
 
       advanced = {
         transmit_power = 20;
+      };
+
+      # Without this, entities keep serving their last reported value forever,
+      # so a stale reading is indistinguishable from a fresh one downstream.
+      # Defaults: mains devices marked offline after 10 min, battery after 1500.
+      availability = {
+        enabled = true;
       };
 
       homeassistant = {
