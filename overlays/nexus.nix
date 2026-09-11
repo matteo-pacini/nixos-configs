@@ -18,7 +18,7 @@
     jellyfin = super.jellyfin.override ({
       jellyfin-ffmpeg = optimizedForNexus (
         super.jellyfin-ffmpeg.override ({
-          ffmpeg_7-full = super.ffmpeg_7-full.override ({
+          ffmpeg_8-full = super.ffmpeg_8-full.override ({
             withHeadlessDeps = true;
             withNvcodec = true;
           });
