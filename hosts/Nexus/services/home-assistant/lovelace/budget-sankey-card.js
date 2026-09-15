@@ -255,7 +255,27 @@ class BudgetSankeyCard extends HTMLElement {
     if (config.income != null && !Number.isFinite(Number(config.income))) {
       throw new Error("budget-sankey-card: `income` must be a number");
     }
-    this._config = Object.assign({}, config, { groups });
+    // `incomes` lists each earner, in the same pair-or-mapping form as items;
+    // the header then shows every earner plus their combined total. It replaces
+    // `income` rather than adding to it, so setting both is ambiguous.
+    let incomes = null;
+    if (config.incomes != null) {
+      if (config.income != null) {
+        throw new Error("budget-sankey-card: set `income` or `incomes`, not both");
+      }
+      if (!Array.isArray(config.incomes) || !config.incomes.length) {
+        throw new Error("budget-sankey-card: `incomes` must be a non-empty list");
+      }
+      incomes = config.incomes.map((it) => {
+        const name = Array.isArray(it) ? it[0] : it.name;
+        const amount = Number(Array.isArray(it) ? it[1] : it.amount);
+        if (!name || !Number.isFinite(amount)) {
+          throw new Error("budget-sankey-card: every entry in `incomes` needs a name and a numeric amount");
+        }
+        return { name, amount };
+      });
+    }
+    this._config = Object.assign({}, config, { groups, incomes });
     this._hover = null;
     this._render();
   }
@@ -280,22 +300,42 @@ class BudgetSankeyCard extends HTMLElement {
     const l = layout(spec, c.key || "b", W, H, accent, this._hover, showAmounts);
     if (!l) return;
 
-    // With `income` set the header becomes in / out / left; without it, the
-    // single total it has always shown. The yearly card omits income, so it is
-    // unaffected.
-    const income = c.income == null ? null : Number(c.income);
-    const stats =
-      income == null
-        ? [{ label: c.total_label || "TOTAL", value: fmt(l.total), color: accent }]
-        : [
-            { label: c.income_label || "IN", value: fmt(income), color: VIZ.moneyIn },
-            { label: c.total_label || "OUT", value: fmt(l.total), color: accent },
-            {
-              label: c.left_label || "LEFT",
-              value: fmt(income - l.total),
-              color: income - l.total >= 0 ? VIZ.moneyIn : VIZ.moneyOut,
-            },
-          ];
+    // With income set the header becomes in / out / left, preceded by one row
+    // per earner when `incomes` is used. Without income the card is a yearly
+    // one: its total, plus the flat total / 12 to put aside each month unless
+    // `monthly_saving: false`.
+    const incomes = c.incomes;
+    const income = incomes
+      ? incomes.reduce((s, i) => s + i.amount, 0)
+      : c.income == null
+        ? null
+        : Number(c.income);
+    let stats;
+    if (income == null) {
+      stats = [{ label: c.total_label || "TOTAL", value: fmt(l.total), color: accent }];
+      if (c.monthly_saving !== false) {
+        stats.push({ label: c.saving_label || "SAVE / MONTH", value: fmt(l.total / 12), color: VIZ.accent });
+      }
+    } else {
+      stats = (incomes || []).map((i) => ({
+        label: String(i.name).toUpperCase(),
+        value: fmt(i.amount),
+        color: VIZ.textSecondary,
+      }));
+      stats.push(
+        {
+          label: c.income_label || (incomes ? "COMBINED INCOME" : "IN"),
+          value: fmt(income),
+          color: VIZ.moneyIn,
+        },
+        { label: c.total_label || "OUT", value: fmt(l.total), color: accent },
+        {
+          label: c.left_label || "LEFT",
+          value: fmt(income - l.total),
+          color: income - l.total >= 0 ? VIZ.moneyIn : VIZ.moneyOut,
+        }
+      );
+    }
 
     this.shadowRoot.innerHTML = `
       <style>
