@@ -34,6 +34,9 @@
     #     installed user-wide. It satisfies the statusLine command
     #     (`npx -y ccstatusline@latest`). This is unrelated to upstream bugs —
     #     pure local-tooling concern.
+    #   - PATH (Linux only): wl-clipboard and xclip. Claude shells out to them
+    #     for clipboard access; image paste has no fallback without them, and
+    #     screenshot-to-clipboard only tries xclip (via Xwayland on Wayland).
     #   - CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000: partial workaround for the
     #     autocompact threshold collapsing on Opus 4.7 [1m] variants
     #     (https://github.com/anthropics/claude-code/issues/43989, OPEN). The
@@ -56,7 +59,15 @@
     claude-code = masterPkgs.claude-code.overrideAttrs (old: {
       postInstall = (old.postInstall or "") + ''
         wrapProgram $out/bin/claude \
-          --prefix PATH : ${super.nodejs}/bin \
+          --prefix PATH : ${
+            super.lib.makeBinPath (
+              [ super.nodejs ]
+              ++ super.lib.optionals super.stdenv.hostPlatform.isLinux [
+                super.wl-clipboard
+                super.xclip
+              ]
+            )
+          } \
           --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000
       '';
     });
