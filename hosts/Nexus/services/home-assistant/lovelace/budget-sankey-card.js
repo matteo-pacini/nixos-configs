@@ -51,18 +51,18 @@ const NAMED = {
 };
 const resolveColor = (c) => (c == null ? null : NAMED[c] || c);
 
-// Nudges a sorted list of {y} so no two entries sit closer than `min`, kept inside [top, bottom].
+// Nudges a sorted list of {y} so no two neighbours sit closer than `min`, kept
+// inside [top, bottom]. `min` is a fixed distance, or a function (a, b) giving
+// the distance two particular neighbours need.
 function spread(items, min, top, bottom) {
-  let prev = top - min;
-  items.forEach((it) => {
-    it.y = Math.max(it.y, prev + min);
-    prev = it.y;
+  const dist = typeof min === "function" ? min : () => min;
+  items.forEach((it, i) => {
+    it.y = Math.max(it.y, i ? items[i - 1].y + dist(items[i - 1], it) : top);
   });
-  let next = bottom + min;
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
-    it.y = Math.max(top, Math.min(it.y, next - min));
-    next = it.y;
+    const limit = i < items.length - 1 ? items[i + 1].y - dist(it, items[i + 1]) : bottom;
+    it.y = Math.max(top, Math.min(it.y, limit));
   }
   return items;
 }
@@ -80,13 +80,22 @@ function spread(items, min, top, bottom) {
 // GAP is deliberately >= LABEL_MIN - MIN_LEAF, so two adjacent minimum-height
 // leaves are already further apart than spread() would ever push their labels.
 // That is what keeps every label pinned to its own bar.
-function layout(spec, key, W, Hbase, rootColor, hover, showAmounts) {
+//
+// Long labels wrap to two lines, which breaks that guarantee. labelH carries
+// each leaf label's measured height (in leaf order); a leaf whose label is
+// taller than one line gets a wider gap to its neighbours, sized so the pair
+// still clears without spread() moving either label. Without labelH, or when
+// every label is one line, the layout is exactly the single-line one.
+function layout(spec, key, W, Hbase, rootColor, hover, showAmounts, labelH) {
   const GAP = 14; // between leaves of the same group
   const GROUP_GAP = 30; // between groups, so the boundary is unmistakable
   const MIN_LEAF = 3;
   const LABEL_MIN = 16;
+  const LINE_H = LABEL_MIN - 2; // one line of 11px label text; plus 2px clearance makes LABEL_MIN
   const nw = 14;
   const padL = 6;
+  // Centre-to-centre distance two neighbouring labels need.
+  const labelDist = (a, b) => Math.max(LABEL_MIN, (a.lh + b.lh) / 2 + 2);
 
   const leaves = [];
   spec.groups.forEach((g, gi) => {
@@ -100,13 +109,16 @@ function layout(spec, key, W, Hbase, rootColor, hover, showAmounts) {
   const total = leaves.reduce((s, l) => s + l.v, 0);
   const scale = Hbase / (total || 1);
   let y = 0;
-  let prevG = null;
-  leaves.forEach((l) => {
-    if (prevG !== null) y += l.g === prevG ? GAP : GROUP_GAP;
+  leaves.forEach((l, i) => {
     l.h = Math.max(MIN_LEAF, l.v * scale);
+    l.lh = Math.max(LINE_H, (labelH && labelH[i]) || 0);
+    if (i) {
+      const prev = leaves[i - 1];
+      const base = l.g === prev.g ? GAP : GROUP_GAP;
+      y += Math.max(base, labelDist(prev, l) - (prev.h + l.h) / 2);
+    }
     l.y = y;
     y += l.h;
-    prevG = l.g;
   });
   const H = y;
   const pctX = (v) => ((v / W) * 100).toFixed(3) + "%";
@@ -175,7 +187,12 @@ function layout(spec, key, W, Hbase, rootColor, hover, showAmounts) {
     .concat(groups, leaves.map((l) => ({ id: l.id, x: x2, y: l.y, w: nw, h: l.h, color: l.color })))
     .map((n) => ({ id: n.id, x: n.x, y: n.y, w: n.w, h: n.h, color: n.color }));
 
-  const labels = spread(leaves.map((l) => ({ y: l.y + l.h / 2, l })), LABEL_MIN, 0, H).map((it) => {
+  const labels = spread(
+    leaves.map((l) => ({ y: l.y + l.h / 2, lh: l.lh, l })),
+    labelDist,
+    0,
+    H
+  ).map((it) => {
     const l = it.l;
     const rel = !hover || hover === l.id || hover === key + "-g" + l.g;
     return {
@@ -277,7 +294,27 @@ class BudgetSankeyCard extends HTMLElement {
     }
     this._config = Object.assign({}, config, { groups, incomes });
     this._hover = null;
+    this._labelH = null;
     this._render();
+  }
+
+  // Label heights depend on the card's width, which is unknown until the card
+  // is laid out and changes with the column count or a fold/unfold.
+  connectedCallback() {
+    this._resize =
+      this._resize ||
+      new ResizeObserver((entries) => {
+        const w = Math.round(entries[0].contentRect.width);
+        if (w && w !== this._width) {
+          this._width = w;
+          this._render();
+        }
+      });
+    this._resize.observe(this);
+  }
+
+  disconnectedCallback() {
+    this._resize?.disconnect();
   }
 
   // Static document: nothing to recompute when hass updates.
@@ -287,7 +324,7 @@ class BudgetSankeyCard extends HTMLElement {
     return Math.ceil((this._config?.chart_height || 620) / 50);
   }
 
-  _render() {
+  _render(remeasured = false) {
     if (!this._config) return;
     const c = this._config;
     // chart_height now sets the scale, not a hard height: layout() returns the
@@ -297,7 +334,7 @@ class BudgetSankeyCard extends HTMLElement {
     const accent = resolveColor(c.accent) || VIZ.moneyOut;
     const showAmounts = c.show_amounts !== false;
     const spec = { root: c.root || "Budget", groups: c.groups };
-    const l = layout(spec, c.key || "b", W, H, accent, this._hover, showAmounts);
+    const l = layout(spec, c.key || "b", W, H, accent, this._hover, showAmounts, this._labelH);
     if (!l) return;
 
     // With income set the header becomes in / out / left, preceded by one row
@@ -378,15 +415,25 @@ class BudgetSankeyCard extends HTMLElement {
         .chip b { font:500 12px ${FONT_BODY}; color:${VIZ.textPrimary}; }
         .chip i { font:500 11px ${FONT_MONO}; color:${VIZ.textSecondary}; font-style:normal; font-variant-numeric:tabular-nums; }
         .rail { position:relative; width:min(206px,45%); flex:0 0 min(206px,45%); }
+        /* Names wrap to at most two lines. layout() is told each label's
+           rendered height and spaces the bars to fit, so a wrapped label never
+           overlaps its neighbour. The dot and amount stay on the first line.
+           Amounts are right-aligned: a wrapped name fills the row, so an amount
+           hugging its name would sit in a different place on every row. */
         .lab {
-          position:absolute; left:10px; right:0; display:flex; align-items:baseline; gap:6px;
-          transform:translateY(-50%); font:500 11px ${FONT_BODY};
+          position:absolute; left:10px; right:0; display:flex; align-items:flex-start; gap:6px;
+          transform:translateY(-50%); font:500 11px/1.25 ${FONT_BODY};
           transition:color 140ms cubic-bezier(.2,.8,.2,1);
         }
-        .lab span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .lab em { flex:0 0 auto; width:7px; height:7px; border-radius:2px; align-self:center; }
-        .lab i { font:500 11px ${FONT_MONO}; color:${VIZ.textMuted}; font-style:normal; font-variant-numeric:tabular-nums; flex:0 0 auto; }
-        @media (max-width: 600px) { .rail { width:min(140px,42%); flex-basis:min(140px,42%); } }
+        .lab span {
+          overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+          overflow-wrap:anywhere;
+        }
+        .lab em { flex:0 0 auto; width:7px; height:7px; border-radius:2px; margin-top:calc((1.25em - 7px) / 2); }
+        .lab i { font:500 11px/1.25 ${FONT_MONO}; color:${VIZ.textMuted}; font-style:normal; font-variant-numeric:tabular-nums; flex:0 0 auto; margin-left:auto; }
+        /* On a phone the plot has room to spare while names were cut to ~70px,
+           so the rail takes up to half the card. */
+        @media (max-width: 600px) { .rail { width:min(206px,50%); flex-basis:min(206px,50%); } }
         /* Roomier type once the card has the width for it. */
         @container (min-width: 561px) {
           .lab, .lab i { font-size:12.5px; }
@@ -462,6 +509,17 @@ class BudgetSankeyCard extends HTMLElement {
       el.addEventListener("mouseenter", () => this._setHover(el.dataset.id));
       el.addEventListener("mouseleave", () => this._setHover(null));
     });
+
+    // Measure the labels as rendered and lay out again if the spacing was sized
+    // for other heights. The rail's width does not depend on the chart height,
+    // so the second pass wraps identically and one retry always settles.
+    // Heights are all 0 until the card is laid out; the ResizeObserver renders
+    // again once it is.
+    const measured = [...root.querySelectorAll(".lab")].map((el) => Math.ceil(el.getBoundingClientRect().height));
+    if (!remeasured && measured.some((h) => h > 0) && measured.join() !== (this._labelH || []).join()) {
+      this._labelH = measured;
+      this._render(true);
+    }
   }
 
   _setHover(id) {
@@ -470,7 +528,16 @@ class BudgetSankeyCard extends HTMLElement {
     const c = this._config;
     const H = c.chart_height || 620;
     const accent = resolveColor(c.accent) || VIZ.moneyOut;
-    const l = layout({ root: c.root || "Budget", groups: c.groups }, c.key || "b", 470, H, accent, id, c.show_amounts !== false);
+    const l = layout(
+      { root: c.root || "Budget", groups: c.groups },
+      c.key || "b",
+      470,
+      H,
+      accent,
+      id,
+      c.show_amounts !== false,
+      this._labelH
+    );
     if (!l) return;
     const root = this.shadowRoot;
     root.querySelectorAll("path").forEach((p, i) => {
