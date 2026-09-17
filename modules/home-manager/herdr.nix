@@ -23,17 +23,64 @@ in
         # is a separate action that ships unbound. Displaces close_tab, which
         # holds this chord by default.
         keys.remove_worktree = "prefix+shift+x";
-        # Claude panes get a third row for the context meter. The $context
-        # token and the "claude - <model> (<effort>)" agent label are reported
+        # Claude panes get a third row for the context meter. The $ctx/$ctxk
+        # tokens and the "claude - <model> (<effort>)" agent label are reported
         # by the statusLine wrapper in modules/home-manager/claude-code.nix.
+        # The pane name carries the identity here, so it takes the bold slot
+        # workspace would otherwise hold; the agent panel groups by space
+        # already, which is why workspace is absent from the row.
         ui.sidebar.agents.rows_by_agent.claude = [
           [
             "state_icon"
-            "workspace"
-            "tab"
+            {
+              token = "pane";
+              bold = true;
+              # Explicit: omitted style fields inherit the contextual default,
+              # and these tokens default to dim, which cancels out the bold.
+              dim = false;
+              # Bold alone is imperceptible against the token's default grey,
+              # so the name also takes the bright foreground.
+              fg = "#f8f8f2";
+            }
+            {
+              token = "tab";
+              dim = true;
+            }
           ]
-          [ "agent" ]
-          [ "$context" ]
+          [
+            {
+              token = "agent";
+              bold = true;
+              # Explicit: omitted style fields inherit the contextual default,
+              # and these tokens default to dim, which cancels out the bold.
+              dim = false;
+            }
+          ]
+          [
+            # Bands track auto-compact, which fires at 80% of the window: green
+            # below half, amber from half, red within ten points of the limit.
+            # First matching rule wins, so these run severe to mild, and the
+            # green case is the base fg because a rule needs a predicate.
+            {
+              token = "$ctx";
+              fg = "#50FA7B";
+              rules = [
+                {
+                  gt = 69.9;
+                  fg = "#FF5555";
+                  bold = true;
+                }
+                {
+                  gt = 49.9;
+                  fg = "#FFB86C";
+                }
+              ];
+            }
+            {
+              token = "$ctxk";
+              dim = true;
+            }
+          ]
         ];
       };
     };

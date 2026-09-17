@@ -25,7 +25,7 @@
       },
       {
         "id": "a0c9bf61-0fd6-4269-8bd1-9faf77cb06d9",
-        "type": "context-percentage-usable",
+        "type": "context-percentage",
         "rawValue": true,
         "color": "hex:F8F8F2",
         "backgroundColor": "hex:FF5555"

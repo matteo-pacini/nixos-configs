@@ -20,19 +20,22 @@ EOF
 
   label="claude${model:+ - $model}${effort:+ ($effort)}"
 
+  # Two tokens, not one: herdr's numeric sidebar rules parse the whole token
+  # text with f64::from_str, so the value they colour has to be bare digits.
   if [ -n "$pct" ]; then
-    context_arg=(--token "context=⛁ $pct% (${ktokens}k)")
+    context_arg=(--token "ctx=$pct" --token "ctxk=⛁ ${ktokens}k")
   else
-    context_arg=(--clear-token context)
+    context_arg=(--clear-token ctx --clear-token ctxk)
   fi
 
-  # ttl outlives refreshInterval so the row clears shortly after Claude exits.
+  # No ttl: Claude runs this on activity, not on a timer, so an expiring token
+  # would drop the context row off every idle pane. Matches --display-agent,
+  # which also persists until the next report.
   herdr pane report-metadata "$HERDR_PANE_ID" \
     --source claude-statusline \
     --agent claude \
     --display-agent "$label" \
-    "${context_arg[@]}" \
-    --ttl-ms 60000 >/dev/null 2>&1 || true
+    "${context_arg[@]}" >/dev/null 2>&1 || true
 fi
 
 printf '%s' "$input" | npx -y ccstatusline@latest
