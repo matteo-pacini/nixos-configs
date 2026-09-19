@@ -11,6 +11,7 @@
     ./mdadm.nix
     ./storage-tuning.nix
     ./hd-idle.nix
+    ./disk-burnin.nix
   ];
 
   custom.kernel.enable = true;
