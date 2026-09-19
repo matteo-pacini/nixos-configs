@@ -94,6 +94,82 @@ Switch to **Approach B** if the disk is throwing kernel I/O errors,
 the rsync is failing on specific files, or you specifically want to
 preserve the 10-disk layout.
 
+Approach B needs a replacement disk. Buy it, then
+[acceptance-test it](#acceptance-test-a-replacement-drive) before
+starting B1 — the return window is the only leverage you have on a
+used drive, and it closes.
+
+---
+
+## Acceptance-test a replacement drive
+
+Run this on every drive before it joins the pool, and finish it inside
+the seller's return window. Pool disks are bought used (see the
+Changelog in [`diskpool-handbook.md`](diskpool-handbook.md)) and a used
+drive's failure risk is front-loaded: it surfaces under sustained write
+load, not at idle. The 2023 batch of three 10 TB SAS drives lost one to
+repeated self-test failures within 2.5 years; the survivors are clean.
+
+The tool is `disk-burnin`, packaged in `hosts/Nexus/disk-burnin.nix`
+and on the system path. Four stages, run in order:
+
+```bash
+sudo disk-burnin baseline /dev/sdX    # SMART snapshot            seconds
+sudo disk-burnin longtest /dev/sdX    # firmware full-surface read  ~19h/10TB
+sudo disk-burnin burn     /dev/sdX    # DESTRUCTIVE write-read      ~28h/10TB
+sudo disk-burnin verdict  /dev/sdX    # diff vs baseline, PASS/FAIL seconds
+```
+
+Run the two slow stages under `tmux`. Testing several drives at once is
+fine — separate windows, separate devices. Reports accumulate in
+`/var/lib/disk-burnin/<serial>.*` and are the evidence for a return
+claim.
+
+### Why each stage
+
+| Stage | Tests | Misses |
+|-------|-------|--------|
+| `baseline` | Nothing — captures the counters the verdict diffs against | — |
+| `longtest` | Pre-existing media defects, via the drive's own firmware read of every sector | Sectors that read now but fail on write; marginal sectors |
+| `burn` | Every sector under write, at full thermal load for a day | Long-term wear |
+| `verdict` | Counter movement, self-test log, badblocks output | — |
+
+`burn` is the stage that matters. A SnapRAID parity rebuild writes the
+whole drive in one continuous pass, and that is the workload a
+replacement meets within days of arriving, while the array is degraded.
+A read-only test does not simulate it.
+
+### Pass criteria
+
+**The delta decides, not the absolute.** A drive that shipped with two
+reallocated sectors and still reads two after a full write-read pass is
+sound — those were remapped long ago and are stable. The same drive
+going from zero to two *during* the test is failing in front of you.
+
+The verdict stage fails the drive on any of:
+
+- SMART counters moved between baseline and now
+- Self-test log shows a read failure or failed segment
+- `badblocks` reported any bad sector
+- SAS: grown defect list non-empty, or any uncorrected read/write/verify error
+- SATA: any pending (attr 197) or offline-uncorrectable (attr 198) sector
+
+Exit status is 0 on PASS, 1 on FAIL, so it scripts.
+
+### Safety
+
+`disk-burnin` refuses any device that has a partition, mount, LUKS
+mapping or md member — a mistyped device name cannot erase a pool disk.
+The `burn` stage additionally requires typing the drive's serial, which
+you only know by having run `baseline` against that device.
+
+### Which drive becomes parity
+
+When replacing more than one disk, test all of them first and give the
+**parity** slot the drive with the cleanest counters and fewest hours.
+Parity is the disk with no fallback: it is the one that must work on the
+day a data disk dies.
+
 ---
 
 ## Approach A — Drain the failing disk
@@ -570,6 +646,11 @@ NixOS-managed units.
 
 ### B2. Physically replace the disk
 
+The replacement must already have passed
+[acceptance testing](#acceptance-test-a-replacement-drive). Do not
+rebuild parity onto an untested drive — the rebuild is a full-surface
+write, which is exactly the load that kills a marginal one.
+
 ```bash
 # If still mounted, take it offline.
 sudo umount /mnt/diskN || true
@@ -698,6 +779,8 @@ it already moved.
 ## Related documents
 
 - [Diskpool Handbook](diskpool-handbook.md) — steady-state layout
+- [Disk Inventory](disk-inventory.md) — purchase provenance, warranty
+  cover, serial-to-slot map, batch-risk notes
 - [Diskpool Handbook § Idle Spindown](diskpool-handbook.md#idle-spindown-hd-idle) —
   hd-idle, SAS vs SATA standby, and recovery from a read-only branch
 - [Paperless-ngx Recovery](paperless-ngx-recovery.md)
