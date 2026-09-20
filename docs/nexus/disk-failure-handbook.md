@@ -158,8 +158,9 @@ Exit status is 0 on PASS, 1 on FAIL, so it scripts.
 
 ### Safety
 
-`disk-burnin` refuses any device that has a partition, mount, LUKS
-mapping or md member — a mistyped device name cannot erase a pool disk.
+`disk-burnin` refuses any device carrying a partition table, filesystem
+signature, mount or child node — a mistyped device name cannot erase a
+pool disk, including one whose LUKS mapping is currently closed.
 The `burn` stage additionally requires typing the drive's serial, which
 you only know by having run `baseline` against that device.
 

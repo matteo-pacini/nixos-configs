@@ -77,11 +77,12 @@ let
       BASE="$OUTDIR/$SERIAL"
       mkdir -p "$OUTDIR"
 
-      # A drive under acceptance test must be blank. Note that a Nexus pool
-      # disk carries LUKS on the *whole* device with no partition table, so
-      # checking only for child nodes would call a closed pool disk blank and
-      # then erase it. Inspect the device's own row too, and treat any
-      # filesystem signature, partition table or mountpoint as disqualifying.
+      # A drive under acceptance test must be blank. A pool disk is GPT with
+      # LUKS (data) or ext4 (parity) on the partition, so once its mapping is
+      # closed the device row reads FSTYPE="" and only PTTYPE="gpt" marks it
+      # as in use. Inspect the device's own row, not just children, and treat
+      # a filesystem signature, partition table or mountpoint as
+      # disqualifying.
       assert_unused() {
         local rows
         rows=$(lsblk -nPo NAME,FSTYPE,PTTYPE,MOUNTPOINT "$DEV")
