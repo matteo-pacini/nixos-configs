@@ -146,7 +146,6 @@
           ./modules/home-manager/opencode.nix
           ./modules/home-manager/phone-scrcpy.nix
           ./modules/home-manager/herdr.nix
-          ./modules/home-manager/mpv
         ];
       };
 
