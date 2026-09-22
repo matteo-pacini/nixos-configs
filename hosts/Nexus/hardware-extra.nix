@@ -57,15 +57,20 @@ in
       neededForBoot = false;
       depends = mountPoints;
     };
-    "/mnt/parity1" = {
-      device = "/dev/disk/by-uuid/1a81ffca-7112-49de-bce6-804e9657e4ed";
-      fsType = "ext4";
-      options = [
-        "defaults"
-        "noatime"
-      ];
-      neededForBoot = false;
-    };
+    # parity1 (VCGYDYTP) pulled 2026-09-22 — 48 pending sectors. Unmounted so
+    # the bay can be swapped and a reboot mid-swap does not drop to emergency
+    # mode on a missing UUID. Restore this block once the replacement is
+    # formatted with the same UUID; snapraid.nix and backup.nix pause
+    # SnapRAID until then.
+    # "/mnt/parity1" = {
+    #   device = "/dev/disk/by-uuid/1a81ffca-7112-49de-bce6-804e9657e4ed";
+    #   fsType = "ext4";
+    #   options = [
+    #     "defaults"
+    #     "noatime"
+    #   ];
+    #   neededForBoot = false;
+    # };
     "/mnt/parity2" = {
       device = "/dev/disk/by-uuid/eaeeac6a-40ae-4088-8680-1a6e0146cecd";
       fsType = "ext4";

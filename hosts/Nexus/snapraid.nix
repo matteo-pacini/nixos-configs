@@ -20,6 +20,12 @@ in
       }) diskNumbers
     );
     contentFiles = map (n: "/mnt/disk${toString n}/snapraid.content") diskNumbers;
+    # parity1 is unmounted (see hardware-extra.nix) but must stay listed:
+    # the module assigns parity levels by position, so dropping it would
+    # relabel parity2's 2-parity file as level-1 parity and the next sync
+    # would corrupt it. While it is absent, nothing may run SnapRAID —
+    # /mnt/parity1 is a bare directory on the root SSD, and a sync would
+    # try to write a 7 TB parity file there.
     parityFiles = [
       "/mnt/parity1/snapraid.parity"
       "/mnt/parity2/snapraid.2-parity"
@@ -58,6 +64,8 @@ in
       wantedBy = lib.mkForce [ ];
       startAt = lib.mkForce [ ];
     };
+    # Paused while parity1 is pulled — restore with the mount.
+    "snapraid-scrub".startAt = lib.mkForce [ ];
   };
 
 }

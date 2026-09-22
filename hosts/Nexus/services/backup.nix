@@ -219,8 +219,8 @@ let
     # nextcloud
     ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
 
-    # Sync SnapRAID
-    ${pkgs.snapraid}/bin/snapraid --force-zero sync
+    # Sync SnapRAID — paused while parity1 is pulled (see snapraid.nix).
+    # ${pkgs.snapraid}/bin/snapraid --force-zero sync
 
     ${notify} "Nexus is fully back online."
   '';
