@@ -20,6 +20,11 @@ in
       }) diskNumbers
     );
     contentFiles = map (n: "/mnt/disk${toString n}/snapraid.content") diskNumbers;
+    # Order is load-bearing: the module assigns parity levels by position, so
+    # the first entry becomes "parity" and the second "2-parity". Never drop
+    # the first to run on one parity disk — that relabels parity2's file as
+    # level-1 parity and the next sync silently corrupts it. To take a parity
+    # disk out of service, unmount it and pause sync + scrub instead.
     parityFiles = [
       "/mnt/parity1/snapraid.parity"
       "/mnt/parity2/snapraid.2-parity"
