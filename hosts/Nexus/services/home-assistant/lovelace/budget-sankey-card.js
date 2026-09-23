@@ -51,6 +51,81 @@ const NAMED = {
 };
 const resolveColor = (c) => (c == null ? null : NAMED[c] || c);
 
+// Dates are plain "YYYY-MM-DD" strings, compared lexicographically. The raw
+// editor's YAML parser turns an unquoted date into a Date at UTC midnight, which
+// .storage then holds as an ISO timestamp; both reduce to the same day here.
+const toDay = (v) => {
+  const m = /^\d{4}-\d{2}-\d{2}/.exec(v instanceof Date ? v.toISOString() : String(v));
+  return m && m[0];
+};
+const today = () => {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+};
+const dayAfter = (day) => {
+  const d = new Date(day + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+const fmtDay = (day) =>
+  new Date(day + "T00:00:00Z").toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+// Reads the optional `from` / `until` of a mapping-form entry onto `out`.
+function readDates(it, out) {
+  for (const k of ["from", "until"]) {
+    if (Array.isArray(it) || it[k] == null) continue;
+    out[k] = toDay(it[k]);
+    if (!out[k]) {
+      throw new Error("budget-sankey-card: '" + out.name + "' `" + k + "` must be a YYYY-MM-DD date");
+    }
+  }
+  return out;
+}
+const activeOn = (day) => (it) => (!it.from || it.from <= day) && (!it.until || day <= it.until);
+
+// What differs between the budget on day `a` and on day `b`, as {text, good}
+// entries; `good` means the change raises what is left over. Entries match by
+// name within their group (or among incomes), so a dated pair of entries with
+// the same name reads as one amount changing.
+function changelog(c, a, b) {
+  const snap = (day) => {
+    const m = new Map();
+    const add = (k, label, amount, sign) => {
+      const e = m.get(k) || { label, amount: 0, sign };
+      e.amount += amount;
+      m.set(k, e);
+    };
+    const on = activeOn(day);
+    (c.incomes || []).filter(on).forEach((i) => add("in\0" + i.name, "income " + i.name, i.amount, 1));
+    c.groups.forEach((g) =>
+      g.items.filter(on).forEach((it) => add("out\0" + g.name + "\0" + it.name, g.name + " → " + it.name, it.amount, -1))
+    );
+    return m;
+  };
+  const was = snap(a);
+  const now = snap(b);
+  const out = [];
+  for (const k of new Set([...was.keys(), ...now.keys()])) {
+    const x = was.get(k);
+    const y = now.get(k);
+    const delta = (y ? y.amount : 0) - (x ? x.amount : 0);
+    if (!delta) continue;
+    const label = (x || y).label;
+    const text = !x
+      ? "Added " + label + " " + fmt(y.amount)
+      : !y
+        ? "Removed " + label + " " + fmt(x.amount)
+        : label[0].toUpperCase() + label.slice(1) + " " + fmt(x.amount) + " → " + fmt(y.amount);
+    out.push({ text, good: delta * (x || y).sign > 0 });
+  }
+  return out;
+}
+
 // Nudges a sorted list of {y} so no two neighbours sit closer than `min`, kept
 // inside [top, bottom]. `min` is a fixed distance, or a function (a, b) giving
 // the distance two particular neighbours need.
@@ -252,6 +327,9 @@ class BudgetSankeyCard extends HTMLElement {
     // Items accept either the compact `- [Mortgage, 1571.39]` pair or the
     // explicit `- {name: …, amount: …}` mapping. The budget YAML is hand-edited
     // through agenix, so the terse form is the one that keeps it readable.
+    // Only the mapping form takes `from` and `until` (YYYY-MM-DD, both
+    // inclusive), which limit the entry to the days it applies to. The same
+    // holds for `incomes`.
     const groups = config.groups.map((g, i) => {
       if (!g.name) throw new Error("budget-sankey-card: group " + i + " has no name");
       if (!Array.isArray(g.items) || !g.items.length) {
@@ -265,9 +343,11 @@ class BudgetSankeyCard extends HTMLElement {
             "budget-sankey-card: every item in '" + g.name + "' needs a name and a numeric amount"
           );
         }
-        return { name, amount };
+        return readDates(it, { name, amount });
       });
-      return { name: g.name, color: resolveColor(g.color), items };
+      // The default colour is fixed by config position here, before any items
+      // are dated out, so a group keeps its colour on every day.
+      return { name: g.name, color: resolveColor(g.color) || SEQ[i % SEQ.length], items };
     });
     if (config.income != null && !Number.isFinite(Number(config.income))) {
       throw new Error("budget-sankey-card: `income` must be a number");
@@ -289,10 +369,22 @@ class BudgetSankeyCard extends HTMLElement {
         if (!name || !Number.isFinite(amount)) {
           throw new Error("budget-sankey-card: every entry in `incomes` needs a name and a numeric amount");
         }
-        return { name, amount };
+        return readDates(it, { name, amount });
       });
     }
     this._config = Object.assign({}, config, { groups, incomes });
+    // The days on which some entry starts or stops applying: the stops the
+    // date navigation steps through.
+    this._changes = [
+      ...new Set(
+        groups
+          .flatMap((g) => g.items)
+          .concat(incomes || [])
+          .flatMap((it) => [it.from, it.until && dayAfter(it.until)])
+          .filter(Boolean)
+      ),
+    ].sort();
+    this._day = null; // null follows the current day
     this._hover = null;
     this._labelH = null;
     this._render();
@@ -320,6 +412,34 @@ class BudgetSankeyCard extends HTMLElement {
   // Static document: nothing to recompute when hass updates.
   set hass(_) {}
 
+  // Today, then every later change point: the days the navigation visits.
+  _stops() {
+    const now = today();
+    return [now].concat(this._changes.filter((d) => d > now));
+  }
+
+  // The groups as they stand on the selected day, minus any left empty.
+  _spec() {
+    const c = this._config;
+    const active = activeOn(this._day || today());
+    const groups = c.groups
+      .map((g) => Object.assign({}, g, { items: g.items.filter(active) }))
+      .filter((g) => g.items.length);
+    return { root: c.root || "Budget", groups };
+  }
+
+  // Moves to the next (dir 1) or previous (dir -1) stop; landing on today goes
+  // back to following the current day.
+  _step(dir) {
+    const stops = this._stops();
+    const to = stops[stops.indexOf(this._day || stops[0]) + dir];
+    if (!to) return;
+    this._day = to === stops[0] ? null : to;
+    this._hover = null;
+    this._labelH = null;
+    this._render();
+  }
+
   getCardSize() {
     return Math.ceil((this._config?.chart_height || 620) / 50);
   }
@@ -327,21 +447,33 @@ class BudgetSankeyCard extends HTMLElement {
   _render(remeasured = false) {
     if (!this._config) return;
     const c = this._config;
+    // A selected day that has since become today or the past is no stop any more.
+    if (this._day && this._day <= today()) this._day = null;
     // chart_height now sets the scale, not a hard height: layout() returns the
     // height it actually needs and the card grows to it.
     const H = c.chart_height || 620;
     const W = 470;
     const accent = resolveColor(c.accent) || VIZ.moneyOut;
     const showAmounts = c.show_amounts !== false;
-    const spec = { root: c.root || "Budget", groups: c.groups };
+    const spec = this._spec();
     const l = layout(spec, c.key || "b", W, H, accent, this._hover, showAmounts, this._labelH);
     if (!l) return;
+
+    const stops = this._stops();
+    const day = this._day || stops[0];
+    const at = stops.indexOf(day);
+    const nav =
+      stops.length > 1
+        ? { label: this._day ? fmtDay(day) : "Today", prev: at > 0, next: at < stops.length - 1 }
+        : null;
+    // Shown for a future stop: what changed since the stop before it.
+    const log = at > 0 ? changelog(c, stops[at - 1], day) : [];
 
     // With income set the header becomes in / out / left, preceded by one row
     // per earner when `incomes` is used. Without income the card is a yearly
     // one: its total, plus the flat total / 12 to put aside each month unless
     // `monthly_saving: false`.
-    const incomes = c.incomes;
+    const incomes = c.incomes && c.incomes.filter(activeOn(day));
     const income = incomes
       ? incomes.reduce((s, i) => s + i.amount, 0)
       : c.income == null
@@ -397,6 +529,16 @@ class BudgetSankeyCard extends HTMLElement {
         }
         .head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:16px; }
         .title { margin:0; font:600 20px/1.3 ${FONT_DISPLAY}; letter-spacing:-.01em; }
+        .side { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+        .log { margin:0; padding:0; list-style:none; font:500 11.5px/1.45 ${FONT_BODY}; text-align:right; }
+        .nav { display:flex; align-items:center; gap:6px; font:500 12px ${FONT_MONO}; color:var(--secondary-text-color, ${VIZ.textMuted}); }
+        .nav button {
+          width:24px; height:24px; padding:0; border-radius:5px; cursor:pointer;
+          border:1px solid var(--divider-color, ${VIZ.borderSubtle}); background:transparent;
+          color:var(--primary-text-color, ${VIZ.textPrimary}); font:500 14px/1 ${FONT_MONO};
+        }
+        .nav button:disabled { opacity:.3; cursor:default; }
+        .nav span { min-width:88px; text-align:center; }
         .sub { margin:4px 0 0; font:400 12px/1.3 ${FONT_BODY}; color:var(--secondary-text-color, ${VIZ.textMuted}); }
         .stats { display:flex; gap:20px; flex-wrap:wrap; justify-content:flex-end; }
         .totlab { font:500 11px ${FONT_MONO}; letter-spacing:.06em; color:var(--secondary-text-color, ${VIZ.textMuted}); margin-bottom:4px; text-align:right; }
@@ -447,6 +589,9 @@ class BudgetSankeyCard extends HTMLElement {
            two-column sections view, where the card is only ~355px wide. */
         @container (max-width: 560px) {
           .head { flex-direction:column; align-items:stretch; gap:12px; }
+          .side { align-items:stretch; }
+          .nav { justify-content:flex-end; }
+          .log { text-align:left; }
           .stats { flex-direction:column; align-items:stretch; gap:6px; }
           .stats > div { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
           .totlab { margin-bottom:0; }
@@ -459,6 +604,21 @@ class BudgetSankeyCard extends HTMLElement {
             <h2 class="title">${esc(c.title || "Budget")}</h2>
             ${c.subtitle ? `<p class="sub">${esc(c.subtitle)}</p>` : ""}
           </div>
+          <div class="side">
+          ${
+            nav
+              ? `<div class="nav"><button class="prev" title="Previous change"${nav.prev ? "" : " disabled"}>‹</button><span>${esc(
+                  nav.label
+                )}</span><button class="next" title="Next change"${nav.next ? "" : " disabled"}>›</button></div>`
+              : ""
+          }
+          ${
+            log.length
+              ? `<ul class="log">${log
+                  .map((e) => `<li style="color:${e.good ? VIZ.moneyIn : VIZ.moneyOut}">${esc(e.text)}</li>`)
+                  .join("")}</ul>`
+              : ""
+          }
           <div class="stats">${stats
             .map(
               (s) =>
@@ -467,6 +627,7 @@ class BudgetSankeyCard extends HTMLElement {
                 }" style="color:${s.color}">${s.value}</div></div>`
             )
             .join("")}</div>
+          </div>
         </div>
         <div class="body">
           <div class="plot">
@@ -505,6 +666,8 @@ class BudgetSankeyCard extends HTMLElement {
     // Re-rendering the whole subtree on hover would kill the CSS transitions,
     // so hover is delegated once and only the affected attributes are patched.
     const root = this.shadowRoot;
+    root.querySelector(".nav .prev")?.addEventListener("click", () => this._step(-1));
+    root.querySelector(".nav .next")?.addEventListener("click", () => this._step(1));
     root.querySelectorAll("[data-id]").forEach((el) => {
       el.addEventListener("mouseenter", () => this._setHover(el.dataset.id));
       el.addEventListener("mouseleave", () => this._setHover(null));
@@ -529,7 +692,7 @@ class BudgetSankeyCard extends HTMLElement {
     const H = c.chart_height || 620;
     const accent = resolveColor(c.accent) || VIZ.moneyOut;
     const l = layout(
-      { root: c.root || "Budget", groups: c.groups },
+      this._spec(),
       c.key || "b",
       470,
       H,
