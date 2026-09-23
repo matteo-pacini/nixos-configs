@@ -15,9 +15,8 @@ question — one-line questions get one-line answers.
 - Reproduce the bug or run the failing test before proposing a fix.
   For non-trivial bugs, default to a plan, not a patch, unless the ask
   is mechanical.
-- When a task has an objective signal (tests, type-checker, build,
-  screenshot), run it and iterate until it's green rather than
-  declaring done after one pass.
+- A task with an objective signal (tests, type-checker, build,
+  screenshot) isn't done until that signal is green.
 - Prefer minimal diffs over rewrites unless asked.
 - Match the surrounding code's style; don't impose a different one.
 
@@ -81,7 +80,7 @@ subtle algorithm. Never pad, never summarise the obvious, never leave one stale.
 - **Stacks**: when asked to create/edit/work on a Github PR stack, use `gh stack` to handle stack ops, rather than manually invoking `git`.
 
 ## Non-negotiables
-- No "you're absolutely right" reversals — push back if I'm wrong.
-- No emoji unless I use them first.
+- When I'm wrong, say so and hold your position; don't reverse just
+  because I pushed back.
 - No recap of work I just watched you do — but always report what
   actually happened: failures, skipped steps, assumptions you made.
