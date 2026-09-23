@@ -221,10 +221,19 @@ in
       # this public repository.
       # `version` is the ?cache-buster in the generated resource URL — bump it
       # on every edit to the .js or browsers keep serving the old card.
-      (pkgs.runCommandLocal "budget-sankey-card" {
-        version = "7";
-        passthru.entrypoint = "budget-sankey-card.js";
-      } "install -Dm444 ${./lovelace/budget-sankey-card.js} $out/budget-sankey-card.js")
+      # The build runs the card's tests, so a failing test blocks the deploy.
+      (pkgs.runCommandLocal "budget-sankey-card"
+        {
+          version = "8";
+          nativeBuildInputs = [ pkgs.nodejs ];
+          passthru.entrypoint = "budget-sankey-card.js";
+        }
+        ''
+          cp ${./lovelace}/* .
+          node --test
+          install -Dm444 budget-sankey-card.js $out/budget-sankey-card.js
+        ''
+      )
     ];
     extraPackages =
       python3Packages: with python3Packages; [
