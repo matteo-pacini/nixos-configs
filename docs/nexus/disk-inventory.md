@@ -72,8 +72,10 @@ OEM-badged stock under a generic part number. They arrived with roughly
 | Slot | Serial | Model | Batch | In service | Power-on | Health |
 |------|--------|-------|-------|-----------|----------|--------|
 | `/mnt/disk0` | `7PHSNSNG` | NETAPP X377_HLBRE10TA07 (SAS) | B5 | 2023-11 | 7.59 y | clean |
+| `/mnt/disk1` | `JEH3ZN0M` | WDC HUH721010AL4200 (DC HC510, SAS, **4Kn**) | **B6** | 2026-09-24 | 5.48 y | clean — burn-in PASS |
 | `/mnt/disk2` | `7PHSNJKG` | NETAPP X377_HLBRE10TA07 (SAS) | B5 | 2023-11 | 7.59 y | clean |
 | *(retired)* | *not recorded* | NETAPP X377_HLBRE10TA07 (SAS) | B5 | 2023-11 | — | **removed 2026-05-27** |
+| *(retired)* | `VCGYDYTP` | WDC WD101EMAZ-11G7DA0 | B3 | 2020-11 | 5.84 y | **removed 2026-09-22** — 48 pending, 6 offline uncorrectable |
 | `/mnt/disk3` | `VCH3BK7P` | WDC WD101EMAZ-11G7DA0 | **B3** | 2020-11 | 5.84 y | clean |
 | `/mnt/disk4` | `VDJDW6VK` | WDC WD80EFAX-68KNBN0 (air) | **B1** *(inferred)* | 2020-05 | 6.20 y | clean |
 | `/mnt/disk5` | `VDHWAUTK` | WDC WD80EFAX-68KNBN0 (air) | **B1** *(inferred)* | 2020-05 | 6.20 y | clean |
@@ -81,7 +83,7 @@ OEM-badged stock under a generic part number. They arrived with roughly
 | `/mnt/disk7` | `7HKT9MEN` | WDC WD80EFAX-68LHPN0 (helium) | **B2** *(inferred)* | 2020-05 | 6.85 y | clean |
 | `/mnt/disk8` | `VCKH6UJP` | WDC WD101EDBZ-11B1DA0 | **B4** | 2022-09 | 4.01 y | clean, 58 °C max |
 | `/mnt/disk9` | `VCKGXLUP` | WDC WD101EDBZ-11B1DA0 | **B4** | 2022-09 | 4.02 y | clean, 60 °C max |
-| `/mnt/parity1` | `VCGYDYTP` | WDC WD101EMAZ-11G7DA0 | **B3** | 2020-11 | 5.84 y | **FAILING — 48 pending, 6 offline uncorrectable, 2 reallocated** |
+| `/mnt/parity1` | `VCJXZ6RP` | WDC WUS721010AL5204 (DC HC330, SAS) | **B6** | 2026-09-23 | 0.00 y (50 h) | clean — burn-in PASS |
 | `/mnt/parity2` | `VCH3DMHP` | WDC WD101EMAZ-11G7DA0 | **B3** | 2020-11 | 5.84 y | clean |
 | `/` (md raid1) | `2308E6B0D773` | Crucial CT2000MX500SSD1 | **B7** | 2023-12 | 2.79 y | clean, 22 % of TBW used |
 | `/` (md raid1) | `2308E6B0DA68` | Crucial CT2000MX500SSD1 | **B7** | 2023-12 | 2.78 y | clean, 24 % of TBW used |
@@ -122,23 +124,36 @@ removal from now on.
 
 ---
 
-## In transit
+## B6 commissioning
 
-| Serial | Model | Batch | Destination | Status |
-|--------|-------|-------|-------------|--------|
-| *TBD on arrival* | WD `HUH721010AL4200` 10TB SAS **4Kn** | B6 | `/mnt/parity1` or `/mnt/disk1` — assign after burn-in | Ordered 2026-09-19, due 2026-09-21/22 |
-| *TBD on arrival* | WD `WUS721010AL5204` 10TB SAS **512e** (DC HC330) | B6 | `/mnt/parity1` or `/mnt/disk1` — assign after burn-in | Ordered 2026-09-19, due 2026-09-21/22 |
+| Serial | Model | Destination | Status |
+|--------|-------|-------------|--------|
+| `VCJXZ6RP` | WD `WUS721010AL5204` (DC HC330, 512e) | `/mnt/parity1` | **in service 2026-09-23** — burn-in PASS |
+| `JEH3ZN0M` | WD `HUH721010AL4200` (DC HC510, **4Kn**) | `/mnt/disk1` | **in service 2026-09-24** — burn-in PASS |
 
-**On arrival:**
+Assignment was decided on power-on hours, not on the platform lean:
+`VCJXZ6RP` arrived at **21 h** (one 10 TB certification wipe and nothing
+else — effectively new old stock), against **48,017 h / 5.48 y** for
+`JEH3ZN0M`. That gap is far past the ~15,000 h threshold, so the
+near-new drive took the slot with no fallback.
 
-1. Record each serial in the table above.
-2. Run [`disk-burnin`](disk-failure-handbook.md#acceptance-test-a-replacement-drive)
-   on both, inside the return window (closes **2026-10-22**).
-3. Give `/mnt/parity1` the drive with the cleaner counters — parity has no
-   fallback. The other restores the `/mnt/disk1` slot.
-4. Replace parity **first**, full `snapraid sync`, verify, *then* add the
-   data disk. See the handbook; the data-disk change also needs
-   `hardware-extra.nix`, `snapraid.nix` and `secrets/secrets.nix` edits.
+`JEH3ZN0M` is heavily used but clean: 1.29 PB read and 270 TB written,
+zero grown defects, zero uncorrected errors, and only 0.28 % of its
+load-unload budget — an always-on, read-heavy datacenter life. Its
+workload drops to about a quarter of that here.
+
+**`JEH3ZN0M` shipped with writeback cache disabled** (`WCE=0`), which
+held `badblocks` to 38 MB/s against 239 MB/s for `VCJXZ6RP`. Fixed with
+`sdparm --set=WCE=1 --save`. The two NETAPP SAS drives on `disk0` and
+`disk2` are still `WCE=0` and have been since 2023 — worth enabling once
+parity is rebuilt. Every SATA drive in the pool already has it on.
+
+Both drives are in service. Warranty runs to **2027-09**; the return
+window is open until **2026-10-22**.
+
+**Outstanding:** enable `WCE=1` on the two NETAPP SAS drives, and a
+final `snapraid sync --force-empty` to bring the newly added `disk1`
+into parity.
 
 ---
 
@@ -220,7 +235,7 @@ drive. Re-run the assessment yearly; the numbers age.
 
 | Slot | Serial | Powered age | Workload used | Head-park used | Health | Est. remaining |
 |------|--------|------------|---------------|----------------|--------|----------------|
-| `parity1` | `VCGYDYTP` | 5.84 y | 42 % | 23 % | **48 pending, 6 unc., 2 realloc** | **0 — failing now** |
+| `parity1` | `VCJXZ6RP` | 0.00 y | <1 % | <1 % | clean, burn-in PASS | **7–10 y** |
 | `disk2` | `7PHSNJKG` | **7.59 y** | 10 % | 0.4 % | clean | **1–3 y** |
 | `disk0` | `7PHSNSNG` | **7.59 y** | 10 % | 0.4 % | clean | **1–3 y** |
 | `disk6` | `7HKTAXLN` | 6.86 y | 39 % | 25 % | clean | **1–3 y** |
@@ -229,6 +244,7 @@ drive. Re-run the assessment yearly; the numbers age.
 | `disk4` | `VDJDW6VK` | 6.20 y | 38 % | 21 % | clean | 2–4 y |
 | `parity2` | `VCH3DMHP` | 5.84 y | 42 % | 24 % | clean | **2–4 y** (batch) |
 | `disk3` | `VCH3BK7P` | 5.84 y | 50 % | 15 % | clean | 3–5 y |
+| `disk1` | `JEH3ZN0M` | 5.48 y | 13 % | <1 % | clean, burn-in PASS | **2–4 y** |
 | `disk9` | `VCKGXLUP` | 4.02 y | 14 % | 1.2 % | clean, 60 °C max | 4–6 y |
 | `disk8` | `VCKH6UJP` | 4.01 y | 13 % | 1.5 % | clean, 58 °C max | 4–6 y |
 | `/` SSD | `2308E6B0D773` | 2.79 y | **22 % of TBW** | n/a | clean | 6+ y |
@@ -297,6 +313,11 @@ correlated failure.
 
 | Date | Event |
 |------|-------|
+| 2026-09-24 | `JEH3ZN0M` passed burn-in and took the restored `/mnt/disk1` slot; pool back to 10 data disks |
+| 2026-09-24 | Applying the disk1 config before the device existed blocked boot before multi-user.target — recovered via previous generation at the boot menu |
+| 2026-09-23 | `VCJXZ6RP` passed burn-in (0 bad blocks) and took over `/mnt/parity1`; parity rebuild follows |
+| 2026-09-22 | `VCGYDYTP` pulled from `/mnt/parity1`; SnapRAID sync + scrub paused while single-parity |
+| 2026-09-22 | B6 drives arrived; `JEH3ZN0M` found with WCE=0, enabled via sdparm |
 | 2026-09-19 | Fleet life assessment recorded — see [Estimated remaining life](#estimated-remaining-life). Next review due 2027-09 |
 | 2026-09-19 | B6 ordered — 2× 10TB SAS refurbished, £424, 1 yr warranty |
 | 2026-09-19 | `VCGYDYTP` (parity1) flagged failing: 48 pending sectors, 6 offline uncorrectable |

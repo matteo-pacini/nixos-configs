@@ -25,6 +25,11 @@ let
       coreutils
     ];
     text = ''
+      # errexit aborts silently; say where, so a failure is never mistaken for
+      # a stage that produced no output.
+      set -o errtrace
+      trap 'echo "disk-burnin: aborted at line $LINENO: $BASH_COMMAND" >&2' ERR
+
       STAGE=''${1:-}
       DEV=''${2:-}
       OUTDIR=/var/lib/disk-burnin
@@ -59,6 +64,9 @@ let
       smart() {
         local rc=0
         smartctl "$@" -n never "$DEV" || rc=$?
+        # 141 is SIGPIPE: the reader (grep -q, awk '... exit') stopped once it
+        # had its answer. Not a failure — and 141 & 3 would misread as one.
+        [ "$rc" -eq 141 ] && return 0
         [ $((rc & 3)) -eq 0 ] || return "$rc"
         return 0
       }
