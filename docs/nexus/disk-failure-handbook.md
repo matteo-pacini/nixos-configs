@@ -27,6 +27,13 @@ describes the steady-state layout.
 The encrypted `.age` file itself can stay in `secrets/nexus/`; it
 becomes orphaned but harmless once the consumer is removed.
 
+**If you delete it instead, the LUKS key is gone for good.** Restoring
+that slot later then needs a freshly generated key and a new
+`luksFormat` — fine for a replacement disk, impossible if you ever need
+to reopen the original. The 2026-05 retirement deleted
+`nexus/disk1.age`, which is why the 2026-09 restore had to mint a new
+one. Keep the file, or accept the slot is unrecoverable.
+
 ---
 
 ## Phase 0 — Diagnose
