@@ -72,6 +72,7 @@ OEM-badged stock under a generic part number. They arrived with roughly
 | Slot | Serial | Model | Batch | In service | Power-on | Health |
 |------|--------|-------|-------|-----------|----------|--------|
 | `/mnt/disk0` | `7PHSNSNG` | NETAPP X377_HLBRE10TA07 (SAS) | B5 | 2023-11 | 7.59 y | clean |
+| `/mnt/disk1` | `JEH3ZN0M` | WDC HUH721010AL4200 (DC HC510, SAS, **4Kn**) | **B6** | 2026-09-24 | 5.48 y | clean — burn-in PASS |
 | `/mnt/disk2` | `7PHSNJKG` | NETAPP X377_HLBRE10TA07 (SAS) | B5 | 2023-11 | 7.59 y | clean |
 | *(retired)* | *not recorded* | NETAPP X377_HLBRE10TA07 (SAS) | B5 | 2023-11 | — | **removed 2026-05-27** |
 | *(retired)* | `VCGYDYTP` | WDC WD101EMAZ-11G7DA0 | B3 | 2020-11 | 5.84 y | **removed 2026-09-22** — 48 pending, 6 offline uncorrectable |
@@ -128,7 +129,7 @@ removal from now on.
 | Serial | Model | Destination | Status |
 |--------|-------|-------------|--------|
 | `VCJXZ6RP` | WD `WUS721010AL5204` (DC HC330, 512e) | `/mnt/parity1` | **in service 2026-09-23** — burn-in PASS |
-| `JEH3ZN0M` | WD `HUH721010AL4200` (DC HC510, **4Kn**) | `/mnt/disk1` | burn-in running |
+| `JEH3ZN0M` | WD `HUH721010AL4200` (DC HC510, **4Kn**) | `/mnt/disk1` | **in service 2026-09-24** — burn-in PASS |
 
 Assignment was decided on power-on hours, not on the platform lean:
 `VCJXZ6RP` arrived at **21 h** (one 10 TB certification wipe and nothing
@@ -147,10 +148,12 @@ held `badblocks` to 38 MB/s against 239 MB/s for `VCJXZ6RP`. Fixed with
 `disk2` are still `WCE=0` and have been since 2023 — worth enabling once
 parity is rebuilt. Every SATA drive in the pool already has it on.
 
-**Remaining for `/mnt/disk1`:** pass verdict, then `luksFormat` with
-`--sector-size 4096` (it is 4Kn), restore `disk1` in
-`hardware-extra.nix`, `snapraid.nix` and `secrets/secrets.nix`, rebuild,
-and `snapraid sync --force-empty`. Return window closes **2026-10-22**.
+Both drives are in service. Warranty runs to **2027-09**; the return
+window is open until **2026-10-22**.
+
+**Outstanding:** enable `WCE=1` on the two NETAPP SAS drives, and a
+final `snapraid sync --force-empty` to bring the newly added `disk1`
+into parity.
 
 ---
 
@@ -241,6 +244,7 @@ drive. Re-run the assessment yearly; the numbers age.
 | `disk4` | `VDJDW6VK` | 6.20 y | 38 % | 21 % | clean | 2–4 y |
 | `parity2` | `VCH3DMHP` | 5.84 y | 42 % | 24 % | clean | **2–4 y** (batch) |
 | `disk3` | `VCH3BK7P` | 5.84 y | 50 % | 15 % | clean | 3–5 y |
+| `disk1` | `JEH3ZN0M` | 5.48 y | 13 % | <1 % | clean, burn-in PASS | **2–4 y** |
 | `disk9` | `VCKGXLUP` | 4.02 y | 14 % | 1.2 % | clean, 60 °C max | 4–6 y |
 | `disk8` | `VCKH6UJP` | 4.01 y | 13 % | 1.5 % | clean, 58 °C max | 4–6 y |
 | `/` SSD | `2308E6B0D773` | 2.79 y | **22 % of TBW** | n/a | clean | 6+ y |
@@ -309,6 +313,8 @@ correlated failure.
 
 | Date | Event |
 |------|-------|
+| 2026-09-24 | `JEH3ZN0M` passed burn-in and took the restored `/mnt/disk1` slot; pool back to 10 data disks |
+| 2026-09-24 | Applying the disk1 config before the device existed blocked boot before multi-user.target — recovered via previous generation at the boot menu |
 | 2026-09-23 | `VCJXZ6RP` passed burn-in (0 bad blocks) and took over `/mnt/parity1`; parity rebuild follows |
 | 2026-09-22 | `VCGYDYTP` pulled from `/mnt/parity1`; SnapRAID sync + scrub paused while single-parity |
 | 2026-09-22 | B6 drives arrived; `JEH3ZN0M` found with WCE=0, enabled via sdparm |

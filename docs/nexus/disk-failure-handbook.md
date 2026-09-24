@@ -180,6 +180,110 @@ day a data disk dies.
 
 ---
 
+## Replacing a disk: commit ordering
+
+**Never put the config change and the disk format in one commit.** The
+config references a device that does not exist until you have formatted
+it, and applying it early takes the machine down hard. Split it in two,
+with the manual work in between.
+
+### Data disk
+
+**Commit 1 — the key only.** Declare the agenix secret and nothing else:
+`flake.nix` (`age.secrets."nexus/diskN".file`) and `secrets/secrets.nix`.
+Leave `diskNumbers`, the crypttab line and the mergerfs branch list
+alone. Switching this is inert: it just drops the keyfile at
+`/run/agenix/nexus/diskN`.
+
+**Manual step — partition, encrypt, format.** Verify the device by
+serial first; kernel names move on every reboot.
+
+```bash
+PARTED=$(ls -d /nix/store/*-parted-*/bin/parted | tail -1)
+CRYPTSETUP=$(ls -d /nix/store/*-cryptsetup-*/bin/cryptsetup | tail -1)
+
+lsblk -dno NAME,SERIAL | grep <SERIAL>
+sudo $PARTED -s /dev/sdX mklabel gpt mkpart primary 0% 100%
+sudo ${PARTED%parted}partprobe /dev/sdX
+
+sudo $CRYPTSETUP luksFormat --key-file /run/agenix/nexus/diskN \
+  --sector-size 4096 \
+  --uuid <LUKS-UUID> --type luks2 --cipher aes-xts-plain64 \
+  --key-size 512 --hash sha256 --pbkdf argon2id /dev/sdX1
+sudo $CRYPTSETUP open /dev/sdX1 diskN --key-file /run/agenix/nexus/diskN
+sudo mkfs.ext4 /dev/mapper/diskN
+```
+
+`--sector-size 4096` is required for a 4Kn drive (`lsblk -o LOG-SEC`
+reads 4096) and harmless on 512e.
+
+Use `--key-file`, **not** `< keyfile`. Reading a key from stdin,
+cryptsetup stops at the first newline; `--key-file` reads the whole file
+as raw bytes, which is what `systemd-cryptsetup` does when it later
+unlocks from crypttab. Mixing the two yields a volume that opens by hand
+and fails at boot. The shell redirect also fails outright as a non-root
+user, since `/run/agenix/nexus/diskN` is `-r--------` root-only.
+
+**Commit 2 — adopt the disk.** Now add `diskNumbers`, the crypttab line
+and (implicitly) the mergerfs branch, and switch. Then:
+
+```bash
+sudo snapraid --conf /etc/snapraid.conf sync --force-empty
+```
+
+`--force-empty` is needed because the new disk has no files yet.
+
+### Why the order is not optional
+
+Applying commit 2 with no formatted device does **not** degrade
+gracefully. The crypttab entry makes systemd wait on the device unit for
+that LUKS UUID, which never appears, so `local-fs.target` fails and boot
+stops before `multi-user.target`. `systemd-networkd` is already up by
+then, so the machine answers ping while **nothing listens** — no SSH, no
+tailscale. `/diskpool` fails too, since `depends` lists every
+`/mnt/diskN`.
+
+Recovery is the boot menu and an older generation. With no iDRAC on the
+network that means physical access. This happened on 2026-09-24.
+
+### Replacing a parity disk
+
+Parity is simpler — no LUKS, no `diskNumbers` — but it has its own trap.
+
+Reusing the old filesystem UUID (`mkfs.ext4 -U <old-uuid>`) means no
+config change at all, since `hardware-extra.nix` mounts parity by UUID.
+The cost is that **SnapRAID cannot tell the disk was replaced**: same
+UUID, and a content file that says every block is synced. A plain
+`sync` then rebuilds nothing, runs for minutes, and reports
+`Everything OK` over a parity file that is almost entirely empty.
+
+Force the recomputation explicitly:
+
+```bash
+sudo snapraid --conf /etc/snapraid.conf sync -F
+```
+
+`-F, --force-full` is in the man page but **not** in `snapraid --help`,
+which is abbreviated. It validates data against the content hashes as it
+goes, so the remaining parity keeps protecting you throughout.
+
+Sanity-check that it is genuinely rebuilding rather than trusting the
+progress line: cumulative writes to the parity device should climb
+toward the full parity-file size.
+
+```bash
+awk '{print $7*512/1e9 " GB written"}' /sys/block/sdX/stat
+```
+
+A run that stops after tens of GB did not rebuild anything.
+
+**`status` is the authority on completion, not the process exiting.** A
+successful sync rewrites `snapraid.content` on every data disk; until
+those mtimes move, the run has not finished, and `status` will say
+`sync in progress at NN%`.
+
+---
+
 ## Approach A — Drain the failing disk
 
 ### A1. Pre-flight
