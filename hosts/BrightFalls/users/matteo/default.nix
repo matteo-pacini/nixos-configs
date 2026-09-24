@@ -63,6 +63,8 @@
       # Path of Exile 2
       exiled-exchange-2
       path-of-building-poe2
+      # Wine/Proton preload runtime
+      linuwux-runtime
       # Other
       discord
     ];
