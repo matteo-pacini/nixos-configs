@@ -36,6 +36,7 @@ in
       "sonarr-main"
       "sonarr-log"
       "grafana"
+      "n8n"
     ];
     ensureUsers = [
       {
@@ -60,6 +61,10 @@ in
       }
       {
         name = "grafana";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "n8n";
         ensureDBOwnership = true;
       }
     ];

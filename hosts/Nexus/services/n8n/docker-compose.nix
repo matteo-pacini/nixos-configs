@@ -31,9 +31,9 @@
     image = "docker.n8n.io/n8nio/n8n:2.33.2";
     environment = {
       "DB_POSTGRESDB_DATABASE" = "n8n";
-      "DB_POSTGRESDB_HOST" = "postgres";
+      "DB_POSTGRESDB_HOST" = "/run/postgresql";
       "DB_POSTGRESDB_PORT" = "5432";
-      "DB_POSTGRESDB_USER" = "user";
+      "DB_POSTGRESDB_USER" = "n8n";
       "DB_TYPE" = "postgresdb";
       "GENERIC_TIMEZONE" = "Europe/London";
       "N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE" = "false";
@@ -50,12 +50,10 @@
     };
     volumes = [
       "/var/lib/n8n:/home/node/.n8n:rw"
+      "/run/postgresql:/run/postgresql:ro"
     ];
     ports = [
       "127.0.0.1:5678:5678/tcp"
-    ];
-    dependsOn = [
-      "nexus-n8n-postgres"
     ];
     log-driver = "journald";
     extraOptions = [
@@ -72,42 +70,6 @@
     ];
   };
   systemd.services."podman-nexus-n8n-n8n" = {
-    serviceConfig = {
-      Restart = lib.mkOverride 90 "always";
-    };
-    after = [
-      "podman-network-nexus-n8n_default.service"
-    ];
-    requires = [
-      "podman-network-nexus-n8n_default.service"
-    ];
-    partOf = [
-      "podman-compose-nexus-n8n-root.target"
-    ];
-    wantedBy = [
-      "podman-compose-nexus-n8n-root.target"
-    ];
-  };
-  virtualisation.oci-containers.containers."nexus-n8n-postgres" = {
-    image = "postgres:16.13";
-    environment = {
-      "POSTGRES_DB" = "n8n";
-      "POSTGRES_USER" = "user";
-    };
-    volumes = [
-      "/var/lib/postgresql_n8n:/var/lib/postgresql/data:rw"
-    ];
-    log-driver = "journald";
-    extraOptions = [
-      "--health-cmd=pg_isready -h localhost -U user -d n8n"
-      "--health-interval=5s"
-      "--health-retries=10"
-      "--health-timeout=5s"
-      "--network-alias=postgres"
-      "--network=nexus-n8n_default"
-    ];
-  };
-  systemd.services."podman-nexus-n8n-postgres" = {
     serviceConfig = {
       Restart = lib.mkOverride 90 "always";
     };

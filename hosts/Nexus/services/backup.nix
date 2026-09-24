@@ -214,8 +214,6 @@ let
     ''${RSYNC_CMD} ${config.services.paperless.mediaDir} ${backupDestination}/
     # n8n - application data
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
-    # n8n - PostgreSQL database
-    ''${RSYNC_CMD} /var/lib/postgresql_n8n ${backupDestination}/
     # nextcloud
     ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
 
