@@ -614,6 +614,18 @@ in
           enable = true;
           uri = "tcp://0.0.0.0:10300";
           language = "en";
+          # Pinned rather than "auto" so a future default change can't swap the
+          # model silently. Parakeet ignores beamSize and initialPrompt.
+          sttLibrary = "sherpa";
+          model = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8";
+          extraArgs = [
+            # The default is 4 threads, and the module has no option for it.
+            "--cpu-threads"
+            "16"
+            # Trims silence around speech before transcription. It takes any
+            # following non-flag words as library names, so keep it last.
+            "--vad-clip"
+          ];
         };
       };
 
@@ -623,6 +635,23 @@ in
         voice = "en_GB-alan-medium";
       };
     };
+  };
+
+  # Kokoro-82M TTS over Wyoming, added to HA as a second Wyoming service at
+  # 127.0.0.1:10210. Not in nixpkgs. Runs on CPU: the P2000 is Pascal, which
+  # current onnxruntime/PyTorch CUDA builds no longer target.
+  #
+  # Every Docker Hub tag from 1.1.0 on, including :latest, points at the 2.4 GB
+  # CUDA build: the release workflow pushes the cpu and cuda variants under the
+  # same tag. onnxruntime falls back to the CPU provider without a GPU, so it
+  # still works, just larger than the slim CPU image.
+  virtualisation.oci-containers.containers.kokoro-wyoming = {
+    image = "docker.io/nordwestt/kokoro-wyoming:1.1.0";
+    cmd = [
+      "--voice"
+      "bf_emma"
+    ];
+    ports = [ "127.0.0.1:10210:10210/tcp" ];
   };
 
 }
