@@ -137,6 +137,8 @@ in
           hash = "sha256-gTrid3Wa2s9jIYkdHzRYz4tHd4WrbZ63vhlb6kqTJCk=";
         };
 
+        patches = [ ./patches/webhook-conversation-stream-errors.patch ];
+
         dependencies = with pkgs.home-assistant.python3Packages; [
           voluptuous-openapi
         ];

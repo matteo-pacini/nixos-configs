@@ -1,0 +1,61 @@
+Only fail a streamed response when n8n sent nothing but errors.
+
+Upstream raises HomeAssistantError on the first {"type": "error"} chunk. n8n's
+streaming webhook also emits error chunks for failures the AI Agent recovers
+from: a tool call that returns HTTP 400 and is retried, or a model call that is
+rate limited and covered by the fallback model. Home Assistant then drops the
+reply even though the workflow finishes with a good answer. Seen with the Home
+Metrics Agent: HA reported a VictoriaMetrics query error at 7.4 s while the
+execution went on to answer at 10.7 s with status success.
+
+With this patch, error chunks are logged at warning level and skipped. The
+request fails only if the stream closes without any item or tool_calls chunk,
+and then it fails with the last error message, as upstream would have.
+
+Revisit on every version bump: drop this patch if upstream stops treating every
+error chunk as fatal.
+
+diff --git a/custom_components/webhook_conversation/entity.py b/custom_components/webhook_conversation/entity.py
+index b63a881..3f22596 100644
+--- a/custom_components/webhook_conversation/entity.py
++++ b/custom_components/webhook_conversation/entity.py
+@@ -157,6 +157,8 @@ class WebhookConversationLLMBaseEntity(WebhookConversationBaseEntity):
+                     f"Error contacting webhook: HTTP {response.status} - {response.reason}"
+                 )
+ 
++            last_error: Any = None
++            has_content = False
+             async for line in response.content:
+                 if line:
+                     line_str = line.decode("utf-8").strip()
+@@ -165,9 +167,19 @@ class WebhookConversationLLMBaseEntity(WebhookConversationBaseEntity):
+                             chunk_data = json.loads(line_str)
+                             chunk_type = chunk_data.get("type")
+                             if chunk_type == "error":
+-                                raise HomeAssistantError(
+-                                    f"n8n error: {chunk_data.get('message', chunk_data)}"
++                                # n8n also emits error chunks for failures the
++                                # agent recovers from (a tool call it retries, a
++                                # model error covered by the fallback model), so
++                                # only fail if the stream produced nothing else.
++                                last_error = chunk_data.get(
++                                    "message", chunk_data.get("content", chunk_data)
+                                 )
++                                _LOGGER.warning(
++                                    "Webhook streamed an error chunk: %s", last_error
++                                )
++                                continue
++                            if chunk_type in ("item", "tool_calls"):
++                                has_content = True
+                             # We don't break on "end" because n8n can send multiple
+                             # begin/end blocks when using tools or intermediate steps.
+                             # We keep reading until the stream actually closes.
+@@ -177,6 +189,8 @@ class WebhookConversationLLMBaseEntity(WebhookConversationBaseEntity):
+                                 "Failed to parse streaming response chunk: %s", line_str
+                             )
+                             continue
++            if not has_content and last_error is not None:
++                raise HomeAssistantError(f"n8n error: {last_error}")
+ 
+     def _build_payload(
+         self, chat_log: conversation.ChatLog, include_last: bool = False
