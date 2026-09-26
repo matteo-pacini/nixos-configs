@@ -1,7 +1,7 @@
 # Plymouth theme for BrightFalls: the NixOS snowflake assembling from six
 # lambdas, then a seamless loop while the LUKS prompt waits. Frames are
 # rendered at build time from render.html with headless Chromium on
-# SwiftShader (CPU), so the build needs no GPU and takes several minutes.
+# SwiftShader (CPU), so the build needs no GPU; it takes under a minute.
 {
   lib,
   stdenvNoCC,
@@ -50,10 +50,11 @@ let
         --virtual-time-budget=3600000 \
         --dump-dom "file://$PWD/work/render.html" > dom.html 2> chromium.log &
       pid=$!
+      deadline=$((SECONDS + 3600))
       until grep -q '^DONE$' dom.html; do
-        if ! kill -0 $pid 2>/dev/null; then
+        if ! kill -0 $pid 2>/dev/null || ((SECONDS > deadline)); then
           cat chromium.log >&2
-          echo "chromium exited before rendering finished" >&2
+          echo "chromium did not finish rendering" >&2
           exit 1
         fi
         sleep 5
