@@ -13,6 +13,7 @@
     ./graphics.nix
     ./gaming.nix
     ./hardware.nix
+    ./boot-splash.nix
     ./printer.nix
     ./virtualization.nix
     ./specialisations.nix

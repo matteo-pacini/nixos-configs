@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=BrightFalls
+Description=The NixOS snowflake assembling from six lambdas
+ModuleName=script
+
+[script]
+ImageDir=@themeDir@
+ScriptFile=@themeDir@/brightfalls.script

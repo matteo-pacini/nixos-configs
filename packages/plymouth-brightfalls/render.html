@@ -1,0 +1,340 @@
+<!doctype html>
+<!--
+  Offline frame renderer for the BrightFalls Plymouth theme. Loaded by headless
+  Chromium (SwiftShader) during the package build; renders every frame
+  synchronously and dumps them as base64 PNGs into #out, which the build
+  script decodes. Timeline: an intro that plays once, then a loop whose last
+  frame flows into its first.
+-->
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Jost"; font-weight: 300; src: url("fonts/Jost-300-Light.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-Regular.ttf"); }
+</style>
+<canvas id="gl" width="560" height="560"></canvas>
+<pre id="out"></pre>
+<script type="importmap">
+{ "imports": { "three": "./three/build/three.module.js", "three/addons/": "./three/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const SIZE = 560;
+const FPS = 25;
+const INTRO = 5.6; // seconds; the intro ends exactly on the loop's phase-0 pose
+const LOOP = 4.0;
+const BG = "#04060b"; // also the Plymouth window colour in brightfalls.script
+
+const T = { flyStart: 0.5, flyStagger: 0.16, flyDur: 2.7, lock: 3.85 };
+
+const out = [];
+const emit = (name, canvas) =>
+  out.push(`FILE ${name} ${canvas.toDataURL("image/png").split(",")[1]}`);
+
+// ---- Renderer / scene
+const canvas = document.getElementById("gl");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(SIZE, SIZE, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000); // BG is added in renderFrame
+scene.fog = new THREE.FogExp2(0x000000, 0.035);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
+
+const key = new THREE.DirectionalLight(0xdfeaff, 1.6);
+key.position.set(4, 6, 8);
+scene.add(key);
+const sweep = new THREE.PointLight(0xffffff, 0, 30, 1.6);
+scene.add(sweep);
+const rim = new THREE.DirectionalLight(0x7ebae4, 2.2);
+rim.position.set(-3, -2, -8);
+scene.add(rim);
+
+// ---- Snowflake from nix-snowflake.svg (nixos-icons): one lambda path rotated
+// about the logo centre in 60° steps. SVG y points down, hence the flip.
+const LAMBDA_REL = [
+  [309.54892, -710.38827], [122.19683, 211.67512], [-56.15706, 0.5268],
+  [-32.6236, -56.8692], [-32.85645, 56.5653], [-27.90237, -0.011],
+  [-14.29086, -24.6896], [46.81047, -80.4901], [-33.22946, -57.8257],
+];
+const CENTER = [407.3, -715.8];
+const UNIT = 1 / 105;
+
+const pts = [];
+{
+  let x = 0, y = 0;
+  LAMBDA_REL.forEach(([dx, dy], i) => {
+    x = i === 0 ? dx : x + dx;
+    y = i === 0 ? dy : y + dy;
+    pts.push(new THREE.Vector2((x - CENTER[0]) * UNIT, -(y - CENTER[1]) * UNIT));
+  });
+}
+const centroid = pts.reduce((a, p) => a.add(p), new THREE.Vector2()).multiplyScalar(1 / pts.length);
+const DEPTH = 0.26;
+const lambdaGeo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(p => p.clone().sub(centroid))), {
+  depth: DEPTH, curveSegments: 1,
+  bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.035, bevelSegments: 5,
+});
+lambdaGeo.translate(0, 0, -DEPTH / 2);
+lambdaGeo.computeVertexNormals();
+
+const mkMat = hex => new THREE.MeshPhysicalMaterial({
+  color: hex, emissive: hex, emissiveIntensity: 0,
+  metalness: 0.2, roughness: 0.26,
+  clearcoat: 1, clearcoatRoughness: 0.08,
+  iridescence: 0.25, iridescenceIOR: 1.4,
+});
+// Official palette: dark lambdas at 0°, ±120°; light ones at ±60°, 180°.
+const matDark = mkMat(0x5277c3);
+const matLight = mkMat(0x7ebae4);
+
+const flake = new THREE.Group();
+scene.add(flake);
+const lambdas = [];
+for (let i = 0; i < 6; i++) {
+  const pivot = new THREE.Group();
+  pivot.rotation.z = THREE.MathUtils.degToRad(i * 60);
+  const mesh = new THREE.Mesh(lambdaGeo, i % 2 === 0 ? matDark : matLight);
+  pivot.add(mesh);
+  flake.add(pivot);
+  const s = i % 2 === 0 ? 1 : -1;
+  lambdas.push({
+    mesh,
+    outward: centroid.clone().normalize(),
+    order: [0, 3, 1, 4, 2, 5].indexOf(i),
+    tumble: new THREE.Euler(2.4 * s, -1.9, 1.3 * s + i * 0.4),
+    zFrom: -6 - i * 1.5,
+  });
+}
+
+// ---- Core spark and lock shockwave
+const glowCanvas = (size, stops) => {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  const grd = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  stops.forEach(([o, col]) => grd.addColorStop(o, col));
+  g.fillStyle = grd;
+  g.fillRect(0, 0, size, size);
+  return c;
+};
+const glowTex = new THREE.CanvasTexture(glowCanvas(128, [
+  [0, "rgba(255,255,255,1)"], [0.18, "rgba(170,215,255,0.85)"],
+  [0.5, "rgba(82,119,195,0.25)"], [1, "rgba(82,119,195,0)"],
+]));
+const spark = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: glowTex, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+scene.add(spark);
+const ring = new THREE.Mesh(
+  new THREE.RingGeometry(0.96, 1, 96),
+  new THREE.MeshBasicMaterial({
+    color: 0x9fd0f0, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  }),
+);
+scene.add(ring);
+
+// ---- Dust: seeded so rebuilds produce the same frames; bobs with the loop
+// period so the loop stays seamless.
+let seed = 0x5eed;
+const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+const DUST = 900;
+const dustBase = new Float32Array(DUST * 3);
+const dustPhase = new Float32Array(DUST);
+for (let i = 0; i < DUST; i++) {
+  dustBase[i * 3] = (rand() - 0.5) * 22;
+  dustBase[i * 3 + 1] = (rand() - 0.5) * 22;
+  dustBase[i * 3 + 2] = -rand() * 26 + 4;
+  dustPhase[i] = rand() * Math.PI * 2;
+}
+const dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute("position", new THREE.BufferAttribute(dustBase.slice(), 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  size: 0.07, map: glowTex, color: 0x7ebae4, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+}));
+scene.add(dust);
+
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(1);
+composer.setSize(SIZE, SIZE);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(SIZE, SIZE), 0.7, 0.55, 0.72);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---- Easing
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const seg = (t, a, b) => clamp01((t - a) / (b - a));
+const outQuart = x => 1 - Math.pow(1 - x, 4);
+const outExpo = x => (x === 1 ? 1 : 1 - Math.pow(2, -10 * x));
+const inOutCubic = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const inCubic = x => x * x * x;
+const TAU = Math.PI * 2;
+
+// t is seconds from splash start; for t >= INTRO the state is periodic in LOOP.
+function pose(t) {
+  const u = (t - INTRO) / LOOP; // loop phase; negative during the intro
+  const settle = inOutCubic(seg(t, T.lock - 0.4, INTRO));
+
+  for (const L of lambdas) {
+    const start = T.flyStart + L.order * T.flyStagger;
+    const k = seg(t, start, start + T.flyDur);
+    const e = outQuart(k);
+    const dist = (1 - outExpo(k)) * 16;
+    L.mesh.position.set(
+      centroid.x + L.outward.x * dist,
+      centroid.y + L.outward.y * dist,
+      L.zFrom * (1 - e),
+    );
+    const r = 1 - e;
+    L.mesh.rotation.set(L.tumble.x * r, L.tumble.y * r, L.tumble.z * r);
+    L.mesh.visible = k > 0;
+  }
+
+  const sinceLock = t - T.lock;
+  // Fades to exactly 0 before the loop starts so loop frames carry no flash.
+  const flash = sinceLock >= 0 ? Math.exp(-sinceLock * 3.2) * (1 - seg(t, T.lock + 0.8, INTRO)) : 0;
+  const idleGlow = 0.06 + 0.03 * Math.sin(TAU * u);
+  matDark.emissiveIntensity = matLight.emissiveIntensity =
+    (sinceLock >= 0 ? idleGlow * seg(t, T.lock, T.lock + 0.3) : 0) + flash * 1.1;
+  bloom.strength = 0.55 + flash * 0.7;
+
+  const rk = seg(t, T.lock, T.lock + 1.3);
+  ring.scale.setScalar(0.6 + outExpo(rk) * 7);
+  ring.material.opacity = rk > 0 && rk < 1 ? (1 - rk) * 0.9 : 0;
+
+  const gather = inCubic(seg(t, 0.2, T.lock)) * (1 - seg(t, T.lock, T.lock + 0.6));
+  const heartbeat = (0.35 + 0.15 * Math.sin(TAU * u)) * seg(t, T.lock, T.lock + 0.6);
+  spark.material.opacity = Math.min(1, gather * 0.9 + flash + heartbeat);
+  spark.scale.setScalar(0.3 + gather * 0.6 + flash * 1.6 + heartbeat * 0.6);
+
+  dust.material.opacity = 0.5 * seg(t, 0, 1.5);
+  const pos = dustGeo.attributes.position.array;
+  for (let i = 0; i < DUST; i++) {
+    pos[i * 3] = dustBase[i * 3] + 0.12 * Math.cos(TAU * u + dustPhase[i]);
+    pos[i * 3 + 1] = dustBase[i * 3 + 1] + 0.25 * Math.sin(TAU * u + dustPhase[i]);
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+
+  flake.rotation.set(
+    Math.sin(TAU * u) * 0.05 * settle,
+    Math.sin(TAU * u) * 0.16 * settle,
+    -t * 0.03 * (1 - settle) + (1 - settle) * 0.4,
+  );
+
+  // Low dutch-angled push-out into a centred hero framing.
+  const c = inOutCubic(seg(t, 0, INTRO));
+  const az = THREE.MathUtils.lerp(-0.75, 0, c) + settle * Math.sin(TAU * u) * 0.06;
+  const el = THREE.MathUtils.lerp(-0.35, 0.05, c);
+  const d = THREE.MathUtils.lerp(7.5, 12.5, c);
+  camera.position.set(Math.sin(az) * Math.cos(el) * d, Math.sin(el) * d, Math.cos(az) * Math.cos(el) * d);
+  camera.up.set(Math.sin(THREE.MathUtils.lerp(0.22, 0, c)), 1, 0).normalize();
+  camera.lookAt(0, THREE.MathUtils.lerp(0.7, 0, c), 0);
+
+  // One specular sweep across the bevels per loop; dark at phase 0.
+  const sw = ((u % 1) + 1) % 1;
+  sweep.intensity = t >= INTRO ? 40 * Math.sin(Math.PI * clamp01(sw * 1.6)) : 0;
+  sweep.position.set(THREE.MathUtils.lerp(-7, 7, clamp01(sw * 1.6)), 3.5, 3.2);
+}
+
+// The scene renders on black and is added onto BG: tone mapping would shift a
+// coloured background, leaving each frame a visibly different square on
+// Plymouth's plain BG. The radial mask fades the render out towards the frame
+// edge so lambdas flying in from outside emerge from darkness instead of being
+// clipped at the square.
+const frame2d = document.createElement("canvas");
+frame2d.width = frame2d.height = SIZE;
+const f2d = frame2d.getContext("2d");
+const masked = document.createElement("canvas");
+masked.width = masked.height = SIZE;
+const m2d = masked.getContext("2d");
+const edge = m2d.createRadialGradient(SIZE / 2, SIZE / 2, SIZE * 0.3, SIZE / 2, SIZE / 2, SIZE * 0.5);
+edge.addColorStop(0, "rgba(0,0,0,1)");
+edge.addColorStop(1, "rgba(0,0,0,0)");
+
+function renderFrame(t, name) {
+  pose(t);
+  composer.render();
+  m2d.globalCompositeOperation = "copy";
+  m2d.drawImage(canvas, 0, 0);
+  m2d.globalCompositeOperation = "destination-in";
+  m2d.fillStyle = edge;
+  m2d.fillRect(0, 0, SIZE, SIZE);
+  f2d.globalCompositeOperation = "copy";
+  f2d.fillStyle = BG;
+  f2d.fillRect(0, 0, SIZE, SIZE);
+  f2d.globalCompositeOperation = "lighter";
+  f2d.drawImage(masked, 0, 0);
+  emit(name, frame2d);
+}
+
+const introFrames = Math.round(INTRO * FPS);
+const loopFrames = Math.round(LOOP * FPS);
+for (let i = 0; i < introFrames; i++) renderFrame(i / FPS, `intro-${String(i).padStart(4, "0")}.png`);
+for (let i = 0; i < loopFrames; i++) renderFrame(INTRO + i / FPS, `loop-${String(i).padStart(4, "0")}.png`);
+
+// ---- 2D assets: wordmark, unlock glow, password bullet, entry underline
+await document.fonts.load('300 60px "Jost"');
+await document.fonts.load('12px "JetBrains Mono"');
+{
+  const c = document.createElement("canvas");
+  c.width = 560; c.height = 104;
+  const g = c.getContext("2d");
+  g.textBaseline = "alphabetic";
+  const tracked = (text, px, spacing) => {
+    g.letterSpacing = `${px * spacing}px`;
+    // Canvas adds tracking after the last glyph too; drop it when centring.
+    return g.measureText(text).width - px * spacing;
+  };
+  g.font = '300 60px "Jost"';
+  const wNix = tracked("Nix", 60, 0.3) + 60 * 0.3;
+  const wAll = tracked("NixOS", 60, 0.3);
+  const x0 = (c.width - wAll) / 2;
+  g.fillStyle = "#dbe7f5";
+  g.fillText("Nix", x0, 60);
+  g.fillStyle = "#7ebae4";
+  g.fillText("OS", x0 + wNix, 60);
+  g.font = '12px "JetBrains Mono"';
+  const wHost = tracked("BRIGHTFALLS", 12, 0.42);
+  g.fillStyle = "#6c7f99";
+  g.fillText("BRIGHTFALLS", (c.width - wHost) / 2, 94);
+  emit("wordmark.png", c);
+}
+emit("glow.png", glowCanvas(SIZE, [
+  [0, "rgba(220,238,255,0.95)"], [0.12, "rgba(150,200,240,0.6)"],
+  [0.4, "rgba(82,119,195,0.18)"], [0.5, "rgba(82,119,195,0)"], [1, "rgba(82,119,195,0)"],
+]));
+{
+  const c = document.createElement("canvas");
+  c.width = c.height = 10;
+  const g = c.getContext("2d");
+  g.fillStyle = "#7ebae4";
+  g.beginPath(); g.arc(5, 5, 3.2, 0, TAU); g.fill();
+  emit("bullet.png", c);
+}
+{
+  const c = document.createElement("canvas");
+  c.width = 260; c.height = 1;
+  const g = c.getContext("2d");
+  g.fillStyle = "rgba(126,186,228,0.28)";
+  g.fillRect(0, 0, 260, 1);
+  emit("entry.png", c);
+}
+
+document.getElementById("out").textContent = out.join("\n") + "\nDONE\n";
+</script>

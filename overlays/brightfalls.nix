@@ -14,6 +14,7 @@ in
   exiled-exchange-2 = super.callPackage ../packages/exiled-exchange-2.nix { };
   path-of-building-poe2 = super.callPackage ../packages/path-of-building-poe2.nix { };
   linuwux-runtime = super.callPackage ../packages/linuwux-runtime.nix { };
+  plymouth-brightfalls = super.callPackage ../packages/plymouth-brightfalls { };
 
   # GDM 50.2's hardened pam_gdm rejects any kernel-keyring payload whose last
   # byte is not NUL — but systemd deliberately strips that trailing NUL from
