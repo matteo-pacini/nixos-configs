@@ -69,7 +69,6 @@ in
     extraComponents = [
       # Components required to complete the onboarding
       "analytics"
-      "google_translate"
       "met"
       "radio_browser"
       "shopping_list"
@@ -100,7 +99,6 @@ in
       "influxdb"
       # Voice
       "whisper"
-      "piper"
       "wake_word"
       "wyoming"
       # Shelly
@@ -714,12 +712,6 @@ in
             "--vad-clip"
           ];
         };
-      };
-
-      piper.servers.ha = {
-        enable = true;
-        uri = "tcp://0.0.0.0:10200";
-        voice = "en_GB-alan-medium";
       };
     };
   };
