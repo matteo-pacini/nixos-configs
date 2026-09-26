@@ -10,11 +10,6 @@ TICKS_PER_FRAME = 2; # Plymouth refreshes at 50 Hz; frames are 25 fps
 Window.SetBackgroundTopColor(0.0157, 0.0235, 0.0431);
 Window.SetBackgroundBottomColor(0.0157, 0.0235, 0.0431);
 
-screen.w = Window.GetWidth();
-screen.h = Window.GetHeight();
-screen.x = Window.GetX();
-screen.y = Window.GetY();
-
 fun pad4(n) {
   if (n < 10) return "000" + n;
   if (n < 100) return "00" + n;
@@ -22,34 +17,69 @@ fun pad4(n) {
   return "" + n;
 }
 
-# ---- Logo animation
+# ---- Sprites. Created at top level: a variable first assigned inside a
+# function is local to it, and its sprites are freed when the function returns.
+LOGO_SIZE = 560;
 logo.sprite = Sprite();
-logo.size = 560;
-logo.x = screen.x + Math.Int(screen.w / 2 - logo.size / 2);
-logo.y = screen.y + Math.Int(screen.h * 0.42 - logo.size / 2);
-logo.sprite.SetPosition(logo.x, logo.y, 1);
+screen.w = 0; # filled in by layout(); must exist globally first
 
 tick = 0;
 frame = -1;
 # Shutdown/reboot skip the assembly and go straight to the loop.
 if (Plymouth.GetMode() == "boot") intro_done = 0; else intro_done = 1;
 
-# ---- Wordmark, faded in as the intro locks together
+# Wordmark, faded in as the intro locks together
 wordmark.image = Image("wordmark.png");
 wordmark.sprite = Sprite(wordmark.image);
-wordmark.y = logo.y + logo.size - 70;
-wordmark.sprite.SetPosition(
-  screen.x + Math.Int(screen.w / 2 - wordmark.image.GetWidth() / 2),
-  wordmark.y, 2);
 wordmark.sprite.SetOpacity(intro_done);
 WORDMARK_FADE_START = 100;
 WORDMARK_FADE_FRAMES = 35;
 
-# ---- Unlock pulse over the logo core
+# Unlock pulse over the logo core
 glow.sprite = Sprite(Image("glow.png"));
-glow.sprite.SetPosition(logo.x, logo.y, 3);
 glow.sprite.SetOpacity(0);
 glow.level = 0;
+
+# Passphrase prompt
+PROMPT_FONT = "JetBrains Mono 11";
+prompt.visible = 0;
+entry.image = Image("entry.png");
+entry.sprite = Sprite(entry.image);
+entry.sprite.SetOpacity(0);
+label.sprite = Sprite();
+label.sprite.SetOpacity(0);
+bullet.image = Image("bullet.png");
+MAX_BULLETS = 20;
+for (i = 0; i < MAX_BULLETS; i++) {
+  bullets[i] = Sprite(bullet.image);
+  bullets[i].SetOpacity(0);
+}
+
+# ---- Layout. Plymouth starts on the firmware framebuffer (simpledrm) and the
+# real amdgpu heads arrive seconds later, so positions are recomputed on every
+# display hotplug rather than fixed at startup.
+fun layout() {
+  screen.w = Window.GetWidth();
+  screen.h = Window.GetHeight();
+  screen.x = Window.GetX();
+  screen.y = Window.GetY();
+
+  logo.x = screen.x + Math.Int(screen.w / 2 - LOGO_SIZE / 2);
+  logo.y = screen.y + Math.Int(screen.h * 0.42 - LOGO_SIZE / 2);
+  logo.sprite.SetPosition(logo.x, logo.y, 1);
+  glow.sprite.SetPosition(logo.x, logo.y, 3);
+
+  wordmark.y = logo.y + LOGO_SIZE - 70;
+  wordmark.sprite.SetPosition(
+    screen.x + Math.Int(screen.w / 2 - wordmark.image.GetWidth() / 2),
+    wordmark.y, 2);
+
+  prompt.y = wordmark.y + wordmark.image.GetHeight() + 24;
+  entry.sprite.SetPosition(screen.x + Math.Int(screen.w / 2 - entry.image.GetWidth() / 2), prompt.y + 48, 4);
+  if (prompt.visible) display_password_callback(prompt.text, prompt.count);
+}
+layout();
+Plymouth.SetDisplayHotplugFunction(layout);
 
 fun refresh_callback() {
   tick++;
@@ -86,27 +116,10 @@ fun refresh_callback() {
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
-# ---- Passphrase prompt
-PROMPT_FONT = "JetBrains Mono 11";
-prompt.y = wordmark.y + wordmark.image.GetHeight() + 24;
-prompt.visible = 0;
-entry.image = Image("entry.png");
-entry.sprite = Sprite(entry.image);
-entry.sprite.SetPosition(screen.x + Math.Int(screen.w / 2 - entry.image.GetWidth() / 2), prompt.y + 48, 4);
-entry.sprite.SetOpacity(0);
-label.sprite = Sprite();
-label.sprite.SetOpacity(0);
-bullet.image = Image("bullet.png");
-MAX_BULLETS = 20;
-# Created here, not in the callback: a variable first assigned inside a
-# function is local to it, and its sprites are freed when the function returns.
-for (i = 0; i < MAX_BULLETS; i++) {
-  bullets[i] = Sprite(bullet.image);
-  bullets[i].SetOpacity(0);
-}
-
 fun display_password_callback(text, count) {
   prompt.visible = 1;
+  prompt.text = text;
+  prompt.count = count;
   label.image = Image.Text(text, 0.424, 0.498, 0.6, 1, PROMPT_FONT);
   label.sprite.SetImage(label.image);
   label.sprite.SetPosition(screen.x + Math.Int(screen.w / 2 - label.image.GetWidth() / 2), prompt.y, 4);
