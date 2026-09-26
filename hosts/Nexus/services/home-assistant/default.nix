@@ -69,7 +69,6 @@ in
     extraComponents = [
       # Components required to complete the onboarding
       "analytics"
-      "google_translate"
       "met"
       "radio_browser"
       "shopping_list"
@@ -100,7 +99,6 @@ in
       "influxdb"
       # Voice
       "whisper"
-      "piper"
       "wake_word"
       "wyoming"
       # Shelly
@@ -426,6 +424,93 @@ in
             }
           ];
         }
+        # Entity map for the n8n Home Agent, read through /api/states because
+        # the agent's non-admin token cannot render templates itself. Trigger
+        # based so it holds no state listeners on the entities it lists; the
+        # 30-minute refresh picks up new entities and area changes.
+        #
+        # `controllable` is the allowlist n8n's call_service sub-workflow
+        # enforces, so what the agent is shown and what it may touch cannot
+        # drift. Entities are denied by the `no_ai` label (managed in the HA
+        # UI) or by name for infrastructure: config/diagnostic controls, the
+        # network rack and switch, Zigbee pairing, the ONT reset and the
+        # heating self-test.
+        (
+          let
+            prelude = ''
+              {%- set ctl = ['light', 'switch', 'fan', 'climate', 'cover', 'media_player', 'scene', 'script', 'input_boolean', 'input_number', 'input_select', 'button'] -%}
+              {%- set deny_labelled = label_entities('no_ai') -%}
+              {%- set deny_re = '(_identify|_child_lock|_power_cycle|_restart|permit_join|network_rack|reset_ont|power_outage_memory|self_test)' -%}
+              {%- set ok = namespace(ids=[]) -%}
+              {%- for s in states | selectattr('domain', 'in', ctl) -%}
+                {%- if s.entity_id not in deny_labelled and not s.entity_id is search(deny_re) -%}
+                  {%- set ok.ids = ok.ids + [s.entity_id] -%}
+                {%- endif -%}
+              {%- endfor -%}
+            '';
+          in
+          {
+            trigger = [
+              {
+                platform = "homeassistant";
+                event = "start";
+              }
+              {
+                platform = "event";
+                event_type = "event_template_reloaded";
+              }
+              {
+                platform = "time_pattern";
+                minutes = "/30";
+              }
+            ];
+            sensor = [
+              {
+                name = "n8n House Map";
+                unique_id = "n8n_house_map";
+                icon = "mdi:floor-plan";
+                state = "{{ now().isoformat() }}";
+                attributes = {
+                  controllable = ''
+                    ${prelude}
+                    {{ ok.ids }}
+                  '';
+                  # One line per area: controllable entities plus the
+                  # temperature, humidity and door/window/motion sensors the
+                  # agent needs to answer "is it warm/open" without a search.
+                  map = ''
+                    ${prelude}
+                    {%- set ns = namespace(lines=[], seen=[]) -%}
+                    {%- for area in areas() -%}
+                      {%- set items = namespace(list=[]) -%}
+                      {%- for e in area_entities(area) -%}
+                        {%- set d = e.split('.')[0] -%}
+                        {%- set dc = state_attr(e, 'device_class') -%}
+                        {%- if e in ok.ids
+                              or (d == 'sensor' and dc in ['temperature', 'humidity'])
+                              or (d == 'binary_sensor' and dc in ['door', 'window', 'opening', 'motion', 'occupancy']) -%}
+                          {%- set items.list = items.list + [e ~ ' (' ~ (state_attr(e, 'friendly_name') or e) ~ ')'] -%}
+                          {%- set ns.seen = ns.seen + [e] -%}
+                        {%- endif -%}
+                      {%- endfor -%}
+                      {%- if items.list -%}
+                        {%- set ns.lines = ns.lines + [area_name(area) ~ ': ' ~ items.list | join(', ')] -%}
+                      {%- endif -%}
+                    {%- endfor -%}
+                    {%- set loose = namespace(list=[]) -%}
+                    {%- for e in ok.ids | reject('in', ns.seen) -%}
+                      {%- set loose.list = loose.list + [e ~ ' (' ~ (state_attr(e, 'friendly_name') or e) ~ ')'] -%}
+                    {%- endfor -%}
+                    {%- if loose.list -%}
+                      {%- set ns.lines = ns.lines + ['No area: ' ~ loose.list | join(', ')] -%}
+                    {%- endif -%}
+                    {{ ns.lines | join('\n') }}
+                  '';
+                };
+              }
+            ];
+          }
+        )
       ];
 
       # Thin nudgers: they only move the helpers. The automations below push
@@ -614,15 +699,38 @@ in
           enable = true;
           uri = "tcp://0.0.0.0:10300";
           language = "en";
+          # Pinned rather than "auto" so a future default change can't swap the
+          # model silently. Parakeet ignores beamSize and initialPrompt.
+          sttLibrary = "sherpa";
+          model = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8";
+          extraArgs = [
+            # The default is 4 threads, and the module has no option for it.
+            "--cpu-threads"
+            "16"
+            # Trims silence around speech before transcription. It takes any
+            # following non-flag words as library names, so keep it last.
+            "--vad-clip"
+          ];
         };
       };
-
-      piper.servers.ha = {
-        enable = true;
-        uri = "tcp://0.0.0.0:10200";
-        voice = "en_GB-alan-medium";
-      };
     };
+  };
+
+  # Kokoro-82M TTS over Wyoming, added to HA as a second Wyoming service at
+  # 127.0.0.1:10210. Not in nixpkgs. Runs on CPU: the P2000 is Pascal, which
+  # current onnxruntime/PyTorch CUDA builds no longer target.
+  #
+  # Every Docker Hub tag from 1.1.0 on, including :latest, points at the 2.4 GB
+  # CUDA build: the release workflow pushes the cpu and cuda variants under the
+  # same tag. onnxruntime falls back to the CPU provider without a GPU, so it
+  # still works, just larger than the slim CPU image.
+  virtualisation.oci-containers.containers.kokoro-wyoming = {
+    image = "docker.io/nordwestt/kokoro-wyoming:1.1.0";
+    cmd = [
+      "--voice"
+      "bf_emma"
+    ];
+    ports = [ "127.0.0.1:10210:10210/tcp" ];
   };
 
 }
