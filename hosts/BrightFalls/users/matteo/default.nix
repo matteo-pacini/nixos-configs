@@ -51,6 +51,7 @@
       prismlauncher
       # Other
       telegram-desktop
+      whatsie
       # Music
       jellyfin-tui
     ]

@@ -80,6 +80,8 @@ in
 
   services.fwupd.enable = true;
 
+  services.teamviewer.enable = true;
+
   # mDNS discovery for phone mirroring (custom.phone.scrcpy);
   # GNOME already enables avahi, this just makes the dependency explicit
   services.avahi.enable = true;
