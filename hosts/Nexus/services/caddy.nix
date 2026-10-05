@@ -22,7 +22,7 @@ in
     # DNS-01 challenge instead of HTTP-01 — no inbound port 80 needed.
     package = pkgs.caddy.withPlugins {
       plugins = [ "github.com/caddy-dns/route53@v1.6.2" ];
-      hash = "sha256-Vzp4Y9mARJrAHZ1C3x6+5zTSGiYY1l3FxIPkqK1RI30=";
+      hash = "sha256-0SZu8RwW3pNK/5HDODNxkz1Osly59ptTml3E4WP+EUo=";
     };
 
     # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY for the Route53 plugin.
