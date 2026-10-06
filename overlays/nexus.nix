@@ -73,6 +73,13 @@
         hash = "sha256-sY3qNaYsoYY6Ox5W7F2WHFHId89WbeGJ4fWs2PFQmNk=";
       };
     });
+    # rxvt-unicode 9.31's own lerp() is ambiguous with std::lerp under GCC 16's
+    # default C++ standard. Also only needed for terminfo via enableAllTerminfo.
+    # Drop once the nixpkgs pin includes the upstream fix.
+    # Fix: https://github.com/NixOS/nixpkgs/pull/570596
+    rxvt-unicode-unwrapped = super.rxvt-unicode-unwrapped.overrideAttrs (old: {
+      configureFlags = old.configureFlags ++ [ "CXXFLAGS=-std=c++17" ];
+    });
     telegram-notify = super.writeShellScriptBin "telegram-notify" ''
       set -euo pipefail
 
