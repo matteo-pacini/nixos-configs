@@ -46,6 +46,40 @@
     # the sandbox: either a release after 14.9 or a nixpkgs-side guard for the
     # direct-I/O test.
     snapraid = optimizedForNexus (super.snapraid.overrideAttrs { doCheck = false; });
+    # contour 0.6.3.8249 no longer compiles against the current libstdc++
+    # (std::experimental::simd API errors in vtbackend/Image.cpp). Nexus only
+    # needs it for contour.terminfo via environment.enableAllTerminfo.
+    # Backport of the 0.7.0.8982 bump, which requires libunicode 0.9.3; the
+    # libunicode patch is dropped because 0.9.3 no longer needs it.
+    # Drop both overrides once nixpkgs ships contour >= 0.7.
+    # Tracking: https://github.com/NixOS/nixpkgs/issues/570595
+    # Fix: https://github.com/NixOS/nixpkgs/pull/569719
+    libunicode = super.libunicode.overrideAttrs (_: rec {
+      version = "0.9.3";
+      src = super.fetchFromGitHub {
+        owner = "contour-terminal";
+        repo = "libunicode";
+        tag = "v${version}";
+        hash = "sha256-teyo4KYVdS6+WIjOdS5p7fXZJoMQsL7lPugoaAQ07r4=";
+      };
+      patches = [ ];
+    });
+    contour = super.contour.overrideAttrs (_: rec {
+      version = "0.7.0.8982";
+      src = super.fetchFromGitHub {
+        owner = "contour-terminal";
+        repo = "contour";
+        tag = "v${version}";
+        hash = "sha256-sY3qNaYsoYY6Ox5W7F2WHFHId89WbeGJ4fWs2PFQmNk=";
+      };
+    });
+    # rxvt-unicode 9.31's own lerp() is ambiguous with std::lerp under GCC 16's
+    # default C++ standard. Also only needed for terminfo via enableAllTerminfo.
+    # Drop once the nixpkgs pin includes the upstream fix.
+    # Fix: https://github.com/NixOS/nixpkgs/pull/570596
+    rxvt-unicode-unwrapped = super.rxvt-unicode-unwrapped.overrideAttrs (old: {
+      configureFlags = old.configureFlags ++ [ "CXXFLAGS=-std=c++17" ];
+    });
     telegram-notify = super.writeShellScriptBin "telegram-notify" ''
       set -euo pipefail
 
