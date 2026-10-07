@@ -57,7 +57,7 @@ Check a certificate with `ssh-mesh-renew --status`. On Nexus, `journalctl -t ssh
 The private key is `secrets/nexus/ssh-mesh-ca.age` (recipient: Nexus host key). A backup is kept in 1Password.
 
 1. `ssh-keygen -t ed25519 -N "" -C ssh-mesh-ca -f mesh_ca`
-2. Re-encrypt: `cd secrets && agenix -e nexus/ssh-mesh-ca.age`, then paste the new private key. Update the 1Password backup.
+2. Re-encrypt: `cd secrets && EDITOR="cp /path/to/mesh_ca" nix run --inputs-from .. agenix -- -e nexus/ssh-mesh-ca.age`. Update the 1Password backup.
 3. Set `caPublicKey` in `lib/ssh-mesh.nix` to the contents of `mesh_ca.pub`.
 4. Rebuild **all** mesh hosts. Every existing certificate stops working at that point, so bootstrap each host again.
 
@@ -65,7 +65,40 @@ To rotate without a gap, first deploy both CA public keys (`TrustedUserCAKeys` a
 
 ## Adding a host
 
-1. Add it to `hosts` in `lib/ssh-mesh.nix`. Include `lan`, `tailscale`, `port` and `user` only if it runs sshd. On macOS the port is 22, because launchd owns the socket.
-2. Add it to `allow`.
+1. Add it to `hosts` in `lib/ssh-mesh.nix`:
+   - `principal`: lowercase host name. It's both the cert key ID when the host connects out and the principal other hosts need to log into it.
+   - `hostKey`: the contents of `/etc/ssh/ssh_host_ed25519_key.pub` on the new host. Mesh hosts pin it in `known_hosts`, and `secrets/secrets.nix` uses it as the host's agenix recipient.
+   - `user`, `lan`, `tailscale`, `port`: only if the host runs sshd (accepts mesh logins). On macOS the port is 22, because launchd owns the socket and ignores `Port`.
+2. Add it to `allow`: as a source with its destinations, and/or in other hosts' destination lists.
 3. Set `custom.sshMesh = { enable = true; host = "<Host>"; }` at system level and `custom.ssh.mesh = { enable = true; host = "<Host>"; }` in Home Manager.
-4. Rebuild Nexus, then the new host, then bootstrap it.
+4. Rebuild **Nexus** first, so the signer knows the new key ID.
+5. Rebuild the new host, then bootstrap it (see above, with `--host <principal>`).
+6. Rebuild every other mesh host. They pick up the new host's pinned key, and destinations it may reach start accepting its principal. Sources that may reach it also need `ssh-mesh-renew --force` to get the new principal in their cert.
+
+If the principal was revoked before (see below), remove it from `revokedKeyIds` first, or every cert issued under it is refused.
+
+## Removing a host
+
+Planned removal, such as a retired machine:
+
+1. Delete it from `hosts`, from every `allow` list (as source and as destination), and from any `custom.sshMesh` / `custom.ssh.mesh` settings.
+2. Rebuild **Nexus**. From then on the signer refuses that key ID, so the host can't renew.
+3. Rebuild the other mesh hosts. That drops its pinned host key, its `Host` aliases, and, if it was a destination, the principal other certs carried for it. Run `ssh-mesh-renew --force` on the sources to get certs without it.
+4. If it held agenix secrets, remove it from `secrets/secrets.nix` and re-key.
+
+Its current cert stays valid until it expires (up to 30 days). If that's not acceptable, also revoke it.
+
+## Revoking a host (lost or stolen device)
+
+Every destination loads a key revocation list (`RevokedKeys`), built from `revokedKeyIds` in `lib/ssh-mesh.nix` by `lib/ssh-mesh-krl.nix`. Revoking a key ID rejects **every** cert ever issued under it, including the one the device holds now and any renewal it might get.
+
+1. Add the principal to `revokedKeyIds`, e.g. `revokedKeyIds = [ "worklaptop" ];`.
+2. Rebuild **Nexus first**. Its sshd then refuses the device's renewal logins as `sshca`, as well as normal logins.
+3. Rebuild every other destination (BrightFalls, NightSprings). The KRL only protects hosts that have been rebuilt with it.
+4. Also do the "Removing a host" steps, so the signer stops issuing certs for it.
+
+Check that a cert is refused (NixOS hosts): `ssh-keygen -Q -f $(grep -oP 'RevokedKeys \K\S+' /etc/ssh/sshd_config) <cert>` prints `REVOKED`. sshd logs `revoked by file` when it rejects one.
+
+To bring the device back later (recovered laptop, reinstall), remove it from `revokedKeyIds`, rebuild, and bootstrap it again with a fresh key.
+
+Revocation covers mesh certs only. Static keys still in `authorized_keys` (Pixel, debora's sshfs key) are removed by editing those lists.

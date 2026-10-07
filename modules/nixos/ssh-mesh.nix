@@ -38,6 +38,7 @@ in
           TrustedUserCAKeys = "${pkgs.writeText "ssh-mesh-ca.pub" mesh.caPublicKey}";
           # The path users.users.<u>.openssh.authorizedPrincipals writes to.
           AuthorizedPrincipalsFile = "/etc/ssh/authorized_principals.d/%u";
+          RevokedKeys = "${pkgs.callPackage ../../lib/ssh-mesh-krl.nix { }}";
         };
         users.users.${self.user}.openssh.authorizedPrincipals = [ self.principal ];
       })

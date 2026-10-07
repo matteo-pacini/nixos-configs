@@ -1,8 +1,9 @@
 # SSH mesh: which host may SSH into which, enforced by an OpenSSH user CA.
 #
 # Pure data, imported by modules/{nixos,darwin}/ssh-mesh.nix,
-# modules/home-manager/ssh.nix, hosts/Nexus/services/ssh-ca.nix and
-# secrets/secrets.nix (host keys). See docs/ssh-mesh-handbook.md.
+# modules/home-manager/ssh.nix, hosts/Nexus/services/ssh-ca.nix,
+# lib/ssh-mesh-krl.nix and secrets/secrets.nix (host keys).
+# See docs/ssh-mesh-handbook.md.
 {
   # Public half of secrets/nexus/ssh-mesh-ca.age.
   caPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDUOaL0BoxEKXPezthYmsM/MvWQZ/oFYwKD5rirTHmsR ssh-mesh-ca";
@@ -66,4 +67,9 @@
       "BrightFalls"
     ];
   };
+
+  # Cert key IDs (principals above) that every destination refuses, even
+  # before their certs expire. Revokes all certs ever issued under that ID,
+  # so remove the entry before re-adding a host with the same principal.
+  revokedKeyIds = [ ];
 }

@@ -38,6 +38,7 @@ in
         services.openssh.extraConfig = ''
           TrustedUserCAKeys ${pkgs.writeText "ssh-mesh-ca.pub" mesh.caPublicKey}
           AuthorizedPrincipalsFile /etc/ssh/authorized_principals.d/%u
+          RevokedKeys ${pkgs.callPackage ../../lib/ssh-mesh-krl.nix { }}
           PasswordAuthentication no
           KbdInteractiveAuthentication no
         '';
