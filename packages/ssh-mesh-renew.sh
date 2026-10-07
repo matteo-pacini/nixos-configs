@@ -74,7 +74,7 @@ ssh-keygen -q -t ed25519 -N "" -C "mesh" -f "$KEY.new"
 
 signed=0
 for alias in mesh-ca mesh-ca-ts; do
-  if ssh -o BatchMode=yes -o ConnectTimeout=10 "$alias" <"$KEY.new.pub" >"$KEY.new-cert.pub"; then
+  if ssh -T -o BatchMode=yes -o ConnectTimeout=10 "$alias" <"$KEY.new.pub" >"$KEY.new-cert.pub"; then
     signed=1
     break
   fi
