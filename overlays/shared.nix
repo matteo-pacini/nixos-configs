@@ -25,6 +25,8 @@
     # picks up the telemetry-wrapped gh above.
     rotate-github-key = self.callPackage ../packages/rotate-github-key.nix { };
 
+    ssh-mesh-renew = self.callPackage ../packages/ssh-mesh-renew.nix { };
+
     # Claude Code: sourced from the nixpkgs-master input (see masterPkgs above)
     # so we track upstream faster than the flake's nixos-unstable pin. Bump with
     # `nix flake update nixpkgs-master`.

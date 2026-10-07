@@ -24,10 +24,9 @@
   custom.ssh = {
     enable = true;
     addKeysToAgent = "yes";
-    nexus.enable = true;
-    nexus.tailscaleAliases = true;
-    brightfalls.enable = true;
-    brightfalls.tailscaleAliases = true;
+    mesh.enable = true;
+    mesh.host = "NightSprings";
+    brightfalls.initrd = true;
     github.enable = true;
     extraSettings."fpnas" = {
       HostName = "fpnas3.tailadca8a.ts.net";

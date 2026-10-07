@@ -46,7 +46,8 @@
       IdentitiesOnly yes
     '';
     identitiesOnly = false;
-    nexus.enable = true;
+    mesh.enable = true;
+    mesh.host = "WorkLaptop";
     github.enable = true;
   };
 }

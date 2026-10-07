@@ -1,10 +1,26 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
   cfg = config.custom.ssh;
+  mesh = import ../../lib/ssh-mesh.nix;
+  meshHostBlocks = name: h: user: {
+    ${name} = {
+      HostName = h.lan;
+      User = user;
+      IdentityFile = "~/.ssh/mesh";
+      Port = toString h.port;
+    };
+    "${name}-ts" = {
+      HostName = h.tailscale;
+      User = user;
+      IdentityFile = "~/.ssh/mesh";
+      Port = toString h.port;
+    };
+  };
 in
 {
   options.custom.ssh = {
@@ -24,14 +40,14 @@ in
       default = "";
       description = "Extra SSH config lines";
     };
-    nexus = {
-      enable = lib.mkEnableOption "Nexus host SSH block";
-      tailscaleAliases = lib.mkEnableOption "Nexus Tailscale SSH aliases";
+    mesh = {
+      enable = lib.mkEnableOption "SSH mesh host blocks (<host>, <host>-ts) and daily certificate renewal";
+      host = lib.mkOption {
+        type = lib.types.enum (lib.attrNames mesh.hosts);
+        description = "This host's name in lib/ssh-mesh.nix; selects which destinations get host blocks.";
+      };
     };
-    brightfalls = {
-      enable = lib.mkEnableOption "BrightFalls host SSH blocks";
-      tailscaleAliases = lib.mkEnableOption "BrightFalls Tailscale SSH aliases";
-    };
+    brightfalls.initrd = lib.mkEnableOption "BrightFalls initrd (LUKS unlock) SSH blocks, using ~/.ssh/brightfalls";
     github = {
       enable = lib.mkEnableOption "GitHub SSH host block";
       identityFile = lib.mkOption {
@@ -71,42 +87,55 @@ in
       (lib.mkIf (cfg.extraConfig != "") {
         programs.ssh.extraConfig = cfg.extraConfig;
       })
-      (lib.mkIf cfg.nexus.enable {
-        programs.ssh.settings."nexus" = {
-          HostName = "nexus.home.internal";
-          User = "matteo";
-          IdentityFile = "~/.ssh/nexus";
-          Port = "1788";
+      (lib.mkIf cfg.mesh.enable {
+        programs.ssh.settings = lib.mkMerge (
+          map (
+            dest: meshHostBlocks mesh.hosts.${dest}.principal mesh.hosts.${dest} mesh.hosts.${dest}.user
+          ) mesh.allow.${cfg.mesh.host}
+          ++ [ (meshHostBlocks "mesh-ca" mesh.hosts.${mesh.signer} "sshca") ]
+        );
+
+        home.packages = [ pkgs.ssh-mesh-renew ];
+
+        systemd.user.services.ssh-mesh-renew = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+          Unit.Description = "Renew SSH mesh certificate";
+          Service = {
+            Type = "oneshot";
+            ExecStart = lib.getExe pkgs.ssh-mesh-renew;
+          };
+        };
+        systemd.user.timers.ssh-mesh-renew = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+          Unit.Description = "Renew SSH mesh certificate";
+          Timer = {
+            OnCalendar = "daily";
+            Persistent = true;
+            RandomizedDelaySec = "1h";
+          };
+          Install.WantedBy = [ "timers.target" ];
+        };
+
+        launchd.agents.ssh-mesh-renew = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+          enable = true;
+          config = {
+            ProgramArguments = [ (lib.getExe pkgs.ssh-mesh-renew) ];
+            RunAtLoad = true;
+            StartCalendarInterval = [
+              {
+                Hour = 12;
+                Minute = 0;
+              }
+            ];
+            StandardOutPath = "${config.home.homeDirectory}/Library/Logs/ssh-mesh-renew.log";
+            StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/ssh-mesh-renew.log";
+          };
         };
       })
-      (lib.mkIf cfg.nexus.tailscaleAliases {
-        programs.ssh.settings."nexus-ts" = {
-          HostName = "nexus-ts.walrus-draconis.ts.net";
-          User = "matteo";
-          IdentityFile = "~/.ssh/nexus";
-          Port = "1788";
-        };
-      })
-      (lib.mkIf cfg.brightfalls.enable {
-        programs.ssh.settings."brightfalls" = {
-          HostName = "brightfalls.home.internal";
-          User = "matteo";
-          IdentityFile = "~/.ssh/brightfalls";
-          Port = "1788";
-        };
+      (lib.mkIf cfg.brightfalls.initrd {
         programs.ssh.settings."brightfalls-stage1" = {
           HostName = "brightfalls.home.internal";
           User = "root";
           IdentityFile = "~/.ssh/brightfalls";
           Port = "2222";
-        };
-      })
-      (lib.mkIf cfg.brightfalls.tailscaleAliases {
-        programs.ssh.settings."brightfalls-ts" = {
-          HostName = "brightfalls-ts.walrus-draconis.ts.net";
-          User = "matteo";
-          IdentityFile = "~/.ssh/brightfalls";
-          Port = "1788";
         };
         programs.ssh.settings."brightfalls-ts-stage1" = {
           HostName = "brightfalls.home.internal";

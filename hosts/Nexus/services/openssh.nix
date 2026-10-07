@@ -1,5 +1,10 @@
 { lib, ... }:
 {
+  custom.sshMesh = {
+    enable = true;
+    host = "Nexus";
+  };
+
   services.openssh = {
     enable = true;
     settings = {

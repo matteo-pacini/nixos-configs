@@ -48,6 +48,11 @@ let
   '';
 in
 {
+  custom.sshMesh = {
+    enable = true;
+    host = "BrightFalls";
+  };
+
   # SSH server with passwordless access on local subnet for debugging
   services.openssh = {
     openFirewall = true;

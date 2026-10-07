@@ -115,6 +115,7 @@
           ./modules/nixos/kernel.nix
           ./modules/nixos/apcupsd-multi.nix
           ./modules/nixos/nix-index.nix
+          ./modules/nixos/ssh-mesh.nix
         ];
       };
 
@@ -124,6 +125,7 @@
           ./modules/darwin/system-defaults.nix
           ./modules/darwin/fonts.nix
           ./modules/darwin/nix-index.nix
+          ./modules/darwin/ssh-mesh.nix
         ];
       };
 
@@ -264,6 +266,12 @@
             };
             age.secrets."nexus/geoip-license-key".file = ./secrets/nexus/geoip-license-key.age;
             age.secrets."nexus/n8n-env".file = ./secrets/nexus/n8n-env.age;
+            age.secrets."nexus/ssh-mesh-ca" = {
+              file = ./secrets/nexus/ssh-mesh-ca.age;
+              owner = "sshca";
+              group = "sshca";
+              mode = "400";
+            };
             age.secrets."openrouter.env" = {
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it

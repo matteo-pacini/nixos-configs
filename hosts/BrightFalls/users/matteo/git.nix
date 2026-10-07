@@ -1,5 +1,4 @@
-_:
-{
+_: {
   custom.git = {
     enable = true;
     diffMergeTool = "nvimdiff";
@@ -13,7 +12,8 @@ _:
 
   custom.ssh = {
     enable = true;
-    nexus.enable = true;
+    mesh.enable = true;
+    mesh.host = "BrightFalls";
     extraSettings."fpnas" = {
       HostName = "fpnas3.tailadca8a.ts.net";
       User = "fabrizio";
