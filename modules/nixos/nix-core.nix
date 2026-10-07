@@ -49,6 +49,22 @@ in
         description = "netrc file with the attic token, for pulling from the private cache";
       };
     };
+    nexusBuilder = {
+      enable = lib.mkEnableOption "Nexus as a remote builder over the SSH mesh (/etc/nix/machines)";
+      sshKey = lib.mkOption {
+        type = lib.types.str;
+        description = "Absolute path to the user's SSH mesh key, e.g. /home/matteo/.ssh/mesh.";
+      };
+      automatic = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Offload builds to Nexus by default (nix.distributedBuilds). When
+          false, offload per command with
+          `--builders @/etc/nix/machines -j0`.
+        '';
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable (
@@ -86,6 +102,13 @@ in
           randomizedDelaySec = "30min";
         };
       }
+      (lib.mkIf cfg.nexusBuilder.enable {
+        nix.buildMachines = [
+          (import ../shared/nexus-builder.nix { inherit (cfg.nexusBuilder) sshKey; })
+        ];
+        nix.distributedBuilds = cfg.nexusBuilder.automatic;
+        nix.settings.builders-use-substitutes = true;
+      })
       (lib.mkIf (cfg.extraPlatforms != [ ]) {
         nix.settings.extra-platforms = cfg.extraPlatforms;
       })

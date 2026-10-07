@@ -39,6 +39,9 @@ in
         description = "netrc file with the attic token, for pulling from the private cache";
       };
     };
+    nexusBuilder.enable = lib.mkEnableOption ''
+      Nexus as a remote builder over the SSH mesh, for x86_64-linux and
+      aarch64-linux builds, using the primary user's ~/.ssh/mesh key'';
   };
 
   config = lib.mkIf cfg.enable (
@@ -89,6 +92,17 @@ in
           ];
         };
       }
+      # Darwin derivations never match the builder's systems, so they stay
+      # local; only Linux builds are offloaded.
+      (lib.mkIf cfg.nexusBuilder.enable {
+        nix.buildMachines = [
+          (import ../shared/nexus-builder.nix {
+            sshKey = "${config.system.primaryUserHome}/.ssh/mesh";
+          })
+        ];
+        nix.distributedBuilds = true;
+        nix.settings.builders-use-substitutes = true;
+      })
       # System-level so the substituter applies to every user (the
       # nix-daemon performs all downloads), with no flake nixConfig
       # trust prompts

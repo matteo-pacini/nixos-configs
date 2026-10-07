@@ -23,6 +23,11 @@
 
   custom.nix-core = {
     enable = true;
+    # Offload per command: nom build --builders @/etc/nix/machines -j0 ...
+    nexusBuilder = {
+      enable = true;
+      sshKey = "/home/matteo/.ssh/mesh";
+    };
     trustedUsers = [
       "matteo"
       "root"

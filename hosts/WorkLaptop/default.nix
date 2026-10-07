@@ -12,6 +12,7 @@
 
   custom.nix-core = {
     enable = true;
+    nexusBuilder.enable = true;
     # Disk-pressured work SSD: stricter retention than the 30d default.
     gc.deleteOlderThan = "7d";
     trustedUsers = [

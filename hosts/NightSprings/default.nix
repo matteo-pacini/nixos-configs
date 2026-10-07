@@ -12,6 +12,7 @@
 
   custom.nix-core = {
     enable = true;
+    nexusBuilder.enable = true;
     trustedUsers = [
       "root"
       "matteo"
