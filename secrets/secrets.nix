@@ -8,10 +8,11 @@
 
 let
   # Host SSH public keys (used directly by age for encryption)
-  nexus = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICqoR66tb+LELPbehy1TJp0Y8hHVYPEgtg1WUDMILe/n";
-  worklaptop = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtM6cXF6v03BIDdYeMYUHuuoLljzT2Lx+judeJSag8c";
-  brightfalls = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFhrAwaSAjKS/FLYRZRNkgpRn8gZECa+Sc0t32gENbv1";
-  nightsprings = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPN4uiOzzFtelR6mzxIqRKG8PArHchOqL0U844UZSet4";
+  inherit (import ../lib/ssh-mesh.nix) hosts;
+  nexus = hosts.Nexus.hostKey;
+  worklaptop = hosts.WorkLaptop.hostKey;
+  brightfalls = hosts.BrightFalls.hostKey;
+  nightsprings = hosts.NightSprings.hostKey;
 in
 {
   # Nexus disk encryption secrets
@@ -39,6 +40,7 @@ in
   "nexus/nextcloud-admin-password.age".publicKeys = [ nexus ];
   "nexus/geoip-license-key.age".publicKeys = [ nexus ];
   "nexus/n8n-env.age".publicKeys = [ nexus ];
+  "nexus/ssh-mesh-ca.age".publicKeys = [ nexus ];
 
   # WorkLaptop service secrets
   "worklaptop/attic-netrc.age".publicKeys = [ worklaptop ];

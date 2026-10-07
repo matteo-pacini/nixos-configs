@@ -2,6 +2,11 @@
 {
   custom.system-defaults.enable = true;
 
+  custom.sshMesh = {
+    enable = true;
+    host = "NightSprings";
+  };
+
   services.tailscale.enable = true;
 
   homebrew = {

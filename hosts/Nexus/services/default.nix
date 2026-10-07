@@ -2,6 +2,7 @@
 {
   imports = [
     ./openssh.nix
+    ./ssh-ca.nix
     ./smartd.nix
     ./jellyfin.nix
     ./backup.nix

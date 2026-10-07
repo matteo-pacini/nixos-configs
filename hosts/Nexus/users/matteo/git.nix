@@ -12,6 +12,8 @@
 
   custom.ssh = {
     enable = true;
+    mesh.enable = true;
+    mesh.host = "Nexus";
     extraSettings."fpnas" = {
       HostName = "fpnas3.tailadca8a.ts.net";
       User = "fabrizio";
