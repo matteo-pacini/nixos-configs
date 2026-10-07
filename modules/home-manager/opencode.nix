@@ -8,6 +8,11 @@
 let
   cfg = config.custom.opencode;
 
+  privacyRouting = {
+    zdr = true;
+    data_collection = "deny";
+  };
+
   opencodeConfig = builtins.toJSON {
     "$schema" = "https://opencode.ai/config.json";
     autoupdate = false;
@@ -19,9 +24,19 @@ let
     # OpenRouter SDK client, whose `extraBody` is merged into every request —
     # so this covers all models without enumerating them (model-level
     # `options.provider` would only apply to models listed in this file).
-    provider.openrouter.options.extraBody.provider = {
-      zdr = true;
-      data_collection = "deny";
+    provider.openrouter.options.extraBody.provider = privacyRouting;
+    # Skip providers whose cached-input price is several times the norm for
+    # this model (cache-heavy agent sessions). Model-level options are spread
+    # over the request body after extraBody, so this `provider` object
+    # replaces the one above for this model — the privacy flags must be
+    # repeated here or they'd be dropped.
+    provider.openrouter.models."deepseek/deepseek-v4.1-flash".options.provider = privacyRouting // {
+      ignore = [
+        "wafer"
+        "inference-net"
+        "relace"
+      ];
+      allow_fallbacks = true;
     };
   };
 
