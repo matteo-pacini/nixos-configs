@@ -48,7 +48,7 @@
     };
     statusline.lualine = {
       enable = true;
-      theme = "dracula";
+      setupOpts.options.theme = "dracula";
     };
     binds = {
       whichKey.enable = true;
