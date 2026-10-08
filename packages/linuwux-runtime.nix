@@ -5,13 +5,13 @@
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "linuwux-runtime";
-  version = "26.09.16";
+  version = "26.09.28.4";
 
   src = fetchFromGitHub {
     owner = "brcly";
     repo = "linuwux-runtime";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-+y6Hn64jY06Mudw8Hh1qtO1B/4Py4TLY+8MbhdZHxl4=";
+    hash = "sha256-LSe96TqmNLRQ6pkMXZlahlv9C1R7OwbJLqAVsjWtNU0=";
   };
 
   cargoHash = "sha256-J3eeXYKn11KEuTvVV4DbtWHtpOYgg5qX0kmeuFJSXIc=";

@@ -6,7 +6,7 @@
 }:
 
 let
-  version = "0.15.8";
+  version = "0.16.3";
 in
 appimageTools.wrapType2 {
   pname = "exiled-exchange-2";
@@ -14,7 +14,7 @@ appimageTools.wrapType2 {
 
   src = fetchurl {
     url = "https://github.com/Kvan7/Exiled-Exchange-2/releases/download/v${version}/Exiled-Exchange-2-${version}.AppImage";
-    hash = "sha256-xmEvKJkRFJokzOa/6qRqT4+QKfnfjIoAfqP+oDqyxH8=";
+    hash = "sha256-aAHFELdlL7cccpzAW9ROHF1hZDAnQGTLLtDonS0CT2Q=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
