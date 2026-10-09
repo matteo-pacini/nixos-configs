@@ -16,12 +16,6 @@ let
   };
 
   baseSettings = {
-    # Empty strings disable commit Co-Authored-By trailers and PR-body
-    # attribution at the harness level (replaces deprecated includeCoAuthoredBy).
-    attribution = {
-      commit = "";
-      pr = "";
-    };
     statusLine = {
       type = "command";
       # Relies on nodejs being on claude's PATH (set in overlays/shared.nix).
@@ -47,7 +41,7 @@ in
       default = { };
       description = ''
         Extra keys merged into ~/.claude/settings.json on top of the base
-        settings (attribution + statusLine). Use this for per-host overrides
+        settings (statusLine). Use this for per-host overrides
         like permissions.allow, enabledPlugins, effortLevel, etc.
       '';
     };
