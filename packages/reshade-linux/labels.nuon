@@ -1,0 +1,259 @@
+# Display names injected into the Merged copies of shaders as technique `ui_label`
+# annotations. Keys are `Technique@File.fx`, the same form ReShade presets use, so
+# presets keep working: ui_label only changes what the overlay shows.
+# `tip` is only added when the shader has no `ui_tooltip` of its own.
+{
+  # crosire/reshade-shaders
+  "Daltonize@Daltonize.fx": { cat: "Colour", name: "Colour-blindness correction (Daltonize)", tip: "Shifts hues so colours that look alike to colour-blind players become distinguishable." }
+  "Deband@Deband.fx": { cat: "Clean-up", name: "Deband" }
+  "DisplayDepth@DisplayDepth.fx": { cat: "Tools", name: "Show depth buffer (DisplayDepth)" }
+  "LUT@LUT.fx": { cat: "Colour", name: "Colour lookup table (LUT)", tip: "Applies the colour grade stored in lut.png." }
+  "UIMask_Top@UIMask.fx": { cat: "Tools", name: "HUD mask: start (UIMask)" }
+  "UIMask_Bottom@UIMask.fx": { cat: "Tools", name: "HUD mask: end (UIMask)" }
+
+  # CeeJayDK/SweetFX
+  "ASCII@ASCII.fx": { cat: "Stylise", name: "ASCII art", tip: "Redraws the image as text characters." }
+  "Border@Border.fx": { cat: "Film", name: "Borders / letterbox", tip: "Draws solid borders around the image." }
+  "Cartoon@Cartoon.fx": { cat: "Stylise", name: "Cartoon outlines", tip: "Darkens edges for a cel-shaded look." }
+  "ContrastAdaptiveSharpen@CAS.fx": { cat: "Sharpen", name: "AMD FidelityFX CAS" }
+  "CA@ChromaticAberration.fx": { cat: "Film", name: "Chromatic aberration", tip: "Offsets the colour channels like an imperfect lens." }
+  "ColorMatrix@ColorMatrix.fx": { cat: "Colour", name: "Channel mixer (ColorMatrix)", tip: "Remixes red, green and blue from each other." }
+  "Capture@Compare.fx": { cat: "Tools", name: "Compare 1/3: capture A" }
+  "Restore@Compare.fx": { cat: "Tools", name: "Compare 2/3: restore" }
+  "Compare@Compare.fx": { cat: "Tools", name: "Compare 3/3: show difference" }
+  "AdvancedCRT@CRT.fx": { cat: "Stylise", name: "CRT screen", tip: "Simulates a curved CRT monitor with scanlines." }
+  "Curves@Curves.fx": { cat: "Tone", name: "Contrast S-curve (Curves)", tip: "Adds contrast with an S-shaped curve." }
+  "DPX@DPX.fx": { cat: "Colour", name: "Cineon DPX film look", tip: "Emulates the look of Cineon DPX film scans." }
+  "HDR@FakeHDR.fx": { cat: "Tone", name: "Fake HDR", tip: "Brightens shadows and darkens highlights to fake a wider dynamic range." }
+  "FilmGrain@FilmGrain.fx": { cat: "Film", name: "Film grain", tip: "Adds animated noise like film grain." }
+  "FXAA@FXAA.fx": { cat: "Anti-aliasing", name: "FXAA", tip: "Fast post-process anti-aliasing. Cheap, but softens the image." }
+  "Layer@Layer.fx": { cat: "Tools", name: "Image overlay (Layer)", tip: "Draws Layer.png on top of the screen." }
+  "Levels@Levels.fx": { cat: "Tone", name: "Black/white levels (Levels)", tip: "Sets the black and white points to stretch contrast." }
+  "LiftGammaGain@LiftGammaGain.fx": { cat: "Colour", name: "Lift / gamma / gain", tip: "Grades shadows (lift), midtones (gamma) and highlights (gain) per channel." }
+  "LumaSharpen@LumaSharpen.fx": { cat: "Sharpen", name: "LumaSharpen", tip: "Sharpens brightness detail only, so colours do not fringe." }
+  "Monochrome@Monochrome.fx": { cat: "Colour", name: "Black & white (Monochrome)", tip: "Converts to greyscale with film-like channel weights." }
+  "Nostalgia@Nostalgia.fx": { cat: "Stylise", name: "Retro palette (Nostalgia)", tip: "Reduces colours to a palette from old computers and consoles." }
+  "Tint@Sepia.fx": { cat: "Colour", name: "Sepia tint", tip: "Tints the image towards a single colour, sepia by default." }
+  "SMAA@SMAA.fx": { cat: "Anti-aliasing", name: "SMAA", tip: "Edge-detecting anti-aliasing. Sharper than FXAA." }
+  "Before@Splitscreen.fx": { cat: "Tools", name: "Split screen: before" }
+  "After@Splitscreen.fx": { cat: "Tools", name: "Split screen: after" }
+  "Technicolor@Technicolor.fx": { cat: "Colour", name: "Technicolor film look", tip: "Emulates the three-strip Technicolor film process." }
+  "Technicolor2@Technicolor2.fx": { cat: "Colour", name: "Technicolor film look v2", tip: "Alternative Technicolor emulation with stronger colour separation." }
+  "Template@Template.fx": { cat: "Tools", name: "Template (does nothing)", tip: "Example effect for shader authors." }
+  "Tonemap@Tonemap.fx": { cat: "Tone", name: "Tonemap (gamma, exposure, saturation)" }
+  "Vibrance@Vibrance.fx": { cat: "Colour", name: "Vibrance", tip: "Boosts saturation of dull colours more than already vivid ones." }
+  "Vignette@Vignette.fx": { cat: "Film", name: "Vignette", tip: "Darkens the corners of the image." }
+
+  # martymcmodding/qUINT
+  "Bloom@qUINT_bloom.fx": { cat: "Light", name: "Bloom (qUINT)" }
+  "Debanding@qUINT_deband.fx": { cat: "Clean-up", name: "Deband (qUINT)" }
+  "ADOF@qUINT_dof.fx": { cat: "Depth", name: "Depth of field (ADOF)" }
+  "Lightroom@qUINT_lightroom.fx": { cat: "Colour", name: "Lightroom-style grading" }
+  "MXAO@qUINT_mxao.fx": { cat: "Light", name: "Ambient occlusion (MXAO)" }
+  "DELC_Sharpen@qUINT_sharp.fx": { cat: "Sharpen", name: "Depth-aware sharpen (DELC)" }
+  "SSR@qUINT_ssr.fx": { cat: "Light", name: "Screen-space reflections (SSR)" }
+
+  # BlueSkyDefender/AstrayFX
+  "Blooming_HDR@BloomingHDR.fx": { cat: "Light", name: "Bloom + HDR (BloomingHDR)", tip: "Bloom with eye adaptation and fake HDR tone mapping." }
+  "Clarity@Clarity.fx": { cat: "Tone", name: "Local contrast (Clarity)", tip: "Boosts midtone local contrast, like the Clarity slider in photo editors." }
+  "Monocular_Cues@Depth_Cues.fx": { cat: "Depth", name: "Depth shading cues", tip: "Shades by depth so objects separate from the background. Needs the depth buffer." }
+  "Directionally_Localized_Anti_Aliasing@DLAA_Plus.fx": { cat: "Anti-aliasing", name: "DLAA+", tip: "Directionally localised anti-aliasing. Softer than SMAA, good on long edges." }
+  "Flair@Flair.fx": { cat: "Light", name: "Lens flare (Flair)", tip: "Adds lens flares from bright light sources." }
+  "SSDO_Plus@GloomAO.fx": { cat: "Light", name: "Ambient occlusion (GloomAO)" }
+  "NFAA@NFAA.fx": { cat: "Anti-aliasing", name: "NFAA", tip: "Normal filter anti-aliasing. Cheap, preserves texture detail." }
+  "Limbo_Mod@Limbo_Mod.fx": { cat: "Stylise", name: "Limbo silhouette look", tip: "Black-and-white silhouette style inspired by the game Limbo. Needs the depth buffer." }
+  "OS_SnowScape@SnowScape.fx": { cat: "Stylise", name: "Snow-covered world (SnowScape)", tip: "Fakes snow building up on surfaces. Needs the depth buffer." }
+  "PCGI_One@RadiantGI.fx": { cat: "Light", name: "Global illumination (RadiantGI)" }
+  "Smart_Sharp@Smart_Sharp.fx": { cat: "Sharpen", name: "Depth-aware sharpen (Smart Sharp)" }
+  "TAA@Temporal_AA.fx": { cat: "Anti-aliasing", name: "Temporal AA", tip: "Blends previous frames to smooth edges. Can ghost on fast motion." }
+  "Trails@Trails.fx": { cat: "Stylise", name: "Motion trails / long exposure", tip: "Leaves trails behind moving bright objects." }
+
+  # prod80/prod80-ReShade-Repository
+  "prod80_01A_RT_Correct_Contrast@PD80_01A_RT_Correct_Contrast.fx": { cat: "Tone", name: "Auto black/white point (prod80)", tip: "Measures each frame and corrects the black and white points." }
+  "prod80_01B_RT_Correct_Color@PD80_01B_RT_Correct_Color.fx": { cat: "Colour", name: "Auto colour-cast removal (prod80)" }
+  "prod80_01_Color_Gamut@PD80_01_Color_Gamut.fx": { cat: "Colour", name: "Colour gamut conversion (prod80)", tip: "Converts from sRGB to a wider gamut such as DCI-P3." }
+  "prod80_02_Bloom@PD80_02_Bloom.fx": { cat: "Light", name: "Bloom (prod80)" }
+  "prod80_02_LUT_Creator@PD80_02_LUT_Creator.fx": { cat: "Tools", name: "LUT creator (prod80)" }
+  "prod80_03_Color_Space_Curves@PD80_03_Color_Space_Curves.fx": { cat: "Tone", name: "Contrast curves (prod80)", tip: "Contrast curve applied in a chosen colour space." }
+  "prod80_03_CurvedLevels@PD80_03_Curved_Levels.fx": { cat: "Tone", name: "Curved levels (prod80)", tip: "Levels with a curve between the black and white points." }
+  "prod80_03_FilmicTonemap@PD80_03_Filmic_Adaptation.fx": { cat: "Tone", name: "Filmic tonemap (prod80)", tip: "Filmic tone curve with eye adaptation." }
+  "prod80_03_Levels@PD80_03_Levels.fx": { cat: "Tone", name: "Levels (prod80)", tip: "Input and output black/white points per channel." }
+  "prod80_03_Shadows_Midtones_Highlights@PD80_03_Shadows_Midtones_Highlights.fx": { cat: "Colour", name: "Shadows / midtones / highlights (prod80)", tip: "Separate brightness, contrast and saturation for shadows, midtones and highlights." }
+  "prod80_04_Black_and_White@PD80_04_BlacknWhite.fx": { cat: "Colour", name: "Black & white (prod80)", tip: "Greyscale conversion with a per-hue channel mixer." }
+  "prod80_04_ColorBalance@PD80_04_Color_Balance.fx": { cat: "Colour", name: "Colour balance (prod80)", tip: "Shifts the colour of shadows, midtones and highlights." }
+  "prod80_04_ColorGradient@PD80_04_Color_Gradients.fx": { cat: "Colour", name: "Colour gradients (prod80)", tip: "Maps a colour gradient onto shadows and highlights." }
+  "prod80_04_ColorIsolation@PD80_04_Color_Isolation.fx": { cat: "Colour", name: "Colour isolation (prod80)", tip: "Keeps one hue and desaturates everything else." }
+  "prod80_04_ColorTemperature@PD80_04_Color_Temperature.fx": { cat: "Colour", name: "White balance / temperature (prod80)", tip: "Warms or cools the image in Kelvin." }
+  "prod80_04_ContrastBrightnessSaturation@PD80_04_Contrast_Brightness_Saturation.fx": { cat: "Tone", name: "Contrast / brightness / saturation (prod80)" }
+  "prod80_04_Magical_Rectangle@PD80_04_Magical_Rectangle.fx": { cat: "Tools", name: "Magical rectangle (prod80)" }
+  "prod80_04_Saturation_Limiter@PD80_04_Saturation_Limit.fx": { cat: "Colour", name: "Saturation limiter (prod80)", tip: "Caps saturation so grading does not oversaturate." }
+  "prod80_04_SelectiveColor@PD80_04_Selective_Color.fx": { cat: "Colour", name: "Selective colour (prod80)", tip: "Adjusts individual colour ranges, like Photoshop's Selective Color." }
+  "prod80_04_SelectiveColor_v2@PD80_04_Selective_Color_v2.fx": { cat: "Colour", name: "Selective colour v2 (prod80)", tip: "Selective colour with per-hue saturation and brightness." }
+  "prod80_04_Technicolor@PD80_04_Technicolor.fx": { cat: "Colour", name: "Technicolor film look (prod80)" }
+  "prod80_05_LumaSharpen@PD80_05_Sharpening.fx": { cat: "Sharpen", name: "Luma sharpen (prod80)" }
+  "prod80_06_ChromaticAberration@PD80_06_Chromatic_Aberration.fx": { cat: "Film", name: "Chromatic aberration (prod80)" }
+  "prod80_06_Depth_Slicer@PD80_06_Depth_Slicer.fx": { cat: "Depth", name: "Depth slice mask (prod80)", tip: "Limits effects to a slice of the depth range. Needs the depth buffer." }
+  "prod80_06_FilmGrain@PD80_06_Film_Grain.fx": { cat: "Film", name: "Film grain (prod80)" }
+  "prod80_06_LumaFade_Start@PD80_06_Luma_Fade.fx": { cat: "Tools", name: "Luma fade: start (prod80)" }
+  "prod80_06_LumaFade_End@PD80_06_Luma_Fade.fx": { cat: "Tools", name: "Luma fade: end (prod80)", tip: "Effects between start and end fade in or out by scene brightness." }
+  "prod80_06_Posterize_Pixelate@PD80_06_Posterize_Pixelate.fx": { cat: "Stylise", name: "Posterize / pixelate (prod80)", tip: "Reduces colours and resolution for a retro look." }
+
+  # martymcmodding/iMMERSE
+  "MartysMods_Launchpad@MartysMods_LAUNCHPAD.fx": { cat: "Setup", name: "iMMERSE Launchpad (enable and move to the top!)", tip: "Provides normals and motion vectors for the other iMMERSE effects. Must run before them." }
+  "MartysMods_MXAO@MartysMods_MXAO.fx": { cat: "Light", name: "Ambient occlusion (iMMERSE MXAO)" }
+  "MartysMods_SOLARIS@MartysMods_SOLARIS.fx": { cat: "Light", name: "Bloom (iMMERSE Solaris)" }
+  "MartysMods_AntiAliasing@MartysMods_SMAA.fx": { cat: "Anti-aliasing", name: "SMAA (iMMERSE)" }
+  "MartyMods_Sharpen@MartysMods_SHARPEN.fx": { cat: "Sharpen", name: "Sharpen (iMMERSE)" }
+  "MartyMods_FilmGrain@MartysMods_FILMGRAIN.fx": { cat: "Film", name: "Film grain (iMMERSE)" }
+
+  # EndlesslyFlowering/ReShade_HDR_shaders (Lilium). Only meaningful when the game outputs HDR.
+  "lilium__hdr_and_sdr_analysis@lilium__hdr_and_sdr_analysis.fx": { cat: "HDR", name: "Analysis overlay (Lilium)", tip: "Shows brightness in nits, gamut usage and clipping for HDR and SDR output." }
+  "lilium__tone_mapping@lilium__tone_mapping.fx": { cat: "HDR", name: "Tone mapping (Lilium)", tip: "Compresses HDR highlights to fit your display's peak brightness." }
+  "lilium__tone_mapping_adaptive_maximum_brightness@lilium__tone_mapping.fx": { cat: "HDR", name: "Tone mapping: adaptive mode helper (Lilium)" }
+  "lilium__inverse_tone_mapping@lilium__inverse_tone_mapping.fx": { cat: "HDR", name: "Inverse tone mapping (Lilium)", tip: "Expands an SDR image into HDR range." }
+  "lilium__map_SDR_into_HDR@lilium__map_sdr_into_hdr.fx": { cat: "HDR", name: "Map SDR into HDR (Lilium)" }
+  "lilium__hdr_black_floor_fix@lilium__hdr_black_floor_fix.fx": { cat: "HDR", name: "Black floor fix (Lilium)", tip: "Lowers raised blacks in HDR output." }
+  "lilium__hdr_brightness_adjustment@lilium__hdr_brightness_adjustment.fx": { cat: "HDR", name: "Brightness adjustment (Lilium)" }
+  "lilium__sdr_trc_fix@lilium__sdr_trc_fix.fx": { cat: "HDR", name: "SDR gamma curve fix (Lilium)" }
+  "lilium__cas_hdr_ps@lilium__cas_hdr.fx": { cat: "HDR", name: "AMD CAS sharpen, HDR-safe (Lilium)" }
+  "lilium__rcas_hdr@lilium__rcas_hdr.fx": { cat: "HDR", name: "AMD RCAS sharpen, HDR-safe (Lilium)" }
+  "lilium__filmgrain@lilium__filmgrain.fx": { cat: "HDR", name: "Film grain, HDR-safe (Lilium)" }
+  "lilium__blue_noise_dithering@lilium__blue_noise_dithering.fx": { cat: "HDR", name: "Blue-noise dithering (Lilium)" }
+  "lilium__test_pattern_generator@lilium__test_pattern_generator.fx": { cat: "HDR", name: "Test pattern generator (Lilium)" }
+
+  # AlucardDH/dh-reshade-shaders
+  "DH_UBER_RT@dh_uber_rt.fx": { cat: "Light", name: "Ray-traced GI, AO and reflections (DH_UBER_RT)" }
+  "DH_AhOh@dh_ahoh.fx": { cat: "Light", name: "Ambient occlusion (DH_AhOh)" }
+  "DH_Ambient_Remove@dh_ambient_remove.fx": { cat: "Light", name: "Remove ambient light (DH)" }
+  "DH_Anime_13@dh_anime.fx": { cat: "Stylise", name: "Anime / manga look (DH_Anime)" }
+  "DH_Lain11@dh_Lain.fx": { cat: "Stylise", name: "Serial Experiments Lain shadows (DH_Lain)" }
+  "DH_Canvas@dh_canvas.fx": { cat: "Stylise", name: "Canvas texture (DH_Canvas)" }
+  "DH_Pastel_Bug@dh_pastel_bug.fx": { cat: "Stylise", name: "Pastel glitch (DH_Pastel_Bug)" }
+  "DH_undither@dh_undither.fx": { cat: "Clean-up", name: "Undither (DH)", tip: "Smooths dithering patterns. Works without depth, so it suits DOSBox games." }
+  "DH_UBER_MASK_BEFORE@dh_uber_mask.fx": { cat: "Tools", name: "Depth mask: start (DH_UBER_MASK)" }
+  "DH_UBER_MASK_AFTER@dh_uber_mask.fx": { cat: "Tools", name: "Depth mask: end (DH_UBER_MASK)" }
+  "DH_UI_TextDetect_before@DH_UI_TextDetect.fx": { cat: "Tools", name: "Protect HUD text: start (DH)" }
+  "DH_UI_TextDetect_after@DH_UI_TextDetect.fx": { cat: "Tools", name: "Protect HUD text: end (DH)" }
+  "DH_UBER_MOTION_020@dh_uber_motion.fx": { cat: "Tools", name: "Motion detection (DH_UBER_Motion)" }
+  "DH_Sync@dh_sync.fx": { cat: "Tools", name: "Frame-rate target (DH_Sync)" }
+  "DHUniformityCorrection@dh_uniformity_correction.fx": { cat: "Tools", name: "Screen uniformity correction (DH)" }
+
+  # FransBouma/OtisFX
+  "CinematicDOF@CinematicDOF.fx": { cat: "Depth", name: "Cinematic depth of field (CinematicDOF)" }
+  "AdaptiveFog@AdaptiveFog.fx": { cat: "Depth", name: "Adaptive fog", tip: "Adds fog by depth, with bloom from bright areas through the fog." }
+  "HeightFog@Heightfog.fx": { cat: "Depth", name: "Height fog" }
+  "DepthHaze@DepthHaze.fx": { cat: "Depth", name: "Depth haze", tip: "Blurs and tints the distance for atmospheric haze." }
+  "DepthDarkness@DepthDarkness.fx": { cat: "Depth", name: "Depth darkness" }
+  "DirectionalDepthBlur@DirectionalDepthBlur.fx": { cat: "Depth", name: "Directional depth blur" }
+  "Emphasize@Emphasize.fx": { cat: "Depth", name: "Emphasize focus (Emphasize)", tip: "Desaturates everything outside a depth range to draw the eye." }
+  "MultiLUT@MultiLUT.fx": { cat: "Colour", name: "Multi-LUT colour grades" }
+  "PandaFX@PandaFX.fx": { cat: "Colour", name: "Cinematic look (PandaFX)" }
+  "MagicBorder@MagicBorder.fx": { cat: "Film", name: "Picture frame border (MagicBorder)" }
+  "GoldenRatio@GoldenRatio.fx": { cat: "Tools", name: "Golden ratio overlay" }
+
+  # Fubaxiusz/fubax-shaders
+  "PerfectPerspectiveCinema@PerfectPerspective_Cinema.fx": { cat: "Film", name: "Perfect Perspective: anamorphic" }
+  "PerfectPerspectiveDual@PerfectPerspective_Dual.fx": { cat: "Film", name: "Perfect Perspective: dual distortion" }
+  "PerfectPerspectiveFisheye@PerfectPerspective_Fisheye.fx": { cat: "Film", name: "Perfect Perspective: fisheye" }
+  "LensDistort@LensDistort.fx": { cat: "Film", name: "Lens distortion" }
+  "Letterbox@Letterbox.fx": { cat: "Film", name: "Letterbox / pillarbox" }
+  "ChromaticAberration@Prism.fx": { cat: "Film", name: "Chromatic aberration (Prism)" }
+  "SimpleGrain@SimpleGrain.fx": { cat: "Film", name: "Simple grain" }
+  "TiltShift@TiltShift.fx": { cat: "Film", name: "Tilt-shift blur" }
+  "ContrastSharpen@ContrastSharpening.fx": { cat: "Sharpen", name: "Contrast-limited sharpen" }
+  "FilmicSharpen@FilmicSharpen.fx": { cat: "Sharpen", name: "Filmic sharpen" }
+  "FilmicAnamorphSharpen@FilmicAnamorphSharpen.fx": { cat: "Sharpen", name: "Filmic anamorphic sharpen" }
+  "SunsetFilter@SunsetFilter.fx": { cat: "Colour", name: "Sunset gradient filter" }
+  "ApplyLUT@LUTTools.fx": { cat: "Colour", name: "Apply LUT (LUTTools)" }
+  "DisplayLUT@LUTTools.fx": { cat: "Tools", name: "Show neutral LUT (LUTTools)" }
+  "Interlaced@Interlaced.fx": { cat: "Retro", name: "Interlacing" }
+  "Before@BeforeAfter.fx": { cat: "Tools", name: "Before/after compare: before" }
+  "After@BeforeAfter.fx": { cat: "Tools", name: "Before/after compare: after" }
+  "AspectRatioPS@AspectRatio.fx": { cat: "Tools", name: "Aspect ratio correction" }
+  "Chromakey@Chromakey.fx": { cat: "Tools", name: "Green screen by depth (Chromakey)" }
+  "CurvedMonitor@CurvedMonitor.fx": { cat: "Tools", name: "Curved-monitor correction" }
+  "TripleMonitor@TripleMonitor.fx": { cat: "Tools", name: "Triple-monitor correction" }
+  "MonitorGamma@MonitorGamma.fx": { cat: "Tools", name: "Monitor gamma calibration" }
+  "Flipbook@Flipbook.fx": { cat: "Tools", name: "Flipbook animation" }
+  "Image@Image.fx": { cat: "Tools", name: "Test image" }
+  "Vectorscope@Vectorscope.fx": { cat: "Tools", name: "Scope: vectorscope" }
+  "Waveform@Waveform.fx": { cat: "Tools", name: "Scope: waveform" }
+  "ZebraLines@ZebraLines.fx": { cat: "Tools", name: "Scope: clipping zebra lines" }
+
+  # Matsilagi/RSRetroArch (RetroArch / MAME ports)
+  "ApertureCRT@CRTAperture.fx": { cat: "Retro", name: "CRT (Aperture)" }
+  "BasicCRT@BasicCRT.fx": { cat: "Retro", name: "CRT (Basic)" }
+  "Cathode@Cathode.fx": { cat: "Retro", name: "CRT (Cathode)" }
+  "CRTCaligari@CRTCaligari.fx": { cat: "Retro", name: "CRT (Caligari)" }
+  "cgwgCRT@CRTcgwg.fx": { cat: "Retro", name: "CRT (cgwg)" }
+  "CRT_CX@CRTCX.fx": { cat: "Retro", name: "CRT (CX)" }
+  "EasymodeCRT@CRTEasymode.fx": { cat: "Retro", name: "CRT (Easymode)" }
+  "CRTFakeLottes@CRTFakeLottes.fx": { cat: "Retro", name: "CRT (Fake Lottes)" }
+  "CRTFrutbunn@CRT-Frutbunn.fx": { cat: "Retro", name: "CRT (Frutbunn)" }
+  "GeomCRT@CRTGeom.fx": { cat: "Retro", name: "CRT (Geom, curved)" }
+  "CRTHyllian@CRTHyllian.fx": { cat: "Retro", name: "CRT (Hyllian)" }
+  "CRTKurgV2@CRTKurg.fx": { cat: "Retro", name: "CRT (Kurg)" }
+  "LottesCRT@CRTLottes.fx": { cat: "Retro", name: "CRT (Lottes)" }
+  "CRTLottes2018@CRTLottes2.fx": { cat: "Retro", name: "CRT (Lottes 2018)" }
+  "CRTMattias@MattiasCRT.fx": { cat: "Retro", name: "CRT (Mattias)" }
+  "MetaCRT@MetaCRT.fx": { cat: "Retro", name: "CRT (MetaCRT, 3D room)" }
+  "CRT_NES_MINI@crt-nes-mini.fx": { cat: "Retro", name: "CRT (NES Mini)" }
+  "CRTNewPixie@CRT-NewPixie.fx": { cat: "Retro", name: "CRT (NewPixie)" }
+  "CRTPi@CRTPi.fx": { cat: "Retro", name: "CRT (Pi)" }
+  "CRTPotatoCool@CRTPotatoCool.fx": { cat: "Retro", name: "CRT (Potato, cool)" }
+  "CRTPotatoWarm@CRTPotatoWarm.fx": { cat: "Retro", name: "CRT (Potato, warm)" }
+  "CRTRefresh@CRTRefresh.fx": { cat: "Retro", name: "CRT (Refresh)" }
+  "CRTSim@CRTSim.fx": { cat: "Retro", name: "CRT (CRTSim)" }
+  "CRTYee64@CRT-Yee64.fx": { cat: "Retro", name: "CRT (Yee64)" }
+  "CRTYeetron@CRT-Yeetron.fx": { cat: "Retro", name: "CRT (Yeetron)" }
+  "CRTZFast@zfast_crt.fx": { cat: "Retro", name: "CRT (zfast, cheap)" }
+  "RetroCRT@RetroCRT.fx": { cat: "Retro", name: "CRT (RetroCRT)" }
+  "TVCRTPixels@TVCRTPixels.fx": { cat: "Retro", name: "CRT (TV pixels)" }
+  "GTUV50@GTU.fx": { cat: "Retro", name: "CRT signal blur (GTU)" }
+  "Deconverge_MAME@Deconverge.fx": { cat: "Retro", name: "CRT convergence error (MAME)" }
+  "PhosphorMAME@Phosphor.fx": { cat: "Retro", name: "CRT phosphor persistence (MAME)" }
+  "Defocus@Defocus.fx": { cat: "Retro", name: "CRT defocus" }
+  "Chromaticity@Chromaticity.fx": { cat: "Retro", name: "CRT phosphor colours" }
+  "ChromaticitySimple@ChromaticitySimplified.fx": { cat: "Retro", name: "CRT phosphor colours (simplified)" }
+  "MAMEPostProcess@MAMEPostProc.fx": { cat: "Retro", name: "MAME post-processing" }
+  "ColorMAME@ColorMAME.fx": { cat: "Retro", name: "MAME colour adjust" }
+  "RA_ImageAdjustment@ImageAdjustment.fx": { cat: "Retro", name: "Image adjustment (RetroArch)" }
+  "NTSC_MAME@ntsc.fx": { cat: "Retro", name: "NTSC composite signal (MAME)" }
+  "NTSC_RetroArch@NTSC_RetroArch.fx": { cat: "Retro", name: "NTSC composite signal (RetroArch)" }
+  "NTSC_RetroArch_Gamma@NTSC_RetroArch_NoScanlines.fx": { cat: "Retro", name: "NTSC composite signal, no scanlines (RetroArch)" }
+  "NTSCXOT@NTSC_XOT.fx": { cat: "Retro", name: "NTSC composite signal (XOT)" }
+  "CustomizableNTSCFilterWithAM@NTSCCustom.fx": { cat: "Retro", name: "NTSC composite signal (customisable)" }
+  "ArtifactColors@ArtifactColors.fx": { cat: "Retro", name: "NTSC artifact colours" }
+  "PAL@PAL.fx": { cat: "Retro", name: "PAL composite signal" }
+  "PAL_R57@R57_PAL.fx": { cat: "Retro", name: "PAL composite signal (R57)" }
+  "R57PALNEW@R57_PAL_NEW.fx": { cat: "Retro", name: "PAL composite signal (R57, new)" }
+  "NTSCFilter@VHS.fx": { cat: "Retro", name: "VHS: NTSC filter" }
+  "TapeNoise@VHS.fx": { cat: "Retro", name: "VHS: tape noise" }
+  "VCRDistort@VHS.fx": { cat: "Retro", name: "VHS: VCR distortion" }
+  "VHSDistort@VHS.fx": { cat: "Retro", name: "VHS: tape distortion" }
+  "DirtyCRT@VHS.fx": { cat: "Retro", name: "VHS: dirty CRT" }
+  "VHS_RA@VHS_RA.fx": { cat: "Retro", name: "VHS (RetroArch)" }
+  "LCDGrid@lcd-grid.fx": { cat: "Retro", name: "Handheld LCD grid" }
+  "RGBLCD@RGBLCD.fx": { cat: "Retro", name: "RGB subpixel LCD" }
+  "ScanlinesAbs@scanlines-abs.fx": { cat: "Retro", name: "Scanlines (abs)" }
+  "Scanlinesfract@scanlines-fract.fx": { cat: "Retro", name: "Scanlines (fract)" }
+  "MCAmber@MCAmber.fx": { cat: "Retro", name: "Monochrome monitor: amber" }
+  "MCGreen@MCGreen.fx": { cat: "Retro", name: "Monochrome monitor: green" }
+  "MCOrange@MCOrange.fx": { cat: "Retro", name: "Monochrome monitor: orange" }
+  "CoolRetroTerm@CoolRetroTerminal.fx": { cat: "Retro", name: "Retro terminal (cool-retro-term)" }
+  "VT220Term@vt220.fx": { cat: "Retro", name: "DEC VT220 terminal" }
+  "VT220Term_Night@vt220_night.fx": { cat: "Retro", name: "DEC VT220 terminal (night)" }
+  "VT220Term@vt220_frame.fx": { cat: "Retro", name: "DEC VT220 terminal (with frame)" }
+  "LeiFx_Tech@3DFX.fx": { cat: "Retro", name: "3dfx Voodoo look (LeiFX)" }
+  "LeiFx_OA@LeiFX_OA.fx": { cat: "Retro", name: "3dfx Voodoo look (LeiFX OA)" }
+  "nGlide_3DFX@nGlide_3DFX.fx": { cat: "Retro", name: "3dfx Voodoo look (nGlide)" }
+  "N64Filter@N64_3Point.fx": { cat: "Retro", name: "N64 three-point filtering" }
+  "PowerVR2@PowerVR2.fx": { cat: "Retro", name: "Dreamcast PowerVR2 look" }
+  "DosFX_Tech@DOSGame.fx": { cat: "Retro", name: "DOS game look" }
+  "EGAfilter@EGAfilter.fx": { cat: "Retro", name: "EGA 16-colour palette" }
+  "SGENPT_MUL@sgenpt-mix.fx": { cat: "Retro", name: "Mega Drive dither blending (sgenpt-mix)" }
+  "MDAPT@mdapt.fx": { cat: "Retro", name: "Dither pattern blending (mdapt)" }
+  "CMYK_Halftone@cmyk_halftone_dot.fx": { cat: "Stylise", name: "CMYK halftone print" }
+  "MMJCelShader@MMJCelShader.fx": { cat: "Stylise", name: "Cel shading (MMJ)" }
+  "JPEGCompression@JPEG.fx": { cat: "Stylise", name: "JPEG compression artifacts" }
+}

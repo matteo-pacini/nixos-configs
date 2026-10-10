@@ -241,7 +241,7 @@ Scoped to this flake but written with options should you want to crib them:
 
 Custom packages live in `packages/` and the overlays:
 
-- **`reshade-steam-proton`** — ReShade installer for Linux games running under Wine/Proton. Defined in `packages/`, wired via `overlays/brightfalls.nix`.
+- **`reshade-linux`** — Nushell ReShade installer for Wine/Proton games (replaces kevinlekiller/reshade-steam-proton). Pins ReShade and d3dcompiler_47 in Nix, clones shader repos at runtime and labels effects by category. Defined in `packages/reshade-linux/`, wired via `overlays/brightfalls.nix`.
 - **`claude-code`** — Vendored from nixpkgs master via `overlays/shared.nix` with a wrapper that puts Node.js on PATH and toggles auto-compact + prompt caching.
 
 ---
