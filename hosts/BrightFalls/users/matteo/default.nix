@@ -59,7 +59,7 @@
       # Gaming
       bottles
       pcsx2
-      reshade-steam-proton
+      reshade-linux
       heroic
       # Path of Exile 2
       exiled-exchange-2
