@@ -12,6 +12,7 @@
     ./storage-tuning.nix
     ./hd-idle.nix
     ./disk-burnin.nix
+    ./fans
   ];
 
   custom.kernel.enable = true;

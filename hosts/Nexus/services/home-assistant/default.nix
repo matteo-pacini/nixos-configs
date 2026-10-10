@@ -2,19 +2,14 @@
 let
   systemctl = "${pkgs.systemd}/bin/systemctl";
   ipmitool = "${pkgs.ipmitool}/bin/ipmitool";
+  nexusFans = pkgs.callPackage ../../fans/package.nix { };
 
-  # Dell PowerEdge R730xd iDRAC OEM fan control (raw 0x30 0x30 ...). These
-  # opcodes are write-only — the BMC won't report the duty/mode back — so HA
-  # owns the setpoint (input_number/input_select below) and reads real fan RPM
-  # via the command_line sensor as ground-truth feedback. hass reaches
-  # /dev/ipmi0 through the "ipmi" group + DeviceAllow exception (no sudo).
-  fanSet = pkgs.writeShellScript "nexus-fan-set" ''
-    ${ipmitool} raw 0x30 0x30 0x01 0x00
-    ${ipmitool} raw 0x30 0x30 0x02 0xff "$(printf '0x%02x' "$1")"
-  '';
-  fanAuto = pkgs.writeShellScript "nexus-fan-auto" ''
-    ${ipmitool} raw 0x30 0x30 0x01 0x01
-  '';
+  # Dell PowerEdge R730xd iDRAC fan control. HA sets the baseline through
+  # `fans`, which defers to any active `with-fans` run (see ../../fans). The
+  # BMC won't report the duty/mode back, so HA owns the setpoint
+  # (input_number/input_select below) and reads real fan RPM via the
+  # command_line sensor as ground-truth feedback. hass reaches /dev/ipmi0
+  # through the "ipmi" group + DeviceAllow exception (no sudo).
   fanRpm = pkgs.writeShellScript "nexus-fan-rpm" ''
     ${ipmitool} sdr type fan | ${pkgs.gawk}/bin/awk -F'|' '$5 ~ /RPM/ { gsub(/[^0-9]/, "", $5); s += $5; c++ } END { if (c) printf "%d", s / c }'
   '';
@@ -44,6 +39,7 @@ in
   systemd.services.home-assistant.serviceConfig = {
     SupplementaryGroups = [ "ipmi" ];
     DeviceAllow = [ "/dev/ipmi0 rw" ];
+    ReadWritePaths = [ "/run/nexus-fans" ];
   };
 
   # openFirewall reads config.http.server_port, which no longer exists now
@@ -279,6 +275,17 @@ in
             scan_interval = 5;
           };
         }
+        {
+          # "off", or the duty a `with-fans` run is holding. A sensor, not a
+          # binary_sensor, because command_line binary sensors can't carry
+          # the duty.
+          sensor = {
+            name = "Nexus Fan Override";
+            command = "${nexusFans}/bin/nexus-fans-status";
+            icon = "mdi:fan-alert";
+            scan_interval = 5;
+          };
+        }
       ];
 
       # Parallel export to VictoriaMetrics, which speaks the InfluxDB v1 line
@@ -384,15 +391,15 @@ in
         restart_zigbee2mqtt = "${systemctl} restart zigbee2mqtt";
         restart_mosquitto = "${systemctl} restart mosquitto";
         # Forces manual mode, then applies the current input_number duty.
-        fan_set = "${fanSet} {{ states('input_number.fan_duty') | int }}";
-        fan_auto = "${fanAuto}";
+        fan_set = "${nexusFans}/bin/fans {{ states('input_number.fan_duty') | int }}";
+        fan_auto = "${nexusFans}/bin/fans auto";
       };
 
       # Fan control state. The Dell BMC can't report duty/mode back, so HA is
       # the source of truth; the "Nexus Fan Speed" sensor is the real readback.
       input_number.fan_duty = {
         name = "Nexus Fan Duty";
-        min = 0;
+        min = 20;
         max = 100;
         step = 10;
         unit_of_measurement = "%";
@@ -419,7 +426,14 @@ in
               name = "Nexus Fan Duty Display";
               # No unit_of_measurement: with one set, HA treats the sensor as
               # numeric and rejects the "- %" string. Bake the unit in instead.
-              state = "{{ '- %' if is_state('input_select.fan_mode', 'auto') else (states('input_number.fan_duty') | int) ~ ' %' }}";
+              state = ''
+                {% set override = states('sensor.nexus_fan_override') %}
+                {% if override | is_number %}
+                  {{ override | int }} % (with-fans override ON)
+                {% else %}
+                  {{ '- %' if is_state('input_select.fan_mode', 'auto') else (states('input_number.fan_duty') | int) ~ ' %' }}
+                {% endif %}
+              '';
               icon = "mdi:fan";
             }
           ];
@@ -541,7 +555,7 @@ in
             {
               service = "input_number.set_value";
               target.entity_id = "input_number.fan_duty";
-              data.value = "{{ [ (states('input_number.fan_duty') | int) - 10, 0 ] | max }}";
+              data.value = "{{ [ (states('input_number.fan_duty') | int) - 10, 20 ] | max }}";
             }
             {
               service = "input_select.select_option";
