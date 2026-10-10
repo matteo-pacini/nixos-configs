@@ -8,10 +8,10 @@
 # up with that script keep working.
 
 const COMMON_DLLS = [dxgi d3d9 d3d11 d3d8 ddraw dinput8 opengl32]
-const DEFAULT_REPOS = "https://github.com/CeeJayDK/SweetFX|sweetfx-shaders;https://github.com/martymcmodding/qUINT|martymc-shaders;https://github.com/BlueSkyDefender/AstrayFX|astrayfx-shaders;https://github.com/prod80/prod80-ReShade-Repository|prod80-shaders;https://github.com/crosire/reshade-shaders|reshade-shaders|slim"
+const DEFAULT_REPOS = "https://github.com/CeeJayDK/SweetFX|sweetfx-shaders;https://github.com/martymcmodding/qUINT|martymc-shaders;https://github.com/BlueSkyDefender/AstrayFX|astrayfx-shaders;https://github.com/prod80/prod80-ReShade-Repository|prod80-shaders;https://github.com/crosire/reshade-shaders|reshade-shaders|slim;https://github.com/martymcmodding/iMMERSE|immerse-shaders;https://github.com/EndlesslyFlowering/ReShade_HDR_shaders|lilium-hdr-shaders;https://github.com/AlucardDH/dh-reshade-shaders|dh-shaders;https://github.com/FransBouma/OtisFX|otisfx-shaders;https://github.com/Fubaxiusz/fubax-shaders|fubax-shaders;https://github.com/Matsilagi/RSRetroArch|rsretroarch-shaders"
 # Shader repos are pulled at most this often unless `update` is run explicitly.
 const UPDATE_INTERVAL = 4hr
-const CATEGORY_ORDER = [Colour Tone Anti-aliasing Sharpen Clean-up Light Depth Film Stylise Tools]
+const CATEGORY_ORDER = [Setup Colour Tone HDR Anti-aliasing Sharpen Clean-up Light Depth Film Stylise Retro Tools]
 
 # --- output helpers ----------------------------------------------------------
 
@@ -127,13 +127,21 @@ def update-repos [--force] {
     print ($results | table --index false)
 }
 
+# Matches a technique header with its optional annotation block. OtisFX wraps
+# the block in `#if __RESHADE__ >= 40000 … #endif`; RadiantGI opens the #if
+# before `technique` and closes it after the block. Either directive is
+# captured (pre/post) so the rewrite can put it back and keep them balanced.
+def technique-regex [name: string] {
+    '(?s)(?P<whole>technique\s+(?P<technique>' + $name + ')\s*(?P<pre>#if[^\n]*\n\s*)?(?:<(?P<ann>.*?)>)?\s*(?P<post>#endif[^\n]*\n\s*)?\{)'
+}
+
 # Inject friendly ui_label / ui_tooltip annotations; the technique identifier is
 # left alone so presets (which store Technique@File.fx) still resolve.
 def label-source [text: string, file: string, labels: record] {
     $labels | transpose key val | where {|r| $r.key | str ends-with $"@($file)" } | reduce --fold $text {|entry, src|
         let technique = $entry.key | split row "@" | first
         let label = $"($entry.val.cat): ($entry.val.name)"
-        let matches = $src | parse --regex ('(?s)(?P<whole>technique\s+' + $technique + '\s*(?:<(?P<ann>.*?)>)?\s*\{)')
+        let matches = $src | parse --regex (technique-regex $technique)
         if ($matches | is-empty) { return $src }
         let ann = $matches.0.ann | default ""
         let ann = if ($ann =~ 'ui_label\s*=') {
@@ -142,12 +150,14 @@ def label-source [text: string, file: string, labels: record] {
         let ann = if ($entry.val.tip? | is-not-empty) and not ($ann =~ 'ui_tooltip\s*=') {
             $'($ann) ui_tooltip = "($entry.val.tip)";'
         } else { $ann }
-        $src | str replace --all $matches.0.whole $"technique ($technique) <($ann) > {"
+        $src | str replace --all $matches.0.whole $"technique ($technique)\n($matches.0.pre)<($ann) >\n($matches.0.post){"
     }
 }
 
 # Rebuild ReShade_shaders/Merged from scratch: first repo in SHADER_REPOS wins
-# on duplicate paths, External_shaders comes last. Plain files are symlinked;
+# on duplicate paths, External_shaders comes last. A later .fx whose file name
+# was already merged from another folder is skipped too, since ReShade and its
+# presets identify effects by file name alone. Plain files are symlinked;
 # labelled .fx files are written as copies.
 def merge-shaders [] {
     let main = main-path
@@ -165,11 +175,12 @@ def merge-shaders [] {
             if not ($root | path exists) { continue }
             for f in (glob $"($root)/**/*" --no-dir) {
                 let rel = $kind | path join ($f | path relative-to $root)
-                if $rel in $seen { continue }
-                $seen = $seen | insert $rel true
+                let name = $f | path basename
+                let effect_key = if ($name | str ends-with ".fx") { $"fx:($name)" } else { $rel }
+                if $rel in $seen or $effect_key in $seen { continue }
+                $seen = $seen | insert $rel true | upsert $effect_key true
                 let dst = $merged | path join $rel
                 mkdir ($dst | path dirname)
-                let name = $f | path basename
                 if $kind == Shaders and $name in $labelled_files {
                     label-source (open --raw $f | decode utf-8) $name $labels | save --force $dst
                 } else {
@@ -441,7 +452,7 @@ def "main effects" [
     if not ($merged | path exists) { fail "Shaders are not installed yet; run `reshade-linux update`." }
     let rows = glob $"($merged)/**/*.fx" | each {|f|
         let src = open --raw $f | decode utf-8
-        $src | parse --regex '(?s)technique\s+(?P<technique>\w+)\s*(?:<(?P<ann>.*?)>)?\s*\{' | each {|t|
+        $src | parse --regex (technique-regex '\w+') | each {|t|
             let ann = $t.ann | default ""
             let label = $ann | parse --regex 'ui_label\s*=\s*"(?P<l>[^"]*)"' | get l.0? | default $t.technique
             let tip = $ann | parse --regex 'ui_tooltip\s*=\s*"(?P<t>[^"]*)"' | get t.0? | default ""
