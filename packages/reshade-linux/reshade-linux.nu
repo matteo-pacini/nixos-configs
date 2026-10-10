@@ -12,6 +12,12 @@ const DEFAULT_REPOS = "https://github.com/CeeJayDK/SweetFX|sweetfx-shaders;https
 # Shader repos are pulled at most this often unless `update` is run explicitly.
 const UPDATE_INTERVAL = 4hr
 const CATEGORY_ORDER = [Setup Colour Tone HDR Anti-aliasing Sharpen Clean-up Light Depth Film Stylise Retro Tools]
+# Effects left out of Merged because they fail to compile under D3D11 (upstream
+# HLSL errors) and would put a red error banner on every overlay.
+const IGNORED_EFFECTS = [
+    NTSC_XOT.fx   # RSRetroArch: error X4576, input signature parameter must be float32
+    NTSCCustom.fx # RSRetroArch: error X3511, unable to unroll loop
+]
 
 # --- output helpers ----------------------------------------------------------
 
@@ -176,6 +182,7 @@ def merge-shaders [] {
             for f in (glob $"($root)/**/*" --no-dir) {
                 let rel = $kind | path join ($f | path relative-to $root)
                 let name = $f | path basename
+                if $name in $IGNORED_EFFECTS { continue }
                 let effect_key = if ($name | str ends-with ".fx") { $"fx:($name)" } else { $rel }
                 if $rel in $seen or $effect_key in $seen { continue }
                 $seen = $seen | insert $rel true | upsert $effect_key true
