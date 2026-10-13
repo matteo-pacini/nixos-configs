@@ -37,7 +37,11 @@ in
         # Apple's sshd allows password login by default; mesh logins are cert-only.
         services.openssh.extraConfig = ''
           TrustedUserCAKeys ${pkgs.writeText "ssh-mesh-ca.pub" mesh.caPublicKey}
-          AuthorizedPrincipalsFile /etc/ssh/authorized_principals.d/%u
+          # Not AuthorizedPrincipalsFile: /etc entries are symlinks into the
+          # group-writable /nix/store, which StrictModes rejects. Same
+          # workaround nix-darwin uses for AuthorizedKeysCommand.
+          AuthorizedPrincipalsCommand /bin/cat /etc/ssh/authorized_principals.d/%u
+          AuthorizedPrincipalsCommandUser _sshd
           RevokedKeys ${pkgs.callPackage ../../lib/ssh-mesh-krl.nix { }}
           PasswordAuthentication no
           KbdInteractiveAuthentication no
