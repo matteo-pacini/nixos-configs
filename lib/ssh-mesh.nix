@@ -15,7 +15,8 @@
   #   (source identity) when this host is the client.
   # user: account mesh logins land in. lan/tailscale/port: only on hosts that
   #   run sshd. hostKey: /etc/ssh/ssh_host_ed25519_key.pub, also the agenix
-  #   recipient for this host.
+  #   recipient for this host. lanOnly: this host has no Tailscale, so its
+  #   outbound mesh connections use lan; every other source uses tailscale.
   hosts = {
     Nexus = {
       principal = "nexus";
@@ -44,6 +45,7 @@
     };
     WorkLaptop = {
       principal = "worklaptop";
+      lanOnly = true;
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtM6cXF6v03BIDdYeMYUHuuoLljzT2Lx+judeJSag8c";
     };
   };

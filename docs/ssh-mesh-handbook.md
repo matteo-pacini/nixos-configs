@@ -8,7 +8,7 @@ Host-to-host SSH is authorized by an OpenSSH **user certificate authority**, not
 - The certificate's **key ID** is the source host (`worklaptop`). Its **principals** are the destinations that host may reach, plus `renew`.
 - Each destination's sshd trusts the CA (`TrustedUserCAKeys`). It accepts only its own principal for `matteo` (`/etc/ssh/authorized_principals.d/matteo`).
 - Certificates are valid for 30 days. `ssh-mesh-renew` runs daily: a systemd user timer on Linux, a launchd agent on macOS. It rotates the key once fewer than 23 days remain, so in practice the key changes about weekly.
-- Renewal logs in as `sshca@nexus` (ssh alias `mesh-ca`, fallback `mesh-ca-ts`) with the current certificate. The `sshca` user is locked to `ForceCommand ssh-mesh-sign`. The signer reads the caller's key ID from the certificate it authenticated with (`ExposeAuthInfo`). It looks up that host's principals in the matrix and signs the new public key piped on stdin. Callers cannot choose their own principals, and any command they send is ignored.
+- Renewal logs in as `sshca@nexus` (ssh alias `mesh-ca`) with the current certificate. The `sshca` user is locked to `ForceCommand ssh-mesh-sign`. The signer reads the caller's key ID from the certificate it authenticated with (`ExposeAuthInfo`). It looks up that host's principals in the matrix and signs the new public key piped on stdin. Callers cannot choose their own principals, and any command they send is ignored.
 
 | Source | May reach |
 |---|---|
@@ -17,7 +17,7 @@ Host-to-host SSH is authorized by an OpenSSH **user certificate authority**, not
 | NightSprings | Nexus, BrightFalls |
 | WorkLaptop | Nexus, BrightFalls (runs no sshd) |
 
-Aliases: `nexus`, `brightfalls` and `nightsprings` (LAN), plus `-ts` variants (Tailscale). Each source host gets only the aliases it may use.
+Aliases: `nexus`, `brightfalls` and `nightsprings`. They and the remote builders go over Tailscale, except from hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale), where they use the LAN. Each source host gets only the aliases it may use.
 
 Outside the mesh:
 - The BrightFalls initrd unlock (`brightfalls-stage1`, `~/.ssh/brightfalls`) keeps static keys.
@@ -69,6 +69,7 @@ To rotate without a gap, first deploy both CA public keys (`TrustedUserCAKeys` a
    - `principal`: lowercase host name. It's both the cert key ID when the host connects out and the principal other hosts need to log into it.
    - `hostKey`: the contents of `/etc/ssh/ssh_host_ed25519_key.pub` on the new host. Mesh hosts pin it in `known_hosts`, and `secrets/secrets.nix` uses it as the host's agenix recipient.
    - `user`, `lan`, `tailscale`, `port`: only if the host runs sshd (accepts mesh logins). On macOS the port is 22, because launchd owns the socket and ignores `Port`.
+   - `lanOnly = true`: only if the host has no Tailscale. Its outbound mesh connections then use `lan` instead of `tailscale`.
 2. Add it to `allow`: as a source with its destinations, and/or in other hosts' destination lists.
 3. Set `custom.sshMesh = { enable = true; host = "<Host>"; }` at system level and `custom.ssh.mesh = { enable = true; host = "<Host>"; }` in Home Manager.
 4. Rebuild **Nexus** first, so the signer knows the new key ID.

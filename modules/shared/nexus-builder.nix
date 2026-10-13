@@ -4,14 +4,18 @@
 # publicHostKey is left unset: the ssh-mesh modules pin Nexus's host key in
 # the system known_hosts, which root's ssh reads.
 #
-# Shared by the NixOS and Darwin nix-core modules.
-{ sshKey }:
+# Shared by the NixOS and Darwin nix-core modules. lanOnly: the source host
+# has no Tailscale (lib/ssh-mesh.nix), so reach Nexus over the LAN.
+{
+  sshKey,
+  lanOnly ? false,
+}:
 let
   nexus = (import ../../lib/ssh-mesh.nix).hosts.Nexus;
 in
 {
   protocol = "ssh-ng";
-  hostName = "${nexus.lan}:${toString nexus.port}";
+  hostName = "${if lanOnly then nexus.lan else nexus.tailscale}:${toString nexus.port}";
   sshUser = nexus.user;
   inherit sshKey;
   # aarch64-linux runs under binfmt emulation (Nexus extraPlatforms).

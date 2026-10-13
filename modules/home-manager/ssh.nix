@@ -7,15 +7,10 @@
 let
   cfg = config.custom.ssh;
   mesh = import ../../lib/ssh-mesh.nix;
+  lanOnly = mesh.hosts.${cfg.mesh.host}.lanOnly or false;
   meshHostBlocks = name: h: user: {
     ${name} = {
-      HostName = h.lan;
-      User = user;
-      IdentityFile = "~/.ssh/mesh";
-      Port = toString h.port;
-    };
-    "${name}-ts" = {
-      HostName = h.tailscale;
+      HostName = if lanOnly then h.lan else h.tailscale;
       User = user;
       IdentityFile = "~/.ssh/mesh";
       Port = toString h.port;
@@ -41,7 +36,7 @@ in
       description = "Extra SSH config lines";
     };
     mesh = {
-      enable = lib.mkEnableOption "SSH mesh host blocks (<host>, <host>-ts) and daily certificate renewal";
+      enable = lib.mkEnableOption "SSH mesh host blocks and daily certificate renewal";
       host = lib.mkOption {
         type = lib.types.enum (lib.attrNames mesh.hosts);
         description = "This host's name in lib/ssh-mesh.nix; selects which destinations get host blocks.";
@@ -142,7 +137,7 @@ in
           User = "root";
           IdentityFile = "~/.ssh/brightfalls";
           Port = "2222";
-          ProxyJump = "nexus-ts";
+          ProxyJump = "nexus";
         };
       })
       (lib.mkIf cfg.github.enable {

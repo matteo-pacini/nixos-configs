@@ -7,7 +7,7 @@ ssh-mesh-renew [--force | --status]
 
 Rotates this host's SSH mesh key (~/.ssh/mesh) and certificate
 (~/.ssh/mesh-cert.pub) by sending a fresh public key to the signer
-(ssh aliases mesh-ca, then mesh-ca-ts), authenticated by the current cert.
+(ssh alias mesh-ca), authenticated by the current cert.
 
 Does nothing while the current cert has more than 23 days left, so it is
 safe to run daily and at login.
@@ -72,14 +72,8 @@ rm -f "$KEY.new" "$KEY.new.pub" "$KEY.new-cert.pub"
 trap 'rm -f "$KEY.new" "$KEY.new.pub" "$KEY.new-cert.pub"' EXIT
 ssh-keygen -q -t ed25519 -N "" -C "mesh" -f "$KEY.new"
 
-signed=0
-for alias in mesh-ca mesh-ca-ts; do
-  if ssh -T -o BatchMode=yes -o ConnectTimeout=10 "$alias" <"$KEY.new.pub" >"$KEY.new-cert.pub"; then
-    signed=1
-    break
-  fi
-done
-[ "$signed" -eq 1 ] || { echo "could not reach the signer via mesh-ca or mesh-ca-ts" >&2; exit 1; }
+ssh -T -o BatchMode=yes -o ConnectTimeout=10 mesh-ca <"$KEY.new.pub" >"$KEY.new-cert.pub" ||
+  { echo "could not reach the signer via mesh-ca" >&2; exit 1; }
 
 # The cert must certify the key just generated, not something else.
 cert_fp="$(ssh-keygen -L -f "$KEY.new-cert.pub" | sed -n 's/^ *Public key: [A-Z0-9-]* \(SHA256:[^ ]*\).*/\1/p')"

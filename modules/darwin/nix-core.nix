@@ -98,6 +98,7 @@ in
         nix.buildMachines = [
           (import ../shared/nexus-builder.nix {
             sshKey = "${config.system.primaryUserHome}/.ssh/mesh";
+            lanOnly = (import ../../lib/ssh-mesh.nix).hosts.${config.custom.sshMesh.host}.lanOnly or false;
           })
         ];
         nix.distributedBuilds = true;
