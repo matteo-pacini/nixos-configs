@@ -28,6 +28,10 @@
       enable = true;
       sshKey = "/home/matteo/.ssh/mesh";
     };
+    nightspringsBuilder = {
+      enable = true;
+      sshKey = "/home/matteo/.ssh/mesh";
+    };
     trustedUsers = [
       "matteo"
       "root"

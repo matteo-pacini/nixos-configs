@@ -20,6 +20,10 @@
 
   custom.nix-core = {
     enable = true;
+    nightspringsBuilder = {
+      enable = true;
+      sshKey = "/home/matteo/.ssh/mesh";
+    };
     trustedUsers = [
       "root"
       "matteo"

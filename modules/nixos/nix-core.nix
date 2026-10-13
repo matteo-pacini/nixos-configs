@@ -17,6 +17,10 @@ let
     inherit pkgs;
     netrcFile = cfg.atticCache.netrcFile;
   };
+
+  nightspringsBuilder = import ../shared/nightsprings-builder.nix {
+    inherit (cfg.nightspringsBuilder) sshKey;
+  };
 in
 {
   options.custom.nix-core = {
@@ -65,6 +69,18 @@ in
         '';
       };
     };
+    nightspringsBuilder = {
+      enable = lib.mkEnableOption "NightSprings as an aarch64-darwin remote builder over the SSH mesh (/etc/nix/machines)";
+      sshKey = lib.mkOption {
+        type = lib.types.str;
+        description = ''
+          Absolute path to the user's SSH mesh key, e.g. /home/matteo/.ssh/mesh.
+          aarch64-darwin builds always go to NightSprings; the other
+          machines in /etc/nix/machines stay per command unless
+          nexusBuilder.automatic is set.
+        '';
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable (
@@ -107,6 +123,25 @@ in
           (import ../shared/nexus-builder.nix { inherit (cfg.nexusBuilder) sshKey; })
         ];
         nix.distributedBuilds = cfg.nexusBuilder.automatic;
+        nix.settings.builders-use-substitutes = true;
+      })
+      (lib.mkIf cfg.nightspringsBuilder.enable {
+        nix.buildMachines = [ nightspringsBuilder ];
+        # distributedBuilds would also offload to every other machine in
+        # /etc/nix/machines (Nexus), so name only NightSprings as a default
+        # builder. With distributedBuilds on, @/etc/nix/machines covers it.
+        nix.settings.builders = lib.mkIf (!config.nix.distributedBuilds) (
+          lib.mkForce (
+            lib.concatStringsSep " " [
+              "${nightspringsBuilder.protocol}://${nightspringsBuilder.sshUser}@${nightspringsBuilder.hostName}"
+              (lib.concatStringsSep "," nightspringsBuilder.systems)
+              nightspringsBuilder.sshKey
+              (toString nightspringsBuilder.maxJobs)
+              (toString nightspringsBuilder.speedFactor)
+              (lib.concatStringsSep "," nightspringsBuilder.supportedFeatures)
+            ]
+          )
+        );
         nix.settings.builders-use-substitutes = true;
       })
       (lib.mkIf (cfg.extraPlatforms != [ ]) {
