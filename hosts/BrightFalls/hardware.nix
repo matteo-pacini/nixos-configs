@@ -117,4 +117,5 @@
     extraConfig = "StrictModes no";
   };
 
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 }

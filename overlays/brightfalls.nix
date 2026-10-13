@@ -46,4 +46,8 @@ in
   # See: https://github.com/NixOS/nixpkgs/issues/381223
   OVMF = super.OVMF.override { qemu = super.qemu; };
   OVMFFull = super.OVMFFull.override { qemu = super.qemu; };
+
+  # binfmt's interpreter. nixpkgs derives it from `qemu`, which above adds
+  # softmmu targets that a user-only build rejects; vanilla also hits the cache.
+  qemu-user = super.qemu.override { userOnly = true; };
 }
