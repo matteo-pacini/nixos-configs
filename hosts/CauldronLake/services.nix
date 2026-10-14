@@ -9,4 +9,13 @@
   services.mullvad-vpn.gui.enable = true;
 
   services.thermald.enable = true;
+
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+    };
+    ports = [ 1788 ];
+  };
 }

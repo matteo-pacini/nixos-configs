@@ -67,6 +67,7 @@
     WorkLaptop = [
       "Nexus"
       "BrightFalls"
+      "NightSprings"
     ];
   };
 

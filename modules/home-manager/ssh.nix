@@ -8,14 +8,25 @@ let
   cfg = config.custom.ssh;
   mesh = import ../../lib/ssh-mesh.nix;
   lanOnly = mesh.hosts.${cfg.mesh.host}.lanOnly or false;
-  meshHostBlocks = name: h: user: {
-    ${name} = {
-      HostName = if lanOnly then h.lan else h.tailscale;
-      User = user;
-      IdentityFile = "~/.ssh/mesh";
-      Port = toString h.port;
+  # Tailscale first, LAN fallback. The Match block is ordered before the Host
+  # block and ssh keeps the first HostName it sees, so the Tailscale name wins
+  # whenever its sshd port answers within 2 s; otherwise the LAN name applies.
+  meshHostBlocks =
+    name: h: user:
+    {
+      ${name} = {
+        HostName = h.lan;
+        User = user;
+        IdentityFile = "~/.ssh/mesh";
+        Port = toString h.port;
+      };
+    }
+    // lib.optionalAttrs (!lanOnly) {
+      "${name}-tailscale" = lib.hm.dag.entryBefore [ name ] {
+        header = "Match host ${name} exec \"${lib.getExe' pkgs.netcat "nc"} -z -w 2 ${h.tailscale} ${toString h.port} >/dev/null 2>&1\"";
+        HostName = h.tailscale;
+      };
     };
-  };
 in
 {
   options.custom.ssh = {

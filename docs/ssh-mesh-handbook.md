@@ -15,9 +15,11 @@ Host-to-host SSH is authorized by an OpenSSH **user certificate authority**, not
 | Nexus | BrightFalls, NightSprings |
 | BrightFalls | Nexus, NightSprings |
 | NightSprings | Nexus, BrightFalls |
-| WorkLaptop | Nexus, BrightFalls (runs no sshd) |
+| WorkLaptop | Nexus, BrightFalls, NightSprings (runs no sshd) |
 
-Aliases: `nexus`, `brightfalls` and `nightsprings`. They and the remote builders go over Tailscale, except from hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale), where they use the LAN. Each source host gets only the aliases it may use.
+Aliases: `nexus`, `brightfalls` and `nightsprings`. They try Tailscale first: a `Match ... exec` block probes the Tailscale name on the sshd port (`nc -z`, 2 s timeout), and if that fails the alias falls back to the LAN name. Hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale) skip the probe and always use the LAN. The remote builders use Tailscale only. Each source host gets only the aliases it may use.
+
+Every NixOS mesh host runs its firewall with `tailscale0` trusted and its sshd port open, so the LAN fallback still connects.
 
 Outside the mesh:
 - The BrightFalls initrd unlock (`brightfalls-stage1`, `~/.ssh/brightfalls`) keeps static keys.

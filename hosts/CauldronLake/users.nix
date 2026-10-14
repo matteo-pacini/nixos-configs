@@ -15,4 +15,10 @@
     ];
     shell = pkgs.zsh;
   };
+
+  users.users."matteo" = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" ];
+    shell = pkgs.zsh;
+  };
 }

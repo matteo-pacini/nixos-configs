@@ -2,7 +2,10 @@ _:
 {
   networking.hostName = "BrightFalls";
 
-  networking.firewall.enable = true;
+  networking.firewall = {
+    enable = true;
+    trustedInterfaces = [ "tailscale0" ];
+  };
 
   networking.networkmanager.enable = true;
 
