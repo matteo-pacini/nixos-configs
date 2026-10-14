@@ -138,18 +138,7 @@ in
         ];
 
       })
-      (pkgs.buildHomeAssistantComponent rec {
-        owner = "nielsfaber";
-        domain = "scheduler";
-        version = "3.3.8";
-
-        src = pkgs.fetchFromGitHub {
-          inherit owner;
-          repo = "scheduler-component";
-          tag = "v${version}";
-          hash = "sha256-QN7rkNuj9IBbV2ths7ZdL/EkXFJUpjNbgJNUnAHjLBA=";
-        };
-      })
+      scheduler
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       card-mod
@@ -157,6 +146,7 @@ in
       sankey-chart
       mushroom
       mini-graph-card
+      scheduler-card
       button-card
       clock-weather-card
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
