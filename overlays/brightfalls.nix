@@ -50,4 +50,16 @@ in
   # binfmt's interpreter. nixpkgs derives it from `qemu`, which above adds
   # softmmu targets that a user-only build rejects; vanilla also hits the cache.
   qemu-user = super.qemu.override { userOnly = true; };
+
+  # typescript-language-server 6.0.2 landed in nixpkgs with a stale pnpmDeps
+  # hash (pulled in by nvf's typescript language support). Drop once
+  # nixos-unstable includes the upstream fix, i.e. once
+  #   gh api repos/NixOS/nixpkgs/compare/ac7b1aaed0...nixos-unstable -q .status
+  # reports "ahead" or "identical".
+  # Fix: https://github.com/NixOS/nixpkgs/commit/ac7b1aaed0
+  typescript-language-server = super.typescript-language-server.overrideAttrs (old: {
+    pnpmDeps = old.pnpmDeps.overrideAttrs {
+      outputHash = "sha256-xR/EF60lVBsITKgH7wCM2wHM46PFQevD51KfCENSUH4=";
+    };
+  });
 }
