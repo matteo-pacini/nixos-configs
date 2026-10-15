@@ -89,6 +89,8 @@ let
           ${nixStore} --delete "$xip" >/dev/null 2>&1 || true
         )
       fi
+    ''
+    + lib.optionalString cfg.firstLaunch ''
       # Checked on every activation, not only after an install, so an
       # activation interrupted after the mv still finishes the setup next time.
       ${xcodebuild} -license check >/dev/null 2>&1 || ${xcodebuild} -license accept
@@ -104,6 +106,14 @@ in
         Xcode versions to keep in /Applications as Xcode-<version>.app. Each
         must have an entry in xcode-versions.json, added by xcode-fetch. Any
         other Xcode-*.app in /Applications is removed.
+      '';
+    };
+    firstLaunch = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Accept the license and run `xcodebuild -runFirstLaunch` as root after
+        installing. When false, Xcode asks for both on first open instead.
       '';
     };
     active = lib.mkOption {
