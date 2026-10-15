@@ -30,7 +30,12 @@ in
   # Nexus service secrets
   "nexus/attic-env.age".publicKeys = [ nexus ];
   "nexus/attic-netrc.age".publicKeys = [ nexus ];
-  "nexus/janitor.env.age".publicKeys = [ nexus ];
+  # Telegram bot; also used by the comin deploy hook on BrightFalls/NightSprings.
+  "nexus/janitor.env.age".publicKeys = [
+    nexus
+    brightfalls
+    nightsprings
+  ];
   "nexus/restic-env.age".publicKeys = [ nexus ];
   "nexus/restic-password.age".publicKeys = [ nexus ];
   "nexus/route53-env.age".publicKeys = [ nexus ];

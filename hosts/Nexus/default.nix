@@ -1,4 +1,9 @@
-{ pkgs, inputs, ... }:
+{
+  config,
+  pkgs,
+  inputs,
+  ...
+}:
 {
   imports = [
     ./networking.nix
@@ -17,6 +22,12 @@
 
   custom.kernel.enable = true;
   custom.nix-index.enable = true;
+
+  custom.autoDeploy = {
+    enable = true;
+    telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
+    notifyStaged = true;
+  };
 
   custom.nix-core = {
     enable = true;

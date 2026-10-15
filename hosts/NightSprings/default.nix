@@ -27,6 +27,14 @@
   custom.fonts.enable = true;
   custom.nix-index.enable = true;
 
+  custom.autoDeploy = {
+    enable = true;
+    telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
+    telegramPrefix = "[NightSprings] ";
+  };
+  # networking.hostName is unset here; comin needs the darwinConfigurations name.
+  services.comin.hostname = "NightSprings";
+
   ids.gids.nixbld = 30000;
 
   environment.systemPackages = [ pkgs.nix-output-monitor ];

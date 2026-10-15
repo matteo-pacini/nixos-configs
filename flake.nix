@@ -94,6 +94,14 @@
     # Only used by Magunetto's own devShell; following avoids pulling a second
     # nixpkgs into this lock.
     magunetto.inputs.openspec.follows = "nixpkgs";
+    #########
+    # comin #
+    #########
+    # Pinned to a release: a broken comin cannot deploy its own fix.
+    comin.url = "github:nlewo/comin/v0.14.0";
+    comin.inputs.nixpkgs.follows = "nixpkgs";
+    # Only used by comin's formatter; following avoids a second nixpkgs in the lock.
+    comin.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -116,6 +124,7 @@
           ./modules/nixos/apcupsd-multi.nix
           ./modules/nixos/nix-index.nix
           ./modules/nixos/ssh-mesh.nix
+          ./modules/nixos/auto-deploy.nix
         ];
       };
 
@@ -126,6 +135,7 @@
           ./modules/darwin/fonts.nix
           ./modules/darwin/nix-index.nix
           ./modules/darwin/ssh-mesh.nix
+          ./modules/darwin/auto-deploy.nix
         ];
       };
 
@@ -185,6 +195,7 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."brightfalls/attic-netrc".file = ./secrets/brightfalls/attic-netrc.age;
+            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."openrouter.env" = {
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it
@@ -373,6 +384,7 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."nightsprings/attic-netrc".file = ./secrets/nightsprings/attic-netrc.age;
+            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."openrouter.env" = {
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it

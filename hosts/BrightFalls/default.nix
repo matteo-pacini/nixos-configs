@@ -72,5 +72,13 @@
   custom.fonts.enable = true;
   custom.nix-index.enable = true;
 
+  custom.autoDeploy = {
+    enable = true;
+    telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
+    telegramPrefix = "[BrightFalls] ";
+  };
+  # comin's own user service; notifies when a staged deployment needs a reboot.
+  services.comin.desktop.enable = true;
+
   system.stateVersion = "26.05";
 }

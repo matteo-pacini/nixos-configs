@@ -80,26 +80,6 @@
     rxvt-unicode-unwrapped = super.rxvt-unicode-unwrapped.overrideAttrs (old: {
       configureFlags = old.configureFlags ++ [ "CXXFLAGS=-std=c++17" ];
     });
-    telegram-notify = super.writeShellScriptBin "telegram-notify" ''
-      set -euo pipefail
-
-      if [[ -z "''${TELEGRAM_ENV_FILE:-}" ]]; then
-        echo "Error: TELEGRAM_ENV_FILE not set" >&2
-        exit 1
-      fi
-
-      if [[ ! -f "$TELEGRAM_ENV_FILE" ]]; then
-        echo "Error: $TELEGRAM_ENV_FILE not found" >&2
-        exit 1
-      fi
-
-      source "$TELEGRAM_ENV_FILE"
-
-      ${super.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-        --data chat_id="$CHANNEL_ID" \
-        --data parse_mode="Markdown" \
-        --data-urlencode "text=$1"
-    '';
     # typescript-language-server 6.0.2 landed in nixpkgs with a stale pnpmDeps
     # hash (pulled in by nvf's typescript language support). Drop once
     # nixos-unstable includes the upstream fix, i.e. once

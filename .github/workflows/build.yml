@@ -82,3 +82,20 @@ jobs:
           max_attempts: 5
           retry_on: error
           command: nix run nixpkgs#attic-client -- push main result -j 3
+
+  # comin on each host tracks `deploy`, so it only ever moves to a commit whose
+  # closures are already in attic. A plain push is fast-forward only: an older
+  # run finishing late is rejected rather than rolling hosts back.
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fast-forward deploy branch
+        run: git push origin "$GITHUB_SHA:refs/heads/deploy"

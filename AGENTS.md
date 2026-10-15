@@ -85,3 +85,4 @@ All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), an
 | Agenix secret definitions | `secrets/secrets.nix` |
 | Nexus storage docs | `docs/nexus/` |
 | CI/CD | `.github/workflows/` |
+| Auto-deploy (comin, `deploy` branch) | `docs/auto-deploy-handbook.md` |

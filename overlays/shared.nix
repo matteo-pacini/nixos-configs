@@ -27,6 +27,30 @@
 
     ssh-mesh-renew = self.callPackage ../packages/ssh-mesh-renew.nix { };
 
+    # Posts $1 to the Telegram chat in $TELEGRAM_ENV_FILE (BOT_TOKEN, CHANNEL_ID)
+    # using legacy Markdown; callers must escape _ * ` [ in untrusted text.
+    # $TELEGRAM_PREFIX, if set, is prepended verbatim.
+    telegram-notify = super.writeShellScriptBin "telegram-notify" ''
+      set -euo pipefail
+
+      if [[ -z "''${TELEGRAM_ENV_FILE:-}" ]]; then
+        echo "Error: TELEGRAM_ENV_FILE not set" >&2
+        exit 1
+      fi
+
+      if [[ ! -f "$TELEGRAM_ENV_FILE" ]]; then
+        echo "Error: $TELEGRAM_ENV_FILE not found" >&2
+        exit 1
+      fi
+
+      source "$TELEGRAM_ENV_FILE"
+
+      ${super.curl}/bin/curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+        --data chat_id="$CHANNEL_ID" \
+        --data parse_mode="Markdown" \
+        --data-urlencode "text=''${TELEGRAM_PREFIX:-}$1"
+    '';
+
     # Claude Code: sourced from the nixpkgs-master input (see masterPkgs above)
     # so we track upstream faster than the flake's nixos-unstable pin. Bump with
     # `nix flake update nixpkgs-master`.
