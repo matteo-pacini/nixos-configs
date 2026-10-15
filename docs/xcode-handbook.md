@@ -29,7 +29,15 @@ On a Mac with the attic token (NightSprings or WorkLaptop), from a checkout of t
 nix run .#xcode-fetch -- 27.1
 ```
 
-It asks for your Apple ID and 2FA code (xcodes), then your password (`sudo attic-push-closure`), and writes the hash into `xcode-versions.json`. Then:
+It asks for your Apple ID and 2FA code (xcodes), then your password (`sudo attic-push-closure`), and writes the hash into `xcode-versions.json`.
+
+Where xcodes can't run (e.g. blocked by endpoint security on a work Mac), download the `.xip` in a browser from <https://developer.apple.com/download/all/> and pass it in; the file is copied, so the original can be deleted afterwards:
+
+```bash
+nix run .#xcode-fetch -- 27.1 ~/Downloads/Xcode_27.1.xip
+```
+
+Then:
 
 1. Change `custom.xcode.versions` / `active` in `hosts/<Host>/system.nix`.
 2. Commit `xcode-versions.json` together with the host change.
@@ -61,4 +69,5 @@ rm -rf ~/Applications/Xcode-26.3.0.app
 | Module (`custom.xcode`) | `modules/darwin/xcode.nix` |
 | Version → hash | `modules/darwin/xcode-versions.json` |
 | `xcode-fetch` | `packages/xcode-fetch.{nix,sh}`, exposed as `apps.aarch64-darwin.xcode-fetch` |
+| xcodes 2.1.0 (overlay) | `overlays/shared.nix`, `packages/xcodes/generated/` |
 | CI check | `.github/workflows/build.yml`, `pr-build.yml` |

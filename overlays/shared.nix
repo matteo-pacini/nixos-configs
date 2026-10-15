@@ -27,6 +27,22 @@
 
     ssh-mesh-renew = self.callPackage ../packages/ssh-mesh-renew.nix { };
 
+    # 2.1.0 follows Apple's 2026 sign-in changes; nixpkgs' 1.6.2 fails to log
+    # in. Regenerate packages/xcodes/generated on bump: `swift package resolve`
+    # then `swiftpm2nix` in the source checkout.
+    xcodes = super.xcodes.overrideAttrs (
+      finalAttrs: old: {
+        version = "2.1.0";
+        src = super.fetchFromGitHub {
+          owner = "XcodesOrg";
+          repo = "xcodes";
+          tag = finalAttrs.version;
+          hash = "sha256-BUFcK+r7fDN7KC9PBikRGl355VouZ85ngcmVh7gj6tE=";
+        };
+        configurePhase = (super.swiftpm2nix.helpers ../packages/xcodes/generated).configure;
+      }
+    );
+
     # Posts $1 to the Telegram chat in $TELEGRAM_ENV_FILE (BOT_TOKEN, CHANNEL_ID)
     # using legacy Markdown; callers must escape _ * ` [ in untrusted text.
     # $TELEGRAM_PREFIX, if set, is prepended verbatim.

@@ -454,7 +454,11 @@
       apps.aarch64-darwin.xcode-fetch = {
         type = "app";
         program = "${
-          inputs.nixpkgs.legacyPackages.aarch64-darwin.callPackage ./packages/xcode-fetch.nix { }
+          (inputs.nixpkgs.legacyPackages.aarch64-darwin.extend (
+            import ./overlays/shared.nix { inherit inputs; }
+          )).callPackage
+            ./packages/xcode-fetch.nix
+            { }
         }/bin/xcode-fetch";
       };
 
