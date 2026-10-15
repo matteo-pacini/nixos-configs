@@ -1,6 +1,6 @@
 # Xcode handbook
 
-NightSprings and WorkLaptop install Xcode from `.xip` archives kept in the attic `main` cache, so activation (including comin on NightSprings) never needs an Apple ID. Only `xcode-fetch`, run by hand once per Xcode version, talks to Apple. This is the same approach GitHub's macOS runner images use: download once, mirror privately, install from the mirror.
+NightSprings installs Xcode from `.xip` archives kept in the attic `main` cache, so activation (including comin on NightSprings) never needs an Apple ID. Only `xcode-fetch`, run by hand once per Xcode version, talks to Apple. This is the same approach GitHub's macOS runner images use: download once, mirror privately, install from the mirror.
 
 ## How it works
 
@@ -17,7 +17,6 @@ xcode-fetch 27.0 (by hand, once)              darwin activation (root)
 
 - `modules/darwin/xcode-versions.json` maps each version to the `.xip`'s hash. `custom.xcode` turns each entry into a `requireFile` store path (`Xcode-<version>.xip`).
 - That path is used only as a string, so the multi-GB `.xip` is **not** part of the system closure. CI doesn't download it, and hosts don't keep it in their store. Activation fetches it from attic only when that version isn't installed yet, and deletes it after extracting.
-- `custom.xcode.firstLaunch` (default on) accepts the license and runs `xcodebuild -runFirstLaunch` as root, checked on every activation. WorkLaptop turns it off because CrowdStrike Falcon flags it; Xcode asks for both the first time it opens there.
 - Installs are named `/Applications/Xcode-<version>.app`. Any other `Xcode-*.app` in `/Applications` is deleted. Xcodes outside `/Applications`, or named differently (e.g. `Xcode.app`), are left alone.
 - Before installing or removing anything, activation shuts down booted simulators and asks Xcode and Simulator to quit (AppleScript, as the primary user). If either is still running 60 s later, e.g. waiting on a save dialog, activation **fails** rather than force-quitting. Activations that change nothing never touch running apps, and the step is skipped when `xcode-select` points at no Xcode (Command Line Tools or a deleted app).
 - If the `.xip` can't be fetched, activation **fails**. On NightSprings that is a comin deploy failure, reported on Telegram (see [auto-deploy](auto-deploy-handbook.md)), and every later deploy fails the same way until the `.xip` is back in attic.
