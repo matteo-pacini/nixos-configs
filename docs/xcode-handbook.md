@@ -18,6 +18,7 @@ xcode-fetch 27.0 (by hand, once)              darwin activation (root)
 - `modules/darwin/xcode-versions.json` maps each version to the `.xip`'s hash. `custom.xcode` turns each entry into a `requireFile` store path (`Xcode-<version>.xip`).
 - That path is used only as a string, so the multi-GB `.xip` is **not** part of the system closure. CI doesn't download it, and hosts don't keep it in their store. Activation fetches it from attic only when that version isn't installed yet, and deletes it after extracting.
 - Installs are named `/Applications/Xcode-<version>.app`. Any other `Xcode-*.app` in `/Applications` is deleted. Xcodes outside `/Applications`, or named differently (e.g. `Xcode.app`), are left alone.
+- Before installing or removing anything, activation shuts down booted simulators and asks Xcode and Simulator to quit (AppleScript, as the primary user). If either is still running 60 s later, e.g. waiting on a save dialog, activation **fails** rather than force-quitting. Activations that change nothing never touch running apps.
 - If the `.xip` can't be fetched, activation **fails**. On NightSprings that is a comin deploy failure, reported on Telegram (see [auto-deploy](auto-deploy-handbook.md)), and every later deploy fails the same way until the `.xip` is back in attic.
 - CI (`build.yml`, `pr-build.yml`) checks that each listed `.xip` is in attic, without downloading it. A missing one fails the darwin build, so `deploy` doesn't move.
 

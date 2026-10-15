@@ -24,6 +24,35 @@ let
 
   appPath = version: "/Applications/Xcode-${version}.app";
 
+  # Removing an Xcode, or the CoreSimulator/MobileDevice updates that
+  # -runFirstLaunch installs, would break a running Xcode or simulator, so
+  # quit them first. Graceful only: an app still running after the grace
+  # period (e.g. held by a save dialog) fails activation instead of losing work.
+  quitScript = ''
+    user=${config.system.primaryUser}
+    uid=$(id -u "$user")
+    asUser() { launchctl asuser "$uid" sudo -u "$user" "$@"; }
+    if pgrep -xq launchd_sim; then
+      echo "shutting down simulators..." >&2
+      asUser /usr/bin/xcrun simctl shutdown all || true
+    fi
+    for app in Xcode:com.apple.dt.Xcode Simulator:com.apple.iphonesimulator; do
+      # Checked first: addressing an app that is not running launches it.
+      pgrep -xq "''${app%%:*}" || continue
+      echo "quitting ''${app%%:*}..." >&2
+      asUser /usr/bin/osascript -e "with timeout of 30 seconds" \
+        -e "quit app id \"''${app#*:}\"" -e "end timeout" || true
+    done
+    for _ in $(seq 60); do
+      pgrep -xq Xcode || pgrep -xq Simulator || pgrep -xq launchd_sim || break
+      sleep 1
+    done
+    if pgrep -xq Xcode || pgrep -xq Simulator || pgrep -xq launchd_sim; then
+      echo "error: Xcode or a simulator is still running; quit it and re-run activation" >&2
+      exit 1
+    fi
+  '';
+
   installScript = version: ''
     if [[ ! -d ${appPath version} ]]; then
       echo "installing Xcode ${version}..." >&2
@@ -78,17 +107,24 @@ in
 
     system.activationScripts.postActivation.text = ''
       echo "setting up Xcode..." >&2
-      ${lib.concatMapStrings installScript cfg.versions}
-      /usr/bin/xcode-select --switch ${appPath cfg.active}
+      unlistedXcodes=()
       for app in /Applications/Xcode-*.app; do
         [[ -d "$app" ]] || continue
         case "$app" in
           ${lib.concatMapStringsSep " | " appPath cfg.versions}) ;;
-          *)
-            echo "removing $app" >&2
-            rm -rf "$app"
-            ;;
+          *) unlistedXcodes+=("$app") ;;
         esac
+      done
+      if (( ''${#unlistedXcodes[@]} > 0 )) ${
+        lib.concatMapStrings (v: " || [[ ! -d ${appPath v} ]]") cfg.versions
+      }; then
+        ${quitScript}
+      fi
+      ${lib.concatMapStrings installScript cfg.versions}
+      /usr/bin/xcode-select --switch ${appPath cfg.active}
+      for app in "''${unlistedXcodes[@]}"; do
+        echo "removing $app" >&2
+        rm -rf "$app"
       done
     '';
   };
