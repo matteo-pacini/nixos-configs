@@ -27,29 +27,44 @@ let
   # Removing an Xcode, or the CoreSimulator/MobileDevice updates that
   # -runFirstLaunch installs, would break a running Xcode or simulator, so
   # quit them first. Graceful only: an app still running after the grace
-  # period (e.g. held by a save dialog) fails activation instead of losing work.
+  # period (e.g. held by a save dialog) fails activation instead of losing
+  # work. Skipped when xcode-select points at no Xcode (Command Line Tools,
+  # or a deleted app): nothing to break, and no simctl to shut down with.
   quitScript = ''
-    user=${config.system.primaryUser}
-    uid=$(id -u "$user")
-    asUser() { launchctl asuser "$uid" sudo -u "$user" "$@"; }
-    if pgrep -xq launchd_sim; then
-      echo "shutting down simulators..." >&2
-      asUser /usr/bin/xcrun simctl shutdown all || true
-    fi
-    for app in Xcode:com.apple.dt.Xcode Simulator:com.apple.iphonesimulator; do
-      # Checked first: addressing an app that is not running launches it.
-      pgrep -xq "''${app%%:*}" || continue
-      echo "quitting ''${app%%:*}..." >&2
-      asUser /usr/bin/osascript -e "with timeout of 30 seconds" \
-        -e "quit app id \"''${app#*:}\"" -e "end timeout" || true
-    done
-    for _ in $(seq 60); do
-      pgrep -xq Xcode || pgrep -xq Simulator || pgrep -xq launchd_sim || break
-      sleep 1
-    done
-    if pgrep -xq Xcode || pgrep -xq Simulator || pgrep -xq launchd_sim; then
-      echo "error: Xcode or a simulator is still running; quit it and re-run activation" >&2
-      exit 1
+    developerDir=$(/usr/bin/xcode-select -p 2>/dev/null || true)
+    if [[ "$developerDir" == *.app/Contents/Developer && -x "$developerDir/usr/bin/simctl" ]]; then
+      user=${config.system.primaryUser}
+      uid=$(id -u "$user")
+      asUser() { launchctl asuser "$uid" sudo -u "$user" "$@"; }
+      waitFor=()
+      if pgrep -xq launchd_sim; then
+        echo "shutting down simulators..." >&2
+        asUser "$developerDir/usr/bin/simctl" shutdown all || true
+        waitFor+=(launchd_sim)
+      fi
+      for app in Xcode:com.apple.dt.Xcode Simulator:com.apple.iphonesimulator; do
+        # Checked first: addressing an app that is not running launches it.
+        pgrep -xq "''${app%%:*}" || continue
+        echo "quitting ''${app%%:*}..." >&2
+        asUser /usr/bin/osascript -e "with timeout of 30 seconds" \
+          -e "quit app id \"''${app#*:}\"" -e "end timeout" || true
+        waitFor+=("''${app%%:*}")
+      done
+      if (( ''${#waitFor[@]} > 0 )); then
+        echo "waiting up to 60s for ''${waitFor[*]} to exit..." >&2
+        for _ in $(seq 60); do
+          running=()
+          for proc in "''${waitFor[@]}"; do
+            pgrep -xq "$proc" && running+=("$proc")
+          done
+          (( ''${#running[@]} > 0 )) || break
+          sleep 1
+        done
+        if (( ''${#running[@]} > 0 )); then
+          echo "error: still running: ''${running[*]}; quit them and re-run activation" >&2
+          exit 1
+        fi
+      fi
     fi
   '';
 
