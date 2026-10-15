@@ -136,6 +136,7 @@
           ./modules/darwin/nix-index.nix
           ./modules/darwin/ssh-mesh.nix
           ./modules/darwin/auto-deploy.nix
+          ./modules/darwin/xcode.nix
         ];
       };
 
@@ -364,7 +365,6 @@
               inputs.mac-app-util.homeManagerModules.default
               inputs.nvf.homeManagerModules.default
               self.homeManagerModules.default
-              self.homeManagerModules.xcodes
               self.homeManagerModules.sleepmode
             ];
           }
@@ -448,8 +448,14 @@
         ];
       };
       homeManagerModules = {
-        xcodes = import ./modules/home-manager/darwin/xcodes.nix;
         sleepmode = import ./modules/home-manager/darwin/sleepmode.nix;
+      };
+
+      apps.aarch64-darwin.xcode-fetch = {
+        type = "app";
+        program = "${
+          inputs.nixpkgs.legacyPackages.aarch64-darwin.callPackage ./packages/xcode-fetch.nix { }
+        }/bin/xcode-fetch";
       };
 
       formatter = {

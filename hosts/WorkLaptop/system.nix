@@ -7,6 +7,12 @@
     host = "WorkLaptop";
   };
 
+  custom.xcode = {
+    enable = true;
+    versions = [ "27.0" ];
+    active = "27.0";
+  };
+
   homebrew = {
     enable = true;
     global = {
@@ -18,7 +24,6 @@
     };
     casks = [
       "1password"
-      "xcodes-app"
       "android-studio"
     ];
   };

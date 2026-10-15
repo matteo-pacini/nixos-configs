@@ -7,6 +7,12 @@
     host = "NightSprings";
   };
 
+  custom.xcode = {
+    enable = true;
+    versions = [ "27.0" ];
+    active = "27.0";
+  };
+
   services.tailscale.enable = true;
 
   homebrew = {

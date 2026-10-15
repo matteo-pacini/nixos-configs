@@ -103,6 +103,19 @@ jobs:
             nexus "${{ env.ATTIC_CACHE_URL }}" "${{ env.ATTIC_TOKEN }}"
           nix run nixpkgs#attic-client -- use main
 
+      # The .xip archives are deliberately outside the system closure, so the
+      # build below would not notice one missing from attic; hosts would then
+      # fail at activation instead.
+      - name: Check Xcode archives are in attic
+        if: ${{ matrix.system_attr == 'darwinConfigurations' }}
+        run: |
+          for path in $(nix eval --json ".#darwinConfigurations.${{ matrix.host }}.config.custom.xcode.xipPaths" | jq -r '.[]'); do
+            hash=$(basename "$path" | cut -d- -f1)
+            curl -fsS -o /dev/null -H "Authorization: Bearer $ATTIC_TOKEN" \
+              "${ATTIC_CACHE_URL%/}/main/$hash.narinfo" \
+              || { echo "::error::$path is not in attic, run xcode-fetch"; exit 1; }
+          done
+
       - name: Build latest configuration
         run: |
           nix build "github:matteo-pacini/nixos-configs#${{ matrix.system_attr }}.${{ matrix.host }}.${{ matrix.build_attr }}" --out-link ./old-result --fallback

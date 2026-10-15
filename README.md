@@ -174,7 +174,7 @@ See the [Diskpool Handbook](docs/nexus/diskpool-handbook.md) for the full storag
 
 ### NightSprings — MacBook Pro M1 Max
 
-Personal laptop. nix-darwin + nix-homebrew, declaratively managed Xcode versions (see [`xcodes`](#homemanagermodulesxcodes--declarative-xcode) below), Tailscale.
+Personal laptop. nix-darwin + nix-homebrew, declaratively managed Xcode versions (see [`docs/xcode-handbook.md`](docs/xcode-handbook.md)), Tailscale.
 
 ### WorkLaptop — MacBook Pro M4
 
@@ -197,33 +197,7 @@ The image lands in `result/iso/`. Config: `hosts/InstallerISO/default.nix`.
 
 ## Modules
 
-The flake exposes three module sets — `nixosModules.default`, `darwinModules.default`, and `homeManagerModules.default` — plus the standalone `homeManagerModules.xcodes`. Most modules are personal config; the ones below are written with options so they can be reused.
-
-### `homeManagerModules.xcodes` — Declarative Xcode
-
-Home Manager module for managing [Xcode](https://developer.apple.com/xcode/) versions through [xcodes](https://github.com/XcodesOrg/xcodes). Darwin only. Handles installation, version switching, and cleanup of old versions automatically.
-
-```nix
-inputs.nixos-configs.url = "github:matteo-pacini/nixos-configs";
-
-home-manager.sharedModules = [
-  inputs.nixos-configs.homeManagerModules.xcodes
-];
-
-programs.xcodes = {
-  enable = true;
-  versions = [ "16.2" "16.3" ];
-  active = "16.2";
-};
-```
-
-First activation requires Apple ID authentication; subsequent runs are automatic.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enable` | bool | `false` | Enable the module |
-| `versions` | list | `[]` | Xcode versions to install |
-| `active` | string | `null` | Version to set active |
+The flake exposes three module sets — `nixosModules.default`, `darwinModules.default`, and `homeManagerModules.default` — plus the standalone `homeManagerModules.sleepmode`. Most modules are personal config; the ones below are written with options so they can be reused.
 
 ### Other configurable modules
 

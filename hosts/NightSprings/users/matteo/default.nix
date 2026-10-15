@@ -3,7 +3,6 @@
   imports = [
     ./zsh.nix
     ./git.nix
-    ./xcodes.nix
     ./browser.nix
   ];
 
