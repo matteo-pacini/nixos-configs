@@ -54,7 +54,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 
 - **Custom modules** use the `custom.X = { enable = true; }` convention: `mkEnableOption` + `mkIf` + `mkMerge`.
 - **Per-host CPU overlays** in `overlays/<host>.nix` (e.g. `znver4`, `apple-m4`). Shared overlays live in `overlays/shared.nix`.
-- **Darwin hosts** get extra modules NixOS hosts do not: `mac-app-util`, `xcodes` (NightSprings only), and `nix-homebrew`.
+- **Darwin hosts** get extra modules NixOS hosts do not: `mac-app-util`, `custom.xcode` (Xcode from attic-cached `.xip` archives), and `nix-homebrew`.
 - **Shared Home Manager modules** are loaded on all hosts via `homeManagerModules.default` in `flake.nix`.
 - **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_1`.
 
@@ -79,7 +79,7 @@ All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), an
 | Shared NixOS modules | `modules/nixos/` |
 | Shared Darwin modules | `modules/darwin/` |
 | Shared Home Manager modules | `modules/home-manager/` |
-| Darwin-only xcodes module | `modules/home-manager/darwin/xcodes.nix` |
+| Xcode installs (`custom.xcode`, `xcode-fetch`) | `docs/xcode-handbook.md` |
 | Per-host CPU overlays | `overlays/<host>.nix` |
 | Custom packages | `packages/` |
 | Agenix secret definitions | `secrets/secrets.nix` |
