@@ -31,12 +31,6 @@ nix run .#xcode-fetch -- 27.1
 
 It asks for your Apple ID and 2FA code (xcodes), then your password (`sudo attic-push-closure`), and writes the hash into `xcode-versions.json`.
 
-Where xcodes can't run (e.g. blocked by endpoint security on a work Mac), download the `.xip` in a browser from <https://developer.apple.com/download/all/> and pass it in; the file is copied, so the original can be deleted afterwards:
-
-```bash
-nix run .#xcode-fetch -- 27.1 ~/Downloads/Xcode_27.1.xip
-```
-
 Then:
 
 1. Change `custom.xcode.versions` / `active` in `hosts/<Host>/system.nix`.
