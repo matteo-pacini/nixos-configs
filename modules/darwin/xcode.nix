@@ -68,25 +68,32 @@ let
     fi
   '';
 
-  installScript = version: ''
-    if [[ ! -d ${appPath version} ]]; then
-      echo "installing Xcode ${version}..." >&2
-      (
-        xip=${xipPath version}
-        ${nixStore} --realise "$xip" >/dev/null
-        # Same volume as /Applications, so the final mv is an atomic rename
-        # and an interrupted extraction never leaves a half-installed app.
-        tmp=$(mktemp -d /private/var/tmp/xcode.XXXXXX)
-        trap 'rm -rf "$tmp"' EXIT
-        cd "$tmp"
-        /usr/bin/xip --expand "$xip"
-        mv "$tmp"/Xcode*.app ${appPath version}
-        ${nixStore} --delete "$xip" >/dev/null || true
-      )
-      ${appPath version}/Contents/Developer/usr/bin/xcodebuild -license accept
-      ${appPath version}/Contents/Developer/usr/bin/xcodebuild -runFirstLaunch
-    fi
-  '';
+  installScript =
+    version:
+    let
+      xcodebuild = "${appPath version}/Contents/Developer/usr/bin/xcodebuild";
+    in
+    ''
+      if [[ ! -d ${appPath version} ]]; then
+        echo "installing Xcode ${version}..." >&2
+        (
+          xip=${xipPath version}
+          ${nixStore} --realise "$xip" >/dev/null
+          # Same volume as /Applications, so the final mv is an atomic rename
+          # and an interrupted extraction never leaves a half-installed app.
+          tmp=$(mktemp -d /private/var/tmp/xcode.XXXXXX)
+          trap 'rm -rf "$tmp"' EXIT
+          cd "$tmp"
+          /usr/bin/xip --expand "$xip"
+          mv "$tmp"/Xcode*.app ${appPath version}
+          ${nixStore} --delete "$xip" >/dev/null 2>&1 || true
+        )
+      fi
+      # Checked on every activation, not only after an install, so an
+      # activation interrupted after the mv still finishes the setup next time.
+      ${xcodebuild} -license check >/dev/null 2>&1 || ${xcodebuild} -license accept
+      ${xcodebuild} -checkFirstLaunchStatus || ${xcodebuild} -runFirstLaunch
+    '';
 in
 {
   options.custom.xcode = {
@@ -122,6 +129,8 @@ in
 
     system.activationScripts.postActivation.text = ''
       echo "setting up Xcode..." >&2
+      # Left behind only by an activation killed mid-install.
+      rm -rf /private/var/tmp/xcode.*
       unlistedXcodes=()
       for app in /Applications/Xcode-*.app; do
         [[ -d "$app" ]] || continue
