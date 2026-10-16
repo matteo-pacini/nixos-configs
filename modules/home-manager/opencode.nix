@@ -83,5 +83,9 @@ in
     home.packages = [ launcher ];
     xdg.configFile."opencode/opencode.json".text = opencodeConfig;
     xdg.configFile."opencode/AGENTS.md".text = agentsMd;
+    # Sits beside herdr's own herdr-agent-state.js, which reports only state.
+    xdg.configFile."opencode/plugins/herdr-rows.js" = lib.mkIf config.custom.herdr.enable {
+      source = ./opencode/herdr-rows.js;
+    };
   };
 }

@@ -7,11 +7,15 @@
 let
   cfg = config.custom.claude-code;
 
-  # Wraps ccstatusline so a herdr pane also gets the model/effort label and a
-  # context-usage token in its sidebar. No-ops outside herdr.
+  # Wraps ccstatusline so a herdr pane also gets model, effort, context usage
+  # and prompt-cache expiry in its sidebar. No-ops outside herdr.
   statusLine = pkgs.writeShellApplication {
     name = "claude-statusline";
-    runtimeInputs = [ pkgs.jq ];
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.jq
+    ];
     text = builtins.readFile ./claude-code/herdr-statusline.sh;
   };
 
