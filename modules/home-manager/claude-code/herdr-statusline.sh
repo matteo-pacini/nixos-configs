@@ -27,10 +27,11 @@ EOF
 
   # The last API call refreshed the cache, and its reply is the newest
   # assistant entry. Read from the end: transcripts grow to many MB and this
-  # runs every refreshInterval.
+  # runs every refreshInterval. tac sits in a process substitution because
+  # grep -m1 exits early and, under pipefail, its SIGPIPE would fail the read.
   cache_until=""
   if [ -r "$transcript" ]; then
-    last=$(tac "$transcript" | grep -m1 '"type":"assistant"' |
+    last=$(grep -m1 '"type":"assistant"' < <(tac "$transcript") |
       jq -r '.timestamp // empty | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601' 2>/dev/null) || last=""
     [ -n "$last" ] && cache_until=$((last + ttl))
   fi
