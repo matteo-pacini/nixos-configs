@@ -39,6 +39,7 @@
   custom.opencode.enable = true;
   custom.herdr.enable = true;
   custom.sleepmode.enable = true;
+  custom.mpv.enable = true;
 
   home.stateVersion = "26.05";
 
