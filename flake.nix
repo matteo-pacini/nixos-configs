@@ -152,6 +152,7 @@
           ./modules/home-manager/shell-tools.nix
           ./modules/home-manager/nvf.nix
           ./modules/home-manager/vscode.nix
+          ./modules/home-manager/mpv
           ./modules/home-manager/starship.nix
           ./modules/home-manager/ghostty.nix
           ./modules/home-manager/claude-code.nix

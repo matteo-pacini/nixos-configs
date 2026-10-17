@@ -80,6 +80,7 @@
   custom.opencode.enable = true;
   custom.herdr.enable = true;
   custom.phone.scrcpy.enable = true;
+  custom.mpv.enable = true;
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;
