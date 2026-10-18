@@ -8,5 +8,8 @@ _: {
     mesh.host = "CauldronLake";
   };
 
+  custom.zsh.enable = true;
+  custom.starship.enable = true;
+
   home.stateVersion = "26.05";
 }
