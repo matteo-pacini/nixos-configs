@@ -44,7 +44,8 @@ with lib.hm.gvariant;
       edge-tiling = false;
     };
     "org/gnome/desktop/notifications" = {
-      show-banners = false;
+      # Explicit true, not removed: Home Manager never resets dropped dconf keys.
+      show-banners = true;
     };
   };
 
