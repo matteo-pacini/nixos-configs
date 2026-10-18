@@ -25,9 +25,9 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
 | Host | Operation | When it takes effect | Notifications |
 |---|---|---|---|
 | Nexus | `boot` | Next reboot, which is always manual | Telegram: staged, failed, daily reminder after 7 days |
-| BrightFalls | `boot` | Next reboot. A merge made while it is off is staged at the next power-on and runs from the one after. | Desktop: reboot required. Telegram: `[BrightFalls]` failures |
+| BrightFalls | `boot` | Next reboot. A merge made while it is off is staged at the next power-on and runs from the one after. | Desktop: reboot required. Telegram: `[BrightFalls]` staged, failed, daily reminder after 7 days |
 | NightSprings | `switch` | Immediately (Darwin has no `boot`) | Telegram: `[NightSprings]` failures |
-| CauldronLake | `boot` | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` failures |
+| CauldronLake | `boot` | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` staged, failed, daily reminder after 7 days |
 | WorkLaptop | not enrolled | Company machine, kept manual | — |
 
 `boot` means services, secrets (agenix decrypts at activation) and Home Manager changes all wait for the reboot. Kernel, NVIDIA module and userspace driver always change together, which is why Linux hosts use it.
@@ -39,8 +39,8 @@ All messages go to the Telegram group in `secrets/nexus/janitor.env.age` (`BOT_T
 | Message | Sent when |
 |---|---|
 | `🚨 … deploy of <sha> failed (<subject>): <error>` | Activation of a built generation fails, on any enrolled host |
-| `📦 … <sha> staged (<subject>), reboot pending` | Nexus only: a deployment succeeds and the staged system differs from the booted one. Commits that do not change Nexus stay silent. |
-| `⏰ … staged for N days, reboot pending` | Nexus only: `comin-reboot-reminder.timer`, daily at 09:00, once the staged generation is 7+ days old |
+| `📦 … <sha> staged (<subject>), reboot pending` | Linux hosts (`notifyStaged`): a deployment succeeds and the staged system differs from the booted one. Commits that do not change the host stay silent. |
+| `⏰ … staged for N days, reboot pending` | Linux hosts (`notifyStaged`): `comin-reboot-reminder.timer`, daily at 09:00, once the staged generation is 7+ days old |
 
 The hook lives in `modules/shared/comin-hook.nix`. Text that comes from git or comin is escaped for Telegram's legacy Markdown (`_ * \` [`); an unescaped one makes Telegram reject the message, and `telegram-notify` does not report the error.
 
