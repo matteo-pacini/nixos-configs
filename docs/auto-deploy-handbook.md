@@ -10,9 +10,9 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
                                  ▼
                         deploy job: git push $GITHUB_SHA → refs/heads/deploy
                                  │
-          ┌──────────────────────┼──────────────────────┐
-          ▼                      ▼                      ▼
-   Nexus (comin)         BrightFalls (comin)    NightSprings (comin)
+       ┌───────────────┬─────────┴─────┬───────────────┐
+       ▼               ▼               ▼               ▼
+     Nexus      BrightFalls    NightSprings   CauldronLake   (each runs comin)
    poll every 60 s, evaluate own config, substitute from attic, activate
 ```
 
@@ -27,7 +27,7 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
 | Nexus | `boot` | Next reboot, which is always manual | Telegram: staged, failed, daily reminder after 7 days |
 | BrightFalls | `boot` | Next reboot. A merge made while it is off is staged at the next power-on and runs from the one after. | Desktop: reboot required. Telegram: `[BrightFalls]` failures |
 | NightSprings | `switch` | Immediately (Darwin has no `boot`) | Telegram: `[NightSprings]` failures |
-| CauldronLake | not enrolled | Not in the SSH mesh yet | — |
+| CauldronLake | `boot` | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` failures |
 | WorkLaptop | not enrolled | Company machine, kept manual | — |
 
 `boot` means services, secrets (agenix decrypts at activation) and Home Manager changes all wait for the reboot. Kernel, NVIDIA module and userspace driver always change together, which is why Linux hosts use it.

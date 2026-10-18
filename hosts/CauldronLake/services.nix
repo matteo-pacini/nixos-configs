@@ -10,11 +10,19 @@
 
   services.thermald.enable = true;
 
+  custom.sshMesh = {
+    enable = true;
+    host = "CauldronLake";
+  };
+
   services.openssh = {
     enable = true;
     settings = {
       PermitRootLogin = "no";
       PasswordAuthentication = false;
+      # NixOS defaults this to true, which lets PAM prompt for a password.
+      KbdInteractiveAuthentication = false;
+      AllowUsers = [ "matteo" ];
     };
     ports = [ 1788 ];
   };

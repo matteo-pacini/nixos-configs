@@ -12,18 +12,19 @@ Host-to-host SSH is authorized by an OpenSSH **user certificate authority**, not
 
 | Source | May reach |
 |---|---|
-| Nexus | BrightFalls, NightSprings |
-| BrightFalls | Nexus, NightSprings |
-| NightSprings | Nexus, BrightFalls |
-| WorkLaptop | Nexus, BrightFalls, NightSprings (runs no sshd) |
+| Nexus | BrightFalls, NightSprings, CauldronLake |
+| BrightFalls | Nexus, NightSprings, CauldronLake |
+| NightSprings | Nexus, BrightFalls, CauldronLake |
+| CauldronLake | Nexus, BrightFalls, NightSprings |
+| WorkLaptop | Nexus, BrightFalls, NightSprings, CauldronLake (runs no sshd) |
 
-Aliases: `nexus`, `brightfalls` and `nightsprings`. They try Tailscale first: a `Match ... exec` block probes the Tailscale name on the sshd port (`nc -z`, 2 s timeout), and if that fails the alias falls back to the LAN name. Hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale) skip the probe and always use the LAN. The remote builders use Tailscale only. Each source host gets only the aliases it may use.
+Aliases: `nexus`, `brightfalls`, `nightsprings` and `cauldronlake`. They try Tailscale first: a `Match ... exec` block probes the Tailscale name on the sshd port (`nc -z`, 2 s timeout), and if that fails the alias falls back to the LAN name. Hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale) skip the probe and always use the LAN. The remote builders use Tailscale only. Each source host gets only the aliases it may use.
 
 Every NixOS mesh host runs its firewall with `tailscale0` trusted and its sshd port open, so the LAN fallback still connects.
 
 Outside the mesh:
 - The BrightFalls initrd unlock (`brightfalls-stage1`, `~/.ssh/brightfalls`) keeps static keys.
-- Pixel and CauldronLake (debora's sshfs) keep static `authorized_keys` on Nexus.
+- Pixel keeps a static `authorized_keys` entry on Nexus.
 
 ## Changing who can reach what
 
@@ -104,4 +105,4 @@ Check that a cert is refused (NixOS hosts): `ssh-keygen -Q -f $(grep -oP 'Revoke
 
 To bring the device back later (recovered laptop, reinstall), remove it from `revokedKeyIds`, rebuild, and bootstrap it again with a fresh key.
 
-Revocation covers mesh certs only. Static keys still in `authorized_keys` (Pixel, debora's sshfs key) are removed by editing those lists.
+Revocation covers mesh certs only. Static keys still in `authorized_keys` (Pixel) are removed by editing those lists.
