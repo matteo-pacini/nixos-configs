@@ -306,11 +306,17 @@
           }
           self.nixosModules.default
           ./hosts/CauldronLake
+          inputs.agenix.nixosModules.default
+          {
+            age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
+          }
           inputs.home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.debora = import ./hosts/CauldronLake/users/debora;
+            home-manager.users.matteo = import ./hosts/CauldronLake/users/matteo;
             home-manager.extraSpecialArgs = {
               inherit inputs;
             };

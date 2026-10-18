@@ -4,7 +4,6 @@
     ./gaming.nix
     ./gnome.nix
     ./flatpak.nix
-    ./mounts.nix
     ./zsh.nix
     ./browser.nix
   ];

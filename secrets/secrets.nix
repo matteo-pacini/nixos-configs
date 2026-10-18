@@ -13,6 +13,7 @@ let
   worklaptop = hosts.WorkLaptop.hostKey;
   brightfalls = hosts.BrightFalls.hostKey;
   nightsprings = hosts.NightSprings.hostKey;
+  cauldronlake = hosts.CauldronLake.hostKey;
 in
 {
   # Nexus disk encryption secrets
@@ -30,11 +31,12 @@ in
   # Nexus service secrets
   "nexus/attic-env.age".publicKeys = [ nexus ];
   "nexus/attic-netrc.age".publicKeys = [ nexus ];
-  # Telegram bot; also used by the comin deploy hook on BrightFalls/NightSprings.
+  # Telegram bot; also used by the comin deploy hook on BrightFalls/NightSprings/CauldronLake.
   "nexus/janitor.env.age".publicKeys = [
     nexus
     brightfalls
     nightsprings
+    cauldronlake
   ];
   "nexus/restic-env.age".publicKeys = [ nexus ];
   "nexus/restic-password.age".publicKeys = [ nexus ];

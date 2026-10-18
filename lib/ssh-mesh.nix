@@ -34,6 +34,14 @@
       port = 1788;
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFhrAwaSAjKS/FLYRZRNkgpRn8gZECa+Sc0t32gENbv1";
     };
+    CauldronLake = {
+      principal = "cauldronlake";
+      user = "matteo";
+      lan = "cauldronlake.home.internal";
+      tailscale = "cauldronlake-ts.walrus-draconis.ts.net";
+      port = 1788;
+      hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINkgSpyZfE5qloOO4wZRqdzle40Z/f09qWjIZklJ0ftm";
+    };
     NightSprings = {
       principal = "nightsprings";
       user = "matteo";
@@ -55,19 +63,28 @@
     Nexus = [
       "BrightFalls"
       "NightSprings"
+      "CauldronLake"
     ];
     BrightFalls = [
       "Nexus"
       "NightSprings"
+      "CauldronLake"
     ];
     NightSprings = [
       "Nexus"
       "BrightFalls"
+      "CauldronLake"
+    ];
+    CauldronLake = [
+      "Nexus"
+      "BrightFalls"
+      "NightSprings"
     ];
     WorkLaptop = [
       "Nexus"
       "BrightFalls"
       "NightSprings"
+      "CauldronLake"
     ];
   };
 

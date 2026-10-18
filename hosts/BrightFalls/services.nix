@@ -60,6 +60,9 @@ in
     settings = {
       PermitRootLogin = "no";
       PasswordAuthentication = false;
+      # NixOS defaults this to true, which lets PAM prompt for a password.
+      # The initrd sshd (LUKS unlock) has its own config and is unaffected.
+      KbdInteractiveAuthentication = false;
     };
     ports = [ 1788 ];
   };
