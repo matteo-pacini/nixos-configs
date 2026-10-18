@@ -26,4 +26,17 @@
     };
     ports = [ 1788 ];
   };
+
+  # Lets matteo hold sleep and lid-switch inhibitors from SSH, e.g.
+  # `systemd-inhibit --what=sleep:handle-lid-switch <cmd>`. logind's default
+  # policy allows these only from the active local session.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if ((action.id == "org.freedesktop.login1.inhibit-block-sleep" ||
+           action.id == "org.freedesktop.login1.inhibit-handle-lid-switch") &&
+          subject.user == "matteo") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 }
