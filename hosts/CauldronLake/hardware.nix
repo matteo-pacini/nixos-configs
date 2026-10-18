@@ -34,8 +34,11 @@
 
   hardware.nvidia = {
     modesetting.enable = true;
-    powerManagement.enable = false;
-    powerManagement.finegrained = false;
+    # Saves VRAM across suspend, which battery idle and lid-close still trigger.
+    powerManagement.enable = true;
+    # RTD3: powers the RTX 2060 off when idle. It stays on while the HDMI
+    # port (wired to the dGPU) is in use.
+    powerManagement.finegrained = true;
     open = false;
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
