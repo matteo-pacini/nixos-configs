@@ -16,6 +16,7 @@ in
   linuwux-runtime = super.callPackage ../packages/linuwux-runtime.nix { };
   plymouth-brightfalls = super.callPackage ../packages/plymouth-brightfalls { };
   ci-fixer-test = super.runCommand "ci-fixer-test" { } ''
+    mkdir -p $out/share/ci-fixer-test
     echo ok > $out/share/ci-fixer-test/ok
   '';
 
