@@ -38,6 +38,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **`InstallerISO` fails pure eval by design.** It bakes the attic netrc token at build time and needs `--impure` + `ATTIC_NETRC_FILE=<decrypted netrc>`. Never add it to CI. See `hosts/InstallerISO/default.nix`.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
 - CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
+- **CI fixer** (`ci-fixer.yml` + `.github/scripts/ci_fixer.py`): when a PR's `eval` or `pr-build` job fails, infra failures get one rerun; otherwise Opus diagnoses from the logs and Sonnet applies the plan, then it commits to the PR branch (trailer `CI-Fixer-Attempt: n`, max 2) or comments asking for help. `bot:off` label opts a PR out.
 - **Eval warnings bot** (`eval-warnings.yml` + `.github/scripts/eval_warnings.py`): after a PR's checks pass, it comments fix proposals for eval warnings the PR adds over master. Nothing changes until the owner replies `/warnings apply [n…]` (commits the fixes to the PR's branch with `PAT_TOKEN`, so checks re-run) or `/warnings dismiss [n…]`. Not `@claude`: the Claude GitHub App answers that mention.
 - **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals, and append a row to the Changelog at the bottom) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
 
