@@ -44,5 +44,11 @@ in
         }
       );
     };
+
+    # comin runs `activate` in comin's own process group, and activation unloads
+    # comin whenever its plist changes (any nixpkgs bump). launchd then kills
+    # the whole group, so activation dies before the new plist is loaded and
+    # comin stays down. Abandoning the group lets activation finish and reload it.
+    launchd.daemons.comin.serviceConfig.AbandonProcessGroup = true;
   };
 }
