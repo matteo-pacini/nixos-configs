@@ -38,7 +38,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **`InstallerISO` fails pure eval by design.** It bakes the attic netrc token at build time and needs `--impure` + `ATTIC_NETRC_FILE=<decrypted netrc>`. Never add it to CI. See `hosts/InstallerISO/default.nix`.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
 - CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
-- **Eval warnings bot** (`eval-warnings.yml` + `.github/scripts/eval_warnings.py`): after a PR's checks pass, it comments fix proposals for eval warnings the PR adds over master. Nothing changes until the owner replies `@claude apply [n…]` (opens a PR into the PR's branch) or `@claude dismiss [n…]`.
+- **Eval warnings bot** (`eval-warnings.yml` + `.github/scripts/eval_warnings.py`): after a PR's checks pass, it comments fix proposals for eval warnings the PR adds over master. Nothing changes until the owner replies `/warnings apply [n…]` (opens a PR into the PR's branch) or `/warnings dismiss [n…]`. Not `@claude`: the Claude GitHub App answers that mention.
 - **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals, and append a row to the Changelog at the bottom) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
 
 ## Hosts

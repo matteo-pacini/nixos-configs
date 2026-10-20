@@ -1,5 +1,5 @@
 # Proposes fixes for Nix eval warnings that a PR introduces, and applies them only
-# when the repo owner replies "@claude apply" (or drops them with "@claude dismiss").
+# when the repo owner replies "/warnings apply" (or drops them with "/warnings dismiss").
 #
 # Claude only reads and proposes. Shell steps apply the exact proposed edits, verify
 # all five hosts still evaluate without the warning, and open a PR into the PR's
@@ -158,7 +158,7 @@ jobs:
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
       github.event.comment.author_association == 'OWNER' &&
-      (contains(github.event.comment.body, '@claude apply') || contains(github.event.comment.body, '@claude dismiss'))
+      (contains(github.event.comment.body, '/warnings apply') || contains(github.event.comment.body, '/warnings dismiss'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -198,6 +198,12 @@ jobs:
           echo "proposal_id=$id" >> "$GITHUB_OUTPUT"
           gh api "repos/$REPO/issues/comments/$id" --jq .body > "$RUNNER_TEMP/proposal.md"
           python3 "$SCRIPT" command "$COMMENT_BODY" > "$RUNNER_TEMP/cmd.txt"
+          if [ ! -s "$RUNNER_TEMP/cmd.txt" ]; then
+            # shellcheck disable=SC2016 # backticks are Markdown
+            gh pr comment "$PR" --repo "$REPO" --body 'Put the command on a line of its own: `/warnings apply`, `/warnings apply 1 3`, `/warnings dismiss` or `/warnings dismiss 2`.'
+            gh api "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=confused > /dev/null
+            exit 0
+          fi
           echo "action=$(sed -n 1p "$RUNNER_TEMP/cmd.txt")" >> "$GITHUB_OUTPUT"
           echo "nums=$(sed -n 2p "$RUNNER_TEMP/cmd.txt")" >> "$GITHUB_OUTPUT"
 

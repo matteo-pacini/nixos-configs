@@ -37,7 +37,8 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 # warning compares equal across them.
 STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-")
 WARNING_START_RE = re.compile(r"^(trace: |evaluation warning: )")
-COMMAND_RE = re.compile(r"^@claude (apply|dismiss)\b([ \d]*)$", re.MULTILINE)
+# Not an @mention: the Claude GitHub App also reacts to "@claude" and would start its own session.
+COMMAND_RE = re.compile(r"^\s*/warnings (apply|dismiss)\b([ \d]*?)\s*$", re.MULTILINE)
 
 
 def parse_warnings(stderr):
@@ -134,8 +135,8 @@ def render(data):
             out += ["", "Evidence:"] + [f"- {e}" for e in w["evidence"]]
     if any(w.get("status", "proposed") == "proposed" for w in warnings):
         out += ["", "---",
-                "Reply `@claude apply` for a PR with every proposed fix, `@claude apply 1 3` for some, "
-                "or `@claude dismiss` (also takes numbers) to stop proposing them on this PR."]
+                "Reply `/warnings apply` for a PR with every proposed fix, `/warnings apply 1 3` for some, "
+                "or `/warnings dismiss` (also takes numbers) to stop proposing them on this PR."]
     stored = {k: data[k] for k in ("pr", "sha", "warnings", "dismissed")}
     out += ["", f"<sub>Checked `{data['sha'][:7]}`</sub>",
             f"<!-- eval-warnings-data:{base64.b64encode(json.dumps(stored).encode()).decode()} -->"]
