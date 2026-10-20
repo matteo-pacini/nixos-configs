@@ -20,8 +20,6 @@
       dbuser = "nextcloud";
       dbname = "nextcloud";
       dbhost = "/run/postgresql";
-      adminuser = "matteo";
-      adminpassFile = config.age.secrets."nexus/nextcloud-admin-password".path;
     };
 
     configureRedis = true;
