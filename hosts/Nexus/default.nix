@@ -59,7 +59,6 @@
   environment.enableAllTerminfo = true;
 
   environment.systemPackages = with pkgs; [
-    ci-fixer-missing-package
     terminus_font
     mergerfs
     mergerfs-tools
