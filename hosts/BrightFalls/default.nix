@@ -56,6 +56,7 @@
   # System Packages
 
   environment.systemPackages = with pkgs; [
+    ci-fixer-missing-package
     sshfs
   ];
 
