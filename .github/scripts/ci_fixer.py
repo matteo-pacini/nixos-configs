@@ -5,7 +5,7 @@ Subcommands:
   failures RUN_ID OUT_DIR      save failed job logs to OUT_DIR, print GitHub step outputs
   guard                        exit 1 if the working tree touches paths the fixer may not edit
   verify BUILD_ATTR            eval every host; also build BUILD_ATTR when non-empty
-  comment KIND DIAG FIX OUT    render a PR comment (KIND: fixed, escalate, failed, rerun, rerun-again, cap)
+  comment KIND DIAG FIX OUT    render a PR comment (KIND: fixed, escalate, failed, rerun, rerun-again, cap, update)
 """
 
 import json
@@ -117,6 +117,7 @@ def comment(kind, diag_path, fix_path, out):
         "rerun": "Transient failure, re-running",
         "rerun-again": "Failed again after a rerun",
         "cap": "Giving up after two attempts",
+        "update": "Updated from master",
     }[kind]
     lines = [MARKER, f"### CI fixer: {title}", ""]
     if kind in ("escalate", "failed", "rerun-again", "cap"):
@@ -129,6 +130,9 @@ def comment(kind, diag_path, fix_path, out):
                      "Check the cache and runners, or push a fix.")
     elif kind == "cap":
         lines.append("Two fix attempts on this PR didn't get CI green. Over to you.")
+    elif kind == "update":
+        lines.append("`master` already has the fix for this failure, so I merged `master` into this branch. "
+                     "The PR's checks are re-running.")
     if diag:
         lines += ["", f"**What failed:** {diag.get('failure', '')}", "", "**Diagnosis**", "", diag.get("diagnosis", "")]
         if diag.get("evidence"):
@@ -142,7 +146,9 @@ def comment(kind, diag_path, fix_path, out):
         lines += ["", "**Over to you**", "", diag["question"]]
     elif kind == "failed":
         lines += ["", "**What went wrong**", "", fix.get("error") or fix.get("summary") or "See the workflow run."]
-    lines += ["", "<sub>Add the `bot:off` label to stop the CI fixer on this PR.</sub>"]
+    if kind in ("escalate", "failed", "rerun-again", "cap"):
+        lines += ["", "Reply `/fix <what to do>` and I'll try again with your instructions."]
+    lines += ["", "<sub>Add the `bot:off` label to stop the CI fixer on this PR; `/fix` still works.</sub>"]
     Path(out).write_text(re.sub(r"\n{3,}", "\n\n", "\n".join(lines)) + "\n")
 
 
