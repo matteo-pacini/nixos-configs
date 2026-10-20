@@ -65,6 +65,8 @@ jobs:
         with:
           nix_conf: |
             keep-outputs = true
+            sandbox = ${{ runner.os == 'Linux' && 'true' || 'relaxed' }}
+            sandbox-fallback = false
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
 
       - name: Configure Attic cache

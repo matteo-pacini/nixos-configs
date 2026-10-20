@@ -97,7 +97,19 @@ jobs:
         with:
           nix_conf: |
             keep-outputs = true
+            sandbox = ${{ runner.os == 'Linux' && 'true' || 'relaxed' }}
+            sandbox-fallback = false
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
+
+      - name: Probe build sandbox
+        run: |
+          nix build --impure --no-link -L --expr 'derivation {
+            name = "sandbox-probe";
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            nonce = toString builtins.currentTime;
+            args = [ "-c" "for p in /usr/sbin/depmod /home/runner /Users/runner/work; do if [ -e $p ]; then echo LEAK $p; leak=1; else echo hidden $p; fi; done; [ -z \"$leak\" ] && echo ok > $out" ];
+          }'
 
       - name: Configure Attic cache
         run: |
