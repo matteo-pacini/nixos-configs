@@ -1,41 +1,141 @@
 Prefer OpenRouter's authoritative billed cost over opencode's per-token estimate.
 
-opencode's getUsage prices a turn as (single outer-model rate x token counts) and
-ignores OpenRouter's returned usage.cost. For OpenRouter server-side tools like
-Fusion (a panel + judge + the final answer = several completions across different
-models) that is a large undercount and the displayed number bears no relation to
-what was billed. OpenRouter already returns the real per-request cost in
-providerMetadata.openrouter.usage.cost (opencode enables usage accounting for
-@openrouter/ai-sdk-provider in provider/transform.ts). Prefer it when it is a
-valid finite number; otherwise fall back to the existing per-token calculation,
-so this is a no-op for providers/turns that do not surface a real cost.
+opencode 2.x prices every step as (catalog model rate x normalized token
+counts) in SessionUsage.calculateCost and ignores OpenRouter's returned
+usage.cost. For OpenRouter server-side tools like Fusion (a panel + judge + the
+final answer = several completions across different models), and whenever
+OpenRouter serves a request from a pricier endpoint than the catalog lists, that
+undercounts and the displayed number bears no relation to what was billed.
 
-Applies cleanly across opencode 1.16.2–1.17.7 (anomalyco/opencode) — the
-getUsage hunk context is unchanged over that range (verified with
-`git apply --check` against v1.17.7).
+The native OpenRouter route already requests usage accounting
+(`usage: {include: true}` by default in packages/ai/src/providers/openrouter.ts
+bodyOptions), and the raw usage block is kept on Usage.providerMetadata, but the
+cost is never read: the OpenAI-chat mapper drops it from the typed Usage, and the
+session runner's step settlement keeps only normalized tokens, so the raw usage
+is gone by the time step.ts prices the step.
 
---- a/packages/opencode/src/session/session.ts
-+++ b/packages/opencode/src/session/session.ts
-@@ -433,11 +433,21 @@
-       ? input.model.cost.experimentalOver200K
-       : input.model.cost)
-   const totalNanoAiu = input.metadata?.["copilot"]?.["totalNanoAiu"]
-+  // OpenRouter returns the authoritative billed cost for the whole request —
-+  // including server-side tools like Fusion (panel + judge + final answer) —
-+  // under providerMetadata.openrouter.usage.cost (usage accounting is enabled
-+  // for @openrouter/ai-sdk-provider in provider/transform.ts). Prefer it over
-+  // the per-token table calc below, which only prices the single outer model
-+  // and undercounts multi-completion server tools.
-+  const openrouterUsage = input.metadata?.["openrouter"]?.["usage"] as { cost?: number } | undefined
-+  const openrouterCost = openrouterUsage?.cost
-   return {
-     cost:
-       typeof totalNanoAiu === "number" && Number.isFinite(totalNanoAiu) && totalNanoAiu >= 0
-         ? new Decimal(totalNanoAiu).div(100_000_000_000).toNumber()
--        : safe(
-+        : typeof openrouterCost === "number" && Number.isFinite(openrouterCost) && openrouterCost >= 0
-+          ? openrouterCost
-+          : safe(
-             new Decimal(0)
-               .add(new Decimal(tokens.input).mul(costInfo?.input ?? 0).div(1_000_000))
-               .add(new Decimal(tokens.output).mul(costInfo?.output ?? 0).div(1_000_000))
+This is a backport of the source half of upstream anomalyco/opencode#52629
+(open, unmerged at time of writing; tests omitted): add an optional
+`Usage.cost`, fill it from `usage.cost` in the OpenAI-chat mapper, carry the raw
+usage through the step settlement, and have SessionUsage.record prefer a finite,
+non-negative reported cost, falling back to the per-token calculation. Providers
+that do not report a cost leave Usage.cost unset, so this is a no-op for them.
+Drop this patch once #52629 (or an equivalent fix for #43818) ships.
+
+Verified with `git apply --check` against opencode v2.0.32. Not applicable to
+1.x (the old 1.x patch targeted packages/opencode/src/session/session.ts).
+
+diff --git a/packages/ai/src/protocols/openai-chat.ts b/packages/ai/src/protocols/openai-chat.ts
+index 27e9843..8e22198 100644
+--- a/packages/ai/src/protocols/openai-chat.ts
++++ b/packages/ai/src/protocols/openai-chat.ts
+@@ -206,6 +206,9 @@ export const OpenAIChatUsage = Schema.StructWithRest(
+     prompt_tokens: optionalNull(Schema.Number),
+     completion_tokens: optionalNull(Schema.Number),
+     total_tokens: optionalNull(Schema.Number),
++    // Gateways that price a request (OpenRouter, LiteLLM, Manifest) stamp the
++    // billed USD amount here; ordinary providers omit it.
++    cost: optionalNull(Schema.Number),
+     // Provider-specific cache accounting fields.
+     cached_tokens: optionalNull(Schema.Number),
+     prompt_cache_hit_tokens: optionalNull(Schema.Number),
+@@ -931,6 +934,7 @@ const mapUsage = (usage: OpenAIChatEvent["usage"], providerMetadataKey: string):
+     cacheWriteInputTokens: cacheWrite,
+     reasoningTokens: reasoning,
+     totalTokens: ProviderShared.totalTokens(input, output, usage.total_tokens ?? undefined),
++    cost: usage.cost ?? undefined,
+     providerMetadata: { [providerMetadataKey]: usage },
+   })
+ }
+diff --git a/packages/ai/src/schema/events.ts b/packages/ai/src/schema/events.ts
+index 2d06eb9..ef5d37d 100644
+--- a/packages/ai/src/schema/events.ts
++++ b/packages/ai/src/schema/events.ts
+@@ -72,6 +72,15 @@ export class Usage extends Schema.Class<Usage>("AI.Usage")({
+   cacheWriteInputTokens: Schema.optional(Schema.Number),
+   reasoningTokens: Schema.optional(Schema.Number),
+   totalTokens: Schema.optional(Schema.Number),
++  /**
++   * Provider-reported cost for this physical request, normalized to USD.
++   *
++   * Set only when the endpoint bills and reports one (OpenRouter, LiteLLM,
++   * Manifest, and other gateways that stamp `usage.cost`). `0` is a meaningful
++   * value for a flat-fee or free routed request and stays authoritative;
++   * absent means the caller falls back to pricing the token counts.
++   */
++  cost: Schema.optional(Schema.Number),
+   providerMetadata: Schema.optional(ProviderMetadata),
+ }) {
+   /**
+diff --git a/packages/core/src/session/runner/publish-llm-event.ts b/packages/core/src/session/runner/publish-llm-event.ts
+index ae1078f..fb90ef6 100644
+--- a/packages/core/src/session/runner/publish-llm-event.ts
++++ b/packages/core/src/session/runner/publish-llm-event.ts
+@@ -67,7 +67,7 @@ export interface StepRecord {
+     readonly finish: Extract<LLMEvent, { type: "step-finish" }>["reason"]["normalized"]
+     readonly rawFinish?: string
+     readonly providerState?: SessionMessage.ProviderState
+-    readonly tokens: ReturnType<typeof SessionUsage.tokens>
++    readonly usage: Extract<LLMEvent, { type: "step-finish" }>["usage"]
+   }
+   readonly needsContinuation: boolean
+ }
+@@ -582,7 +582,7 @@ export const createLLMEventPublisher = (bus: Pick<Bus.Interface, "publish">, inp
+           finish: event.reason.normalized,
+           rawFinish: event.reason.raw,
+           providerState: providerState(event.providerMetadata),
+-          tokens: SessionUsage.tokens(event.usage),
++          usage: event.usage,
+         }
+         if (event.reason.normalized === "content-filter") {
+           providerFailed = true
+diff --git a/packages/core/src/session/runner/step.ts b/packages/core/src/session/runner/step.ts
+index b3d9234..c76f675 100644
+--- a/packages/core/src/session/runner/step.ts
++++ b/packages/core/src/session/runner/step.ts
+@@ -243,9 +243,7 @@ export const make = Effect.gen(function* () {
+                     .files({ from: startSnapshot, to: snapshot })
+                     .pipe(Effect.orElseSucceed(() => undefined))
+               : undefined
+-          const usage = record.finish
+-            ? { cost: SessionUsage.calculateCost(input.model.cost, record.finish.tokens), tokens: record.finish.tokens }
+-            : undefined
++          const usage = record.finish ? SessionUsage.record(record.finish.usage, input.model.cost) : undefined
+           if (record.failure) yield* publisher.publishStepFailure({ ...usage, snapshot, files })
+           if (record.finish && usage && !record.failure)
+             yield* bus.publish(SessionEvent.Step.Ended, {
+diff --git a/packages/core/src/session/usage.ts b/packages/core/src/session/usage.ts
+index 5a6f39a..c81c369 100644
+--- a/packages/core/src/session/usage.ts
++++ b/packages/core/src/session/usage.ts
+@@ -18,7 +18,9 @@ export const tokens = (usage: Usage | undefined): TokenUsage.Info => ({
+   },
+ })
+ 
+-// TODO(#35765): Use Copilot's reported billed amount once billing has a dedicated typed runtime contract.
++// Catalog pricing is the fallback. Endpoints that report a billed amount carry it
++// on `Usage.cost` and bypass this (see `record`).
++// TODO(#35765): normalize GitHub Copilot's nano-AIU units into `Usage.cost`.
+ export function calculateCost(costs: Model.Info["cost"], usage: TokenUsage.Info) {
+   const context = usage.input + usage.cache.read + usage.cache.write
+   const tier = costs
+@@ -39,7 +41,18 @@ export type Recorded = { readonly tokens: TokenUsage.Info; readonly cost: Money.
+ 
+ export const record = (usage: Usage | undefined, costs: Model.Info["cost"]): Recorded => {
+   const normalized = tokens(usage)
+-  return { tokens: normalized, cost: calculateCost(costs, normalized) }
++  const reported = usage?.cost
++  return {
++    tokens: normalized,
++    // A gateway that bills the request reports the actual USD cost, which local
++    // catalog rates cannot match: the endpoint that served it may differ from
++    // the one the catalog priced, and router models vary per request. Prefer it
++    // whenever it is usable; a reported zero is authoritative, not "missing".
++    cost:
++      reported !== undefined && Number.isFinite(reported) && reported >= 0
++        ? Money.USD.make(reported)
++        : calculateCost(costs, normalized),
++  }
+ }
+ 
+ export const add = (a: Recorded, b: Recorded): Recorded => ({
