@@ -59,7 +59,7 @@
   environment.enableAllTerminfo = true;
 
   environment.systemPackages = with pkgs; [
-    aria
+    aria2
     terminus_font
     mergerfs
     mergerfs-tools
