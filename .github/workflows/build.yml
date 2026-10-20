@@ -60,11 +60,20 @@ jobs:
           witness-carnage: true
           nix-permission-edict: true
 
+      # Ubuntu 24.04 blocks unprivileged user namespaces through AppArmor, and
+      # single-user Nix needs them for the build sandbox (sandbox-fallback is
+      # off below, so without this every build fails).
+      - name: Allow unprivileged user namespaces
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: |
             keep-outputs = true
+            sandbox = ${{ runner.os == 'Linux' && 'true' || 'relaxed' }}
+            sandbox-fallback = false
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
 
       - name: Configure Attic cache
