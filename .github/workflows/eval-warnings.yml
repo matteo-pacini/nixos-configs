@@ -2,8 +2,8 @@
 # when the repo owner replies "/warnings apply" (or drops them with "/warnings dismiss").
 #
 # Claude only reads and proposes. Shell steps apply the exact proposed edits, verify
-# all five hosts still evaluate without the warning, and open a PR into the PR's
-# branch. The script always comes from master so a PR can't change how it's handled.
+# all five hosts still evaluate without the warning, and commit to the PR's branch.
+# The script always comes from master so a PR can't change how it's handled.
 
 name: Eval Warnings
 
@@ -15,7 +15,7 @@ on:
     types: [created]
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   issues: write
 
@@ -183,6 +183,8 @@ jobs:
         with:
           ref: ${{ steps.pr.outputs.head }}
           fetch-depth: 0
+          # The persisted GITHUB_TOKEN header would override PAT_TOKEN on push.
+          persist-credentials: false
 
       - name: Read proposal and command
         id: cmd
@@ -236,25 +238,20 @@ jobs:
           NUMS: ${{ steps.apply.outputs.nums }}
         run: python3 "$SCRIPT" verify "$RUNNER_TEMP/proposal.md" "$NUMS" "$GITHUB_WORKSPACE" 2> "$RUNNER_TEMP/error.txt"
 
-      - name: Open fix PR
+      - name: Commit to PR branch
         if: steps.cmd.outputs.action == 'apply'
         env:
           HEAD_REF: ${{ steps.pr.outputs.head }}
           NUMS: ${{ steps.apply.outputs.nums }}
           PROPOSAL_ID: ${{ steps.cmd.outputs.proposal_id }}
+          # A push made with GITHUB_TOKEN wouldn't re-run the PR's checks.
+          PUSH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          branch="eval-warnings/pr-$PR-$GITHUB_RUN_ID"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$branch"
-          git commit -am "chore: resolve eval warnings flagged on #$PR"
-          git push origin "$branch"
-          url=$(gh pr create --repo "$REPO" --base "$HEAD_REF" --head "$branch" \
-            --title "chore: resolve eval warnings flagged on #$PR" \
-            --body "Applies the eval-warning fixes accepted by @$ACTOR in $COMMENT_URL.
-
-          All five hosts were evaluated with these changes: they evaluate and the warnings are gone. Merging this into \`$HEAD_REF\` re-runs #$PR's checks.")
-          python3 "$SCRIPT" mark "$RUNNER_TEMP/pending.md" "$NUMS" applied "in #${url##*/}" "$RUNNER_TEMP/body.md"
+          git commit -am "chore: resolve eval warnings flagged on #$PR" -m "Accepted by @$ACTOR in $COMMENT_URL"
+          git push "https://x-access-token:$PUSH_TOKEN@github.com/$REPO.git" "HEAD:refs/heads/$HEAD_REF" 2> "$RUNNER_TEMP/error.txt"
+          python3 "$SCRIPT" mark "$RUNNER_TEMP/pending.md" "$NUMS" applied "in $(git rev-parse HEAD)" "$RUNNER_TEMP/body.md"
           gh api -X PATCH "repos/$REPO/issues/comments/$PROPOSAL_ID" -F body=@"$RUNNER_TEMP/body.md" > /dev/null
           gh api "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=+1 > /dev/null
 

@@ -135,7 +135,7 @@ def render(data):
             out += ["", "Evidence:"] + [f"- {e}" for e in w["evidence"]]
     if any(w.get("status", "proposed") == "proposed" for w in warnings):
         out += ["", "---",
-                "Reply `/warnings apply` for a PR with every proposed fix, `/warnings apply 1 3` for some, "
+                "Reply `/warnings apply` to commit every proposed fix to this PR, `/warnings apply 1 3` for some, "
                 "or `/warnings dismiss` (also takes numbers) to stop proposing them on this PR."]
     stored = {k: data[k] for k in ("pr", "sha", "warnings", "dismissed")}
     out += ["", f"<sub>Checked `{data['sha'][:7]}`</sub>",
@@ -195,10 +195,7 @@ def main(argv):
         found = json.loads(read(args[0]))
         proposals = {p["key"]: p for p in json.loads(read(args[1]) or "{}").get("warnings", [])}
         prev = read_data(read(args[2]))
-        # A fix PR that isn't merged yet leaves its warning on the branch; keep showing it as applied.
-        settled = {w["key"]: w for w in prev["warnings"] if w.get("status") in ("applied", "pending")}
-        warnings = [settled.get(w["key"]) or
-                    {**w, **{k: v for k, v in proposals.get(w["key"], {}).items() if k != "key"},
+        warnings = [{**w, **{k: v for k, v in proposals.get(w["key"], {}).items() if k != "key"},
                      "status": "proposed"} for w in found]
         data = {"pr": int(args[3]), "sha": args[4], "warnings": warnings, "dismissed": prev.get("dismissed", [])}
         Path(args[5]).write_text(render(data))
