@@ -14,8 +14,9 @@ in
   options.custom.autoDeploy = {
     enable = lib.mkEnableOption "comin pull deployments of the CI-gated `deploy` branch";
     telegramEnvFile = lib.mkOption {
-      type = lib.types.str;
-      description = "Env file with BOT_TOKEN and CHANNEL_ID for telegram-notify.";
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "Env file with BOT_TOKEN and CHANNEL_ID for telegram-notify. Null disables the post-deployment hook, so nothing is reported.";
     };
     telegramPrefix = lib.mkOption {
       type = lib.types.str;
@@ -36,10 +37,12 @@ in
           branches.main.name = "deploy";
         }
       ];
-      postDeploymentCommand = import ../shared/comin-hook.nix {
-        inherit pkgs;
-        inherit (cfg) telegramEnvFile telegramPrefix;
-      };
+      postDeploymentCommand = lib.mkIf (cfg.telegramEnvFile != null) (
+        import ../shared/comin-hook.nix {
+          inherit pkgs;
+          inherit (cfg) telegramEnvFile telegramPrefix;
+        }
+      );
     };
   };
 }

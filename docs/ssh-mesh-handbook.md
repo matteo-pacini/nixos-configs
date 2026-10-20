@@ -12,13 +12,13 @@ Host-to-host SSH is authorized by an OpenSSH **user certificate authority**, not
 
 | Source | May reach |
 |---|---|
-| Nexus | BrightFalls, NightSprings, CauldronLake |
-| BrightFalls | Nexus, NightSprings, CauldronLake |
-| NightSprings | Nexus, BrightFalls, CauldronLake |
-| CauldronLake | Nexus, BrightFalls, NightSprings |
-| WorkLaptop | Nexus, BrightFalls, NightSprings, CauldronLake (runs no sshd) |
+| Nexus | BrightFalls, NightSprings, CauldronLake, WorkLaptop |
+| BrightFalls | Nexus, NightSprings, CauldronLake, WorkLaptop |
+| NightSprings | Nexus, BrightFalls, CauldronLake, WorkLaptop |
+| CauldronLake | Nexus, BrightFalls, NightSprings, WorkLaptop |
+| WorkLaptop | Nexus, BrightFalls, NightSprings, CauldronLake |
 
-Aliases: `nexus`, `brightfalls`, `nightsprings` and `cauldronlake`. They try Tailscale first: a `Match ... exec` block probes the Tailscale name on the sshd port (`nc -z`, 2 s timeout), and if that fails the alias falls back to the LAN name. Hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale) skip the probe and always use the LAN. The remote builders use Tailscale only. Each source host gets only the aliases it may use.
+Aliases: `nexus`, `brightfalls`, `nightsprings`, `cauldronlake` and `worklaptop`. They try Tailscale first: a `Match ... exec` block probes the Tailscale name on the sshd port (`nc -z`, 2 s timeout), and if that fails the alias falls back to the LAN name. Hosts marked `lanOnly` in `lib/ssh-mesh.nix` (WorkLaptop, which has no Tailscale) skip the probe and always use the LAN. A destination with no `tailscale` name (WorkLaptop) gets no probe either: its alias is LAN only, so it is reachable only from home. The remote builders use Tailscale only. Each source host gets only the aliases it may use.
 
 Every NixOS mesh host runs its firewall with `tailscale0` trusted and its sshd port open, so the LAN fallback still connects.
 

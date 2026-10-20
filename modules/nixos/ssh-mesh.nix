@@ -24,10 +24,9 @@ in
       {
         programs.ssh.knownHosts = lib.mapAttrs (_: h: {
           # known_hosts writes port 22 as a bare name and others as [name]:port.
-          hostNames = map (n: if h.port == 22 then n else "[${n}]:${toString h.port}") [
-            h.lan
-            h.tailscale
-          ];
+          hostNames = map (n: if h.port == 22 then n else "[${n}]:${toString h.port}") (
+            [ h.lan ] ++ lib.optional (h ? tailscale) h.tailscale
+          );
           publicKey = h.hostKey;
         }) (lib.filterAttrs (_: h: h ? lan) mesh.hosts);
       }
