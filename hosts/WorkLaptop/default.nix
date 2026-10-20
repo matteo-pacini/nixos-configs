@@ -35,6 +35,11 @@
   custom.fonts.enable = true;
   custom.nix-index.enable = true;
 
+  # No Telegram hook: the bot token stays off the company machine.
+  custom.autoDeploy.enable = true;
+  # networking.hostName is unset here; comin needs the darwinConfigurations name.
+  services.comin.hostname = "WorkLaptop";
+
   environment.systemPackages = [ pkgs.nix-output-monitor ];
 
   users.users."matteo.pacini" = {

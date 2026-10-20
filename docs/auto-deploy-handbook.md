@@ -10,9 +10,9 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
                                  ▼
                         deploy job: git push $GITHUB_SHA → refs/heads/deploy
                                  │
-       ┌───────────────┬─────────┴─────┬───────────────┐
-       ▼               ▼               ▼               ▼
-     Nexus      BrightFalls    NightSprings   CauldronLake   (each runs comin)
+       ┌───────────────┬─────────┴─────┬───────────────┬───────────────┐
+       ▼               ▼               ▼               ▼               ▼
+     Nexus      BrightFalls    NightSprings   CauldronLake     WorkLaptop   (each runs comin)
    poll every 60 s, evaluate own config, substitute from attic, activate
 ```
 
@@ -28,13 +28,13 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
 | BrightFalls | `boot` | Next reboot. A merge made while it is off is staged at the next power-on and runs from the one after. | Desktop: reboot required. Telegram: `[BrightFalls]` staged, failed, daily reminder after 7 days |
 | NightSprings | `switch` | Immediately (Darwin has no `boot`) | Telegram: `[NightSprings]` failures |
 | CauldronLake | `boot` | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` staged, failed, daily reminder after 7 days |
-| WorkLaptop | not enrolled | Company machine, kept manual | — |
+| WorkLaptop | `switch` | Immediately (Darwin has no `boot`) | None. No Telegram hook, so the bot token stays off the company machine; check `comin status` |
 
 `boot` means services, secrets (agenix decrypts at activation) and Home Manager changes all wait for the reboot. Kernel, NVIDIA module and userspace driver always change together, which is why Linux hosts use it.
 
 ## Notifications
 
-All messages go to the Telegram group in `secrets/nexus/janitor.env.age` (`BOT_TOKEN`, `CHANNEL_ID`) through `telegram-notify` (`overlays/shared.nix`). Messages that need action mention `@matteopacini`. Nexus messages have no prefix; other hosts set `custom.autoDeploy.telegramPrefix`.
+All messages go to the Telegram group in `secrets/nexus/janitor.env.age` (`BOT_TOKEN`, `CHANNEL_ID`) through `telegram-notify` (`overlays/shared.nix`). Messages that need action mention `@matteopacini`. Nexus messages have no prefix; other hosts set `custom.autoDeploy.telegramPrefix`. On Darwin, leaving `telegramEnvFile` unset (WorkLaptop) disables the hook entirely.
 
 | Message | Sent when |
 |---|---|

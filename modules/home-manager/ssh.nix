@@ -21,7 +21,7 @@ let
         Port = toString h.port;
       };
     }
-    // lib.optionalAttrs (!lanOnly) {
+    // lib.optionalAttrs (!lanOnly && h ? tailscale) {
       "${name}-tailscale" = lib.hm.dag.entryBefore [ name ] {
         header = "Match host ${name} exec \"${lib.getExe' pkgs.netcat "nc"} -z -w 2 ${h.tailscale} ${toString h.port} >/dev/null 2>&1\"";
         HostName = h.tailscale;
