@@ -137,6 +137,7 @@
           ./modules/darwin/ssh-mesh.nix
           ./modules/darwin/auto-deploy.nix
           ./modules/darwin/xcode.nix
+          ./modules/darwin/pki.nix
         ];
       };
 
@@ -269,12 +270,6 @@
               file = ./secrets/nexus/zigbee2mqtt.env.age;
               owner = "zigbee2mqtt";
               group = "zigbee2mqtt";
-              mode = "770";
-            };
-            age.secrets."nexus/nextcloud-admin-password" = {
-              file = ./secrets/nexus/nextcloud-admin-password.age;
-              owner = "nextcloud";
-              group = "nextcloud";
               mode = "770";
             };
             age.secrets."nexus/geoip-license-key".file = ./secrets/nexus/geoip-license-key.age;
