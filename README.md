@@ -157,7 +157,6 @@ See the [Diskpool Handbook](docs/nexus/diskpool-handbook.md) for the full storag
 - **Cloud & sync** — Nextcloud, Atuin shell-history server
 - **Home automation** — Home Assistant, Zigbee2MQTT, Mosquitto, Wyoming (faster-whisper STT + Piper TTS)
 - **AI & automation** — n8n
-- **Games** — Minecraft (All of Create modpack on NeoForge; LAN + tailnet only)
 - **Infrastructure** — PostgreSQL, Caddy, Tailscale, Mosh, Fail2ban, Route53 DDNS, MaxMind GeoIP
 
 </details>

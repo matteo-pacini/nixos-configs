@@ -32,7 +32,6 @@
     ./tailscale-r53.nix
     ./victoriametrics.nix
     ./grafana.nix
-    ./minecraft
   ];
 
   systemd.tmpfiles.rules = [

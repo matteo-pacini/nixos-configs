@@ -29,7 +29,6 @@ let
     "paperless-task-queue"
     "phpfpm-nextcloud"
     "nginx"
-    "minecraft-server"
   ];
   affectedComposeTargets = [
     "nexus-n8n"
@@ -217,8 +216,6 @@ let
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
     # nextcloud
     ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
-    # minecraft (world, playerdata, ops, mod config)
-    ''${RSYNC_CMD} ${config.services.minecraft-server.dataDir} ${backupDestination}/
 
     # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync
