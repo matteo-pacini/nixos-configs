@@ -64,6 +64,12 @@ let
       runHook postInstall
     '';
   };
+
+  copyFrontend = ''
+    mkdir -p core/target/classes/static
+    cp -r ${frontend} core/target/classes/static/react
+    chmod -R u+w core/target/classes/static/react
+  '';
 in
 maven.buildMavenPackage {
   pname = "nzbhydra2";
@@ -71,9 +77,11 @@ maven.buildMavenPackage {
 
   mvnHash = "sha256-x+pX3qm2v2c4cgiX1GTl8gnYpFnaltn2fs2QO1p9em0=";
 
+  # The fetch runs core's tests too, and WebConfigurationTest needs the UI bundle on the classpath.
   mvnFetchExtraArgs.preBuild = ''
     mvn -nsu "${timestampParameter}" --projects org.nzbhydra:github-release-plugin "-Dmaven.repo.local=$out/.m2" clean install
-  '';
+  ''
+  + copyFrontend;
 
   mvnFetchExtraArgs.postInstall = ''
     ${lib.getExe xmlstarlet} ed -L -u "/metadata/versioning/lastUpdated" -v "0" $out/.m2/org/nzbhydra/github-release-plugin/maven-metadata-local.xml
@@ -90,11 +98,7 @@ maven.buildMavenPackage {
     makeWrapper
   ];
 
-  preBuild = ''
-    mkdir -p core/target/classes/static
-    cp -r ${frontend} core/target/classes/static/react
-    chmod -R u+w core/target/classes/static/react
-  '';
+  preBuild = copyFrontend;
 
   installPhase = ''
     runHook preInstall

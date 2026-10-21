@@ -7,7 +7,7 @@
 # old file as nzbhydra.mv.db.old.bak.<ts>, so rolling back to 8.x needs that
 # backup restored.
 #
-# Fix: https://github.com/NixOS/nixpkgs/pull/574030 (head 9d0641e3)
+# Fix: https://github.com/NixOS/nixpkgs/pull/574030 (head 805c19e8)
 self: super: {
   nzbhydra2 = self.callPackage ./nzbhydra2/package.nix { };
 }
