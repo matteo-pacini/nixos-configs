@@ -34,7 +34,7 @@ in
       level-name = "world";
       server-port = 25565;
       motd = "All of Create";
-      difficulty = "easy";
+      difficulty = "normal";
       gamemode = "survival";
       max-players = 10;
       online-mode = true;
