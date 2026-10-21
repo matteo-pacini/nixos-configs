@@ -216,7 +216,10 @@
         };
         modules = [
           {
-            nixpkgs.overlays = baseOverlays ++ [ (import ./overlays/nexus.nix) ];
+            nixpkgs.overlays = baseOverlays ++ [
+              (import ./overlays/nexus.nix)
+              (import ./overlays/nzbhydra2.nix)
+            ];
           }
           self.nixosModules.default
           ./hosts/Nexus
