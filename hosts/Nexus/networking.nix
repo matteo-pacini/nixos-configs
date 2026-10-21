@@ -52,6 +52,11 @@
         in
         ''
           ip saddr { 192.168.10.0/24, 192.168.20.143 } tcp dport { ${uiPorts} } accept
+        ''
+        # Minecraft (All of Create): trusted-device VLAN only, never WAN.
+        # Tailnet bypasses via trustedInterfaces.
+        + lib.optionalString config.services.minecraft-server.enable ''
+          iifname "eno1" ip saddr 192.168.10.0/24 tcp dport ${toString config.services.minecraft-server.serverProperties.server-port} accept
         '';
 
       # n8n's paperless agent tools call 28981 from inside the container;
