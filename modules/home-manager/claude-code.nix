@@ -27,6 +27,25 @@ let
       padding = 0;
       refreshInterval = 10;
     };
+  }
+  # herdr's own SessionStart hook, byte-for-byte what `herdr integration
+  # install claude` writes, so herdr sees it as already installed. Without it
+  # the activation below wipes the hook, Claude panes stop reporting their
+  # session id, and herdr can't `claude --resume` them after a restart. The
+  # script itself is written by herdr and is not managed here.
+  // lib.optionalAttrs config.custom.herdr.enable {
+    hooks.SessionStart = [
+      {
+        matcher = "^(startup|resume|clear|compact|fork)$";
+        hooks = [
+          {
+            type = "command";
+            command = "bash '${config.home.homeDirectory}/.claude/hooks/herdr-agent-state.sh' session";
+            timeout = 10;
+          }
+        ];
+      }
+    ];
   };
 in
 {
