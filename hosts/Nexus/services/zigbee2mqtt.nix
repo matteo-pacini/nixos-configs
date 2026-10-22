@@ -6,6 +6,8 @@
 }:
 {
   systemd.services.zigbee2mqtt = {
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
     serviceConfig = {
       EnvironmentFile = [
         config.age.secrets."nexus/zigbee2mqtt.env".path
@@ -14,8 +16,10 @@
       RestartSec = lib.mkForce "60";
     };
     unitConfig = {
-      StartLimitBurst = 3;
-      StartLimitIntervalSec = 300;
+      # Retry every RestartSec forever: after an unclean Nexus reboot the
+      # coordinator can take minutes to answer, and a start limit would leave
+      # the unit in start-limit-hit with no further retries.
+      StartLimitIntervalSec = 0;
     };
   };
 
