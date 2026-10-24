@@ -36,7 +36,6 @@ services:
       - /run/postgresql:/run/postgresql:ro
     extra_hosts:
       # Split-horizon DNS for local services (container can't rely on CNAME resolution)
-      - "gateway.matteopacini.me:192.168.10.14"
       - "home.matteopacini.me:192.168.10.14"
       - "n8n.matteopacini.me:192.168.10.14"
       - "jellyfin.matteopacini.me:192.168.10.14"

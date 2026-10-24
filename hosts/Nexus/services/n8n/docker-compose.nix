@@ -58,7 +58,6 @@
     log-driver = "journald";
     extraOptions = [
       "--add-host=docs.matteopacini.me:192.168.10.14"
-      "--add-host=gateway.matteopacini.me:192.168.10.14"
       "--add-host=home.matteopacini.me:192.168.10.14"
       "--add-host=jellyfin.matteopacini.me:192.168.10.14"
       "--add-host=metrics.matteopacini.me:192.168.10.14"

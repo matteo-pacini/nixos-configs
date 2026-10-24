@@ -48,8 +48,10 @@ Key properties:
   no space — and every extra substituter costs one lookup per cache
   miss on every build.
 - **Private cache.** Both pulls and pushes require a token. Public DNS
-  resolves the domain to the WAN IP; the router's split DNS hands LAN
-  clients the LAN IP; Nexus itself pins the domain to loopback (see
+  resolves the domain to Nexus's tailnet address (CNAME to `nexus-ts`),
+  so only tailnet clients reach it; the router's split DNS hands LAN
+  clients the LAN IP; CI joins the tailnet as `tag:ci` and pins the
+  domain to that address in `/etc/hosts`; Nexus itself pins the domain to loopback (see
   [Gotchas](#gotchas)).
 - **Chunking is tuned for fewer, larger files** on the mergerfs pool
   (1 MB NAR threshold, 64 KB–1 MB chunks) rather than maximum dedup.
@@ -354,11 +356,10 @@ Other synced machines pick up the atuin tombstones on their next sync.
 
 ## Gotchas
 
-- **Hairpin NAT**: Nexus resolves the cache domain via public DNS to
-  the WAN IP, which the router won't loop back — connections hang.
-  Fixed by `networking.hosts."127.0.0.1"` in `attic.nix`. LAN clients
-  are covered by the router's split DNS instead; if a new vhost
-  misbehaves only from inside the LAN, suspect this first.
+- **Self-resolution**: Nexus would resolve the cache domain via public
+  DNS to its own tailnet address, tying its substituter to tailscaled.
+  `networking.hosts."127.0.0.1"` in `attic.nix` pins it to loopback.
+  LAN clients are covered by the router's split DNS instead.
 - **fail2ban**: the cache vhost is exempted from the `caddy-botsearch`
   jail (`fail2ban.nix`) — narinfo 404s are normal cache misses, and the
   jail would ban a legitimate client after two of them. The

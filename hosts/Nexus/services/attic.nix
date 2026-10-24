@@ -14,10 +14,10 @@
     "d /diskpool/attic 0750 atticd atticd"
   ];
 
-  # Nexus resolves cache.matteopacini.me via public DNS to the WAN IP,
-  # which the router won't hairpin — pin it to loopback instead
-  # (Caddy listens on *:443). LAN clients get the LAN IP via the
-  # router's split DNS.
+  # Public DNS resolves cache.matteopacini.me to Nexus's own tailnet
+  # address; pin it to loopback (Caddy listens on *:443) so Nexus's
+  # substituter does not depend on tailscaled. LAN clients get the LAN
+  # IP via the router's split DNS.
   networking.hosts."127.0.0.1" = [ "cache.matteopacini.me" ];
 
   # Substituter + auth for pulling from the private cache

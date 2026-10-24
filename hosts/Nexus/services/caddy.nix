@@ -14,14 +14,15 @@ let
     }
   '';
 
-  # Gate for vhosts that must not answer the internet. :443 stays
-  # WAN-forwarded for the cache, so this source-IP check, not DNS, is what
-  # keeps everything else private. The podman bridge is listed because n8n's
-  # agent tools reach these hosts from inside the container.
   # Address range the tailnet policy assigns to tag:ci (GitHub Actions
   # runners, nodeAttrs ipPool). The tailnet ACL can only grant them nexus:443,
   # which every vhost shares, so every vhost except the cache turns them away.
   ciPool = "100.99.0.0/24";
+
+  # Gate for vhosts that must not answer the internet. Nothing is
+  # port-forwarded to :443, but this source-IP check is what keeps the
+  # services private if that ever changes. The podman bridge is listed because
+  # n8n's agent tools reach these hosts from inside the container.
 
   privateOnly = ''
     @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
@@ -37,15 +38,12 @@ in
     # Caddy built with the Route53 DNS provider so ACME can solve the
     # DNS-01 challenge instead of HTTP-01 — no inbound port 80 needed.
     package = pkgs.caddy.withPlugins {
-      plugins = [
-        "github.com/caddy-dns/route53@v1.6.2"
-        "github.com/porech/caddy-maxmind-geolocation@v1.0.3"
-      ];
-      hash = "sha256-MPuSbkyadkZkeskjvXI1FZLDgQkbgbKiysj4QVKTBs4=";
+      plugins = [ "github.com/caddy-dns/route53@v1.6.2" ];
+      hash = "sha256-Jb9aDXo46VCRSW299WenY6e9+FO4Xf+/UCEJqncsOjo=";
     };
 
     # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY for the Route53 plugin.
-    # Same IAM user (router) and secret already used by r53-ddns.
+    # Same IAM user (router) and secret tailscale-r53 uses.
     environmentFile = config.age.secrets."nexus/route53-env".path;
 
     # Solve every cert via DNS-01 over Route53. Plugin reads the AWS
@@ -146,19 +144,10 @@ in
         extraConfig = ''
           ${securityHeaders}
 
-          # Reachable from the LAN, the tailnet and Italian or UK addresses
-          # only: the WorkLaptop pulls from here without Tailscale, and CI
-          # arrives over the tailnet as tag:ci. The attic token is still the
-          # real lock; this only narrows who reaches its pre-auth surface.
-          @external {
-            not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
-            not {
-              maxmind_geolocation {
-                db_path ${config.services.geoipupdate.settings.DatabaseDirectory}/GeoLite2-Country.mmdb
-                allow_countries IT GB
-              }
-            }
-          }
+          # LAN and tailnet, including CI (tag:ci, ciPool): the one vhost the
+          # runners may reach. The WorkLaptop has no Tailscale and pulls over
+          # the LAN.
+          @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
 
           # Generous limit: the largest NARs (CUDA, kernels) run to a
@@ -203,7 +192,7 @@ in
           ${securityHeaders}
 
           # LAN-only: no public A record exists, and this gates by source IP
-          # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
+          # (LAN + tailnet) so a forwarded :443 could not reach it either.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
           @ci remote_ip ${ciPool}
@@ -236,7 +225,7 @@ in
             # resolves this name today except n8n's --add-host entry; if a
             # record is ever added it should CNAME to nexus-ts like grafana,
             # and this source-IP gate stays the thing that actually enforces
-            # reachability on the shared, WAN-forwarded :443.
+            # reachability.
             @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
             respond @external 403
             @ci remote_ip ${ciPool}
@@ -275,8 +264,7 @@ in
 
           # LAN, tailnet and the podman bridge. The name CNAMEs to nexus-ts, a
           # 100.x address nothing off-tailnet can route, and this source-IP
-          # gate is what keeps the shared, WAN-forwarded :443 off the document
-          # archive. n8n's document agent reaches Paperless through this vhost
+          # gate is what keeps everyone else off the document archive. n8n's document agent reaches Paperless through this vhost
           # and arrives from the bridge, not a LAN address.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
           respond @external 403
@@ -304,7 +292,7 @@ in
           ${securityHeaders}
 
           # LAN-only: no public A record exists, and this gates by source IP
-          # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
+          # (LAN + tailnet) so a forwarded :443 could not reach it either.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
           @ci remote_ip ${ciPool}

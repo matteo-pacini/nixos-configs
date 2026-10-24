@@ -68,7 +68,7 @@ in
       # root-only, so DynamicUser would be denied.
       ExecStart = lib.getExe updater;
       # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (IAM user "router"),
-      # the same secret used by r53-ddns and Caddy's ACME DNS-01.
+      # the same secret Caddy's ACME DNS-01 uses.
       EnvironmentFile = config.age.secrets."nexus/route53-env".path;
       # Route53 is global; pin a region so the CLI never prompts for one.
       Environment = [ "AWS_DEFAULT_REGION=us-east-1" ];

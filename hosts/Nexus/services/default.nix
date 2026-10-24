@@ -12,7 +12,6 @@
     ./sonarr.nix
     ./bazarr.nix
     ./n8n
-    ./ddns.nix
     ./caddy.nix
     ./fail2ban.nix
     ./tailscale.nix
