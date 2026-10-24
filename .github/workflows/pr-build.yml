@@ -119,13 +119,15 @@ jobs:
           tags: tag:ci
 
       # Public DNS points the cache at the WAN address, which a runner would
-      # reach from outside the tailnet. nexus-ts publishes Nexus's tailnet
-      # address; pin the cache host to it so requests go over Tailscale.
+      # reach from outside the tailnet. Pin the cache host to Nexus's tailnet
+      # address so requests go over Tailscale. Ask tailscaled rather than DNS:
+      # on macOS runners MagicDNS answers lookups and does not return the
+      # public nexus-ts record.
       - name: Route attic cache over the tailnet
         run: |
           host=$(echo "$ATTIC_CACHE_URL" | sed -E 's#^https?://([^/:]+).*#\1#')
-          ip=$(dig +short nexus-ts.matteopacini.me A | tail -1)
-          [ -n "$ip" ] || { echo "::error::nexus-ts.matteopacini.me did not resolve"; exit 1; }
+          ip=$(sudo tailscale ip -4 nexus-ts)
+          [ -n "$ip" ] || { echo "::error::nexus-ts is not visible on the tailnet"; exit 1; }
           echo "$ip $host" | sudo tee -a /etc/hosts
 
       - name: Configure Attic cache
