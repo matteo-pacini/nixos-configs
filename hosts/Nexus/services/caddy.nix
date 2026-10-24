@@ -18,9 +18,16 @@ let
   # WAN-forwarded for the cache, so this source-IP check, not DNS, is what
   # keeps everything else private. The podman bridge is listed because n8n's
   # agent tools reach these hosts from inside the container.
+  # Address range the tailnet policy assigns to tag:ci (GitHub Actions
+  # runners, nodeAttrs ipPool). The tailnet ACL can only grant them nexus:443,
+  # which every vhost shares, so every vhost except the cache turns them away.
+  ciPool = "100.99.0.0/24";
+
   privateOnly = ''
     @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
     respond @external 403
+    @ci remote_ip ${ciPool}
+    respond @ci 403
   '';
 in
 {
@@ -96,6 +103,8 @@ in
           # be reachable from outside.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
+          @ci remote_ip ${ciPool}
+          respond @ci 403
 
           # Larger limit for workflow imports/exports and webhook payloads
           request_body {
@@ -197,6 +206,8 @@ in
           # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
+          @ci remote_ip ${ciPool}
+          respond @ci 403
 
           # Reverse proxy to Grafana (loopback; see services.grafana settings).
           # WebSocket support (live panels) is automatic.
@@ -228,6 +239,8 @@ in
             # reachability on the shared, WAN-forwarded :443.
             @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
             respond @external 403
+            @ci remote_ip ${ciPool}
+            respond @ci 403
 
             # VictoriaMetrics takes no credentials, so the allowlist is the
             # only thing standing between this vhost and /api/v1/write or
@@ -267,6 +280,8 @@ in
           # and arrives from the bridge, not a LAN address.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
           respond @external 403
+          @ci remote_ip ${ciPool}
+          respond @ci 403
 
           # Documents are uploaded whole through the web UI; the ceiling has
           # to clear the largest scan.
@@ -292,6 +307,8 @@ in
           # (LAN + tailnet) so the shared, WAN-forwarded :443 can't reach it.
           @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
           respond @external 403
+          @ci remote_ip ${ciPool}
+          respond @ci 403
 
           # Immich uploads each asset in a single request (no client-side
           # chunking), so the ceiling must clear the largest video/motion
