@@ -125,12 +125,14 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
+          # Leave the runner's resolver alone: on macOS MagicDNS replaces it
+          # and nothing outside the tailnet resolves. The cache host is pinned
+          # in /etc/hosts below, so nothing here needs tailnet DNS.
+          args: --accept-dns=false
 
       # Public DNS points the cache at the WAN address, which a runner would
       # reach from outside the tailnet. Pin the cache host to Nexus's tailnet
-      # address so requests go over Tailscale. Ask tailscaled rather than DNS:
-      # on macOS runners MagicDNS answers lookups and does not return the
-      # public nexus-ts record.
+      # address so requests go over Tailscale.
       - name: Route attic cache over the tailnet
         run: |
           host=$(echo "$ATTIC_CACHE_URL" | sed -E 's#^https?://([^/:]+).*#\1#')
