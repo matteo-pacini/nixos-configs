@@ -20,7 +20,6 @@
     ./home-assistant
     ./ups.nix
     ./postgresql.nix
-    ./geoipupdate.nix
     ./paperless.nix
     ./nextcloud.nix
     ./polkit.nix

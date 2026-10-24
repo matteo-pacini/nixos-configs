@@ -275,7 +275,6 @@
               group = "zigbee2mqtt";
               mode = "770";
             };
-            age.secrets."nexus/geoip-license-key".file = ./secrets/nexus/geoip-license-key.age;
             age.secrets."nexus/n8n-env".file = ./secrets/nexus/n8n-env.age;
             age.secrets."nexus/ssh-mesh-ca" = {
               file = ./secrets/nexus/ssh-mesh-ca.age;
