@@ -116,6 +116,26 @@ jobs:
         run: |
           nix eval ".#${{ matrix.system_attr }}.${{ matrix.host }}.pkgs.${{ inputs.package }}.drvPath" --raw
 
+      # Nexus's Caddy answers the cache only to the LAN, the tailnet and
+      # Italian or UK addresses, so runners join the tailnet as ephemeral
+      # tag:ci nodes. The tailnet policy limits tag:ci to nexus:443.
+      - name: Connect to tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      # Public DNS points the cache at the WAN address, which a runner would
+      # reach from outside the tailnet. nexus-ts publishes Nexus's tailnet
+      # address; pin the cache host to it so requests go over Tailscale.
+      - name: Route attic cache over the tailnet
+        run: |
+          host=$(echo "$ATTIC_CACHE_URL" | sed -E 's#^https?://([^/:]+).*#\1#')
+          ip=$(dig +short nexus-ts.matteopacini.me A | tail -1)
+          [ -n "$ip" ] || { echo "::error::nexus-ts.matteopacini.me did not resolve"; exit 1; }
+          echo "$ip $host" | sudo tee -a /etc/hosts
+
       - name: Configure Attic cache
         run: |
           nix run nixpkgs#attic-client -- login \

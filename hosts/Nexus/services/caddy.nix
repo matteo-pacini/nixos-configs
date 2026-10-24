@@ -13,6 +13,15 @@ let
       Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
   '';
+
+  # Gate for vhosts that must not answer the internet. :443 stays
+  # WAN-forwarded for the cache, so this source-IP check, not DNS, is what
+  # keeps everything else private. The podman bridge is listed because n8n's
+  # agent tools reach these hosts from inside the container.
+  privateOnly = ''
+    @external not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 ${podmanSubnet} 127.0.0.1/8
+    respond @external 403
+  '';
 in
 {
   services.caddy = {
@@ -21,8 +30,11 @@ in
     # Caddy built with the Route53 DNS provider so ACME can solve the
     # DNS-01 challenge instead of HTTP-01 — no inbound port 80 needed.
     package = pkgs.caddy.withPlugins {
-      plugins = [ "github.com/caddy-dns/route53@v1.6.2" ];
-      hash = "sha256-Jb9aDXo46VCRSW299WenY6e9+FO4Xf+/UCEJqncsOjo=";
+      plugins = [
+        "github.com/caddy-dns/route53@v1.6.2"
+        "github.com/porech/caddy-maxmind-geolocation@v1.0.3"
+      ];
+      hash = "sha256-MPuSbkyadkZkeskjvXI1FZLDgQkbgbKiysj4QVKTBs4=";
     };
 
     # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY for the Route53 plugin.
@@ -47,6 +59,8 @@ in
         '';
         extraConfig = ''
           ${securityHeaders}
+
+          ${privateOnly}
 
           # Limit request body size (streaming only, no large uploads expected)
           request_body {
@@ -103,6 +117,8 @@ in
         extraConfig = ''
           ${securityHeaders}
 
+          ${privateOnly}
+
           # Large upload limit for file sync
           request_body {
             max_size 16GB
@@ -120,6 +136,21 @@ in
         '';
         extraConfig = ''
           ${securityHeaders}
+
+          # Reachable from the LAN, the tailnet and Italian or UK addresses
+          # only: the WorkLaptop pulls from here without Tailscale, and CI
+          # arrives over the tailnet as tag:ci. The attic token is still the
+          # real lock; this only narrows who reaches its pre-auth surface.
+          @external {
+            not remote_ip 192.168.10.0/24 192.168.20.0/24 100.64.0.0/10 127.0.0.1/8
+            not {
+              maxmind_geolocation {
+                db_path ${config.services.geoipupdate.settings.DatabaseDirectory}/GeoLite2-Country.mmdb
+                allow_countries IT GB
+              }
+            }
+          }
+          respond @external 403
 
           # Generous limit: the largest NARs (CUDA, kernels) run to a
           # few GB; this just bounds what a single request can stream
@@ -139,6 +170,8 @@ in
         '';
         extraConfig = ''
           ${securityHeaders}
+
+          ${privateOnly}
 
           # Moderate limit for backups and configuration uploads
           request_body {
