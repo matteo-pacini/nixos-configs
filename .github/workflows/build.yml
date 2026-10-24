@@ -85,9 +85,8 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
-          # Leave the runner's resolver alone: on macOS MagicDNS replaces it
-          # and nothing outside the tailnet resolves. The cache host is pinned
-          # in /etc/hosts below, so nothing here needs tailnet DNS.
+          # CI needs no tailnet DNS: the cache host is pinned in /etc/hosts
+          # below.
           args: --accept-dns=false
 
       # Public DNS points the cache at the WAN address, which a runner would
@@ -95,6 +94,13 @@ jobs:
       # address so requests go over Tailscale.
       - name: Route attic cache over the tailnet
         run: |
+          # On macOS the action points the system resolver at 100.100.100.100
+          # whenever the tailnet has MagicDNS on, regardless of --accept-dns,
+          # and nothing outside the tailnet resolves. Hand DNS back to DHCP.
+          if [ "$RUNNER_OS" = macOS ]; then
+            sudo networksetup -setdnsservers Ethernet Empty
+            sudo networksetup -setsearchdomains Ethernet Empty
+          fi
           host=$(echo "$ATTIC_CACHE_URL" | sed -E 's#^https?://([^/:]+).*#\1#')
           ip=$(sudo tailscale ip -4 nexus-ts)
           [ -n "$ip" ] || { echo "::error::nexus-ts is not visible on the tailnet"; exit 1; }
