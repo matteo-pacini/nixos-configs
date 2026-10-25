@@ -32,6 +32,7 @@ in
       {
         programs.nushell = {
           enable = true;
+          loadSessionVariables = true;
 
           # `ls` stays Nushell's structured builtin; eza gets its own name.
           shellAliases = {

@@ -47,7 +47,7 @@
             config.services.zigbee2mqtt.settings.frontend.port
             config.services.radarr.settings.server.port
             config.services.sonarr.settings.server.port
-            config.services.bazarr.listenPort
+            config.services.bazarr.settings.general.port
           ];
         in
         ''
