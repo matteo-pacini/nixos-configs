@@ -29,15 +29,11 @@
   # amd_pstate=active enables EPP (Energy Performance Preference) mode
   # On Linux 6.5+ with Zen2+, amd_pstate is default but explicit active mode
   # ensures best performance/efficiency balance for Zen4 (8845HS)
-  # clearcpuid=umip: some older games/drivers (e.g. under Wine/VMware) fault
-  # on UMIP. Name form (not clearcpuid=514) is stable across kernel versions;
-  # numeric IDs track internal feature-word layout.
   boot.kernelParams = [
     "amd_pstate=active"
     "pcie_aspm=off"
     "iommu=pt"
     "pci=realloc,assign-busses,pcie_bus_perf"
-    "clearcpuid=umip"
   ];
 
   # Both monitors sit behind a DisplayPort KVM. Without this, switching away

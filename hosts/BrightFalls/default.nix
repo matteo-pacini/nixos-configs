@@ -51,7 +51,7 @@
     configurationLimit = 5;
   };
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.timeout = 5;
+  boot.loader.timeout = 30;
 
   # System Packages
 
