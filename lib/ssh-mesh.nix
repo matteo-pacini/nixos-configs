@@ -52,12 +52,10 @@
       port = 22;
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPN4uiOzzFtelR6mzxIqRKG8PArHchOqL0U844UZSet4";
     };
+    # Source only, no sshd: the work MDM (Kandji) turns Remote Login back off
+    # every ~15 minutes.
     WorkLaptop = {
       principal = "worklaptop";
-      user = "matteo.pacini";
-      lan = "work-laptop.guest.internal";
-      # macOS sshd is socket-activated by launchd on 22; sshd_config Port is ignored.
-      port = 22;
       lanOnly = true;
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPtM6cXF6v03BIDdYeMYUHuuoLljzT2Lx+judeJSag8c";
     };
@@ -69,25 +67,21 @@
       "BrightFalls"
       "NightSprings"
       "CauldronLake"
-      "WorkLaptop"
     ];
     BrightFalls = [
       "Nexus"
       "NightSprings"
       "CauldronLake"
-      "WorkLaptop"
     ];
     NightSprings = [
       "Nexus"
       "BrightFalls"
       "CauldronLake"
-      "WorkLaptop"
     ];
     CauldronLake = [
       "Nexus"
       "BrightFalls"
       "NightSprings"
-      "WorkLaptop"
     ];
     WorkLaptop = [
       "Nexus"
