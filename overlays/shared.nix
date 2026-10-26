@@ -87,13 +87,14 @@
     #     threshold sits at ~190K despite this override — it no longer restores
     #     the full 1M, but dropping it would make the cap worse. Re-evaluate
     #     when #43989 closes.
-    #   - NODE_EXTRA_CA_CERTS (default only): upstream's wrapper sets
-    #     CLAUDE_CODE_CERT_STORE=system (NixOS/nixpkgs#576509), and on Darwin
-    #     that store fails every API call with UNABLE_TO_GET_ISSUER_CERT_LOCALLY.
-    #     Adding the system bundle as extra CAs fixes it without reverting to
-    #     Bun's bundled roots, which still trust the distrusted eMudhra/AAA path.
-    #     The path is the same on NixOS and nix-darwin. Drop once nixpkgs fixes
-    #     the Darwin case.
+    #   - CLAUDE_CODE_CERT_STORE=bundled (Darwin, default only): upstream's
+    #     wrapper sets CLAUDE_CODE_CERT_STORE=system (NixOS/nixpkgs#576509), and
+    #     on Darwin that store fails OAuth and API calls with
+    #     UNABLE_TO_GET_ISSUER_CERT_LOCALLY, even with NODE_EXTRA_CA_CERTS
+    #     pointing at the system bundle. Bun's bundled roots are safe from
+    #     Bun 1.4.4 (oven-sh/bun#46159): no emSign roots, no Comodo AAA. Before
+    #     a claude-code bump, check its embedded Bun is still >= 1.4.4. Drop once
+    #     nixpkgs fixes the Darwin case.
     #
     # Issues to keep an eye on (no action yet — no clean Nix-level fix today,
     # but watch for upstream changes that would let us address them here):
@@ -117,8 +118,8 @@
               ]
             )
           } \
-          --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000 \
-          --set-default NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt
+          --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000 ${super.lib.optionalString super.stdenv.hostPlatform.isDarwin "\\
+          --set-default CLAUDE_CODE_CERT_STORE bundled"}
       '';
     });
 
