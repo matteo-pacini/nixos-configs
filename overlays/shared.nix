@@ -167,6 +167,12 @@
       patches = (old.patches or [ ]) ++ [
         ../patches/gnome-shell/001-gvc-null-active-profile.patch
       ];
+      # The parallel g-ir-scanner runs share a writable cache under $HOME; one
+      # wipes it on a cache-version mismatch while another is still moving an
+      # entry in, failing the build with FileNotFoundError in cachestore.store.
+      env = (old.env or { }) // {
+        GI_SCANNER_DISABLE_CACHE = "1";
+      };
     });
   }
 )
