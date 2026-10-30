@@ -81,7 +81,6 @@
     SUBSYSTEM=="drm", KERNEL=="card*", ATTRS{device}=="0x73bf", ATTRS{vendor}=="0x1002", TAG+="mutter-device-preferred-primary"
   '';
 
-
   # Activate the LVM volume group inside the LUKS container
   boot.initrd.services.lvm.enable = true;
 
