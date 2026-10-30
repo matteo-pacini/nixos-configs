@@ -28,7 +28,6 @@
 
   # Keep kernel and udev chatter from drawing over the splash.
   boot.consoleLogLevel = 3;
-  boot.initrd.verbose = false;
   boot.kernelParams = [
     "quiet"
     "rd.udev.log_level=3"

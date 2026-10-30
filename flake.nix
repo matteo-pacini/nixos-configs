@@ -137,7 +137,6 @@
           ./modules/darwin/ssh-mesh.nix
           ./modules/darwin/auto-deploy.nix
           ./modules/darwin/xcode.nix
-          ./modules/darwin/pki.nix
         ];
       };
 
@@ -218,7 +217,6 @@
           {
             nixpkgs.overlays = baseOverlays ++ [
               (import ./overlays/nexus.nix)
-              (import ./overlays/nzbhydra2.nix)
             ];
           }
           self.nixosModules.default

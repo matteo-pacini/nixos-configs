@@ -123,19 +123,10 @@
       '';
     });
 
-    # opencode sourced from the master pin (currently 2.0.32) so it matches the
-    # patch below, verified with `git apply --check` against 2.0.32.
-    # Upstream still hasn't fixed OpenRouter cost reporting (PR #52629 open;
-    # issue #43818 open).
-    opencode = masterPkgs.opencode.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [
-        # opencode prices each step as (catalog model rate × tokens) and ignores
-        # OpenRouter's reported usage.cost (usage accounting is on by default for
-        # the openrouter provider). Carry usage.cost through to SessionUsage.record
-        # and prefer it, so per-turn cost reflects OpenRouter's real billing.
-        ../modules/home-manager/opencode/patches/openrouter-real-cost.patch
-      ];
-    });
+    # opencode sourced from the master pin: its OpenAI-chat mapper reports
+    # OpenRouter's billed usage.cost (#43818, verified on 2.2.1), whereas
+    # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
+    opencode = masterPkgs.opencode;
 
     # xdg-desktop-portal-1.20.4: two integration tests fail in the Nix build
     # sandbox because the validator helpers (xdg-desktop-portal-validate-sound
@@ -176,6 +167,12 @@
       patches = (old.patches or [ ]) ++ [
         ../patches/gnome-shell/001-gvc-null-active-profile.patch
       ];
+      # The parallel g-ir-scanner runs share a writable cache under $HOME; one
+      # wipes it on a cache-version mismatch while another is still moving an
+      # entry in, failing the build with FileNotFoundError in cachestore.store.
+      env = (old.env or { }) // {
+        GI_SCANNER_DISABLE_CACHE = "1";
+      };
     });
   }
 )
