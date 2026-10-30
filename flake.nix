@@ -137,7 +137,6 @@
           ./modules/darwin/ssh-mesh.nix
           ./modules/darwin/auto-deploy.nix
           ./modules/darwin/xcode.nix
-          ./modules/darwin/pki.nix
         ];
       };
 
