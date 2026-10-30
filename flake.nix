@@ -217,7 +217,6 @@
           {
             nixpkgs.overlays = baseOverlays ++ [
               (import ./overlays/nexus.nix)
-              (import ./overlays/nzbhydra2.nix)
             ];
           }
           self.nixosModules.default
