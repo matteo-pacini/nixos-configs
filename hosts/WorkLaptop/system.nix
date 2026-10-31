@@ -20,6 +20,7 @@
       "1password"
       "xcodes-app"
       "android-studio"
+      "anomalyco/tap/hex"
     ];
   };
 }

@@ -32,6 +32,7 @@
       "whatsapp"
       "sf-symbols"
       "vlc"
+      "anomalyco/tap/hex"
     ];
   };
 }

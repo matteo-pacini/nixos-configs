@@ -46,6 +46,10 @@
       url = "github:homebrew/homebrew-cask";
       flake = false;
     };
+    homebrew-anomalyco = {
+      url = "github:anomalyco/homebrew-tap";
+      flake = false;
+    };
     ###########
     # Dracula #
     ###########
@@ -102,6 +106,14 @@
     comin.inputs.nixpkgs.follows = "nixpkgs";
     # Only used by comin's formatter; following avoids a second nixpkgs in the lock.
     comin.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+    #######
+    # Hex #
+    #######
+    hex.url = "github:anomalyco/hex";
+    # Must share the system's glibc: Mesa's Vulkan drivers load into Hex's
+    # process, and an older glibc leaves it with no GPU adapter.
+    hex.inputs.nixpkgs.follows = "nixpkgs";
+    hex.inputs.home-manager.follows = "home-manager";
   };
 
   outputs =
@@ -378,6 +390,7 @@
               taps = {
                 "homebrew/homebrew-core" = inputs.homebrew-core;
                 "homebrew/homebrew-cask" = inputs.homebrew-cask;
+                "anomalyco/homebrew-tap" = inputs.homebrew-anomalyco;
               };
               mutableTaps = false;
             };
@@ -443,6 +456,7 @@
               taps = {
                 "homebrew/homebrew-core" = inputs.homebrew-core;
                 "homebrew/homebrew-cask" = inputs.homebrew-cask;
+                "anomalyco/homebrew-tap" = inputs.homebrew-anomalyco;
               };
               mutableTaps = false;
             };
