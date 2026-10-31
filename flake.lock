@@ -300,22 +300,6 @@
         "type": "github"
       }
     },
-    "homebrew-anomalyco": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1793407750,
-        "narHash": "sha256-Trk0/AJ1jvLAX9Gf6uiVbm1KyhuYLvk9qPeHgmiIta0=",
-        "owner": "anomalyco",
-        "repo": "homebrew-tap",
-        "rev": "787e0c64027d9a80773fa84d5b9493cc4f695319",
-        "type": "github"
-      },
-      "original": {
-        "owner": "anomalyco",
-        "repo": "homebrew-tap",
-        "type": "github"
-      }
-    },
     "homebrew-cask": {
       "flake": false,
       "locked": {
@@ -632,7 +616,6 @@
         "firefox-gnome-theme": "firefox-gnome-theme",
         "hex": "hex",
         "home-manager": "home-manager",
-        "homebrew-anomalyco": "homebrew-anomalyco",
         "homebrew-cask": "homebrew-cask",
         "homebrew-core": "homebrew-core",
         "mac-app-util": "mac-app-util",

@@ -46,10 +46,6 @@
       url = "github:homebrew/homebrew-cask";
       flake = false;
     };
-    homebrew-anomalyco = {
-      url = "github:anomalyco/homebrew-tap";
-      flake = false;
-    };
     ###########
     # Dracula #
     ###########
@@ -390,7 +386,6 @@
               taps = {
                 "homebrew/homebrew-core" = inputs.homebrew-core;
                 "homebrew/homebrew-cask" = inputs.homebrew-cask;
-                "anomalyco/homebrew-tap" = inputs.homebrew-anomalyco;
               };
               mutableTaps = false;
             };
@@ -456,7 +451,6 @@
               taps = {
                 "homebrew/homebrew-core" = inputs.homebrew-core;
                 "homebrew/homebrew-cask" = inputs.homebrew-cask;
-                "anomalyco/homebrew-tap" = inputs.homebrew-anomalyco;
               };
               mutableTaps = false;
             };
