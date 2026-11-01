@@ -89,6 +89,8 @@
       # Other
       telegram-desktop
       whatsie
+      # Mail
+      protonmail-bridge-gui
       # Music
       jellyfin-tui
     ]
