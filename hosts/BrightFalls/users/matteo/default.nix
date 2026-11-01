@@ -13,7 +13,44 @@
     ./browser.nix
     ./services.nix
     ./gaming.nix
+    inputs.hex.homeManagerModules.hex
   ];
+
+  programs.hex = {
+    enable = true;
+    shortcut = "control+option+space";
+    model = "cohere_transcribe";
+    installModel = true;
+    # Replaces the whole Global mode on every activation, so add replacements
+    # here rather than in Hex's Modes pane.
+    settings."dictation_processing.default_mode" = {
+      name = "Global";
+      applications = [ ];
+      browser_hosts = [ ];
+      post_processing = {
+        enabled = false;
+        deadline_seconds = 30;
+        model = null;
+        variant = null;
+        prompt = "Rewrite the transcript into clear, natural text while preserving the speaker's intended meaning.";
+      };
+      replacements = [
+        {
+          matched_phrase = "slash clear";
+          output = "/clear";
+        }
+        {
+          matched_phrase = "slash caveman";
+          output = "/caveman";
+        }
+        {
+          matched_phrase = "nix packages";
+          output = "nixpkgs";
+        }
+      ];
+      transformations = [ ];
+    };
+  };
 
   home.username = "matteo";
   home.homeDirectory = "/home/matteo";
