@@ -21,6 +21,8 @@
     shortcut = "control+option+space";
     model = "cohere_transcribe";
     installModel = true;
+    autostart = true;
+    settings.enable_on_launch = true;
     # Replaces the whole Global mode on every activation, so add replacements
     # here rather than in Hex's Modes pane.
     settings."dictation_processing.default_mode" = {
