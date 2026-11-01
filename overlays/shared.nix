@@ -120,6 +120,11 @@
           } \
           --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000 ${super.lib.optionalString super.stdenv.hostPlatform.isDarwin "\\
           --set-default CLAUDE_CODE_CERT_STORE bundled"}
+
+        # Two stacked shell wrappers lose argv[0], and herdr detects Claude by
+        # it. Drop once herdrdev/herdr#5591 ships in a release.
+        substituteInPlace $out/bin/.claude-wrapped_ \
+          --replace-fail 'exec -a "$0"' 'exec -a claude'
       '';
     });
 
