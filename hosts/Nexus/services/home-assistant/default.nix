@@ -200,26 +200,29 @@ in
 
         passthru.entrypoint = "trashcard.js";
       })
-      # Hand-written, no build step: a single file served straight out of the
-      # merged module dir. Ported from a Claude Design document, so there is no
-      # upstream to track. Only the renderer lives here — the budget figures it
-      # draws are configured on the card in the UI and stay in .storage, out of
-      # this public repository.
-      # `version` is the ?cache-buster in the generated resource URL — bump it
-      # on every edit to the .js or browsers keep serving the old card.
-      # The build runs the card's tests, so a failing test blocks the deploy.
-      (pkgs.runCommandLocal "budget-sankey-card"
-        {
-          version = "8";
-          nativeBuildInputs = [ pkgs.nodejs ];
-          passthru.entrypoint = "budget-sankey-card.js";
-        }
-        ''
-          cp ${./lovelace}/* .
-          node --test
+      # Not in nixpkgs. The budget figures it draws are configured on the card
+      # in the UI and stay in .storage, out of this public repository.
+      (pkgs.stdenvNoCC.mkDerivation rec {
+        pname = "budget-sankey-card";
+        version = "1.0.0";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "matteo-pacini";
+          repo = "HASSBudgetCard";
+          tag = "v${version}";
+          hash = "sha256-aTWevDzuaFHUiyRb5oiewtfzDnOXnuf4Z9jptEZIeVw=";
+        };
+
+        installPhase = ''
+          runHook preInstall
+
           install -Dm444 budget-sankey-card.js $out/budget-sankey-card.js
-        ''
-      )
+
+          runHook postInstall
+        '';
+
+        passthru.entrypoint = "budget-sankey-card.js";
+      })
     ];
     extraPackages =
       python3Packages: with python3Packages; [
