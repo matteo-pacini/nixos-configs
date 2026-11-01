@@ -33,15 +33,4 @@
     "rd.udev.log_level=3"
     "udev.log_priority=3"
   ];
-
-  # Sunshine picks its capture backend once, at startup. If that is while
-  # Plymouth is still handing the display to GDM, its KMS probe finds no
-  # active planes and it falls back to the XDG portal, which asks for remote
-  # control on every encoder probe. Start it once the handoff is done.
-  systemd.user.services.sunshine.serviceConfig.ExecStartPre =
-    pkgs.writeShellScript "wait-for-plymouth-quit" ''
-      while [ "$(${pkgs.systemd}/bin/systemctl show --property=ActiveState --value plymouth-quit-wait.service)" = activating ]; do
-        sleep 0.5
-      done
-    '';
 }

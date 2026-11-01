@@ -47,10 +47,10 @@ _:
       };
     };
 
-    # Buffer/quantum: 1024 samples (~21 ms at 48 kHz) is stable for Sunshine
-    # game streaming and the USB1 Modi 2. Min == default keeps apps from
-    # negotiating tiny buffers that xrun on the C-Media chip; max allows
-    # high-latency apps (e.g. media players) to request larger ones.
+    # Buffer/quantum: 1024 samples (~21 ms at 48 kHz) is stable for the USB1
+    # Modi 2. Min == default keeps apps from negotiating tiny buffers that xrun
+    # on the C-Media chip; max allows high-latency apps (e.g. media players) to
+    # request larger ones.
     "30-quantum" = {
       "context.properties" = {
         "default.clock.quantum" = 1024;
