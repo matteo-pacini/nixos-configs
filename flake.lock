@@ -486,6 +486,22 @@
     },
     "nixpkgs-master": {
       "locked": {
+        "lastModified": 1793653999,
+        "narHash": "sha256-SsIrRM6J+VHmOQeNXgAjrN9TS5AuiweMlttYZQm7AUs=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "2c42e04379affb31118f02d5ffc46cfee70fc10c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "master",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-opencode": {
+      "locked": {
         "lastModified": 1793330439,
         "narHash": "sha256-CYU4ahsbVtorBcplIBAtRSDikRmBzAwAFgJ+oQ5keM0=",
         "owner": "NixOS",
@@ -495,8 +511,8 @@
       },
       "original": {
         "owner": "NixOS",
-        "ref": "master",
         "repo": "nixpkgs",
+        "rev": "f188e1d0674ccfa03dadf09fcebd58fcba3da4b0",
         "type": "github"
       }
     },
@@ -626,6 +642,7 @@
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-master": "nixpkgs-master",
+        "nixpkgs-opencode": "nixpkgs-opencode",
         "nur": "nur",
         "nvf": "nvf",
         "sublime-dracula-theme": "sublime-dracula-theme",
