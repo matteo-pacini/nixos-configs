@@ -38,26 +38,6 @@ let
   '';
 in
 {
-  # Not services.protonmail-bridge: its --noninteractive backend stops the GUI
-  # from opening. The GUI starts its own backend and raises this instance when
-  # launched again.
-  systemd.user.services.protonmail-bridge-gui = {
-    Unit = {
-      Description = "Proton Mail Bridge";
-      After = [ "graphical-session.target" ];
-    };
-
-    Service = {
-      ExecStart = "${lib.getExe pkgs.protonmail-bridge-gui} --no-window";
-      Restart = "on-failure";
-      RestartSec = 5;
-    };
-
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-  };
-
   systemd.user.services."mqtt2brightfalls-user" = {
     Unit = {
       Description = "mqtt2brightfalls user dispatcher";
