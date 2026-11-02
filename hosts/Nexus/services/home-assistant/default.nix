@@ -108,6 +108,9 @@ in
       # Subscribes to a remote .ics feed. Configured through the UI, so the
       # feed URL and its API key live in .storage and stay out of this repo.
       "remote_calendar"
+      # Holds the stock the prepping cards count (todo.food_stockpile,
+      # todo.water_stockpile); the cards can also create these lists.
+      "local_todo"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
@@ -222,6 +225,29 @@ in
         '';
 
         passthru.entrypoint = "budget-sankey-card.js";
+      })
+      # Not in nixpkgs. The stock it counts lives in the Local To-do lists
+      # above, also out of this public repository.
+      (pkgs.stdenvNoCC.mkDerivation rec {
+        pname = "prepping-cards";
+        version = "1.0.0";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "matteo-pacini";
+          repo = "HASSPrepping";
+          tag = "v${version}";
+          hash = "sha256-vq05jBVifgVT2QzMaUe2FsR06eDYhiqverXtrx4ElRk=";
+        };
+
+        installPhase = ''
+          runHook preInstall
+
+          install -Dm444 prepping-cards.js $out/prepping-cards.js
+
+          runHook postInstall
+        '';
+
+        passthru.entrypoint = "prepping-cards.js";
       })
     ];
     extraPackages =
