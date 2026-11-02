@@ -230,13 +230,13 @@ in
       # above, also out of this public repository.
       (pkgs.stdenvNoCC.mkDerivation rec {
         pname = "prepping-cards";
-        version = "1.0.0";
+        version = "1.1.0";
 
         src = pkgs.fetchFromGitHub {
           owner = "matteo-pacini";
           repo = "HASSPrepping";
           tag = "v${version}";
-          hash = "sha256-vq05jBVifgVT2QzMaUe2FsR06eDYhiqverXtrx4ElRk=";
+          hash = "sha256-nB17J86vN9qTrC4YMKdfGapagH5y043Oxz3jI05lmvg=";
         };
 
         installPhase = ''
