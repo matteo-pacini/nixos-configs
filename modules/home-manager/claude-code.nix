@@ -7,45 +7,14 @@
 let
   cfg = config.custom.claude-code;
 
-  # Wraps ccstatusline so a herdr pane also gets model, effort, context usage
-  # and prompt-cache expiry in its sidebar. No-ops outside herdr.
-  statusLine = pkgs.writeShellApplication {
-    name = "claude-statusline";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.gnugrep
-      pkgs.jq
-    ];
-    text = builtins.readFile ./claude-code/herdr-statusline.sh;
-  };
-
   baseSettings = {
     statusLine = {
       type = "command";
       # Relies on nodejs being on claude's PATH (set in overlays/shared.nix).
-      command = lib.getExe statusLine;
+      command = "npx -y ccstatusline@latest";
       padding = 0;
       refreshInterval = 10;
     };
-  }
-  # herdr's own SessionStart hook, byte-for-byte what `herdr integration
-  # install claude` writes, so herdr sees it as already installed. Without it
-  # the activation below wipes the hook, Claude panes stop reporting their
-  # session id, and herdr can't `claude --resume` them after a restart. The
-  # script itself is written by herdr and is not managed here.
-  // lib.optionalAttrs config.custom.herdr.enable {
-    hooks.SessionStart = [
-      {
-        matcher = "^(startup|resume|clear|compact|fork)$";
-        hooks = [
-          {
-            type = "command";
-            command = "bash '${config.home.homeDirectory}/.claude/hooks/herdr-agent-state.sh' session";
-            timeout = 10;
-          }
-        ];
-      }
-    ];
   };
 in
 {
@@ -91,6 +60,12 @@ in
           run mkdir -p "$HOME/.claude"
           run install -m 644 "${settingsFile}" "$HOME/.claude/settings.json"
         '';
+
+      # The legacy herdr TUI wrote this hook script at runtime; nothing runs it
+      # any more and Home Manager never owned it.
+      home.activation.claudeHerdrCleanup = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        run rm -f "$HOME/.claude/hooks/herdr-agent-state.sh"
+      '';
 
       # Vendored global instruction doc for Claude Code.
       home.file.".claude/CLAUDE.md".source = ./claude-code/CLAUDE.md;
