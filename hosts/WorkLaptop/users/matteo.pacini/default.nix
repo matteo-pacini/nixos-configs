@@ -44,6 +44,7 @@
   custom.codex.enable = true;
   custom.opencode.enable = true;
   custom.herdr.enable = true;
+  custom.hex.enable = true;
   custom.sleepmode.enable = true;
 
   home.stateVersion = "26.05";
