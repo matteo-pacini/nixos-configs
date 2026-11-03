@@ -48,10 +48,24 @@ in
     custom.claude-code.extraSettings = lib.mkIf config.custom.claude-code.enable {
       hooks = {
         SessionStart = [
-          { hooks = [ { type = "command"; command = "${lib.getExe claudeSession} start"; } ]; }
+          {
+            hooks = [
+              {
+                type = "command";
+                command = "${lib.getExe claudeSession} start";
+              }
+            ];
+          }
         ];
         SessionEnd = [
-          { hooks = [ { type = "command"; command = "${lib.getExe claudeSession} end"; } ]; }
+          {
+            hooks = [
+              {
+                type = "command";
+                command = "${lib.getExe claudeSession} end";
+              }
+            ];
+          }
         ];
       };
     };
