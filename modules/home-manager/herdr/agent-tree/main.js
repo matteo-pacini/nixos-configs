@@ -209,45 +209,76 @@ export default class AgentTree extends View {
     const cache = left < 0 ? ["cold", t.ansi1] : left < 1 ? ["<1m", t.ansi3] : left < 5 ? [`${left}m`, t.ansi3] : [`${left}m`, t.dim];
     return h_flex().gap(6).items_center().text_size(10.5).text_color(t.dim)
       .when(!Number.isNaN(pct), (el) => el
-        .child(div().w(34).h(4).flex_none().rounded(2).bg(t.input)
-          .child(div().h_full().rounded(2).bg(band).w(Math.round(34 * Math.min(pct, 100) / 100))))
+        .child(div().w(48).h(4).flex_none().rounded(2).bg(t.input)
+          .child(div().h_full().rounded(2).bg(band).w(Math.round(48 * Math.min(pct, 100) / 100))))
         .child(div().text_color(band).child(`${pct}%`))
         .when(Boolean(k), (el) => el.child(div().child(`${k}k`))))
       .when(!Number.isNaN(until), (el) => el
+        .child(div().flex_1())
         .child(h_flex().gap(3).items_center().text_color(cache[1])
           .child(svg("mods/workspace-chrome/clock.svg").size(10).flex_none())
           .child(div().child(cache[0]))));
   }
 
+  // Model and reasoning effort, from the labels Claude's statusLine sets; null
+  // without them.
+  model(t, labels) {
+    const model = labels?.["agent.model"];
+    if (!model) return null;
+    const effort = labels?.["agent.effort"];
+    return h_flex().gap(6).items_center().text_size(11).text_color(t.dim)
+      .child(div().min_w(0).truncate().text_color(t.foreground).child(model))
+      .when(Boolean(effort), (el) => el.child(div().flex_none().px(5).h(16).rounded(4).border(1).border_color(t.dim)
+        .flex().items_center().text_size(10).child(effort)));
+  }
+
+  // A card's status: a labelled pill, readable beside the extra lines. Idle
+  // keeps the plain dot.
+  pill(t, status) {
+    const [label, color] = { working: ["Working", t.working], done: ["Done", t.done ?? t.dim], blocked: ["Needs you", t.blocked] }[status] ?? [];
+    if (!label) return this.status(t, status);
+    return h_flex().flex_none().gap(5).px(7).h(18).rounded(5).bg(color + "26").items_center()
+      .text_size(10.5).font_semibold().text_color(color)
+      .when(status === "working", (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(10).flex_none().spin(900)))
+      .child(label);
+  }
+
+  // One line for a plain agent; a card (name, model, metrics) for one whose
+  // statusLine sets labels.
   agentRow(t, a, depth, name, subs, now) {
     const pic = icon(a.program, 16, t.foreground);
     const when = this.changed[a.address]?.at;
     const idle = a.status === "idle" && !a.focused;
-    const stats = this.metrics(t, this.terms.get(a.address)?.labels, now);
-    return h_flex()
+    const labels = this.terms.get(a.address)?.labels;
+    const stats = this.metrics(t, labels, now);
+    const model = this.model(t, labels);
+    const card = Boolean(stats || model);
+    const head = h_flex().items_center().gap(9)
+      .when(Boolean(pic), (el) => el.child(div().id(`fold-${a.address}`)
+        .when(subs.length > 0, (el) => el.on_click((_e, cx) => { cx.stop_propagation(); this.toggle(`ag-${a.address}`, cx); }))
+        .child(pic)))
+      .child(div().flex_1().min_w(0).truncate().when(card, (el) => el.font_medium()).text_color(idle ? t.muted : t.foreground).child(name))
+      .when(subs.length > 0 && this.folded.has(`ag-${a.address}`), (el) => el.child(div().text_size(11).text_color(t.dim).child(String(subs.length))))
+      .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
+      .child(card ? this.pill(t, a.status) : this.status(t, a.status));
+    return v_flex()
       .id(`ag-${a.address}`)
       .pl(8 + depth * 12)
       .pr(8)
-      .h(stats ? 42 : 30)
+      .when(card, (el) => el.py(8).gap(5))
+      .when(!card, (el) => el.h(30).justify_center())
       .flex_none()
       .rounded(8)
-      .items_center()
-      .gap(9)
       .when(a.focused, (el) => el.bg(t.selected))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))
-      .on_mouse_down("right", () => this.rename(a, this.terms.get(a.address)?.labels?.[LABEL] ?? ""))
+      .on_mouse_down("right", () => this.rename(a, labels?.[LABEL] ?? ""))
       .tooltip("Right-click to rename")
-      .when(Boolean(pic), (el) => el.child(div().id(`fold-${a.address}`)
-        .when(subs.length > 0, (el) => el.on_click((_e, cx) => { cx.stop_propagation(); this.toggle(`ag-${a.address}`, cx); }))
-        .child(pic)))
-      .child(v_flex().flex_1().min_w(0).gap(3)
-        .child(div().truncate().text_color(idle ? t.muted : t.foreground).child(name))
-        .when(Boolean(stats), (el) => el.child(stats)))
-      .when(subs.length > 0 && this.folded.has(`ag-${a.address}`), (el) => el.child(div().text_size(11).text_color(t.dim).child(String(subs.length))))
-      .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
-      .child(this.status(t, a.status));
+      .child(head)
+      // 25: the program icon plus the head's gap, so these lines start under the name.
+      .when(Boolean(model), (el) => el.child(div().pl(pic ? 25 : 0).child(model)))
+      .when(Boolean(stats), (el) => el.child(div().pl(pic ? 25 : 0).child(stats)));
   }
 
   render(cx) {

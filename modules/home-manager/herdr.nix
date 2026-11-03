@@ -28,7 +28,7 @@ let
     text = builtins.readFile ./herdr/claude-resume.sh;
   };
 
-  # Sets the context and cache labels the agent-tree mod draws, then renders
+  # Sets the context, cache, model and effort labels the agent-tree mod draws, then renders
   # ccstatusline as the plain statusLine does.
   claudeStatusLine = pkgs.writeShellApplication {
     name = "claude-statusline";
@@ -73,8 +73,8 @@ in
     desktop = lib.mkEnableOption "the Herdr desktop app";
     mods.agentTree.enable = lib.mkEnableOption ''
       the desktop app's `agent-tree` layout: the Agents sidebar as host > space > tab > agent,
-      each agent named by its `agent.name` terminal label, with Claude's context fill and
-      prompt-cache time left. The first activation with the app open shows it
+      each agent named by its `agent.name` terminal label, with Claude's model, effort,
+      context fill and prompt-cache time left. The first activation with the app open shows it
     '';
     mods.deploy.enable = lib.mkEnableOption ''
       the nixos-configs panel in the agent-tree layout: the deploy pipeline
