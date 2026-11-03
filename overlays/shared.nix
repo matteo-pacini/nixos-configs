@@ -10,6 +10,10 @@
       inherit (super.stdenv.hostPlatform) system;
       config = super.config;
     };
+    opencodePkgs = import inputs.nixpkgs-opencode {
+      inherit (super.stdenv.hostPlatform) system;
+      config = super.config;
+    };
   in
   {
     # gh: disable telemetry (https://cli.github.com/telemetry). Nixpkgs does not
@@ -120,46 +124,24 @@
           } \
           --set CLAUDE_CODE_AUTO_COMPACT_WINDOW 1000000 ${super.lib.optionalString super.stdenv.hostPlatform.isDarwin "\\
           --set-default CLAUDE_CODE_CERT_STORE bundled"}
-
-        # Two stacked shell wrappers lose argv[0], and herdr detects Claude by
-        # it. Drop once herdrdev/herdr#5591 ships in a release.
-        substituteInPlace $out/bin/.claude-wrapped_ \
-          --replace-fail 'exec -a "$0"' 'exec -a claude'
       '';
     });
 
     # opencode sourced from the master pin: its OpenAI-chat mapper reports
     # OpenRouter's billed usage.cost (#43818, verified on 2.2.1), whereas
     # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
-    opencode = masterPkgs.opencode;
-
-    # xdg-desktop-portal-1.20.4: two integration tests fail in the Nix build
-    # sandbox because the validator helpers (xdg-desktop-portal-validate-sound
-    # and -validate-icon) shell out to bwrap, which tries to create a nested
-    # user namespace and trips on:
-    #     bwrap: Can't mount proc on /newroot/proc: Operation not permitted
-    # The failures:
-    #   - integration/dynamiclauncher (exit status 1)
-    #   - integration/notification    (pytest test_sound_fd: "invalid sound:
-    #                                  The sound data is invalid (36)" because
-    #                                  the validator subprocess died)
-    # Environment-driven, not a real package bug. Affects the gaming Linux
-    # hosts (CauldronLake / BrightFalls) that pull xdg-desktop-portal in via
-    # their desktop closure.
     #
-    # Skipping the check phase until upstream ships a fix. Status as of
-    # 2026-07-28: nixos-unstable still packages 1.20.4 with no relevant
-    # change; the package's XDP_TEST_IN_CI escape hatch does not cover these
-    # two tests; upstream 1.21.x/1.22.x release notes mention nothing about
-    # the bwrap/nested-userns failures. The closest tracking issue is open
-    # with no activity and was filed for a different trigger (a custom
-    # enableGeoLocation override), but the failing test is the same one:
-    #   Issue: https://github.com/NixOS/nixpkgs/issues/511228 (OPEN)
-    # Drop this override once nixos-unstable ships an xdg-desktop-portal whose
-    # checkPhase passes inside the build sandbox.
-    xdg-desktop-portal = super.xdg-desktop-portal.overrideAttrs (_: {
-      doCheck = false;
-    });
+    # Temporarily held at 2.2.1 via the nixpkgs-opencode input: on master,
+    # 2.2.5's node_modules fails its fixed-output hash on every build (Hydra
+    # too, https://hydra.nixos.org/job/nixpkgs/trunk/opencode.x86_64-linux).
+    # Once that job is green again, switch back to masterPkgs.opencode and
+    # drop the nixpkgs-opencode input from flake.nix.
+    opencode = opencodePkgs.opencode;
+
+    # Not in nixos-unstable yet (NixOS/nixpkgs#581031). herdr-desktop pins
+    # masterPkgs.herdr-core by store path, so take both from the same pin.
+    herdr-core = masterPkgs.herdr-core;
+    herdr-desktop = masterPkgs.herdr-desktop;
 
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but

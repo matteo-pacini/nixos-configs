@@ -197,7 +197,7 @@ export default class AgentTree extends View {
   }
 
   // Context fill and prompt-cache time left, from the labels Claude's statusLine
-  // sets (modules/home-manager/claude-code/herdr-statusline.sh); null without them.
+  // sets (modules/home-manager/herdr/claude-statusline.sh); null without them.
   metrics(t, labels, now) {
     const pct = parseInt(labels?.["agent.ctx"], 10);
     const until = parseInt(labels?.["agent.cache_until"], 10);
