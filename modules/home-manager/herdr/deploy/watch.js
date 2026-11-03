@@ -6,7 +6,9 @@
 import { exec, readTextFile } from "herdr";
 
 const TAG = /(WAIT-FOR (unstable|merged|closed|green|version|manual)|WATCH): (\S.*)$/;
-const GREP = "WAIT-FOR (unstable|merged|closed|green|version|manual): |WATCH: https?://";
+// Only at the start of a comment line: code and strings that quote a tag
+// (prompts.js does) aren't tags.
+const GREP = "^[[:space:]]*(#|//|/?\\*|--)[[:space:]]*(WAIT-FOR (unstable|merged|closed|green|version|manual): |WATCH: https?://)";
 const GITHUB = /github\.com\/([^/]+)\/([^/]+)\/(pull|issues|commit)\/([0-9a-f]+)/;
 const HYDRA = /hydra\.nixos\.org\/job\/[^/]+\/[^/]+\/([^/.]+)\.[^/]+$/;
 
