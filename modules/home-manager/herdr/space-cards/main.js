@@ -299,13 +299,14 @@ export default class Spaces extends View {
     });
   }
 
-  // A machine as a card: device icon, name, connection and OS, then its spaces.
+  // A machine: device icon, name, connection and OS, then its spaces indented
+  // under it.
   machineCard(m, machine, connected, folded, toggle, body, t) {
     const host = hostOf(m ?? this.local);
     const state = (machine?.state ?? "asleep").replace(/_/g, " ");
     const head = h_flex().id(`machine-${m ?? "local"}`).gap(9).px(4).pt(4).pb(folded ? 4 : 6).items_center().cursor_pointer().rounded(8)
       .on_click(toggle)
-      .child(div().size(30).flex_none().rounded(8).bg(t.raised).flex().items_center().justify_center()
+      .child(div().w(22).h(30).flex_none().flex().items_center().justify_center()
         .child(svg(`mods/space-cards/${host.device}.svg`).size(18).text_color(connected ? t.foreground : t.dim)))
       .child(v_flex().flex_1().min_w(0).gap(1)
         .child(div().truncate().font_semibold().text_color(connected ? t.foreground : t.muted).child(host.label ?? "This computer"))
@@ -320,9 +321,9 @@ export default class Spaces extends View {
         .on_click((_e, cx) => { cx.stop_propagation(); run("space.new", m ? { machine: m } : {}); })
         .child(svg("mods/workspace-chrome/plus.svg").size(12))))
       .child(svg(`mods/workspace-chrome/chevron-${folded ? "right" : "down"}.svg`).size(11).flex_none().text_color(t.dim));
-    return v_flex().id(`machine-card-${m ?? "local"}`).flex_none().mt(6).p(6).gap(2).rounded(10)
-      .bg(t.background).border_1().border_color(t.border)
-      .child(head).children(body);
+    return v_flex().id(`machine-card-${m ?? "local"}`).flex_none().mt(10).gap(2)
+      .child(head)
+      .when(body.length > 0, (el) => el.child(v_flex().gap(2).pl(10).children(body)));
   }
 
   // A tinted pill, like the agent tree's: colour by theme name.

@@ -1,4 +1,5 @@
-// Agents as a tree: host > space > tab > agent > sub-agents. Each agent is named
+// Agents grouped by what they need: Needs you, Cache expiring, Working, Idle;
+// each says where it runs (machine, space, tab). Each agent is named
 // by its terminal's `agent.name` label (right-click a row, or
 // `hc label <t> agent.name=...`), falling back to its hc name, then its title.
 // Derived from Herdr's shipped `agents` mod.
@@ -38,6 +39,14 @@ const kidStatus = (k, listed) => {
   const s = listed.get(k.address) ?? k.status;
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
+// Space avatar colours, as the spaces mod draws them.
+const MARK = { ansi6: "#22a99a", ansi3: "#e3814f", ansi4: "#5b8def", ansi5: "#8b7cf6", ansi2: "#3fae6a", ansi1: "#d9649a" };
+const ORANGE = MARK.ansi3;
+// An idle agent counts as cache expiring with less than this much prompt cache
+// left and at least EXPIRING_CTX % of its context filled: letting the cache go
+// cold would mean paying for that context again.
+const EXPIRING_MS = 5 * 60000;
+const EXPIRING_CTX = 20;
 const top = (statuses) => statuses.reduce((m, s) => ((RANK[s] ?? 0) > (RANK[m] ?? 0) ? s : m), null);
 
 function duration(ms) {
@@ -207,33 +216,6 @@ export default class AgentTree extends View {
     return div().size(7).mx(3).flex_none().rounded(4).bg(status === "done" ? (t.done ?? t.dim) : t.dim + "00");
   }
 
-  // A foldable group header at `depth` (0 host, 1 space, 2 tab). Folded, it shows
-  // how many agents and the most urgent state among them.
-  header(t, id, depth, text, members) {
-    const open = !this.folded.has(id);
-    const worst = top(members.map((a) => this.urgency.get(a.address)));
-    return h_flex()
-      .id(id)
-      .pl(8 + depth * 12)
-      .pr(8)
-      .pt(depth === 0 ? 8 : 4)
-      .h(depth === 0 ? 30 : 26)
-      .flex_none()
-      .gap(6)
-      .items_center()
-      .text_size(depth === 0 ? 11 : 12)
-      .font_medium()
-      .text_color(depth === 0 ? t.dim : t.muted)
-      .cursor_pointer()
-      .hover((s) => s.text_color(t.foreground))
-      .on_click((_e, cx) => this.toggle(id, cx))
-      .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim))
-      .child(div().flex_1().min_w(0).truncate().child(text))
-      .when(!open, (el) => el
-        .child(div().text_size(11).text_color(t.dim).child(String(members.length)))
-        .when(Boolean(worst) && worst !== "idle", (el) => el.child(this.status(t, worst, true))));
-  }
-
   subRow(t, s, depth, shown) {
     const k = s.t;
     const pic = icon(k.program, 14, t.foreground);
@@ -260,15 +242,15 @@ export default class AgentTree extends View {
 
   // Context fill and prompt-cache time left, from the labels Claude's statusLine
   // sets (modules/home-manager/herdr/claude-statusline.sh); null without them.
-  metrics(t, labels, now) {
+  metrics(t, labels, now, expiring = false) {
     const pct = parseInt(labels?.["agent.ctx"], 10);
     const until = parseInt(labels?.["agent.cache_until"], 10);
     if (Number.isNaN(pct) && Number.isNaN(until)) return null;
     // Bands match herdr-agent-report: Claude auto-compacts at 80%.
-    const band = pct >= 70 ? t.ansi1 : pct >= 50 ? t.ansi3 : t.ansi2;
+    const band = expiring ? ORANGE : pct >= 70 ? t.ansi1 : pct >= 50 ? t.ansi3 : t.ansi2;
     const k = labels?.["agent.ctxk"];
     const left = Math.floor((until * 1000 - now) / 60000);
-    const cache = left < 0 ? ["cold", t.ansi1] : left < 1 ? ["<1m", t.ansi3] : left < 5 ? [`${left}m`, t.ansi3] : [`${left}m`, t.dim];
+    const cache = left < 0 ? ["cold", t.ansi1] : left < 1 ? ["<1m", ORANGE] : left < 5 ? [`${left}m`, ORANGE] : [`${left}m`, t.dim];
     return h_flex().gap(6).items_center().text_size(10.5).text_color(t.dim)
       .when(!Number.isNaN(pct), (el) => el
         .child(div().w(48).h(4).flex_none().rounded(2).bg(t.input)
@@ -305,18 +287,31 @@ export default class AgentTree extends View {
       .child(label);
   }
 
-  // One line for a plain agent; a card (name, model, metrics) for one whose
-  // statusLine sets labels. `pin`: the "host › space › tab" line that makes this
-  // the pinned copy above the list.
-  agentRow(t, a, depth, name, subs, now, pin = null) {
-    const key = `${pin ? "pin" : "ag"}-${a.address}`;
+  // Machine, space and tab as chips. `loc`: { host, space, spaceId, tab }.
+  where(t, loc) {
+    const chip = () => h_flex().flex_none().h(17).px(6).gap(4).rounded(5).bg(t.hover).items_center();
+    const color = (shared("space.colors") ?? {})[loc.spaceId] ?? "ansi6";
+    const fill = color.startsWith("#") ? color : (MARK[color] ?? t[color]);
+    return h_flex().flex_wrap().gap(4).gap_y(3).items_center().text_size(10.5).text_color(t.muted)
+      .child(chip().child(svg(`mods/workspace-chrome/${loc.host ? "server" : "monitor"}.svg`).size(10).flex_none().text_color(t.dim))
+        .child(loc.host ?? "This computer"))
+      .child(chip().child(div().size(12).flex_none().rounded(3).bg(fill).flex().items_center().justify_center()
+        .text_size(8).font_bold().text_color("#ffffff").child([...(loc.space ?? "")][0]?.toUpperCase() ?? "?"))
+        .child(div().max_w(110).truncate().child(loc.space ?? "")))
+      .child(chip().text_color(t.dim).child(loc.tab ?? ""));
+  }
+
+  // An agent: name and status, then (with `loc`) where it runs, then model and
+  // context and cache for one whose statusLine sets labels.
+  agentRow(t, a, depth, name, subs, now, loc = null, expiring = false) {
+    const key = `ag-${a.address}`;
     const pic = icon(a.program, 16, t.foreground);
     const when = this.changed[a.address]?.at;
     const idle = a.status === "idle" && !a.focused;
     const labels = this.terms.get(a.address)?.labels;
-    const stats = this.metrics(t, labels, now);
+    const stats = this.metrics(t, labels, now, expiring);
     const model = this.model(t, labels);
-    const card = Boolean(stats || model);
+    const card = Boolean(stats || model || loc);
     const head = h_flex().items_center().gap(9)
       .when(Boolean(pic), (el) => el.child(div().id(`fold-${key}`)
         .when(subs.length > 0, (el) => el.on_click((_e, cx) => { cx.stop_propagation(); this.toggle(`ag-${a.address}`, cx); }))
@@ -324,26 +319,24 @@ export default class AgentTree extends View {
       .child(div().flex_1().min_w(0).truncate().when(card, (el) => el.font_medium()).text_color(idle ? t.muted : t.foreground).child(name))
       .when(subs.length > 0 && this.folded.has(`ag-${a.address}`), (el) => el.child(div().text_size(11).text_color(t.dim).child(String(subs.length))))
       .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
-      .child(card ? this.pill(t, a.status) : this.status(t, a.status));
+      .child(card && !expiring ? this.pill(t, a.status) : this.status(t, expiring ? "idle" : a.status));
     return v_flex()
       .id(key)
-      .pl(pin ? 10 : 8 + depth * 12)
-      .pr(pin ? 10 : 8)
-      .when(card || Boolean(pin), (el) => el.py(8).gap(5))
-      .when(!card && !pin, (el) => el.h(30).justify_center())
+      .pl(8 + depth * 12)
+      .pr(8)
+      .when(card, (el) => el.py(7).gap(4))
+      .when(!card, (el) => el.h(30).justify_center())
       .flex_none()
-      .when(Boolean(pin), (el) => el.rounded(10).bg(t.raised).border_1().border_color(t.border))
-      .when(!pin, (el) => el.rounded(8).when(a.focused, (el) => el.bg(t.selected)))
+      .rounded(8)
+      .when(a.focused, (el) => el.bg(t.selected))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))
       .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, labels?.[LABEL] ?? ""); })
       .tooltip("Right-click for options")
-      .when(Boolean(pin), (el) => el.child(h_flex().gap(7).items_center().min_w(0).text_size(10.5).text_color(t.dim)
-        .child(div().flex_none().text_size(10).font_medium().text_color(t.muted).child("SELECTED"))
-        .child(div().truncate().child(pin))))
       .child(head)
       // 25: the program icon plus the head's gap, so these lines start under the name.
+      .when(Boolean(loc), (el) => el.child(div().pl(pic ? 25 : 0).child(this.where(t, loc))))
       .when(Boolean(model), (el) => el.child(div().pl(pic ? 25 : 0).child(model)))
       .when(Boolean(stats), (el) => el.child(div().pl(pic ? 25 : 0).child(stats)));
   }
@@ -373,59 +366,49 @@ export default class AgentTree extends View {
       return this.frame(t, true, rail, list.length);
     }
 
-    // host -> space -> tab -> agents, in agents() order (space, tab, pane).
     const machineOf = new Map(spaces().map((s) => [s.id, s.machine ?? null]));
-    const hosts = new Map();
-    for (const a of list) {
-      const host = machineOf.get(a.space) ?? (a.address.includes("/") ? a.address.split("/")[0] : null);
-      if (!hosts.has(host)) hosts.set(host, new Map());
-      const sps = hosts.get(host);
-      if (!sps.has(a.space)) sps.set(a.space, { name: a.space_name, tabs: new Map() });
-      const tabs = sps.get(a.space).tabs;
-      if (!tabs.has(a.tab)) tabs.set(a.tab, { name: a.tab_name, members: [] });
-      tabs.get(a.tab).members.push(a);
-    }
-    const showHosts = hosts.size > 1;
-    const membersOf = (sps) => [...sps.values()].flatMap((sp) => [...sp.tabs.values()].flatMap((tb) => tb.members));
+    const hostOf = (a) => machineOf.get(a.space) ?? (a.address.includes("/") ? a.address.split("/")[0] : null);
+    const tabName = (a) => (/^\d+$/.test(a.tab_name ?? "") ? `Tab ${a.tab_name}` : a.tab_name);
+    const isExpiring = (a) => {
+      if (this.urgency.get(a.address) !== "idle") return false;
+      const labels = this.terms.get(a.address)?.labels;
+      const pct = parseInt(labels?.["agent.ctx"], 10);
+      const left = parseInt(labels?.["agent.cache_until"], 10) * 1000 - now;
+      return pct >= EXPIRING_CTX && left > 0 && left < EXPIRING_MS;
+    };
+    // Done counts as needing you: it finished and you haven't looked yet.
+    const groups = [
+      { id: "need", label: "Needs you", color: t.blocked, test: (a) => ["blocked", "done"].includes(this.urgency.get(a.address)) },
+      { id: "expiring", label: "Cache expiring", color: ORANGE, test: isExpiring },
+      { id: "working", label: "Working", color: t.dim, test: (a) => this.urgency.get(a.address) === "working" },
+      { id: "idle", label: "Idle", color: t.dim, test: () => true },
+    ];
+    const placed = new Map();
+    for (const a of list) placed.set(a.address, groups.find((g) => g.test(a)).id);
 
     const rows = [];
-    for (const [host, sps] of hosts) {
-      const hostId = `host-${host ?? "local"}`;
-      const d0 = showHosts ? 1 : 0;
-      if (showHosts) {
-        rows.push(this.header(t, hostId, 0, host ?? "This computer", membersOf(sps)));
-        if (this.folded.has(hostId)) continue;
-      }
-      for (const [spaceId, sp] of sps) {
-        const spId = `sp-${spaceId}`;
-        rows.push(this.header(t, spId, d0, sp.name || "", membersOf(new Map([[spaceId, sp]]))));
-        if (this.folded.has(spId)) continue;
-        for (const [tabId, tb] of sp.tabs) {
-          const tbId = `tb-${tabId}`;
-          rows.push(this.header(t, tbId, d0 + 1, /^\d+$/.test(tb.name ?? "") ? `Tab ${tb.name}` : tb.name, tb.members));
-          if (this.folded.has(tbId)) continue;
-          for (const a of tb.members) {
-            const subs = this.tree(all, a.address);
-            rows.push(this.agentRow(t, a, d0 + 2, agentName(a, this.terms.get(a.address)), subs, now));
-            if (!this.folded.has(`ag-${a.address}`)) rows.push(...subs.map((s) => this.subRow(t, s, d0 + 2, shown)));
-          }
-        }
+    for (const g of groups) {
+      const members = list.filter((a) => placed.get(a.address) === g.id);
+      if (!members.length) continue;
+      const gid = `grp-${g.id}`;
+      const open = !this.folded.has(gid);
+      rows.push(h_flex().id(gid).pl(8).pr(8).pt(10).pb(4).flex_none().gap(6).items_center()
+        .text_size(10.5).font_semibold().text_color(g.color).cursor_pointer()
+        .on_click((_e, cx) => this.toggle(gid, cx))
+        .child(div().child(`${g.label.toUpperCase()} · ${members.length}`))
+        .when(!open, (el) => el.child(svg("mods/workspace-chrome/chevron-right.svg").size(10).flex_none())));
+      if (!open) continue;
+      for (const a of members) {
+        const subs = this.tree(all, a.address);
+        const loc = { host: hostOf(a), space: a.space_name, spaceId: a.space, tab: tabName(a) };
+        rows.push(this.agentRow(t, a, 0, agentName(a, this.terms.get(a.address)), subs, now, loc, g.id === "expiring"));
+        if (!this.folded.has(`ag-${a.address}`)) rows.push(...subs.map((s) => this.subRow(t, s, 0, shown)));
       }
     }
-    // The tree can't be scrolled from code, so the focused agent is pinned
-    // above it instead: it stays on screen however far the list is scrolled.
-    const sel = list.find((a) => a.focused);
-    let pinned = null;
-    if (sel) {
-      const host = machineOf.get(sel.space) ?? (sel.address.includes("/") ? sel.address.split("/")[0] : null);
-      const tab = /^\d+$/.test(sel.tab_name ?? "") ? `Tab ${sel.tab_name}` : sel.tab_name;
-      const where = [host ?? "This computer", sel.space_name, tab].filter(Boolean).join(" › ");
-      pinned = this.agentRow(t, sel, 0, agentName(sel, this.terms.get(sel.address)), [], now, where);
-    }
-    return this.frame(t, false, rows, list.length, pinned);
+    return this.frame(t, false, rows, list.length);
   }
 
-  frame(t, collapsed, rows, count, pinned = null) {
+  frame(t, collapsed, rows, count) {
     return v_flex()
       .size_full()
       .min_h(0)
@@ -435,9 +418,6 @@ export default class AgentTree extends View {
       .text_size(13)
       .when(!collapsed, (el) => el.child(h_flex().px(16).h(41).pt(14).pb(5).flex_none().items_center()
         .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Agents"))))
-      .when(!collapsed && Boolean(pinned), (el) => el
-        .child(div().flex_none().px(8).pb(8).child(pinned))
-        .child(div().flex_none().mx(16).mb(6).h(1).bg(t.border)))
       .when(count === 0 && !collapsed, (el) =>
         el.child(div().px(12).text_size(12).text_color(t.dim).child("No agent status yet. Agents show up here when they report their status.")))
       .child(v_flex().id("ag-list").flex_1().min_h(0).px(collapsed ? 0 : 8).overflow_y_scrollbar().mode("always").children(rows))
