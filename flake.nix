@@ -8,7 +8,7 @@
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
     # Pinned by rev, so `nix flake update` leaves it alone: the last master
     # with a buildable opencode. See the opencode entry in overlays/shared.nix.
-    # WAIT-FOR green: https://hydra.nixos.org/job/nixpkgs/unstable/opencode.x86_64-linux
+    # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/582675
     nixpkgs-opencode.url = "github:NixOS/nixpkgs/f188e1d0674ccfa03dadf09fcebd58fcba3da4b0";
     ################
     # Home Manager #

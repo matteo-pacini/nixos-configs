@@ -237,6 +237,7 @@ in
           run rm -rf "$dir"
           run install -Dm644 ${./herdr/deploy/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/deploy/watch.js} "$dir/watch.js"
+          run install -Dm644 ${./herdr/deploy/prompts.js} "$dir/prompts.js"
           run install -Dm644 ${./herdr/deploy/mod.json} "$dir/mod.json"
         '';
       })

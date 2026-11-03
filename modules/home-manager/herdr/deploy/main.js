@@ -8,9 +8,10 @@
 // machine this runs on is read locally.
 
 import { View, div, svg } from "gpui-kit";
-import { v_flex, h_flex } from "gpui-base";
-import { exec, theme, window, run, spaces, panes, focused, settings } from "herdr";
+import { v_flex, h_flex, Textarea, TextareaState } from "gpui-base";
+import { exec, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props } from "herdr";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
+import { claudeAction } from "./prompts.js";
 
 const REPO = "matteo-pacini/nixos-configs";
 const HOSTS = ["BrightFalls", "Nexus", "NightSprings", "CauldronLake", "WorkLaptop"];
@@ -51,6 +52,30 @@ const PROBE = [
   "comin status --json",
   "echo '@@booted'; readlink -f /run/booted-system 2>/dev/null || true",
 ].join("; ");
+
+// A Watch row's right-click menu; `p` is the popup's props ({ tag, root, space }).
+function menuItems(p) {
+  const claude = claudeAction(p.tag);
+  return [
+    { label: "Open in nvim", icon: "file-text", id: "nvim" },
+    ...(claude ? [{ label: claude.label, icon: "terminal", id: "claude" }] : []),
+    ...(p.tag.url ? [{ label: "Open upstream", icon: "search", id: "upstream" }] : []),
+  ];
+}
+
+const openUrl = (url) => {
+  if (url) exec(window()?.platform === "macos" ? "open" : "xdg-open", [url]);
+};
+
+// The review dialog for `p.tag`'s Claude Code prompt; `p` is { tag, root, space }.
+function openReview(p) {
+  const a = claudeAction(p.tag);
+  openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 640, height: 520,
+    props: { review: { ...p, title: a.label, text: a.text } } });
+}
+
+// A new tab in `space`, at the checkout's root, running `argv`.
+const openTab = (name, root, space, argv) => run("tab.new", { name, space, folder: root, argv });
 
 const short = (sha) => (sha ? sha.slice(0, 7) : "—");
 
@@ -100,6 +125,8 @@ function verdict(h, deploySha) {
 
 export default class Deploy extends View {
   init(_props, cx) {
+    if (props()?.menu) return this.initMenu(cx);
+    if (props()?.review) return this.initReview();
     this.hosts = {};
     this.collapsed = JSON.parse(localStorage.getItem("collapsed") ?? "{}");
     this.follow(cx);
@@ -223,25 +250,86 @@ export default class Deploy extends View {
     });
   }
 
-  openUrl(url) {
-    if (url) exec(window()?.platform === "macos" ? "open" : "xdg-open", [url]);
-  }
-
   openRun() {
-    this.openUrl(this.run?.url);
+    openUrl(this.run?.url);
   }
 
-  // A new tab in the current space, at the checkout's root: nvim on the tag's
-  // line, with neo-tree open on the file. The repo's space is the one shown,
-  // so a remote checkout opens on its own machine.
-  openInEditor(tag) {
+  // Right-click on a Watch row: a popup at the pointer, drawn like agent-tree's.
+  // The repo's space is the one shown, so a remote checkout's tabs open on its
+  // own machine.
+  target(tag) {
+    return { tag, root: this.repo.root, space: spaces().find((s) => s.active)?.id };
+  }
+
+  openMenu(tag) {
     if (!this.repo) return;
-    run("tab.new", {
-      name: tag.label,
-      space: spaces().find((s) => s.active)?.id,
-      folder: this.repo.root,
-      argv: ["nvim", `+${tag.line}`, tag.file, "-c", "Neotree show reveal"],
-    });
+    const p = this.target(tag);
+    openOverlay({ mod: "deploy", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: { menu: p } });
+  }
+
+  initMenu(cx) {
+    this.at = 0;
+    this.handle = cx.focus_handle();
+    this.handle.focus();
+  }
+
+  // nvim opens on the tag's line with neo-tree revealing the file; Claude Code
+  // goes through the review dialog first, so the prompt can be edited.
+  chooseMenu(i) {
+    const o = props(), p = o.menu, it = menuItems(p)[i];
+    if (!it) return;
+    closeOverlay(o.overlay);
+    if (it.id === "nvim") openTab(p.tag.label, p.root, p.space, ["nvim", `+${p.tag.line}`, p.tag.file, "-c", "Neotree show reveal"]);
+    if (it.id === "upstream") openUrl(p.tag.url);
+    if (it.id === "claude") openReview(p);
+  }
+
+  menuPopup(t) {
+    const p = props(), list = menuItems(p.menu);
+    return v_flex().id("w-menu").track_focus(this.handle).w_full().min_h(0).p(5).bg(t.popover).text_size(12.8)
+      .on_key_down((e, cx) => {
+        if (e.key === "down") this.at = (this.at + 1) % list.length;
+        else if (e.key === "up") this.at = (this.at + list.length - 1) % list.length;
+        else if (e.key === "enter") this.chooseMenu(this.at);
+        else if (e.key === "escape") closeOverlay(p.overlay);
+        else return;
+        cx.notify();
+      })
+      .children(list.map((it, i) => h_flex().id(`wm-${i}`).h(31).px(8).gap(9).rounded(7).items_center()
+        .text_color(t.foreground)
+        .when(i === this.at, (el) => el.bg(t.selected))
+        .hover((s) => s.bg(t.hover)).on_click(() => this.chooseMenu(i))
+        .child(svg(`mods/workspace-chrome/${it.icon}.svg`).size(14).flex_none().text_color(t.muted))
+        .child(div().flex_1().child(it.label))));
+  }
+
+  initReview() {
+    this.prompt = TextareaState.new({ value: props().review.text });
+    this.prompt.focus();
+  }
+
+  startClaude() {
+    const p = props(), r = p.review;
+    closeOverlay(p.overlay);
+    openTab(`claude: ${r.tag.label}`, r.root, r.space, ["claude", this.prompt.value()]);
+  }
+
+  reviewDialog(t) {
+    const p = props(), r = p.review;
+    const button = (id, text, primary, action) => h_flex().id(id).h(32).px(14).items_center().rounded(8)
+      .border_1().border_color(primary ? t.solid : t.input).bg(primary ? t.solid : t.raised)
+      .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
+      .hover((s) => s.opacity(0.88)).on_click(action).child(text);
+    return v_flex().size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground)
+      .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(p.overlay); cx.stop_propagation(); } })
+      .child(div().text_size(15).font_semibold().child(r.title))
+      .child(div().pt(4).pb(10).text_size(11.5).text_color(t.dim)
+        .child(`${r.tag.label} · ${r.tag.file}:${r.tag.line} · runs in a new tab at the checkout. Edit the prompt if you like.`))
+      .child(Textarea.new(this.prompt).flex_1().min_h(0).p(10).rounded(9).border_1().border_color(t.accent)
+        .bg(t.background).text_size(12.5).text_color(t.foreground))
+      .child(h_flex().pt(14).gap(8).justify_end()
+        .child(button("rv-cancel", "Cancel", false, () => closeOverlay(p.overlay)))
+        .child(button("rv-start", "Start in Claude Code", true, () => this.startClaude())));
   }
 
   toggle(section, cx) {
@@ -284,9 +372,8 @@ export default class Deploy extends View {
       .child(right);
   }
 
-  card(t, grow) {
-    return v_flex().bg(t.background).border_1().border_color(t.border).rounded(10).overflow_hidden()
-      .when(grow, (el) => el.flex_1().min_h(0)).when(!grow, (el) => el.flex_none());
+  card(t) {
+    return v_flex().bg(t.background).border_1().border_color(t.border).rounded(10).overflow_hidden().flex_none();
   }
 
   // The card's header bar; the chevron, icon and title collapse the card.
@@ -365,7 +452,7 @@ export default class Deploy extends View {
       .child(div().id("refresh").ml(4).px(6).py(2).rounded(6).cursor_pointer().text_size(11).text_color(t.muted)
         .hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.refresh(cx); this.loadWatch(cx); })
         .child(this.loading ? "…" : "Refresh"));
-    return this.card(t, false)
+    return this.card(t)
       .child(this.cardHeader("deploy", "Deploy", "server", "accent", header, t))
       .when(Boolean(this.ghError), (el) => el.child(div().px(14).pt(8).text_size(11).text_color(t.ansi1).child(`GitHub: ${this.ghError}`)))
       .when(open, (el) => el
@@ -401,12 +488,21 @@ export default class Deploy extends View {
     const watch = tag.kind === "watch";
     const dot = { ready: "ansi2", unknown: "ansi3", closed: "ansi3" }[tag.state] ?? "dim";
     const ref = tag.kind === "version" ? "nixos-unstable" : shortRef(tag);
-    const sub = [ref, detail].filter(Boolean).join(" · ");
+    const action = claudeAction(tag);
+    const ready = tag.state === "ready";
+    const right = action
+      ? h_flex().id(`watch-act-${i}`).flex_none().h(20).px(8).rounded(6).items_center().text_size(11).font_semibold().cursor_pointer()
+        .when(ready, (el) => el.bg(t.ansi2).text_color(t.background))
+        .when(!ready, (el) => el.border_1().border_color(t.input).text_color(t.muted).hover((s) => s.text_color(t.foreground)))
+        .on_click((_e, cx) => { cx.stop_propagation(); if (this.repo) openReview(this.target(tag)); })
+        .child(ready ? "Fix" : "Check")
+      : div();
+    const sub = [ref, chipText, detail].filter(Boolean).join(" · ");
     return this.item(`watch-${i}`, this.marker(dot, watch, t),
-      div().font_medium().truncate().text_color(watch ? t.muted : t.foreground).child(tag.label), sub, this.chip(chipText, chipColor, t), t)
+      div().truncate().text_color(watch ? t.muted : t.foreground).when(ready, (el) => el.font_semibold()).child(tag.label), sub, right, t)
       .cursor_pointer()
-      .when(Boolean(tag.url), (el) => el.on_click(() => this.openUrl(tag.url)))
-      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openInEditor(tag); });
+      .when(Boolean(tag.url), (el) => el.on_click(() => openUrl(tag.url)))
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(tag); });
   }
 
   watchCard(t) {
@@ -418,40 +514,55 @@ export default class Deploy extends View {
       .when(!this.watchLoading && Boolean(this.tags), (el) => el
         .when(count("ready") > 0, (el) => el.child(this.chip(`${count("ready")} ready`, "ansi2", t)))
         .child(this.chip(`${count("waiting")} waiting`, "dim", t)));
+    // Ready tags in a box of their own; every other group folds to a line
+    // with a count, folded until opened.
+    const ready = tags.filter((tag) => tag.state === "ready");
     const groups = [
-      ["READY", (tag) => tag.state === "ready"],
-      ["NOT CHECKED", (tag) => tag.state === "unknown"],
-      ["WAITING", (tag) => tag.state === "waiting"],
-      ["MANUAL", (tag) => tag.state === "manual"],
-      ["WATCHING", (tag) => tag.kind === "watch"],
+      ["check", "Check by hand", "ansi3", (tag) => tag.state === "unknown"],
+      ["waiting", "Waiting", "dim", (tag) => tag.state === "waiting"],
+      ["manual", "Manual", "dim", (tag) => tag.state === "manual"],
+      ["watching", "Watching", "dim", (tag) => tag.kind === "watch"],
     ];
     const rows = [];
-    for (const [label, test] of groups) {
+    if (ready.length) rows.push(v_flex().mt(4).mb(4).p(4).gap(2).rounded(10).bg(t.ansi2 + "14").border_1().border_color(t.ansi2 + "40")
+      .child(div().px(6).pt(4).pb(2).text_size(10.5).font_semibold().text_color(t.ansi2).child(`READY TO FIX · ${ready.length}`))
+      .children(ready.map((tag) => this.watchItem(tag, tags.indexOf(tag), t))));
+    for (const [id, label, color, test] of groups) {
       const members = tags.filter(test);
       if (!members.length) continue;
-      rows.push(div().px(8).pt(10).pb(4).text_size(10).text_color(t.dim).child(label));
-      for (const tag of members) rows.push(this.watchItem(tag, tags.indexOf(tag), t));
+      const key = `open-${id}`, shown = Boolean(this.collapsed[key]);
+      rows.push(h_flex().id(`grp-${id}`).h(30).px(8).gap(8).rounded(8).items_center().cursor_pointer()
+        .text_size(12.5).text_color(shown ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
+        .on_click((_e, cx) => this.toggle(key, cx))
+        .child(svg(`mods/workspace-chrome/chevron-${shown ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim))
+        .child(this.marker(color, id === "watching", t))
+        .child(div().flex_1().child(label))
+        .child(div().text_size(11).text_color(t.dim).child(String(members.length))));
+      if (shown) rows.push(v_flex().pl(14).gap(2).children(members.map((tag) => this.watchItem(tag, tags.indexOf(tag), t))));
     }
     const behind = this.checkoutBehind();
     const c = this.checkout;
-    return this.card(t, open)
+    // Ends with its content; the whole panel scrolls when that's too tall.
+    return this.card(t)
       .child(this.cardHeader("watch", "Watch", "clock", "ansi2", header, t))
       .when(open && Boolean(c), (el) => el.child(h_flex().flex_none().px(14).pt(8).gap(4).text_size(11).text_color(t.dim).min_w(0)
         .child(div().truncate().child(`${c.machine ?? this.local ?? "this machine"} · ${c.branch ?? "?"} @ ${c.head?.slice(0, 7) ?? "?"}`))
         .when(Boolean(behind), (el) => el.child(div().flex_none().text_color(t.blocked).child(`· ${behind}`)))))
-      .when(open, (el) => el.child(div().flex_none().px(14).pt(2).text_size(11).text_color(t.dim).child("Click opens upstream · right-click edits in nvim")))
+      .when(open, (el) => el.child(div().flex_none().px(14).pt(2).text_size(11).text_color(t.dim).child("Click opens upstream · right-click for more")))
       .when(open && Boolean(this.watchError), (el) => el.child(div().px(14).pt(6).text_size(11).text_color(t.ansi1).child(this.watchError)))
       .when(open && Boolean(this.tags) && !tags.length && !this.watchLoading, (el) => el.child(
         div().px(14).py(10).text_size(12).text_color(t.muted).child(behind
           ? "No WAIT-FOR / WATCH tags in this checkout. Pull master to see them."
           : "No WAIT-FOR / WATCH tags in this checkout.")))
-      .when(open, (el) => el.child(v_flex().id("watch-list").flex_1().min_h(0).overflow_y_scrollbar().px(6).pb(6).gap(2).children(rows)));
+      .when(open, (el) => el.child(v_flex().px(6).pb(6).gap(2).children(rows)));
   }
 
   render(cx) {
-    this.follow(cx);
     const t = theme();
-    return v_flex().size_full().min_h(0).gap(8).text_color(t.foreground).text_size(13)
+    if (props()?.menu) return this.menuPopup(t);
+    if (props()?.review) return this.reviewDialog(t);
+    this.follow(cx);
+    return v_flex().id("deploy-panel").size_full().min_h(0).overflow_y_scrollbar().gap(8).text_color(t.foreground).text_size(13)
       .child(this.deployCard(t))
       .child(this.watchCard(t));
   }

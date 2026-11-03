@@ -103,7 +103,7 @@
     #     has since fixed the Darwin case by exporting NODE_EXTRA_CA_CERTS
     #     (already in the master pin), which is what failed for us above: drop
     #     this only once claude signs in and calls the API on a Mac without it.
-    #     WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/579756
+    #     WAIT-FOR manual: https://github.com/NixOS/nixpkgs/pull/579756 (checked 2026-11-03)
     #
     # Issues to keep an eye on (no action yet — no clean Nix-level fix today,
     # but watch for upstream changes that would let us address them here):
@@ -141,10 +141,9 @@
     #
     # Temporarily held at 2.2.1 via the nixpkgs-opencode input: on master,
     # 2.2.5's node_modules fails its fixed-output hash on every build (Hydra
-    # too, https://hydra.nixos.org/job/nixpkgs/unstable/opencode.x86_64-linux).
-    # Once that job is green again, switch back to masterPkgs.opencode and
-    # drop the nixpkgs-opencode input from flake.nix.
-    # WAIT-FOR green: https://hydra.nixos.org/job/nixpkgs/unstable/opencode.x86_64-linux
+    # too, NixOS/nixpkgs#582673). Once the hash fix is merged, switch back to
+    # masterPkgs.opencode and drop the nixpkgs-opencode input from flake.nix.
+    # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/582675
     opencode = opencodePkgs.opencode;
 
     # Not in nixos-unstable yet (NixOS/nixpkgs#581031). herdr-desktop pins
