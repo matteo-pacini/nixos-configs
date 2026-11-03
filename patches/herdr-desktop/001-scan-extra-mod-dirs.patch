@@ -1,0 +1,125 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Pacini <m@matteopacini.me>
+Date: Tue, 3 Nov 2026 22:42:33 +0000
+Subject: [PATCH 1/3] mods: load mods from folders in HERDR_APP_MODS_PATH
+
+herdr-app only loads mods from ~/.config/herdr-app/mods (plus its own frame
+mods). This adds HERDR_APP_MODS_PATH, a PATH-style list of extra folders whose
+subfolders with a main.js load as mods too, so a repo can ship a panel without
+symlinking it into the home. On a name clash mods/ wins, then frame mods, then
+the extra folders in order. The startup layout check and the key cleanup now
+look in the extra folders too, so a layout or binding naming such a mod is kept.
+
+Mods are trusted code with unrestricted exec and network access. Every folder
+listed here runs automatically, so a git pull in a listed repo changes code
+running with your environment. List only folders you trust.
+---
+ src/keys.rs   |  2 +-
+ src/mods.rs   | 52 ++++++++++++++++++++++++++++++++++++++++++++++++---
+ src/window.rs |  2 +-
+ 3 files changed, 51 insertions(+), 5 deletions(-)
+
+diff --git a/src/keys.rs b/src/keys.rs
+index eed7a7b..fb0785a 100644
+--- a/src/keys.rs
++++ b/src/keys.rs
+@@ -96,7 +96,7 @@ pub(crate) fn current(action: &str) -> String {
+ fn gone_mod(action: &str) -> bool {
+     let name = action.split_once(':').map_or(action, |(n, _)| n);
+     crate::commands::find(name).is_none()
+-        && name.split_once('.').is_some_and(|(m, _)| !m.starts_with("frame-") && !crate::mods::mods_dir().join(m).is_dir())
++        && name.split_once('.').is_some_and(|(m, _)| !m.starts_with("frame-") && crate::mods::mod_dir(m).is_none())
+ }
+ 
+ fn valid_action(action: &str) -> bool {
+diff --git a/src/mods.rs b/src/mods.rs
+index 3a171dd..e03fbf1 100644
+--- a/src/mods.rs
++++ b/src/mods.rs
+@@ -55,6 +55,23 @@ pub fn mods_dir() -> PathBuf {
+     app_dir().join("mods")
+ }
+ 
++/// More folders of mods, from `$HERDR_APP_MODS_PATH` (separated like `PATH`),
++/// in order. Folders that don't exist are left out.
++pub fn extra_mod_dirs() -> Vec<PathBuf> {
++    let Some(list) = std::env::var_os("HERDR_APP_MODS_PATH") else { return Vec::new() };
++    std::env::split_paths(&list).filter(|p| !p.as_os_str().is_empty()).filter_map(|p| p.canonicalize().ok()).filter(|p| p.is_dir()).collect()
++}
++
++/// The folder of the person's mod `name`: `mods/<name>`, else the first extra
++/// folder (`extra_mod_dirs`) holding `<name>/main.js`.
++pub fn mod_dir(name: &str) -> Option<PathBuf> {
++    let own = mods_dir().join(name);
++    if own.is_dir() {
++        return Some(own);
++    }
++    extra_mod_dirs().into_iter().map(|d| d.join(name)).find(|d| d.join("main.js").is_file())
++}
++
+ const AGENTS_MD: &str = include_str!("../defaults/AGENTS.md");
+ 
+ /// Writes the agent guide and API types, and installs or updates the default
+@@ -348,10 +365,24 @@ pub struct Found {
+     pub stamp: SystemTime,
+ }
+ 
+-/// Every mod folder that has a main.js.
++/// Every mod folder that has a main.js. On a name clash `mods/` wins, then
++/// the frame's, then the extra folders in order.
+ pub fn scan() -> Vec<Found> {
+-    let mut found = scan_dir(&mods_dir(), "");
+-    found.extend(scan_dir(&frame_dir(), "frame-"));
++    scan_roots(&mods_dir(), &frame_dir(), &extra_mod_dirs())
++}
++
++fn scan_roots(mods: &Path, frame: &Path, extra: &[PathBuf]) -> Vec<Found> {
++    let mut found = scan_dir(mods, "");
++    found.extend(scan_dir(frame, "frame-"));
++    for dir in extra {
++        for f in scan_dir(dir, "") {
++            if found.iter().any(|o| o.id == f.id) {
++                tracing::warn!("mod {} in {} is hidden by another of the same name", f.id, dir.display());
++                continue;
++            }
++            found.push(f);
++        }
++    }
+     found.sort_by(|a, b| a.id.cmp(&b.id));
+     found
+ }
+@@ -1116,6 +1147,21 @@ pub fn prepare_load(inst: &Instance) -> u64 {
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn mods_win_over_extra_folders_and_earlier_extras_over_later() {
++        let root = std::env::temp_dir().join(format!("herdr-mods-path-{}", std::process::id()));
++        let _ = std::fs::remove_dir_all(&root);
++        for (dir, name) in [("mods", "a"), ("x1", "a"), ("x1", "b"), ("x2", "b"), ("x2", "c")] {
++            std::fs::create_dir_all(root.join(dir).join(name)).unwrap();
++            std::fs::write(root.join(dir).join(name).join("main.js"), "").unwrap();
++        }
++        let found = scan_roots(&root.join("mods"), &root.join("frame"), &[root.join("x1"), root.join("x2")]);
++        let got: Vec<(String, PathBuf)> = found.into_iter().map(|f| (f.id, f.dir)).collect();
++        let want: Vec<(String, PathBuf)> = vec![("a".into(), root.join("mods/a")), ("b".into(), root.join("x1/b")), ("c".into(), root.join("x2/c"))];
++        assert_eq!(got, want);
++        std::fs::remove_dir_all(&root).unwrap();
++    }
++
+     #[cfg(unix)]
+     #[test]
+     fn known_agents_uses_snapshot_and_refreshes_changed_commands() {
+diff --git a/src/window.rs b/src/window.rs
+index 3c1f602..b1aed80 100644
+--- a/src/window.rs
++++ b/src/window.rs
+@@ -224,7 +224,7 @@ fn missing_mods(name: &str) -> Vec<String> {
+     walk(&layout, &mut used);
+     used.sort();
+     used.dedup();
+-    used.retain(|m| !m.starts_with("frame-") && !mods::mods_dir().join(m).is_dir());
++    used.retain(|m| !m.starts_with("frame-") && mods::mod_dir(m).is_none());
+     used
+ }
+ 

@@ -1,0 +1,84 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Pacini <m@matteopacini.me>
+Date: Tue, 3 Nov 2026 22:43:09 +0000
+Subject: [PATCH 2/3] files: hot-reload mods in HERDR_APP_MODS_PATH folders
+
+Mods hot-reload because one file watcher covers the app's home and maps
+mods/<name>/... changes to that mod. Folders from HERDR_APP_MODS_PATH sit outside
+the home, so edits there were never seen. Watch each of them too and report
+<folder>/<name>/... as mods/<name>/..., so the existing reload path handles them.
+A change under a name that mods/ also has is dropped, since that mod isn't the
+one loaded. The list is read once, at startup.
+---
+ src/files.rs | 35 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/src/files.rs b/src/files.rs
+index a50e0ce..f2ada02 100644
+--- a/src/files.rs
++++ b/src/files.rs
+@@ -16,12 +16,14 @@ pub fn watch(home: &Path) -> Option<async_channel::Receiver<Changed>> {
+     let (tx, rx) = async_channel::unbounded();
+     let root = home.canonicalize().unwrap_or_else(|_| home.to_path_buf());
+     let base = root.clone();
++    let extras = crate::mods::extra_mod_dirs();
++    let watched_extras = extras.clone();
+     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+         let Ok(event) = event else { return };
+         if matches!(event.kind, notify::EventKind::Access(_)) {
+             return;
+         }
+-        let changed: Changed = event.paths.iter().filter_map(|p| p.strip_prefix(&base).ok()).filter(|p| watched(p)).map(Path::to_path_buf).collect();
++        let changed: Changed = event.paths.iter().filter_map(|p| relative(p, &base, &extras)).filter(|p| watched(p)).collect();
+         if !changed.is_empty() {
+             let _ = tx.send_blocking(changed);
+         }
+@@ -29,10 +31,27 @@ pub fn watch(home: &Path) -> Option<async_channel::Receiver<Changed>> {
+     .map_err(|e| tracing::warn!("file watching unavailable ({e}); polling instead"))
+     .ok()?;
+     watcher.watch(&root, RecursiveMode::Recursive).map_err(|e| tracing::warn!("cannot watch {} ({e}); polling instead", root.display())).ok()?;
++    for dir in &watched_extras {
++        if let Err(e) = watcher.watch(dir, RecursiveMode::Recursive) {
++            tracing::warn!("cannot watch {} ({e}); its mods won't reload on edit", dir.display());
++        }
++    }
+     WATCHER.set(std::sync::Mutex::new(watcher)).ok()?;
+     Some(rx)
+ }
+ 
++/// `path` relative to the home. A path in an extra mods folder
++/// (`<extra>/<name>/...`) reads as `mods/<name>/...`, unless `mods/<name>`
++/// exists and so is the mod that loads under that name.
++fn relative(path: &Path, base: &Path, extras: &[PathBuf]) -> Option<PathBuf> {
++    if let Ok(rel) = path.strip_prefix(base) {
++        return Some(rel.to_path_buf());
++    }
++    let rest = extras.iter().find_map(|d| path.strip_prefix(d).ok())?;
++    let name = rest.components().next()?;
++    (!base.join("mods").join(name).is_dir()).then(|| Path::new("mods").join(rest))
++}
++
+ /// The files that change what the app shows. The app's own state files
+ /// (view.json, shared.json, data/) change all the time and aren't.
+ fn watched(rel: &Path) -> bool {
+@@ -148,6 +167,20 @@ pub fn mod_of(rel: &Path) -> Option<String> {
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn edits_in_an_extra_folder_read_as_mods() {
++        let root = std::env::temp_dir().join(format!("herdr-files-extra-{}", std::process::id()));
++        let _ = std::fs::remove_dir_all(&root);
++        let (home, extra) = (root.join("home"), root.join("extra"));
++        std::fs::create_dir_all(home.join("mods/shadowed")).unwrap();
++        let extras = [extra.clone()];
++        assert_eq!(relative(&home.join("keys.json"), &home, &extras), Some(PathBuf::from("keys.json")));
++        assert_eq!(relative(&extra.join("probe/main.js"), &home, &extras), Some(PathBuf::from("mods/probe/main.js")));
++        assert_eq!(relative(&extra.join("shadowed/main.js"), &home, &extras), None);
++        assert_eq!(relative(&root.join("elsewhere/x"), &home, &extras), None);
++        std::fs::remove_dir_all(&root).unwrap();
++    }
++
+     #[test]
+     fn only_what_people_edit_counts() {
+         assert!(watched(Path::new("settings.json")));
