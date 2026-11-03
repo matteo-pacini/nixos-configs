@@ -39,10 +39,10 @@ let
     text = builtins.readFile ./herdr/claude-statusline.sh;
   };
 
-  # The agent-tree layout, adjusted for the mods that live in it: the deploy
-  # block beside the work area (mods.deploy), and space-cards in place of the
-  # shipped spaces list (mods.spaceCards). Generated rather than a second
-  # snapshot of `main`.
+  # The agent-tree layout, adjusted for the mods that live in it: claude-pane
+  # as the pane header, the deploy block beside the work area (mods.deploy),
+  # and space-cards in place of the shipped spaces list (mods.spaceCards).
+  # Generated rather than a second snapshot of `main`.
   agentTreeLayout =
     let
       deployBlock = {
@@ -55,7 +55,9 @@ let
       };
       adjust =
         node:
-        if node.id or null == "work-body" && cfg.mods.deploy.enable then
+        if node.id or null == "main" then
+          lib.recursiveUpdate node { content.pane.header.content.mod = "claude-pane"; }
+        else if node.id or null == "work-body" && cfg.mods.deploy.enable then
           node // { children = node.children ++ [ deployBlock ]; }
         else if node.id or null == "spaces" && cfg.mods.spaceCards.enable then
           node
@@ -69,12 +71,9 @@ let
         else
           node;
     in
-    if cfg.mods.deploy.enable || cfg.mods.spaceCards.enable then
-      pkgs.writeText "agent-tree.json" (
-        builtins.toJSON (adjust (lib.importJSON ./herdr/layouts/agent-tree.json))
-      )
-    else
-      ./herdr/layouts/agent-tree.json;
+    pkgs.writeText "agent-tree.json" (
+      builtins.toJSON (adjust (lib.importJSON ./herdr/layouts/agent-tree.json))
+    );
 in
 {
   options.custom.herdr = {
@@ -175,6 +174,10 @@ in
           run rm -rf "$dir"
           run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
+          dir="${config.xdg.configHome}/herdr-app/mods/claude-pane"
+          run rm -rf "$dir"
+          run install -Dm644 ${./herdr/claude-pane/main.js} "$dir/main.js"
+          run install -Dm644 ${./herdr/claude-pane/mod.json} "$dir/mod.json"
         '';
 
         # A snapshot of herdr-app's shipped `main` layout with the agents block

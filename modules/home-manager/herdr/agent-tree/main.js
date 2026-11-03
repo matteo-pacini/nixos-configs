@@ -6,7 +6,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, spaces, focused, run, hc, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
+import { agents, terminals, spaces, focused, run, hc, exec, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
 
 const LABEL = "agent.name";
 
@@ -76,10 +76,41 @@ function menuItems(p) {
   return [
     { label: "Rename", icon: "square-pen", action: "rename" },
     ...(p.claude ? [slash("Clear", "terminal", "/clear"), slash("Compact", "layers", "/compact")] : []),
+    ...(p.restart ? [{ label: `Restart on ${p.restart.latest}`, icon: "terminal", action: "restart",
+      disabled: p.busy, hint: p.busy ? "wait for idle" : "resume" }] : []),
   ];
 }
 
 // Types `text` and Enter into an agent's terminal (`machine/t7` for a remote one).
+// The claude-code version on PATH per machine ("" for this one), re-read at
+// most once a minute: { version, at }. Same check as the claude-pane mod.
+const installed = new Map();
+const INSTALLED_MS = 60000;
+const INSTALLED = 'readlink -f /etc/profiles/per-user/"$USER"/bin/claude 2>/dev/null || readlink -f "$(command -v claude)"';
+
+function cmpVersion(a, b) {
+  const x = a.split(".").map(Number), y = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] || 0) - (y[i] || 0);
+    if (d) return Math.sign(d);
+  }
+  return 0;
+}
+
+// Exits Claude in `address`, waits for its shell, then resumes `session` with
+// the claude now on PATH. hc addresses remote terminals itself, so this runs here.
+const RESTART = `hc send "$1" /exit >/dev/null || exit 1
+for _ in $(seq 60); do
+  hc get "$1" --json | grep -q 'claude-code-[0-9]' || break
+  sleep 0.5
+done
+hc send "$1" "claude --resume $2" >/dev/null`;
+
+async function restartClaude(address, session) {
+  const r = await exec("sh", ["-c", RESTART, "restart", address, session]);
+  if (r.code !== 0) notify({ title: "Couldn't restart Claude Code", body: r.stderr || r.stdout, level: "error" });
+}
+
 async function sendTo(address, text) {
   const r = await hc(["send", address, text]);
   if (r.code !== 0) notify({ title: `Couldn't send ${text}`, body: r.stderr || r.stdout, level: "error" });
@@ -132,12 +163,11 @@ export default class AgentTree extends View {
   }
 
   // Right-click menu, a popup at the pointer drawn like the shipped `menu` mod.
-  openMenu(a, current) {
-    const n = menuItems({ claude: a.app === "claude-code" }).length;
-    openOverlay({
-      mod: "agent-tree", kind: "popup", width: 200, height: n * 31 + 10,
-      props: { menu: a.address, value: current, claude: a.app === "claude-code", blocked: a.status === "blocked" },
-    });
+  // `restart`: { latest, session } when this Claude is older than the installed one.
+  openMenu(a, current, restart = null) {
+    const p = { menu: a.address, value: current, claude: a.app === "claude-code", blocked: a.status === "blocked",
+      restart, busy: a.status === "blocked" || a.status === "working" };
+    openOverlay({ mod: "agent-tree", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: p });
   }
 
   initMenu(cx) {
@@ -152,6 +182,23 @@ export default class AgentTree extends View {
     closeOverlay(p.overlay);
     if (it.action === "rename") this.rename({ address: p.menu }, p.value ?? "");
     if (it.send) sendTo(p.menu, it.send);
+    if (it.action === "restart") restartClaude(p.menu, p.restart.session);
+  }
+
+  // The installed claude-code version on `machine`, or null until read.
+  installed(machine, cx) {
+    const key = machine ?? "";
+    const known = installed.get(key);
+    if (!known || Date.now() - known.at > INSTALLED_MS) {
+      installed.set(key, { version: known?.version ?? null, at: Date.now() });
+      cx.spawn(async (cx) => {
+        const r = await exec("sh", ["-c", INSTALLED], { on: machine }).catch(() => null);
+        const version = /-claude-code-([\d.]+)\//.exec(r?.stdout ?? "")?.[1] ?? null;
+        installed.set(key, { version, at: Date.now() });
+        cx.notify();
+      });
+    }
+    return known?.version ?? null;
   }
 
   menuPopup(t) {
@@ -264,16 +311,17 @@ export default class AgentTree extends View {
           .child(div().child(cache[0]))));
   }
 
-  // Model and reasoning effort, from the labels Claude's statusLine sets; null
-  // without them.
-  model(t, labels) {
+  // Model and reasoning effort, from the labels Claude's statusLine sets, and
+  // the running version when it's outdated; null without them.
+  model(t, labels, outdated = false) {
     const model = labels?.["agent.model"];
     if (!model) return null;
     const effort = labels?.["agent.effort"];
     return h_flex().gap(6).items_center().text_size(11).text_color(t.dim)
       .child(div().min_w(0).truncate().text_color(t.foreground).child(model))
       .when(Boolean(effort), (el) => el.child(div().flex_none().px(5).h(16).rounded(4).border(1).border_color(t.dim)
-        .flex().items_center().text_size(10).child(effort)));
+        .flex().items_center().text_size(10).child(effort)))
+      .when(outdated, (el) => el.child(div().flex_none().text_color(t.ansi3).child(labels["agent.version"])));
   }
 
   // A card's status: a labelled pill, readable beside the extra lines. Idle
@@ -303,14 +351,19 @@ export default class AgentTree extends View {
 
   // An agent: name and status, then (with `loc`) where it runs, then model and
   // context and cache for one whose statusLine sets labels.
-  agentRow(t, a, depth, name, subs, now, loc = null, expiring = false) {
+  agentRow(t, a, depth, name, subs, now, cx, loc = null, expiring = false) {
     const key = `ag-${a.address}`;
     const pic = icon(a.program, 16, t.foreground);
     const when = this.changed[a.address]?.at;
     const idle = a.status === "idle" && !a.focused;
     const labels = this.terms.get(a.address)?.labels;
     const stats = this.metrics(t, labels, now, expiring);
-    const model = this.model(t, labels);
+    const running = a.app === "claude-code" ? labels?.["agent.version"] : null;
+    const machine = a.address.includes("/") ? a.address.split("/")[0] : null;
+    const latest = running ? this.installed(machine, cx) : null;
+    const outdated = Boolean(latest) && cmpVersion(running, latest) < 0;
+    const restart = outdated && labels?.["claude.session"] ? { latest, session: labels["claude.session"] } : null;
+    const model = this.model(t, labels, outdated);
     const card = Boolean(stats || model || loc);
     const head = h_flex().items_center().gap(9)
       .when(Boolean(pic), (el) => el.child(div().id(`fold-${key}`)
@@ -319,6 +372,8 @@ export default class AgentTree extends View {
       .child(div().flex_1().min_w(0).truncate().when(card, (el) => el.font_medium()).text_color(idle ? t.muted : t.foreground).child(name))
       .when(subs.length > 0 && this.folded.has(`ag-${a.address}`), (el) => el.child(div().text_size(11).text_color(t.dim).child(String(subs.length))))
       .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
+      .when(outdated, (el) => el.child(div().flex_none().px(6).h(17).rounded(4).bg(t.ansi3 + "26").flex().items_center()
+        .text_size(10).font_bold().text_color(t.ansi3).child("OUTDATED")))
       .child(card && !expiring ? this.pill(t, a.status) : this.status(t, expiring ? "idle" : a.status));
     return v_flex()
       .id(key)
@@ -332,7 +387,7 @@ export default class AgentTree extends View {
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))
-      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, labels?.[LABEL] ?? ""); })
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, labels?.[LABEL] ?? "", restart); })
       .tooltip("Right-click for options")
       .child(head)
       // 25: the program icon plus the head's gap, so these lines start under the name.
@@ -401,7 +456,7 @@ export default class AgentTree extends View {
       for (const a of members) {
         const subs = this.tree(all, a.address);
         const loc = { host: hostOf(a), space: a.space_name, spaceId: a.space, tab: tabName(a) };
-        rows.push(this.agentRow(t, a, 0, agentName(a, this.terms.get(a.address)), subs, now, loc, g.id === "expiring"));
+        rows.push(this.agentRow(t, a, 0, agentName(a, this.terms.get(a.address)), subs, now, cx, loc, g.id === "expiring"));
         if (!this.folded.has(`ag-${a.address}`)) rows.push(...subs.map((s) => this.subRow(t, s, 0, shown)));
       }
     }
