@@ -40,6 +40,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
 - **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals, and append a row to the Changelog at the bottom) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
 - **Workarounds waiting on upstream carry a tag** in their comment, one per line: `WAIT-FOR <condition>: <ref>`. Conditions: `unstable` (PR or commit is in nixos-unstable), `merged` (PR/MR merged), `closed` (issue closed), `green` (Hydra job passing), `version` (`<attr> >= <ver>` in nixos-unstable), `manual` (`<url or none> (checked <date>)`). `WATCH: <url>` marks an upstream issue with no workaround here. Tag the code that has to change, not patch headers (editing a patch rebuilds its package). List them with `git grep -nE 'WAIT-FOR|WATCH:'`.
+- **No closing keywords before upstream refs** in commit messages or PR bodies. GitHub closes the target when a commit reaches `master`: `fix`/`close`/`resolve` (any form) followed by `#N`, `owner/repo#N` or an issue/PR URL. The owner can write to NixOS/nixpkgs, so "the hash fix NixOS/nixpkgs#582675" closed that nixpkgs PR. Write "waits on NixOS/nixpkgs#582675, the hash fix" instead, or put the ref in backticks.
 
 ## Hosts
 
