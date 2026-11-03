@@ -47,6 +47,7 @@
   custom.herdr.desktop = true;
   custom.hex.enable = true;
   custom.sleepmode.enable = true;
+  custom.mpv.enable = true;
 
   home.stateVersion = "26.05";
 
