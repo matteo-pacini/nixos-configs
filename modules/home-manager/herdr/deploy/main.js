@@ -29,6 +29,21 @@ function location() {
   return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
 }
 
+// The checkout Watch reads: its tags come from the working tree, not from
+// GitHub, so a stale checkout shows stale or no tags.
+async function describeCheckout({ root, on }) {
+  const git = async (...args) => {
+    const r = await exec("git", ["-C", root, ...args], { on }).catch(() => null);
+    return r?.code === 0 ? r.stdout.trim() : null;
+  };
+  const [branch, head, behind] = await Promise.all([
+    git("rev-parse", "--abbrev-ref", "HEAD"),
+    git("rev-parse", "HEAD"),
+    git("rev-list", "--count", "HEAD..origin/master"),
+  ]);
+  return { machine: on, branch, head, behind: Number(behind) || 0 };
+}
+
 // Staged = the system comin last deployed (comin status), not the
 // system-profiles/comin link, which only root can read. Only a `boot`
 // deployment waits for a reboot; `switch` (Darwin) is live at once.
@@ -113,7 +128,10 @@ export default class Deploy extends View {
       }
       if (this.where !== where) return;
       run(ours ? "layout.show" : "layout.hide", { id: "deploy" });
-      if (ours && !this.shown) this.refresh(cx);
+      // Refreshes when it appears, and when the focus moves to a checkout on
+      // another machine; switching between spaces on one machine does not.
+      const otherMachine = Boolean(this.repo) && loc.on !== this.repo.on;
+      if (ours && (!this.shown || otherMachine)) this.refresh(cx);
       this.shown = ours;
       // Another checkout (a worktree, or the same repo on another machine)
       // can carry different tags.
@@ -184,18 +202,22 @@ export default class Deploy extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const tags = await findTags(repo.root, repo.on);
+        const [tags, checkout] = await Promise.all([findTags(repo.root, repo.on), describeCheckout(repo)]);
         const results = await Promise.all(tags.map(checkTag));
         tags.forEach((tag, i) => Object.assign(tag, results[i]));
         tags.sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.label.localeCompare(b.label));
         if (this.repo === repo) {
           this.tags = tags;
+          this.checkout = checkout;
           this.watchError = null;
         }
       } catch (e) {
-        this.watchError = String(e.message ?? e);
+        if (this.repo === repo) this.watchError = String(e.message ?? e);
       } finally {
         this.watchLoading = false;
+        // The focus moved to another checkout while this one loaded, and
+        // that load was turned away above.
+        if (this.repo !== repo) this.loadWatch(cx);
         cx.notify();
       }
     });
@@ -315,10 +337,34 @@ export default class Deploy extends View {
         .child(div().flex_1())
         .child(div().text_size(11).text_color(t.dim).child(summary)))
       .when(open && Boolean(this.watchError), (el) => el.child(div().px(14).py(6).text_size(11).text_color(t.ansi1).child(this.watchError)))
-      .when(open, (el) => el.child(div().flex_none().px(14).py(5).border_b(1).border_color(t.border).text_size(11).text_color(t.dim)
+      .when(open, (el) => el.child(v_flex().flex_none().px(14).py(5).gap(2).border_b(1).border_color(t.border).text_size(11).text_color(t.dim)
+        .when(Boolean(this.checkout), (el) => el.child(this.checkoutLine(t)))
         .child("Click: open upstream · Right-click: edit in nvim")))
+      .when(open && Boolean(this.tags) && !tags.length && !this.watchLoading, (el) => el.child(
+        div().px(14).py(8).text_size(12).text_color(t.muted).child(this.checkoutBehind()
+          ? "No WAIT-FOR / WATCH tags in this checkout. Pull master to see them."
+          : "No WAIT-FOR / WATCH tags in this checkout.")))
       .when(open, (el) => el.child(v_flex().id("watch-list").flex_1().min_h(0).overflow_y_scrollbar()
         .children(tags.map((tag, i) => this.watchRow(tag, i, t)))));
+  }
+
+  // Whether the checkout is behind master: by its own origin/master, which is
+  // only as fresh as its last fetch, or, on master, by GitHub's master.
+  checkoutBehind() {
+    const c = this.checkout;
+    if (!c) return null;
+    if (c.behind > 0) return `${c.behind} behind origin/master`;
+    if (c.branch === "master" && this.master && c.head && c.head !== this.master) return "behind GitHub master";
+    return null;
+  }
+
+  // "Reading nightsprings · master @ 2642d9a · 23 behind origin/master"
+  checkoutLine(t) {
+    const c = this.checkout, behind = this.checkoutBehind();
+    const where = c.machine ?? this.local ?? "this machine";
+    return h_flex().gap(4).min_w(0)
+      .child(div().truncate().child(`Reading ${where} · ${c.branch ?? "?"} @ ${c.head?.slice(0, 7) ?? "?"}`))
+      .when(Boolean(behind), (el) => el.child(div().flex_none().text_color(t.blocked).child(`· ${behind}`)));
   }
 
   render(cx) {
