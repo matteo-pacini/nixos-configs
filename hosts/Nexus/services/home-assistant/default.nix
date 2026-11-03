@@ -117,6 +117,7 @@ in
       # Patched so a failed setup raises ConfigEntryNotReady instead of
       # reporting success. See the patch header for why upstream stopped doing
       # that and why the reason does not apply here.
+      # WAIT-FOR closed: https://github.com/ollo69/ha-smartthinq-sensors/issues/1011
       (smartthinq-sensors.overrideAttrs (old: {
         patches = (old.patches or [ ]) ++ [ ./patches/smartthinq-sensors-retry-setup.patch ];
       }))
@@ -134,6 +135,8 @@ in
           hash = "sha256-gTrid3Wa2s9jIYkdHzRYz4tHd4WrbZ63vhlb6kqTJCk=";
         };
 
+        # No upstream issue covers recoverable error chunks; see the patch header.
+        # WAIT-FOR manual: none (checked 2026-11-03)
         patches = [ ./patches/webhook-conversation-stream-errors.patch ];
 
         dependencies = with pkgs.home-assistant.python3Packages; [

@@ -22,9 +22,10 @@ in
   # autologin no longer unlocks the login keyring on this LUKS+autologin host
   # (worked on gdm 50.1). See the patch header for the full write-up.
   # Upstream: https://gitlab.gnome.org/GNOME/gdm/-/issues/1091
-  # Drop this override (and patches/gdm/) once nixos-unstable ships a gdm
-  # release with an upstream fix — check the journal for
-  # "gkr-pam: ... unlocked keyring" after a clean boot without it.
+  # Fixed upstream in gdm 50.3, but nixpkgs is still on 50.2. Drop this
+  # override (and patches/gdm/) once nixos-unstable ships gdm >= 50.3 — check
+  # the journal for "gkr-pam: ... unlocked keyring" after a clean boot without it.
+  # WAIT-FOR version: gdm >= 50.3
   gdm = super.gdm.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
       ../patches/gdm/001-pam-gdm-accept-unterminated-cached-passphrase.patch
@@ -41,9 +42,9 @@ in
     })
   );
 
-  # OVMF/OVMFFull run QEMU during build to generate UEFI vars.
-  # Use vanilla QEMU to avoid znver4 instructions failing in TCG emulation.
-  # See: https://github.com/NixOS/nixpkgs/issues/381223
+  # OVMF/OVMFFull run QEMU during build to generate UEFI vars. Vanilla QEMU
+  # keeps them identical to the cached builds, and a znver4 QEMU could not run
+  # on builders without those CPU features.
   OVMF = super.OVMF.override { qemu = super.qemu; };
   OVMFFull = super.OVMFFull.override { qemu = super.qemu; };
 
