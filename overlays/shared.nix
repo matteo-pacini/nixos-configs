@@ -150,7 +150,16 @@
     # masterPkgs.herdr-core by store path, so take both from the same pin.
     # WAIT-FOR unstable: https://github.com/NixOS/nixpkgs/pull/581031
     herdr-core = masterPkgs.herdr-core;
-    herdr-desktop = masterPkgs.herdr-desktop;
+    # Personal patches, not meant for upstream: load mods from the folders in
+    # HERDR_APP_MODS_PATH too (hot reload and icons included). A failing patch
+    # after a nixpkgs-master bump means they need refreshing.
+    herdr-desktop = masterPkgs.herdr-desktop.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        ../patches/herdr-desktop/001-scan-extra-mod-dirs.patch
+        ../patches/herdr-desktop/002-hot-reload-extra-mod-dirs.patch
+        ../patches/herdr-desktop/003-extra-mod-dir-assets.patch
+      ];
+    });
 
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but

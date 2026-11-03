@@ -1,0 +1,76 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Pacini <m@matteopacini.me>
+Date: Tue, 3 Nov 2026 22:43:38 +0000
+Subject: [PATCH 3/3] mods: serve icons of mods in HERDR_APP_MODS_PATH folders
+
+Mods name their icons and images by a path from the app's home, like
+svg("mods/<name>/icon.svg"), and assets are only read from the home. A mod
+from an HERDR_APP_MODS_PATH folder isn't under mods/, so its own files were
+unreachable. Wrap the asset source: a mods/<name>/... path whose mod lives in
+an extra folder reads from that mod's folder instead. Everything else, and
+any mod that is in mods/, goes to the home as before; '..' is still refused.
+---
+ src/main.rs |  2 +-
+ src/mods.rs | 36 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/src/main.rs b/src/main.rs
+index d3348d4..2fa5f2d 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -148,7 +148,7 @@ fn main() {
+     }
+ 
+     gpui_platform::application()
+-        .with_assets(gpui_shell::AppAssets::new(mods::app_dir()))
++        .with_assets(mods::Assets::new())
+         .run(move |cx| {
+             let fonts = settings::BUNDLED_FONTS.iter().map(|f| std::borrow::Cow::Borrowed(*f)).collect();
+             if let Err(e) = cx.text_system().add_fonts(fonts) {
+diff --git a/src/mods.rs b/src/mods.rs
+index e03fbf1..2ed0cc4 100644
+--- a/src/mods.rs
++++ b/src/mods.rs
+@@ -72,6 +72,42 @@ pub fn mod_dir(name: &str) -> Option<PathBuf> {
+     extra_mod_dirs().into_iter().map(|d| d.join(name)).find(|d| d.join("main.js").is_file())
+ }
+ 
++/// The app's assets (rooted at the home). A mod from an extra folder reads its
++/// own files as `mods/<name>/...` too, like one in `mods/`.
++pub struct Assets(gpui_shell::AppAssets);
++
++impl Assets {
++    pub fn new() -> Self {
++        Self(gpui_shell::AppAssets::new(app_dir()))
++    }
++
++    /// For `mods/<name>/<rest>` where `<name>` lives in an extra folder: that
++    /// mod's folder as an asset root, and `<rest>`.
++    fn extra(path: &str) -> Option<(gpui_shell::AppAssets, &str)> {
++        let (name, rest) = path.strip_prefix("mods/")?.split_once('/')?;
++        if !valid_name(name) || mods_dir().join(name).is_dir() {
++            return None;
++        }
++        Some((gpui_shell::AppAssets::new(mod_dir(name)?), rest))
++    }
++}
++
++impl gpui::AssetSource for Assets {
++    fn load(&self, path: &str) -> anyhow::Result<Option<std::borrow::Cow<'static, [u8]>>> {
++        match Self::extra(path) {
++            Some((assets, rest)) => assets.load(rest),
++            None => self.0.load(path),
++        }
++    }
++
++    fn list(&self, path: &str) -> anyhow::Result<Vec<gpui::SharedString>> {
++        match Self::extra(path) {
++            Some((assets, rest)) => assets.list(rest),
++            None => self.0.list(path),
++        }
++    }
++}
++
+ const AGENTS_MD: &str = include_str!("../defaults/AGENTS.md");
+ 
+ /// Writes the agent guide and API types, and installs or updates the default
