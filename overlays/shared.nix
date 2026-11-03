@@ -143,34 +143,6 @@
     herdr-core = masterPkgs.herdr-core;
     herdr-desktop = masterPkgs.herdr-desktop;
 
-    # xdg-desktop-portal-1.20.4: two integration tests fail in the Nix build
-    # sandbox because the validator helpers (xdg-desktop-portal-validate-sound
-    # and -validate-icon) shell out to bwrap, which tries to create a nested
-    # user namespace and trips on:
-    #     bwrap: Can't mount proc on /newroot/proc: Operation not permitted
-    # The failures:
-    #   - integration/dynamiclauncher (exit status 1)
-    #   - integration/notification    (pytest test_sound_fd: "invalid sound:
-    #                                  The sound data is invalid (36)" because
-    #                                  the validator subprocess died)
-    # Environment-driven, not a real package bug. Affects the gaming Linux
-    # hosts (CauldronLake / BrightFalls) that pull xdg-desktop-portal in via
-    # their desktop closure.
-    #
-    # Skipping the check phase until upstream ships a fix. Status as of
-    # 2026-07-28: nixos-unstable still packages 1.20.4 with no relevant
-    # change; the package's XDP_TEST_IN_CI escape hatch does not cover these
-    # two tests; upstream 1.21.x/1.22.x release notes mention nothing about
-    # the bwrap/nested-userns failures. The closest tracking issue is open
-    # with no activity and was filed for a different trigger (a custom
-    # enableGeoLocation override), but the failing test is the same one:
-    #   Issue: https://github.com/NixOS/nixpkgs/issues/511228 (OPEN)
-    # Drop this override once nixos-unstable ships an xdg-desktop-portal whose
-    # checkPhase passes inside the build sandbox.
-    xdg-desktop-portal = super.xdg-desktop-portal.overrideAttrs (_: {
-      doCheck = false;
-    });
-
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but
     # pipewire-pulse can transiently report a card with zero profiles during

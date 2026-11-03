@@ -150,6 +150,7 @@ in
       mushroom
       mini-graph-card
       scheduler-card
+      trash-card
       button-card
       clock-weather-card
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
@@ -176,32 +177,6 @@ in
 
           runHook postInstall
         '';
-      })
-      # In nixpkgs master but not yet in our pin; drop this inline copy
-      # once the pin advances past NixOS/nixpkgs#525127.
-      (pkgs.buildNpmPackage rec {
-        pname = "trash-card";
-        version = "2.4.7";
-
-        src = pkgs.fetchFromGitHub {
-          owner = "idaho";
-          repo = "hassio-trash-card";
-          tag = version;
-          hash = "sha256-Zf+iUcJs45eguaDJcuto6ccc/puormFajmYMc7Qpdsw=";
-        };
-
-        npmDepsHash = "sha256-zvsJASztDfecn+FRvQPmT0vIblaCD11eBM9LLq+VFrg=";
-
-        installPhase = ''
-          runHook preInstall
-
-          mkdir $out
-          cp dist/trashcard.js $out/
-
-          runHook postInstall
-        '';
-
-        passthru.entrypoint = "trashcard.js";
       })
       # Not in nixpkgs. The budget figures it draws are configured on the card
       # in the UI and stay in .storage, out of this public repository.
