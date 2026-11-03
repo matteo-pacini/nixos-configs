@@ -46,23 +46,5 @@
     # the sandbox: either a release after 14.9 or a nixpkgs-side guard for the
     # direct-I/O test.
     snapraid = optimizedForNexus (super.snapraid.overrideAttrs { doCheck = false; });
-    # rxvt-unicode 9.31's own lerp() is ambiguous with std::lerp under GCC 16's
-    # default C++ standard. Also only needed for terminfo via enableAllTerminfo.
-    # Drop once the nixpkgs pin includes the upstream fix.
-    # Fix: https://github.com/NixOS/nixpkgs/pull/570596
-    rxvt-unicode-unwrapped = super.rxvt-unicode-unwrapped.overrideAttrs (old: {
-      configureFlags = old.configureFlags ++ [ "CXXFLAGS=-std=c++17" ];
-    });
-    # typescript-language-server 6.0.2 landed in nixpkgs with a stale pnpmDeps
-    # hash (pulled in by nvf's typescript language support). Drop once
-    # nixos-unstable includes the upstream fix, i.e. once
-    #   gh api repos/NixOS/nixpkgs/compare/ac7b1aaed0...nixos-unstable -q .status
-    # reports "ahead" or "identical".
-    # Fix: https://github.com/NixOS/nixpkgs/commit/ac7b1aaed0
-    typescript-language-server = super.typescript-language-server.overrideAttrs (old: {
-      pnpmDeps = old.pnpmDeps.overrideAttrs {
-        outputHash = "sha256-xR/EF60lVBsITKgH7wCM2wHM46PFQevD51KfCENSUH4=";
-      };
-    });
   }
 )
