@@ -81,6 +81,7 @@
   custom.codex.enable = true;
   custom.opencode.enable = true;
   custom.herdr.enable = true;
+  custom.herdr.mods.agentTree.enable = true;
   custom.hex.enable = true;
   custom.phone.scrcpy.enable = true;
   custom.mpv.enable = true;
