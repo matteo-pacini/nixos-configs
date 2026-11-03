@@ -39,7 +39,22 @@ let
     text = builtins.readFile ./herdr/claude-statusline.sh;
   };
 
-  # The agent-tree layout, adjusted for the mods that live in it: claude-pane
+  # The same labels for Codex, from its hooks. On PATH under a fixed name, not
+  # as a store path: Codex skips a hook until it's trusted (/hooks), and keys
+  # that trust on the hook's definition, so a path that changes every rebuild
+  # would need trusting again each time.
+  codexLabels = pkgs.writeShellApplication {
+    name = "herdr-codex-labels";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.herdr-core
+      pkgs.jq
+    ];
+    text = builtins.readFile ./herdr/codex-labels.sh;
+  };
+
+  # The agent-tree layout, adjusted for the mods that live in it: agent-pane
   # as the pane header, the deploy block beside the work area (mods.deploy),
   # and space-cards in place of the shipped spaces list (mods.spaceCards).
   # Generated rather than a second snapshot of `main`.
@@ -56,7 +71,7 @@ let
       adjust =
         node:
         if node.id or null == "main" then
-          lib.recursiveUpdate node { content.pane.header.content.mod = "claude-pane"; }
+          lib.recursiveUpdate node { content.pane.header.content.mod = "agent-pane"; }
         else if node.id or null == "work-body" && cfg.mods.deploy.enable then
           node // { children = node.children ++ [ deployBlock ]; }
         else if node.id or null == "spaces" && cfg.mods.spaceCards.enable then
@@ -174,10 +189,12 @@ in
           run rm -rf "$dir"
           run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
-          dir="${config.xdg.configHome}/herdr-app/mods/claude-pane"
+          # Its name before it covered Codex and opencode.
+          run rm -rf "${config.xdg.configHome}/herdr-app/mods/claude-pane"
+          dir="${config.xdg.configHome}/herdr-app/mods/agent-pane"
           run rm -rf "$dir"
-          run install -Dm644 ${./herdr/claude-pane/main.js} "$dir/main.js"
-          run install -Dm644 ${./herdr/claude-pane/mod.json} "$dir/mod.json"
+          run install -Dm644 ${./herdr/agent-pane/main.js} "$dir/main.js"
+          run install -Dm644 ${./herdr/agent-pane/mod.json} "$dir/mod.json"
         '';
 
         # A snapshot of herdr-app's shipped `main` layout with the agents block
@@ -224,6 +241,34 @@ in
           padding = 0;
           refreshInterval = 10;
         };
+      })
+
+      (lib.mkIf (cfg.mods.agentTree.enable && config.custom.codex.enable) {
+        home.packages = [ codexLabels ];
+
+        # hooks.json is Codex's own runtime file (it records trust beside it in
+        # config.toml), so the hooks are merged in rather than the file owned.
+        home.activation.herdrCodexHooks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          hooks="$HOME/.codex/hooks.json"
+          run mkdir -p "$HOME/.codex"
+          [ -f "$hooks" ] || echo '{"hooks":{}}' > "$hooks"
+          tmp=$(mktemp)
+          ${lib.getExe pkgs.jq} '
+            .hooks //= {}
+            | reduce ("SessionStart", "Stop", "PostToolUse") as $event (.;
+                .hooks[$event] = (
+                  (.hooks[$event] // [])
+                  | map(.hooks |= map(select(.command != "herdr-codex-labels")) | select(.hooks != []))
+                ) + [{ hooks: [{ type: "command", command: "herdr-codex-labels", timeout: 10 }] }])
+          ' "$hooks" > "$tmp" && run mv "$tmp" "$hooks"
+          rm -f "$tmp"
+        '';
+      })
+
+      (lib.mkIf (cfg.mods.agentTree.enable && config.custom.opencode.enable) {
+        # Loaded from the plugins folder on start; sets the same labels from
+        # opencode's session events.
+        xdg.configFile."opencode/plugins/herdr-labels.js".source = ./herdr/opencode-labels.js;
       })
 
       (lib.mkIf cfg.mods.deploy.enable {

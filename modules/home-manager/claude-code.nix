@@ -61,12 +61,6 @@ in
           run install -m 644 "${settingsFile}" "$HOME/.claude/settings.json"
         '';
 
-      # The legacy herdr TUI wrote this hook script at runtime; nothing runs it
-      # any more and Home Manager never owned it.
-      home.activation.claudeHerdrCleanup = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        run rm -f "$HOME/.claude/hooks/herdr-agent-state.sh"
-      '';
-
       # Vendored global instruction doc for Claude Code.
       home.file.".claude/CLAUDE.md".source = ./claude-code/CLAUDE.md;
     })
