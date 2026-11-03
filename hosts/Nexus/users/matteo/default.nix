@@ -14,7 +14,6 @@
   custom.codex.enable = true;
   custom.opencode.enable = true;
   custom.herdr.enable = true;
-  custom.herdr.server = true;
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;

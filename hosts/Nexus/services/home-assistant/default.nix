@@ -108,6 +108,9 @@ in
       # Subscribes to a remote .ics feed. Configured through the UI, so the
       # feed URL and its API key live in .storage and stay out of this repo.
       "remote_calendar"
+      # Holds the stock the prepping cards count (todo.food_stockpile,
+      # todo.water_stockpile); the cards can also create these lists.
+      "local_todo"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
       waste_collection_schedule
@@ -147,6 +150,7 @@ in
       mushroom
       mini-graph-card
       scheduler-card
+      trash-card
       button-card
       clock-weather-card
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
@@ -174,32 +178,6 @@ in
           runHook postInstall
         '';
       })
-      # In nixpkgs master but not yet in our pin; drop this inline copy
-      # once the pin advances past NixOS/nixpkgs#525127.
-      (pkgs.buildNpmPackage rec {
-        pname = "trash-card";
-        version = "2.4.7";
-
-        src = pkgs.fetchFromGitHub {
-          owner = "idaho";
-          repo = "hassio-trash-card";
-          tag = version;
-          hash = "sha256-Zf+iUcJs45eguaDJcuto6ccc/puormFajmYMc7Qpdsw=";
-        };
-
-        npmDepsHash = "sha256-zvsJASztDfecn+FRvQPmT0vIblaCD11eBM9LLq+VFrg=";
-
-        installPhase = ''
-          runHook preInstall
-
-          mkdir $out
-          cp dist/trashcard.js $out/
-
-          runHook postInstall
-        '';
-
-        passthru.entrypoint = "trashcard.js";
-      })
       # Not in nixpkgs. The budget figures it draws are configured on the card
       # in the UI and stay in .storage, out of this public repository.
       (pkgs.stdenvNoCC.mkDerivation rec {
@@ -222,6 +200,29 @@ in
         '';
 
         passthru.entrypoint = "budget-sankey-card.js";
+      })
+      # Not in nixpkgs. The stock it counts lives in the Local To-do lists
+      # above, also out of this public repository.
+      (pkgs.stdenvNoCC.mkDerivation rec {
+        pname = "prepping-cards";
+        version = "1.1.0";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "matteo-pacini";
+          repo = "HASSPrepping";
+          tag = "v${version}";
+          hash = "sha256-nB17J86vN9qTrC4YMKdfGapagH5y043Oxz3jI05lmvg=";
+        };
+
+        installPhase = ''
+          runHook preInstall
+
+          install -Dm444 prepping-cards.js $out/prepping-cards.js
+
+          runHook postInstall
+        '';
+
+        passthru.entrypoint = "prepping-cards.js";
       })
     ];
     extraPackages =

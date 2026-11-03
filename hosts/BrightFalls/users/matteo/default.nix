@@ -52,8 +52,6 @@
       # Other
       telegram-desktop
       whatsie
-      # Mail
-      protonmail-bridge-gui
       # Music
       jellyfin-tui
     ]
@@ -81,6 +79,7 @@
   custom.codex.enable = true;
   custom.opencode.enable = true;
   custom.herdr.enable = true;
+  custom.herdr.desktop = true;
   custom.hex.enable = true;
   custom.phone.scrcpy.enable = true;
   custom.mpv.enable = true;
