@@ -79,6 +79,11 @@ in
   options.custom.herdr = {
     enable = lib.mkEnableOption "herdr terminal multiplexer";
     server = lib.mkEnableOption "headless herdr server as a systemd user service (Linux only)";
+    mods.agentTree.enable = lib.mkEnableOption ''
+      herdr-app's `agent-tree` layout: the Agents sidebar as host > space > tab > agent,
+      each agent named by its `agent.name` terminal label. Pick it once per machine with
+      `herdr-app do layout.switch --name agent-tree`
+    '';
   };
 
   config = lib.mkIf cfg.enable {
@@ -112,6 +117,23 @@ in
     # Keeps sessions and agents alive without an attached client. Pair with
     # users.users.<user>.linger = true on headless hosts so it starts at
     # boot instead of at first login.
+    # One link per file: herdr-app writes its own jsconfig.json and .d.ts files
+    # into mod folders, so the folder itself must stay writable. The layout is a
+    # snapshot of herdr-app's shipped `main` with the agents block swapped; shipped
+    # layouts live in the binary, so re-snapshot it when upstream changes `main`.
+    xdg.configFile."herdr-app/mods/agent-tree/main.js" = {
+      enable = cfg.mods.agentTree.enable;
+      source = ./herdr/agent-tree/main.js;
+    };
+    xdg.configFile."herdr-app/mods/agent-tree/mod.json" = {
+      enable = cfg.mods.agentTree.enable;
+      source = ./herdr/agent-tree/mod.json;
+    };
+    xdg.configFile."herdr-app/layouts/agent-tree.json" = {
+      enable = cfg.mods.agentTree.enable;
+      source = ./herdr/layouts/agent-tree.json;
+    };
+
     systemd.user.services.herdr-server = lib.mkIf cfg.server {
       Unit.Description = "herdr headless server";
       Service = {
