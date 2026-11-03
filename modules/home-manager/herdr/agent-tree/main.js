@@ -81,12 +81,25 @@ function menuItems(p) {
   ];
 }
 
-// Types `text` and Enter into an agent's terminal (`machine/t7` for a remote one).
-// The claude-code version on PATH per machine ("" for this one), re-read at
-// most once a minute: { version, at }. Same check as the claude-pane mod.
+// The agents that label their version and session id (claude-statusline.sh,
+// codex-labels.sh, opencode-labels.js), by the app herdr reports: the command
+// on PATH, the package name in its store path, the label holding the session,
+// and how to quit (text to send, or `keys:` to press) and resume one. opencode
+// takes pasted text as a prompt, so it's quit with a key.
+const APPS = {
+  "claude-code": { name: "Claude Code", bin: "claude", pkg: "claude-code", session: "claude.session", quit: "/exit", resume: "claude --resume" },
+  codex: { name: "Codex", bin: "codex", pkg: "codex", session: "codex.session", quit: "/quit", resume: "codex resume" },
+  opencode: { name: "opencode", bin: "opencode", pkg: "opencode", session: "opencode.session", quit: "keys:ctrl+c", resume: "opencode -s" },
+};
+
+// Installed versions, `${machine}:${app}` -> { version, at }, re-read at most
+// once a minute.
 const installed = new Map();
 const INSTALLED_MS = 60000;
-const INSTALLED = 'readlink -f /etc/profiles/per-user/"$USER"/bin/claude 2>/dev/null || readlink -f "$(command -v claude)"';
+// The command's store path, or for a wrapper script (opencode's launcher)
+// the package path it execs.
+const INSTALLED = `p=$(readlink -f /etc/profiles/per-user/"$USER"/bin/"$1" 2>/dev/null || readlink -f "$(command -v "$1")")
+case "$p" in *-"$2"-[0-9]*) echo "$p" ;; *) grep -a -o -m1 -E "/nix/store/[a-z0-9]+-$2-[0-9][0-9.]*/" "$p" ;; esac`;
 
 function cmpVersion(a, b) {
   const x = a.split(".").map(Number), y = b.split(".").map(Number);
@@ -97,20 +110,47 @@ function cmpVersion(a, b) {
   return 0;
 }
 
-// Exits Claude in `address`, waits for its shell, then resumes `session` with
-// the claude now on PATH. hc addresses remote terminals itself, so this runs here.
-const RESTART = `hc send "$1" /exit >/dev/null || exit 1
-for _ in $(seq 60); do
-  hc get "$1" --json | grep -q 'claude-code-[0-9]' || break
-  sleep 0.5
-done
-hc send "$1" "claude --resume $2" >/dev/null`;
-
-async function restartClaude(address, session) {
-  const r = await exec("sh", ["-c", RESTART, "restart", address, session]);
-  if (r.code !== 0) notify({ title: "Couldn't restart Claude Code", body: r.stderr || r.stdout, level: "error" });
+// The installed version of `app` on `machine` (null: this one), or null until
+// read; reading it notifies `cx`.
+function installedVersion(machine, app, cx) {
+  const key = `${machine ?? ""}:${app.pkg}`;
+  const known = installed.get(key);
+  if (!known || Date.now() - known.at > INSTALLED_MS) {
+    installed.set(key, { version: known?.version ?? null, at: Date.now() });
+    cx.spawn(async (cx) => {
+      const r = await exec("sh", ["-c", INSTALLED, "installed", app.bin, app.pkg], { on: machine }).catch(() => null);
+      const version = new RegExp(`-${app.pkg}-(\\d[\\d.]*)/`).exec(r?.stdout ?? "")?.[1] ?? null;
+      installed.set(key, { version, at: Date.now() });
+      cx.notify();
+    });
+  }
+  return known?.version ?? null;
 }
 
+// Quits the agent in `address`, waits for its shell (the foreground process
+// is the terminal's own again), then resumes `session` with the version now
+// on PATH. Refuses when the agent is the terminal's own program: quitting it
+// would end the terminal, and the resume would have no shell to type into.
+// hc addresses remote terminals itself, so this runs here.
+const RESTART = `pids() { hc get "$1" --json | grep -o '"pid":[0-9]*' | sort -u | wc -l; }
+[ "$(pids "$1")" -ge 2 ] || { echo "it isn't running from a shell" >&2; exit 1; }
+case "$2" in
+  keys:*) hc keys "$1" "\${2#keys:}" >/dev/null ;;
+  *) hc send "$1" "$2" >/dev/null ;;
+esac || exit 1
+for _ in $(seq 60); do
+  [ "$(pids "$1")" -le 1 ] && break
+  sleep 0.5
+done
+[ "$(pids "$1")" -le 1 ] || { echo "it didn't quit" >&2; exit 1; }
+hc send "$1" "$3" >/dev/null`;
+
+async function restartAgent(address, app, session) {
+  const r = await exec("sh", ["-c", RESTART, "restart", address, app.quit, `${app.resume} ${session}`]);
+  if (r.code !== 0) notify({ title: `Couldn't restart ${app.name}`, body: r.stderr || r.stdout, level: "error" });
+}
+
+// Types `text` and Enter into an agent's terminal (`machine/t7` for a remote one).
 async function sendTo(address, text) {
   const r = await hc(["send", address, text]);
   if (r.code !== 0) notify({ title: `Couldn't send ${text}`, body: r.stderr || r.stdout, level: "error" });
@@ -163,7 +203,7 @@ export default class AgentTree extends View {
   }
 
   // Right-click menu, a popup at the pointer drawn like the shipped `menu` mod.
-  // `restart`: { latest, session } when this Claude is older than the installed one.
+  // `restart`: { app, latest, session } when this agent is older than the installed one.
   openMenu(a, current, restart = null) {
     const p = { menu: a.address, value: current, claude: a.app === "claude-code", blocked: a.status === "blocked",
       restart, busy: a.status === "blocked" || a.status === "working" };
@@ -182,23 +222,7 @@ export default class AgentTree extends View {
     closeOverlay(p.overlay);
     if (it.action === "rename") this.rename({ address: p.menu }, p.value ?? "");
     if (it.send) sendTo(p.menu, it.send);
-    if (it.action === "restart") restartClaude(p.menu, p.restart.session);
-  }
-
-  // The installed claude-code version on `machine`, or null until read.
-  installed(machine, cx) {
-    const key = machine ?? "";
-    const known = installed.get(key);
-    if (!known || Date.now() - known.at > INSTALLED_MS) {
-      installed.set(key, { version: known?.version ?? null, at: Date.now() });
-      cx.spawn(async (cx) => {
-        const r = await exec("sh", ["-c", INSTALLED], { on: machine }).catch(() => null);
-        const version = /-claude-code-([\d.]+)\//.exec(r?.stdout ?? "")?.[1] ?? null;
-        installed.set(key, { version, at: Date.now() });
-        cx.notify();
-      });
-    }
-    return known?.version ?? null;
+    if (it.action === "restart") restartAgent(p.menu, APPS[p.restart.app], p.restart.session);
   }
 
   menuPopup(t) {
@@ -358,11 +382,12 @@ export default class AgentTree extends View {
     const idle = a.status === "idle" && !a.focused;
     const labels = this.terms.get(a.address)?.labels;
     const stats = this.metrics(t, labels, now, expiring);
-    const running = a.app === "claude-code" ? labels?.["agent.version"] : null;
+    const app = APPS[a.app];
+    const running = app ? labels?.["agent.version"] : null;
     const machine = a.address.includes("/") ? a.address.split("/")[0] : null;
-    const latest = running ? this.installed(machine, cx) : null;
+    const latest = running ? installedVersion(machine, app, cx) : null;
     const outdated = Boolean(latest) && cmpVersion(running, latest) < 0;
-    const restart = outdated && labels?.["claude.session"] ? { latest, session: labels["claude.session"] } : null;
+    const restart = outdated && labels?.[app.session] ? { app: a.app, latest, session: labels[app.session] } : null;
     const model = this.model(t, labels, outdated);
     const card = Boolean(stats || model || loc);
     const head = h_flex().items_center().gap(9)

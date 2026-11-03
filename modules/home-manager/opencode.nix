@@ -83,5 +83,26 @@ in
     home.packages = [ launcher ];
     xdg.configFile."opencode/opencode.json".text = opencodeConfig;
     xdg.configFile."opencode/AGENTS.md".text = agentsMd;
+
+    # Drops the legacy herdr TUI's opencode integration: a server plugin, two
+    # TUI plugins and the tui.jsonc / cli.json entries that load them. All
+    # were written at runtime, so Home Manager never owned them; they need the
+    # TUI's socket and do nothing without it. Other entries in those files are
+    # kept, and a file left empty is removed.
+    home.activation.opencodeHerdrCleanup = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      dir="${config.xdg.configHome}/opencode"
+      run rm -rf "$dir/plugins/herdr-agent-state.js" "$dir/herdr-tui-session.js" "$dir/herdr-opencode"
+      for f in tui.jsonc:plugin:./herdr-tui-session.js cli.json:plugins:./herdr-opencode; do
+        file="$dir/''${f%%:*}" rest="''${f#*:}" key="''${rest%%:*}" entry="''${rest#*:}"
+        [ -f "$file" ] || continue
+        tmp=$(mktemp)
+        if ${lib.getExe pkgs.jq} --arg key "$key" --arg entry "$entry" '
+          if has($key) then .[$key] |= map(select(. != $entry)) | if .[$key] == [] then del(.[$key]) else . end else . end
+        ' "$file" > "$tmp"; then
+          if [ "$(${lib.getExe pkgs.jq} -c . "$tmp")" = "{}" ]; then run rm -f "$file"; else run mv "$tmp" "$file"; fi
+        fi
+        rm -f "$tmp"
+      done
+    '';
   };
 }
