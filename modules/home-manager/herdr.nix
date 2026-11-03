@@ -27,8 +27,7 @@ in
     mods.agentTree.enable = lib.mkEnableOption ''
       the desktop app's `agent-tree` layout: the Agents sidebar as host > space > tab > agent,
       each agent named by its `agent.name` terminal label, with Claude's context fill and
-      prompt-cache time left. Pick it once per machine with
-      `herdr-app do layout.switch --name agent-tree`
+      prompt-cache time left. The first activation with the app open shows it
     '';
   };
 
@@ -69,6 +68,23 @@ in
           source = ./herdr/layouts/agent-tree.json;
           force = true;
         };
+
+        # Shows the layout once per machine, so a later pick of another layout
+        # sticks. The shown layout is the app's own state, so this goes through
+        # the running window; with no window open it retries on the next activation.
+        home.activation.herdrAgentTreeLayout =
+          let
+            herdrApp = lib.getExe' pkgs.herdr-desktop "herdr-app";
+          in
+          lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+            marker="${config.xdg.stateHome}/herdr-app/agent-tree-shown"
+            if [ ! -e "$marker" ] && ${herdrApp} status >/dev/null 2>&1; then
+              if run ${herdrApp} do layout.switch --name agent-tree >/dev/null; then
+                run mkdir -p "$(dirname "$marker")"
+                run touch "$marker"
+              fi
+            fi
+          '';
 
         custom.claude-code.extraSettings.statusLine = {
           type = "command";
