@@ -85,31 +85,39 @@
     #     screenshot-to-clipboard only tries xclip (via Xwayland on Wayland).
     #   - CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000: partial workaround for the
     #     autocompact threshold collapsing on Opus 4.7 [1m] variants
-    #     (https://github.com/anthropics/claude-code/issues/43989, OPEN). The
+    #     (https://github.com/anthropics/claude-code/issues/43989, closed as
+    #     stale 2026-07-11 without a fix). The
     #     trigger is min(WINDOW_env, detected) × 0.95, and the runtime misreads
     #     `detected` as ~200K for the [1m] variant, so as of v2.1.141+ the
     #     threshold sits at ~190K despite this override — it no longer restores
-    #     the full 1M, but dropping it would make the cap worse. Re-evaluate
-    #     when #43989 closes.
+    #     the full 1M, but dropping it would make the cap worse. Nothing upstream
+    #     left to wait on: re-evaluate on claude-code bumps.
+    #     WAIT-FOR manual: https://github.com/anthropics/claude-code/issues/43989 (checked 2026-11-03)
     #   - CLAUDE_CODE_CERT_STORE=bundled (Darwin, default only): upstream's
     #     wrapper sets CLAUDE_CODE_CERT_STORE=system (NixOS/nixpkgs#576509), and
     #     on Darwin that store fails OAuth and API calls with
     #     UNABLE_TO_GET_ISSUER_CERT_LOCALLY, even with NODE_EXTRA_CA_CERTS
     #     pointing at the system bundle. Bun's bundled roots are safe from
     #     Bun 1.4.4 (oven-sh/bun#46159): no emSign roots, no Comodo AAA. Before
-    #     a claude-code bump, check its embedded Bun is still >= 1.4.4. Drop once
-    #     nixpkgs fixes the Darwin case.
+    #     a claude-code bump, check its embedded Bun is still >= 1.4.4. nixpkgs
+    #     has since fixed the Darwin case by exporting NODE_EXTRA_CA_CERTS
+    #     (already in the master pin), which is what failed for us above: drop
+    #     this only once claude signs in and calls the API on a Mac without it.
+    #     WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/579756
     #
     # Issues to keep an eye on (no action yet — no clean Nix-level fix today,
     # but watch for upstream changes that would let us address them here):
     #   - #46917: server bills ~20K extra cache-creation tokens per request on
     #     all 2.1.100+ builds. UA-spoof workaround is dead; waiting for a
     #     client-side opt-out flag from Anthropic.
+    #     WATCH: https://github.com/anthropics/claude-code/issues/46917
     #   - #28240: `cd` re-prompts on compound bash (`git add && git commit`).
     #     Fixable via a PreToolUse hook in the claude-code module's settings.json
     #     template (not an overlay change) — implement if the friction grows.
+    #     WATCH: https://github.com/anthropics/claude-code/issues/28240
     #   - #36168: `--dangerously-skip-permissions` broken since 2.1.78. Only
     #     "fix" is pinning <=v2.1.77, which defeats tracking nixpkgs master.
+    #     WATCH: https://github.com/anthropics/claude-code/issues/36168
     claude-code = masterPkgs.claude-code.overrideAttrs (old: {
       postInstall = (old.postInstall or "") + ''
         wrapProgram $out/bin/claude \
@@ -133,13 +141,15 @@
     #
     # Temporarily held at 2.2.1 via the nixpkgs-opencode input: on master,
     # 2.2.5's node_modules fails its fixed-output hash on every build (Hydra
-    # too, https://hydra.nixos.org/job/nixpkgs/trunk/opencode.x86_64-linux).
+    # too, https://hydra.nixos.org/job/nixpkgs/unstable/opencode.x86_64-linux).
     # Once that job is green again, switch back to masterPkgs.opencode and
     # drop the nixpkgs-opencode input from flake.nix.
+    # WAIT-FOR green: https://hydra.nixos.org/job/nixpkgs/unstable/opencode.x86_64-linux
     opencode = opencodePkgs.opencode;
 
     # Not in nixos-unstable yet (NixOS/nixpkgs#581031). herdr-desktop pins
     # masterPkgs.herdr-core by store path, so take both from the same pin.
+    # WAIT-FOR unstable: https://github.com/NixOS/nixpkgs/pull/581031
     herdr-core = masterPkgs.herdr-core;
     herdr-desktop = masterPkgs.herdr-desktop;
 
@@ -148,8 +158,10 @@
     # pipewire-pulse can transiently report a card with zero profiles during
     # bring-up ("profiles inconsistent"), making active_profile NULL. Kills the
     # autologin session on the GNOME hosts (BrightFalls, CauldronLake).
-    # Unfixed on libgvc master and pipewire 1.6.7 as of 2026-07-09; see the
-    # patch header for full context. Drop once the vendored gvc gains the guard.
+    # Reported upstream as libgvc issue #47, with the fix in MR !38 (open as of
+    # 2026-11-03); the patch header predates both. See it for full context.
+    # Drop once gnome-shell vendors a gvc with the guard.
+    # WAIT-FOR merged: https://gitlab.gnome.org/GNOME/libgnome-volume-control/-/merge_requests/38
     gnome-shell = super.gnome-shell.overrideAttrs (old: {
       patches = (old.patches or [ ]) ++ [
         ../patches/gnome-shell/001-gvc-null-active-profile.patch

@@ -25,7 +25,7 @@
         })
       );
     });
-    # snapraid 14.9: the direct-I/O test invoked with
+    # snapraid 14.9 and 15.0: the direct-I/O test invoked with
     # --test-io-advise-direct fails with EINVAL because O_DIRECT is unsupported
     # on the Nix build sandbox filesystem. This is an environment limitation,
     # not evidence that SnapRAID's direct I/O is broken on the Nexus disks.
@@ -38,12 +38,13 @@
     # masked by the binary cache.
     #
     # Tracking: https://github.com/NixOS/nixpkgs/issues/505793
-    # (OPEN, no fix PR found as of 2026-08-20).
+    # (OPEN, no fix PR found as of 2026-11-03; 15.0 still fails this way).
+    # WAIT-FOR closed: https://github.com/NixOS/nixpkgs/issues/505793
     #
     # doCheck = false disables the full test suite of a parity/data-integrity
     # tool; this is a deliberate trade-off to keep the host buildable. Drop
     # this override once nixos-unstable ships a snapraid whose tests pass in
-    # the sandbox: either a release after 14.9 or a nixpkgs-side guard for the
+    # the sandbox: either a release after 15.0 or a nixpkgs-side guard for the
     # direct-I/O test.
     snapraid = optimizedForNexus (super.snapraid.overrideAttrs { doCheck = false; });
   }
