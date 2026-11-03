@@ -38,6 +38,34 @@ let
     ];
     text = builtins.readFile ./herdr/claude-statusline.sh;
   };
+
+  # The agent-tree layout, plus the deploy block beside the work area when
+  # mods.deploy is on. Generated rather than a second snapshot of `main`.
+  agentTreeLayout =
+    let
+      deployBlock = {
+        id = "deploy";
+        type = "block";
+        content.mod = "deploy";
+        size.px = 340;
+        min = 280;
+        max = 600;
+      };
+      addDeploy =
+        node:
+        if node.id or null == "work-body" then
+          node // { children = node.children ++ [ deployBlock ]; }
+        else if node ? children then
+          node // { children = map addDeploy node.children; }
+        else
+          node;
+    in
+    if cfg.mods.deploy.enable then
+      pkgs.writeText "agent-tree.json" (
+        builtins.toJSON (addDeploy (lib.importJSON ./herdr/layouts/agent-tree.json))
+      )
+    else
+      ./herdr/layouts/agent-tree.json;
 in
 {
   options.custom.herdr = {
@@ -47,6 +75,13 @@ in
       the desktop app's `agent-tree` layout: the Agents sidebar as host > space > tab > agent,
       each agent named by its `agent.name` terminal label, with Claude's context fill and
       prompt-cache time left. The first activation with the app open shows it
+    '';
+    mods.deploy.enable = lib.mkEnableOption ''
+      the nixos-configs panel in the agent-tree layout: the deploy pipeline
+      (master, build.yml, the deploy branch, each host's comin) above the
+      repo's WAIT-FOR / WATCH tags and their upstream status. Shown only while
+      the focused terminal is in a checkout of this repo. Needs `gh` signed in
+      and SSH to the other hosts
     '';
   };
 
@@ -119,10 +154,11 @@ in
         ];
 
         # Copied, not linked: herdr-app (0.1.10) reports "no `main.js`" when a mod's
-        # main.js is a symlink. Replaces whatever is there, hand-made copies included.
+        # main.js is a symlink. The folder is replaced whole, hand-made copies and
+        # stale files included; the app regenerates its own typings in it on start.
         home.activation.herdrAgentTreeMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
           dir="${config.xdg.configHome}/herdr-app/mods/agent-tree"
-          run rm -f "$dir/main.js" "$dir/mod.json"
+          run rm -rf "$dir"
           run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
         '';
@@ -132,21 +168,33 @@ in
         # upstream changes `main`. force: replaces hand-made copies instead of
         # failing activation.
         xdg.configFile."herdr-app/layouts/agent-tree.json" = {
-          source = ./herdr/layouts/agent-tree.json;
+          source = agentTreeLayout;
           force = true;
         };
 
         # Shows the layout once per machine, so a later pick of another layout
-        # sticks. The shown layout is the app's own state, so this goes through
-        # the running window; with no window open it retries on the next activation.
+        # sticks. A running window switches at once. With none open (activation
+        # at boot), the app's shared.json, where it keeps the shown layout, is set
+        # so the next start opens on it.
         home.activation.herdrAgentTreeLayout =
           let
             herdrApp = lib.getExe' pkgs.herdr-desktop "herdr-app";
           in
           lib.hm.dag.entryAfter [ "linkGeneration" ] ''
             marker="${config.xdg.stateHome}/herdr-app/agent-tree-shown"
-            if [ ! -e "$marker" ] && ${herdrApp} status >/dev/null 2>&1; then
-              if run ${herdrApp} do layout.switch --name agent-tree >/dev/null; then
+            shared="${config.xdg.configHome}/herdr-app/shared.json"
+            if [ ! -e "$marker" ]; then
+              shown=0
+              if ${herdrApp} status >/dev/null 2>&1; then
+                run ${herdrApp} do layout.switch --name agent-tree >/dev/null && shown=1
+              else
+                tmp=$(mktemp)
+                { cat "$shared" 2>/dev/null || echo '{}'; } |
+                  ${lib.getExe pkgs.jq} '.layout = "agent-tree"' >"$tmp" &&
+                  run install -Dm644 "$tmp" "$shared" && shown=1
+                rm -f "$tmp"
+              fi
+              if [ "$shown" = 1 ]; then
                 run mkdir -p "$(dirname "$marker")"
                 run touch "$marker"
               fi
@@ -159,6 +207,24 @@ in
           padding = 0;
           refreshInterval = 10;
         };
+      })
+
+      (lib.mkIf cfg.mods.deploy.enable {
+        assertions = [
+          {
+            assertion = cfg.mods.agentTree.enable;
+            message = "custom.herdr.mods.deploy lives in the agent-tree layout; enable custom.herdr.mods.agentTree.";
+          }
+        ];
+
+        # Copied and replaced whole, like agent-tree above.
+        home.activation.herdrDeployMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          dir="${config.xdg.configHome}/herdr-app/mods/deploy"
+          run rm -rf "$dir"
+          run install -Dm644 ${./herdr/deploy/main.js} "$dir/main.js"
+          run install -Dm644 ${./herdr/deploy/watch.js} "$dir/watch.js"
+          run install -Dm644 ${./herdr/deploy/mod.json} "$dir/mod.json"
+        '';
       })
     ]
   );
