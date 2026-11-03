@@ -39,8 +39,10 @@ let
     text = builtins.readFile ./herdr/claude-statusline.sh;
   };
 
-  # The agent-tree layout, plus the deploy block beside the work area when
-  # mods.deploy is on. Generated rather than a second snapshot of `main`.
+  # The agent-tree layout, adjusted for the mods that live in it: the deploy
+  # block beside the work area (mods.deploy), and space-cards in place of the
+  # shipped spaces list (mods.spaceCards). Generated rather than a second
+  # snapshot of `main`.
   agentTreeLayout =
     let
       deployBlock = {
@@ -51,18 +53,25 @@ let
         min = 280;
         max = 600;
       };
-      addDeploy =
+      adjust =
         node:
-        if node.id or null == "work-body" then
+        if node.id or null == "work-body" && cfg.mods.deploy.enable then
           node // { children = node.children ++ [ deployBlock ]; }
+        else if node.id or null == "spaces" && cfg.mods.spaceCards.enable then
+          node
+          // {
+            content = node.content // {
+              mod = "space-cards";
+            };
+          }
         else if node ? children then
-          node // { children = map addDeploy node.children; }
+          node // { children = map adjust node.children; }
         else
           node;
     in
-    if cfg.mods.deploy.enable then
+    if cfg.mods.deploy.enable || cfg.mods.spaceCards.enable then
       pkgs.writeText "agent-tree.json" (
-        builtins.toJSON (addDeploy (lib.importJSON ./herdr/layouts/agent-tree.json))
+        builtins.toJSON (adjust (lib.importJSON ./herdr/layouts/agent-tree.json))
       )
     else
       ./herdr/layouts/agent-tree.json;
@@ -82,6 +91,11 @@ in
       repo's WAIT-FOR / WATCH tags and their upstream status. Shown only while
       the focused terminal is in a checkout of this repo. Needs `gh` signed in
       and SSH to the other hosts
+    '';
+    mods.spaceCards.enable = lib.mkEnableOption ''
+      the `space-cards` Spaces list in the agent-tree layout, in place of the shipped one:
+      each machine a card with its device icon, OS and connection state, each space
+      with its branch badge, ahead/behind the default branch, and a worktree badge
     '';
   };
 
@@ -224,6 +238,24 @@ in
           run install -Dm644 ${./herdr/deploy/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/deploy/watch.js} "$dir/watch.js"
           run install -Dm644 ${./herdr/deploy/mod.json} "$dir/mod.json"
+        '';
+      })
+
+      (lib.mkIf cfg.mods.spaceCards.enable {
+        assertions = [
+          {
+            assertion = cfg.mods.agentTree.enable;
+            message = "custom.herdr.mods.spaceCards lives in the agent-tree layout; enable custom.herdr.mods.agentTree.";
+          }
+        ];
+
+        # Copied and replaced whole, like agent-tree above.
+        home.activation.herdrSpaceCardsMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          dir="${config.xdg.configHome}/herdr-app/mods/space-cards"
+          run rm -rf "$dir"
+          for f in main.js mod.json desktop.svg laptop.svg server.svg; do
+            run install -Dm644 "${./herdr/space-cards}/$f" "$dir/$f"
+          done
         '';
       })
     ]
