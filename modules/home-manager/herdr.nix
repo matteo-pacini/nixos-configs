@@ -109,6 +109,10 @@ in
       pkgs.python3
     ];
 
+    # Offered in herdr-app's theme picker. Only the theme file is managed:
+    # the picked theme lives in herdr-app's own writable layout state.
+    xdg.configFile."herdr-app/themes/dracula.json".source = ./herdr/dracula.json;
+
     # Keeps sessions and agents alive without an attached client. Pair with
     # users.users.<user>.linger = true on headless hosts so it starts at
     # boot instead of at first login.
