@@ -7,9 +7,9 @@
 // Hosts are read over plain SSH using the aliases in ~/.ssh/config; the
 // machine this runs on is read locally.
 
-import { View, div } from "gpui-kit";
+import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, theme, window, run, spaces, panes, focused } from "herdr";
+import { exec, theme, window, run, spaces, panes, focused, settings } from "herdr";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
 
 const REPO = "matteo-pacini/nixos-configs";
@@ -231,45 +231,6 @@ export default class Deploy extends View {
     this.openUrl(this.run?.url);
   }
 
-  pipeline(t) {
-    const run = this.run;
-    const ci = !run ? ["no run", "dim"]
-      : run.status !== "completed" ? ["building", "working"]
-      : run.conclusion === "success" ? ["passed", "ansi2"]
-      : [run.conclusion || "failed", "ansi1"];
-    const node = (label, value, color) => v_flex().gap(2)
-      .child(div().text_size(10).text_color(t.dim).child(label))
-      .child(div().text_color(t[color] ?? t.foreground).child(value));
-    const arrow = () => div().text_color(t.dim).child("→");
-    return h_flex().px(14).py(10).gap(12).items_center().border_b(1).border_color(t.border)
-      .child(node("master", short(this.master), "foreground"))
-      .child(arrow())
-      .child(div().id("ci").cursor_pointer().rounded(6).px(4).hover((s) => s.bg(t.hover))
-        .on_click(() => this.openRun())
-        .child(node(`build.yml${run ? ` · ${short(run.headSha)}` : ""}`, ci[0], ci[1])))
-      .child(arrow())
-      .child(node(this.ahead ? `deploy · ${this.ahead} behind` : "deploy", short(this.deploySha), this.ahead ? "blocked" : "foreground"));
-  }
-
-  hostRow(name, t) {
-    const h = this.hosts[name];
-    if (!h) return h_flex().px(14).h(40).items_center().text_color(t.dim).child(name);
-    const [label, color] = verdict(h, this.deploySha);
-    const detail = h.offline ? h.reason
-      : h.depStatus === "failed" ? h.depError
-      : h.buildError && h.building === this.deploySha ? h.buildError
-      : `${short(h.deployed)} · ${h.operation || "—"} · ${ago(h.depAt)}`;
-    return v_flex().px(14).py(7).gap(2).border_b(1).border_color(t.border)
-      .child(h_flex().gap(8).items_center()
-        .child(div().size(8).rounded(4).bg(t[color]))
-        .child(h_flex().flex_1().gap(6).items_baseline()
-          .child(div().font_semibold().child(name))
-          .when(name.toLowerCase() === this.local, (el) => el.child(div().text_size(11).text_color(t.dim).child("this machine"))))
-        .child(div().text_size(12).text_color(t[color]).child(label))
-        .when(h.busy, (el) => el.child(div().text_color(t.working).frames(SPINNER, 90))))
-      .child(div().pl(16).text_size(11).text_color(t.dim).truncate().child(detail ?? ""));
-  }
-
   // A new tab in the current space, at the checkout's root: nvim on the tag's
   // line, with neo-tree open on the file. The repo's space is the one shown,
   // so a remote checkout opens on its own machine.
@@ -283,69 +244,10 @@ export default class Deploy extends View {
     });
   }
 
-  watchRow(tag, i, t) {
-    const color = { ready: "ansi2", unknown: "ansi3", closed: "ansi3" }[tag.state];
-    const watch = tag.kind === "watch";
-    return v_flex().id(`watch-${i}`).px(14).py(6).gap(2).border_b(1).border_color(t.border)
-      .cursor_pointer().hover((s) => s.bg(t.hover))
-      .when(Boolean(tag.url), (el) => el.on_click(() => this.openUrl(tag.url)))
-      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openInEditor(tag); })
-      .child(h_flex().gap(8).items_center()
-        .child(div().size(8).rounded(4).when(watch, (el) => el.border_1().border_color(t[color] ?? t.dim)).when(!watch, (el) => el.bg(t[color] ?? t.dim)))
-        .child(div().flex_1().min_w(0).truncate().font_semibold().text_color(watch ? t.muted : t.foreground).child(tag.label))
-        .child(div().flex_none().text_size(12).text_color(t[color] ?? t.muted).child(tag.text ?? "")))
-      .child(div().pl(16).text_size(11).text_color(t.dim).truncate()
-        .child(`${shortRef(tag)} · ${tag.kind} · ${tag.file}:${tag.line}`));
-  }
-
   toggle(section, cx) {
     this.collapsed[section] = !this.collapsed[section];
     localStorage.setItem("collapsed", JSON.stringify(this.collapsed));
     cx.notify();
-  }
-
-  // A section title that collapses its section when clicked.
-  title(section, label, t) {
-    return h_flex().id(`toggle-${section}`).gap(6).items_center().cursor_pointer()
-      .on_click((_e, cx) => this.toggle(section, cx))
-      .child(div().w(12).text_size(12).text_color(t.dim).child(this.collapsed[section] ? "▸" : "▾"))
-      .child(div().text_size(15).font_semibold().child(label));
-  }
-
-  // What a collapsed Deploy section still says: anything that isn't fine.
-  deploySummary() {
-    const counts = {};
-    for (const name of HOSTS) {
-      const h = this.hosts[name];
-      const label = h ? verdict(h, this.deploySha)[0] : null;
-      if (label && label !== "up to date") counts[label] = (counts[label] ?? 0) + 1;
-    }
-    const parts = Object.entries(counts).map(([label, n]) => `${n} ${label}`);
-    if (this.run?.status === "completed" && this.run.conclusion !== "success") parts.unshift("build.yml failed");
-    return parts.length ? parts.join(" · ") : "all up to date";
-  }
-
-  watchSection(t) {
-    const tags = this.tags ?? [];
-    const count = (state) => tags.filter((tag) => tag.state === state).length;
-    const summary = this.watchLoading ? "checking…"
-      : this.tags ? `${count("ready")} ready · ${count("waiting")} waiting` : "";
-    const open = !this.collapsed.watch;
-    return v_flex().when(open, (el) => el.flex_1().min_h(0))
-      .child(h_flex().h(44).flex_none().px(14).gap(6).items_center().border_b(1).border_color(t.border)
-        .child(this.title("watch", "Watch", t))
-        .child(div().flex_1())
-        .child(div().text_size(11).text_color(t.dim).child(summary)))
-      .when(open && Boolean(this.watchError), (el) => el.child(div().px(14).py(6).text_size(11).text_color(t.ansi1).child(this.watchError)))
-      .when(open, (el) => el.child(v_flex().flex_none().px(14).py(5).gap(2).border_b(1).border_color(t.border).text_size(11).text_color(t.dim)
-        .when(Boolean(this.checkout), (el) => el.child(this.checkoutLine(t)))
-        .child("Click: open upstream · Right-click: edit in nvim")))
-      .when(open && Boolean(this.tags) && !tags.length && !this.watchLoading, (el) => el.child(
-        div().px(14).py(8).text_size(12).text_color(t.muted).child(this.checkoutBehind()
-          ? "No WAIT-FOR / WATCH tags in this checkout. Pull master to see them."
-          : "No WAIT-FOR / WATCH tags in this checkout.")))
-      .when(open, (el) => el.child(v_flex().id("watch-list").flex_1().min_h(0).overflow_y_scrollbar()
-        .children(tags.map((tag, i) => this.watchRow(tag, i, t)))));
   }
 
   // Whether the checkout is behind master: by its own origin/master, which is
@@ -358,33 +260,195 @@ export default class Deploy extends View {
     return null;
   }
 
-  // "Reading nightsprings · master @ 2642d9a · 23 behind origin/master"
-  checkoutLine(t) {
-    const c = this.checkout, behind = this.checkoutBehind();
-    const where = c.machine ?? this.local ?? "this machine";
-    return h_flex().gap(4).min_w(0)
-      .child(div().truncate().child(`Reading ${where} · ${c.branch ?? "?"} @ ${c.head?.slice(0, 7) ?? "?"}`))
-      .when(Boolean(behind), (el) => el.child(div().flex_none().text_color(t.blocked).child(`· ${behind}`)));
+  // ---- Drawing: two cards, Deploy above Watch, in the agent tree's idiom ----
+
+  // A status pill tinted with a theme colour (by name).
+  chip(text, color, t) {
+    const c = t[color] ?? t.dim;
+    return div().flex_none().h(18).px(7).rounded(5).bg(c + "26").text_color(c)
+      .text_size(10.5).font_semibold().flex().items_center().child(text);
+  }
+
+  marker(color, hollow, t) {
+    const c = t[color] ?? t.dim;
+    return div().size(8).flex_none().rounded(4).when(hollow, (el) => el.border(1.5).border_color(c)).when(!hollow, (el) => el.bg(c));
+  }
+
+  // One row of a card: marker, name over a dim detail line, a chip.
+  item(id, marker, name, sub, right, t) {
+    return h_flex().id(id).gap(9).px(8).py(7).rounded(8).items_center().hover((s) => s.bg(t.hover))
+      .child(marker)
+      .child(v_flex().flex_1().min_w(0).gap(1)
+        .child(name)
+        .when(Boolean(sub), (el) => el.child(div().text_size(11).text_color(t.dim).truncate().child(sub))))
+      .child(right);
+  }
+
+  card(t, grow) {
+    return v_flex().bg(t.background).border_1().border_color(t.border).rounded(10).overflow_hidden()
+      .when(grow, (el) => el.flex_1().min_h(0)).when(!grow, (el) => el.flex_none());
+  }
+
+  // The card's header bar; the chevron, icon and title collapse the card.
+  cardHeader(section, label, icon, tint, right, t) {
+    const c = t[tint] ?? t.accent;
+    return h_flex().h(46).flex_none().pl(12).pr(10).gap(9).items_center().bg(t.raised)
+      .child(h_flex().id(`toggle-${section}`).gap(9).items_center().cursor_pointer()
+        .on_click((_e, cx) => this.toggle(section, cx))
+        .child(svg(`mods/workspace-chrome/chevron-${this.collapsed[section] ? "right" : "down"}.svg`).size(11).flex_none().text_color(t.dim))
+        .child(div().size(22).flex_none().rounded(6).bg(c + "26").flex().items_center().justify_center()
+          .child(svg(`mods/workspace-chrome/${icon}.svg`).size(13).text_color(c)))
+        .child(div().text_size(15).font_semibold().child(label)))
+      .child(div().flex_1())
+      .child(right);
+  }
+
+  // Header chips: whatever needs attention, else one "up to date".
+  deployChips(t) {
+    if (this.loading && !this.checked) return [div().text_size(11).text_color(t.dim).child("checking…")];
+    const counts = {};
+    for (const name of HOSTS) {
+      const h = this.hosts[name];
+      if (!h) continue;
+      const [label, color] = verdict(h, this.deploySha);
+      if (label === "up to date") continue;
+      counts[label] ??= { n: 0, color };
+      counts[label].n++;
+    }
+    const chips = Object.entries(counts).map(([label, { n, color }]) =>
+      this.chip(`${n} ${label === "reboot pending" ? "reboot" : label}`, color, t));
+    if (this.run?.status === "completed" && this.run.conclusion !== "success") chips.unshift(this.chip("build failed", "ansi1", t));
+    return chips.length ? chips : [this.chip("up to date", "ansi2", t)];
+  }
+
+  steps(t) {
+    const run = this.run;
+    const ci = !run ? ["no run", "dim"]
+      : run.status !== "completed" ? ["building", "working"]
+      : run.conclusion === "success" ? ["passed", "ansi2"]
+      : [run.conclusion || "failed", "ansi1"];
+    const mono = settings().font_family ?? "JetBrains Mono";
+    const sha = (s, color) => div().font_family(mono).text_size(11.5).text_color(color ?? t.foreground).child(short(s));
+    const step = (id, label, value, onClick) => v_flex().id(id).flex_1().min_w(0).gap(4).px(8).py(7).rounded(8).bg(t.hover)
+      .when(Boolean(onClick), (el) => el.cursor_pointer().hover((s) => s.bg(t.selected)).on_click(onClick))
+      .child(div().text_size(10).text_color(t.dim).truncate().child(label))
+      .child(value);
+    return h_flex().gap(6).px(12).pt(12).pb(6)
+      .child(step("step-master", "MASTER", sha(this.master)))
+      .child(step("step-ci", "BUILD.YML", h_flex().child(this.chip(ci[0], ci[1], t)), () => this.openRun()))
+      .child(step("step-deploy", this.ahead ? `DEPLOY · ${this.ahead} BEHIND` : "DEPLOY", sha(this.deploySha, this.ahead ? t.blocked : null)));
+  }
+
+  hostItem(name, t) {
+    const h = this.hosts[name];
+    const [label, color] = verdict(h, this.deploySha);
+    const detail = h.depStatus === "failed" ? h.depError
+      : h.buildError && h.building === this.deploySha ? h.buildError
+      : `${short(h.deployed)} · ${h.operation || "—"} · ${ago(h.depAt)}`;
+    const title = h_flex().gap(6).items_center().min_w(0)
+      .child(div().font_medium().truncate().child(name))
+      .when(name.toLowerCase() === this.local, (el) => el.child(div().flex_none().px(5).h(16).rounded(4).border(1).border_color(t.dim)
+        .flex().items_center().text_size(10).text_color(t.muted).child("this machine")));
+    const right = h_flex().gap(6).items_center()
+      .when(h.busy, (el) => el.child(div().text_color(t.working).frames(SPINNER, 90)))
+      .child(this.chip(label === "reboot pending" ? "reboot" : label, color, t));
+    return this.item(`host-${name}`, this.marker(color, false, t), title, detail, right, t);
+  }
+
+  deployCard(t) {
+    const open = !this.collapsed.deploy;
+    const known = HOSTS.filter((name) => this.hosts[name]);
+    const online = known.filter((name) => !this.hosts[name].offline);
+    const offline = known.filter((name) => this.hosts[name].offline);
+    const header = h_flex().gap(5).items_center()
+      .children(this.deployChips(t))
+      .child(div().id("refresh").ml(4).px(6).py(2).rounded(6).cursor_pointer().text_size(11).text_color(t.muted)
+        .hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.refresh(cx); this.loadWatch(cx); })
+        .child(this.loading ? "…" : "Refresh"));
+    return this.card(t, false)
+      .child(this.cardHeader("deploy", "Deploy", "server", "accent", header, t))
+      .when(Boolean(this.ghError), (el) => el.child(div().px(14).pt(8).text_size(11).text_color(t.ansi1).child(`GitHub: ${this.ghError}`)))
+      .when(open, (el) => el
+        .child(this.steps(t))
+        .child(v_flex().p(6).gap(2)
+          .children(online.map((name) => this.hostItem(name, t)))
+          .when(offline.length > 0, (el) => el.child(this.item("host-offline", this.marker("dim", true, t),
+            div().font_medium().text_color(t.muted).truncate().child(offline.join(" · ")), null, this.chip("offline", "dim", t), t)))
+          .when(!known.length, (el) => el.child(div().px(8).py(7).text_size(12).text_color(t.dim).child("Checking hosts…")))));
+  }
+
+  // The short state a Watch chip shows; the full text goes on the detail line.
+  static tagChip(tag) {
+    if (tag.state === "unknown") return ["check by hand", "ansi3"];
+    if (tag.kind === "watch") return [tag.state, tag.state === "closed" ? "ansi3" : "dim"];
+    if (tag.kind === "manual") return ["manual", "dim"];
+    const ready = tag.state === "ready";
+    switch (tag.kind) {
+      case "unstable": return ready ? ["in unstable", "ansi2"] : [/not merged|unmerged/.test(tag.text) ? "not merged" : "not in unstable", "dim"];
+      case "merged": return ready ? ["merged", "ansi2"] : ["not merged", "dim"];
+      case "closed": return ready ? ["closed", "ansi2"] : ["open", "dim"];
+      case "green": return ready ? ["green", "ansi2"] : ["Hydra red", "dim"];
+      case "version": return ready ? ["available", "ansi2"] : [tag.text, "dim"];
+    }
+    return [tag.text, "dim"];
+  }
+
+  watchItem(tag, i, t) {
+    const [chipText, chipColor] = Deploy.tagChip(tag);
+    const watch = tag.kind === "watch";
+    const dot = { ready: "ansi2", unknown: "ansi3", closed: "ansi3" }[tag.state] ?? "dim";
+    const sub = [shortRef(tag), tag.text !== chipText ? tag.text : null].filter(Boolean).join(" · ");
+    return this.item(`watch-${i}`, this.marker(dot, watch, t),
+      div().font_medium().truncate().text_color(watch ? t.muted : t.foreground).child(tag.label), sub, this.chip(chipText, chipColor, t), t)
+      .cursor_pointer()
+      .when(Boolean(tag.url), (el) => el.on_click(() => this.openUrl(tag.url)))
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openInEditor(tag); });
+  }
+
+  watchCard(t) {
+    const open = !this.collapsed.watch;
+    const tags = this.tags ?? [];
+    const count = (state) => tags.filter((tag) => tag.state === state).length;
+    const header = h_flex().gap(5).items_center()
+      .when(this.watchLoading, (el) => el.child(div().text_size(11).text_color(t.dim).child("checking…")))
+      .when(!this.watchLoading && Boolean(this.tags), (el) => el
+        .when(count("ready") > 0, (el) => el.child(this.chip(`${count("ready")} ready`, "ansi2", t)))
+        .child(this.chip(`${count("waiting")} waiting`, "dim", t)));
+    const groups = [
+      ["READY", (tag) => tag.state === "ready"],
+      ["NOT CHECKED", (tag) => tag.state === "unknown"],
+      ["WAITING", (tag) => tag.state === "waiting"],
+      ["MANUAL", (tag) => tag.state === "manual"],
+      ["WATCHING", (tag) => tag.kind === "watch"],
+    ];
+    const rows = [];
+    for (const [label, test] of groups) {
+      const members = tags.filter(test);
+      if (!members.length) continue;
+      rows.push(div().px(8).pt(10).pb(4).text_size(10).text_color(t.dim).child(label));
+      for (const tag of members) rows.push(this.watchItem(tag, tags.indexOf(tag), t));
+    }
+    const behind = this.checkoutBehind();
+    const c = this.checkout;
+    return this.card(t, open)
+      .child(this.cardHeader("watch", "Watch", "clock", "ansi2", header, t))
+      .when(open && Boolean(c), (el) => el.child(h_flex().flex_none().px(14).pt(8).gap(4).text_size(11).text_color(t.dim).min_w(0)
+        .child(div().truncate().child(`${c.machine ?? this.local ?? "this machine"} · ${c.branch ?? "?"} @ ${c.head?.slice(0, 7) ?? "?"}`))
+        .when(Boolean(behind), (el) => el.child(div().flex_none().text_color(t.blocked).child(`· ${behind}`)))))
+      .when(open, (el) => el.child(div().flex_none().px(14).pt(2).text_size(11).text_color(t.dim).child("Click opens upstream · right-click edits in nvim")))
+      .when(open && Boolean(this.watchError), (el) => el.child(div().px(14).pt(6).text_size(11).text_color(t.ansi1).child(this.watchError)))
+      .when(open && Boolean(this.tags) && !tags.length && !this.watchLoading, (el) => el.child(
+        div().px(14).py(10).text_size(12).text_color(t.muted).child(behind
+          ? "No WAIT-FOR / WATCH tags in this checkout. Pull master to see them."
+          : "No WAIT-FOR / WATCH tags in this checkout.")))
+      .when(open, (el) => el.child(v_flex().id("watch-list").flex_1().min_h(0).overflow_y_scrollbar().px(6).pb(6).gap(2).children(rows)));
   }
 
   render(cx) {
     this.follow(cx);
     const t = theme();
-    const button = (id, label, onClick) => div().id(id).px(8).py(2).rounded(6).cursor_pointer()
-      .text_size(11).text_color(t.muted).hover((s) => s.bg(t.hover))
-      .on_click(onClick).child(label);
-    return v_flex().size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13)
-      .child(h_flex().h(44).flex_none().px(14).gap(6).items_center().border_b(1).border_color(t.border)
-        .child(this.title("deploy", "Deploy", t))
-        .child(div().flex_1().min_w(0).truncate().text_size(11).text_color(t.dim)
-          .child(this.loading ? "checking…"
-            : this.collapsed.deploy ? this.deploySummary()
-            : this.checked ? `checked ${ago(this.checked)}` : ""))
-        .child(button("refresh", "Refresh", (_e, cx) => { this.refresh(cx); this.loadWatch(cx); })))
-      .when(Boolean(this.ghError), (el) => el.child(div().px(14).py(6).text_size(11).text_color(t.ansi1).child(`GitHub: ${this.ghError}`)))
-      .when(!this.collapsed.deploy, (el) => el
-        .child(this.pipeline(t))
-        .child(v_flex().flex_none().children(HOSTS.map((name) => this.hostRow(name, t)))))
-      .child(this.watchSection(t));
+    return v_flex().size_full().min_h(0).gap(8).text_color(t.foreground).text_size(13)
+      .child(this.deployCard(t))
+      .child(this.watchCard(t));
   }
 }
