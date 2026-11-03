@@ -58,9 +58,28 @@ function agentName(a, term) {
   return term?.labels?.[LABEL] || term?.name || clean(a.title) || a.program?.name || a.address;
 }
 
+// The right-click menu for an agent; `p` holds `claude` and `blocked`.
+// The slash commands are Claude-only, and off while the agent waits on a
+// prompt: the Enter after the command would answer that prompt instead.
+function menuItems(p) {
+  const slash = (label, icon, command) =>
+    ({ label, icon, send: command, disabled: p.blocked, hint: p.blocked ? "needs you" : command });
+  return [
+    { label: "Rename", icon: "square-pen", action: "rename" },
+    ...(p.claude ? [slash("Clear", "terminal", "/clear"), slash("Compact", "layers", "/compact")] : []),
+  ];
+}
+
+// Types `text` and Enter into an agent's terminal (`machine/t7` for a remote one).
+async function sendTo(address, text) {
+  const r = await hc(["send", address, text]);
+  if (r.code !== 0) notify({ title: `Couldn't send ${text}`, body: r.stderr || r.stdout, level: "error" });
+}
+
 export default class AgentTree extends View {
   init(_props, cx) {
     if (props()?.rename) return this.initRename();
+    if (props()?.menu) return this.initMenu(cx);
     this.folded = new Set(JSON.parse(localStorage.getItem("folded") ?? "[]"));
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
@@ -101,6 +120,49 @@ export default class AgentTree extends View {
 
   rename(a, current) {
     openOverlay({ mod: "agent-tree", kind: "dialog", width: 380, height: 220, props: { rename: a.address, value: current } });
+  }
+
+  // Right-click menu, a popup at the pointer drawn like the shipped `menu` mod.
+  openMenu(a, current) {
+    const n = menuItems({ claude: a.app === "claude-code" }).length;
+    openOverlay({
+      mod: "agent-tree", kind: "popup", width: 200, height: n * 31 + 10,
+      props: { menu: a.address, value: current, claude: a.app === "claude-code", blocked: a.status === "blocked" },
+    });
+  }
+
+  initMenu(cx) {
+    this.at = 0;
+    this.handle = cx.focus_handle();
+    this.handle.focus();
+  }
+
+  chooseMenu(i) {
+    const p = props(), it = menuItems(p)[i];
+    if (!it || it.disabled) return;
+    closeOverlay(p.overlay);
+    if (it.action === "rename") this.rename({ address: p.menu }, p.value ?? "");
+    if (it.send) sendTo(p.menu, it.send);
+  }
+
+  menuPopup(t) {
+    const p = props(), list = menuItems(p);
+    return v_flex().id("ag-menu").track_focus(this.handle).w_full().min_h(0).p(5).bg(t.popover).text_size(12.8)
+      .on_key_down((e, cx) => {
+        if (e.key === "down") this.at = (this.at + 1) % list.length;
+        else if (e.key === "up") this.at = (this.at + list.length - 1) % list.length;
+        else if (e.key === "enter") this.chooseMenu(this.at);
+        else if (e.key === "escape") closeOverlay(p.overlay);
+        else return;
+        cx.notify();
+      })
+      .children(list.map((it, i) => h_flex().id(`agm-${i}`).h(31).px(8).gap(9).rounded(7).items_center()
+        .text_color(it.disabled ? t.dim : t.foreground)
+        .when(i === this.at && !it.disabled, (el) => el.bg(t.selected))
+        .when(!it.disabled, (el) => el.hover((s) => s.bg(t.hover)).on_click(() => this.chooseMenu(i)))
+        .child(svg(`mods/workspace-chrome/${it.icon}.svg`).size(14).flex_none().text_color(it.disabled ? t.dim : t.muted))
+        .child(div().flex_1().child(it.label))
+        .when(Boolean(it.hint), (el) => el.child(div().text_size(11).text_color(t.dim).child(it.hint)))));
   }
 
   toggle(id, cx) {
@@ -244,8 +306,10 @@ export default class AgentTree extends View {
   }
 
   // One line for a plain agent; a card (name, model, metrics) for one whose
-  // statusLine sets labels.
-  agentRow(t, a, depth, name, subs, now) {
+  // statusLine sets labels. `pin`: the "host › space › tab" line that makes this
+  // the pinned copy above the list.
+  agentRow(t, a, depth, name, subs, now, pin = null) {
+    const key = `${pin ? "pin" : "ag"}-${a.address}`;
     const pic = icon(a.program, 16, t.foreground);
     const when = this.changed[a.address]?.at;
     const idle = a.status === "idle" && !a.focused;
@@ -254,7 +318,7 @@ export default class AgentTree extends View {
     const model = this.model(t, labels);
     const card = Boolean(stats || model);
     const head = h_flex().items_center().gap(9)
-      .when(Boolean(pic), (el) => el.child(div().id(`fold-${a.address}`)
+      .when(Boolean(pic), (el) => el.child(div().id(`fold-${key}`)
         .when(subs.length > 0, (el) => el.on_click((_e, cx) => { cx.stop_propagation(); this.toggle(`ag-${a.address}`, cx); }))
         .child(pic)))
       .child(div().flex_1().min_w(0).truncate().when(card, (el) => el.font_medium()).text_color(idle ? t.muted : t.foreground).child(name))
@@ -262,19 +326,22 @@ export default class AgentTree extends View {
       .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
       .child(card ? this.pill(t, a.status) : this.status(t, a.status));
     return v_flex()
-      .id(`ag-${a.address}`)
-      .pl(8 + depth * 12)
-      .pr(8)
-      .when(card, (el) => el.py(8).gap(5))
-      .when(!card, (el) => el.h(30).justify_center())
+      .id(key)
+      .pl(pin ? 10 : 8 + depth * 12)
+      .pr(pin ? 10 : 8)
+      .when(card || Boolean(pin), (el) => el.py(8).gap(5))
+      .when(!card && !pin, (el) => el.h(30).justify_center())
       .flex_none()
-      .rounded(8)
-      .when(a.focused, (el) => el.bg(t.selected))
+      .when(Boolean(pin), (el) => el.rounded(10).bg(t.raised).border_1().border_color(t.border))
+      .when(!pin, (el) => el.rounded(8).when(a.focused, (el) => el.bg(t.selected)))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))
-      .on_mouse_down("right", () => this.rename(a, labels?.[LABEL] ?? ""))
-      .tooltip("Right-click to rename")
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, labels?.[LABEL] ?? ""); })
+      .tooltip("Right-click for options")
+      .when(Boolean(pin), (el) => el.child(h_flex().gap(7).items_center().min_w(0).text_size(10.5).text_color(t.dim)
+        .child(div().flex_none().text_size(10).font_medium().text_color(t.muted).child("SELECTED"))
+        .child(div().truncate().child(pin))))
       .child(head)
       // 25: the program icon plus the head's gap, so these lines start under the name.
       .when(Boolean(model), (el) => el.child(div().pl(pic ? 25 : 0).child(model)))
@@ -284,6 +351,7 @@ export default class AgentTree extends View {
   render(cx) {
     const t = theme();
     if (props()?.rename) return this.renameDialog(t);
+    if (props()?.menu) return this.menuPopup(t);
     const collapsed = narrow();
     const list = agents();
     const all = terminals();
@@ -344,10 +412,20 @@ export default class AgentTree extends View {
         }
       }
     }
-    return this.frame(t, false, rows, list.length);
+    // The tree can't be scrolled from code, so the focused agent is pinned
+    // above it instead: it stays on screen however far the list is scrolled.
+    const sel = list.find((a) => a.focused);
+    let pinned = null;
+    if (sel) {
+      const host = machineOf.get(sel.space) ?? (sel.address.includes("/") ? sel.address.split("/")[0] : null);
+      const tab = /^\d+$/.test(sel.tab_name ?? "") ? `Tab ${sel.tab_name}` : sel.tab_name;
+      const where = [host ?? "This computer", sel.space_name, tab].filter(Boolean).join(" › ");
+      pinned = this.agentRow(t, sel, 0, agentName(sel, this.terms.get(sel.address)), [], now, where);
+    }
+    return this.frame(t, false, rows, list.length, pinned);
   }
 
-  frame(t, collapsed, rows, count) {
+  frame(t, collapsed, rows, count, pinned = null) {
     return v_flex()
       .size_full()
       .min_h(0)
@@ -357,6 +435,9 @@ export default class AgentTree extends View {
       .text_size(13)
       .when(!collapsed, (el) => el.child(h_flex().px(16).h(41).pt(14).pb(5).flex_none().items_center()
         .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Agents"))))
+      .when(!collapsed && Boolean(pinned), (el) => el
+        .child(div().flex_none().px(8).pb(8).child(pinned))
+        .child(div().flex_none().mx(16).mb(6).h(1).bg(t.border)))
       .when(count === 0 && !collapsed, (el) =>
         el.child(div().px(12).text_size(12).text_color(t.dim).child("No agent status yet. Agents show up here when they report their status.")))
       .child(v_flex().id("ag-list").flex_1().min_h(0).px(collapsed ? 0 : 8).overflow_y_scrollbar().mode("always").children(rows))
