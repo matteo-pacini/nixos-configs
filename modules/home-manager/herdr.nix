@@ -114,22 +114,20 @@ in
       pkgs.python3
     ];
 
-    # One link per file: herdr-app writes its own jsconfig.json and .d.ts files
-    # into mod folders, so the folder itself must stay writable. The layout is a
-    # snapshot of herdr-app's shipped `main` with the agents block swapped; shipped
-    # layouts live in the binary, so re-snapshot it when upstream changes `main`.
-    # force: replaces hand-made copies (e.g. ones made while developing the mod)
-    # instead of failing activation.
-    xdg.configFile."herdr-app/mods/agent-tree/main.js" = {
-      enable = cfg.mods.agentTree.enable;
-      source = ./herdr/agent-tree/main.js;
-      force = true;
-    };
-    xdg.configFile."herdr-app/mods/agent-tree/mod.json" = {
-      enable = cfg.mods.agentTree.enable;
-      source = ./herdr/agent-tree/mod.json;
-      force = true;
-    };
+    # Copied, not linked: herdr-app (0.1.10) reports "no `main.js`" when a mod's
+    # main.js is a symlink. Replaces whatever is there, hand-made copies included.
+    home.activation.herdrAgentTreeMod = lib.mkIf cfg.mods.agentTree.enable (
+      lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        dir="${config.xdg.configHome}/herdr-app/mods/agent-tree"
+        run rm -f "$dir/main.js" "$dir/mod.json"
+        run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
+        run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
+      ''
+    );
+
+    # The layout is a snapshot of herdr-app's shipped `main` with the agents block
+    # swapped; shipped layouts live in the binary, so re-snapshot it when upstream
+    # changes `main`. force: replaces hand-made copies instead of failing activation.
     xdg.configFile."herdr-app/layouts/agent-tree.json" = {
       enable = cfg.mods.agentTree.enable;
       source = ./herdr/layouts/agent-tree.json;
