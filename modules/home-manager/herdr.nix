@@ -33,8 +33,6 @@ let
   claudeStatusLine = pkgs.writeShellApplication {
     name = "claude-statusline";
     runtimeInputs = [
-      pkgs.coreutils
-      pkgs.gnugrep
       pkgs.jq
       pkgs.herdr-core
     ];
