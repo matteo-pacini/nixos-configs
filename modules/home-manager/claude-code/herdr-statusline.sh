@@ -2,9 +2,12 @@
 # ccstatusline and, when running inside a herdr pane, reports model, effort,
 # context usage and prompt-cache expiry through herdr-agent-report (see
 # modules/home-manager/herdr.nix for the sidebar rows that consume them).
+# Inside a herdr-app terminal it sets context and cache expiry as terminal
+# labels instead, for the agent-tree mod.
 input=$(cat)
 
-if [ "${HERDR_ENV:-}" = "1" ] && command -v herdr-agent-report >/dev/null 2>&1; then
+if { [ "${HERDR_ENV:-}" = "1" ] && command -v herdr-agent-report >/dev/null 2>&1; } ||
+  { [ -n "${HC_TERMINAL_ID:-}" ] && command -v hc >/dev/null 2>&1; }; then
   # display_name carries a parenthetical variant ("Opus 5 (1M context)") that
   # would collide with the effort parenthetical, so drop it.
   # Unit separator, not tab: read collapses runs of IFS whitespace, which
@@ -36,9 +39,18 @@ EOF
     [ -n "$last" ] && cache_until=$((last + ttl))
   fi
 
-  herdr-agent-report --agent claude --model "$model" --effort "$effort" \
-    ${pct:+--pct "$pct"} ${pct:+--ktokens "$ktokens"} \
-    ${cache_until:+--cache-until "$cache_until" --cache-mode countdown} || true
+  if [ "${HERDR_ENV:-}" = "1" ]; then
+    herdr-agent-report --agent claude --model "$model" --effort "$effort" \
+      ${pct:+--pct "$pct"} ${pct:+--ktokens "$ktokens"} \
+      ${cache_until:+--cache-until "$cache_until" --cache-mode countdown} || true
+  fi
+
+  # herdr-app: terminal labels read by the agent-tree mod (modules/home-manager/herdr).
+  # An empty value removes the label. The mod counts the cache down itself.
+  if [ -n "${HC_TERMINAL_ID:-}" ]; then
+    hc label "$HC_TERMINAL_ID" "agent.ctx=${pct%%.*}" "agent.ctxk=${pct:+$ktokens}" \
+      "agent.cache_until=$cache_until" >/dev/null 2>&1 || true
+  fi
 fi
 
 printf '%s' "$input" | npx -y ccstatusline@latest

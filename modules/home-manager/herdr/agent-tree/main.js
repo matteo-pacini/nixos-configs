@@ -196,15 +196,39 @@ export default class AgentTree extends View {
       .child(this.status(t, kidStatus(k, this.listed), true));
   }
 
+  // Context fill and prompt-cache time left, from the labels Claude's statusLine
+  // sets (modules/home-manager/claude-code/herdr-statusline.sh); null without them.
+  metrics(t, labels, now) {
+    const pct = parseInt(labels?.["agent.ctx"], 10);
+    const until = parseInt(labels?.["agent.cache_until"], 10);
+    if (Number.isNaN(pct) && Number.isNaN(until)) return null;
+    // Bands match herdr-agent-report: Claude auto-compacts at 80%.
+    const band = pct >= 70 ? t.ansi1 : pct >= 50 ? t.ansi3 : t.ansi2;
+    const k = labels?.["agent.ctxk"];
+    const left = Math.floor((until * 1000 - now) / 60000);
+    const cache = left < 0 ? ["cold", t.ansi1] : left < 1 ? ["<1m", t.ansi3] : left < 5 ? [`${left}m`, t.ansi3] : [`${left}m`, t.dim];
+    return h_flex().gap(6).items_center().text_size(10.5).text_color(t.dim)
+      .when(!Number.isNaN(pct), (el) => el
+        .child(div().w(34).h(4).flex_none().rounded(2).bg(t.input)
+          .child(div().h_full().rounded(2).bg(band).w(Math.round(34 * Math.min(pct, 100) / 100))))
+        .child(div().text_color(band).child(`${pct}%`))
+        .when(Boolean(k), (el) => el.child(div().child(`${k}k`))))
+      .when(!Number.isNaN(until), (el) => el
+        .child(h_flex().gap(3).items_center().text_color(cache[1])
+          .child(svg("mods/workspace-chrome/clock.svg").size(10).flex_none())
+          .child(div().child(cache[0]))));
+  }
+
   agentRow(t, a, depth, name, subs, now) {
     const pic = icon(a.program, 16, t.foreground);
     const when = this.changed[a.address]?.at;
     const idle = a.status === "idle" && !a.focused;
+    const stats = this.metrics(t, this.terms.get(a.address)?.labels, now);
     return h_flex()
       .id(`ag-${a.address}`)
       .pl(8 + depth * 12)
       .pr(8)
-      .h(30)
+      .h(stats ? 42 : 30)
       .flex_none()
       .rounded(8)
       .items_center()
@@ -218,7 +242,9 @@ export default class AgentTree extends View {
       .when(Boolean(pic), (el) => el.child(div().id(`fold-${a.address}`)
         .when(subs.length > 0, (el) => el.on_click((_e, cx) => { cx.stop_propagation(); this.toggle(`ag-${a.address}`, cx); }))
         .child(pic)))
-      .child(div().flex_1().min_w(0).truncate().text_color(idle ? t.muted : t.foreground).child(name))
+      .child(v_flex().flex_1().min_w(0).gap(3)
+        .child(div().truncate().text_color(idle ? t.muted : t.foreground).child(name))
+        .when(Boolean(stats), (el) => el.child(stats)))
       .when(subs.length > 0 && this.folded.has(`ag-${a.address}`), (el) => el.child(div().text_size(11).text_color(t.dim).child(String(subs.length))))
       .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
       .child(this.status(t, a.status));
