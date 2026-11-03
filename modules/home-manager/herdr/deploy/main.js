@@ -377,27 +377,31 @@ export default class Deploy extends View {
           .when(!known.length, (el) => el.child(div().px(8).py(7).text_size(12).text_color(t.dim).child("Checking hosts…")))));
   }
 
-  // The short state a Watch chip shows; the full text goes on the detail line.
+  // A Watch row's chip, its colour, and what the detail line adds beyond the
+  // chip (null when the chip already says it all).
   static tagChip(tag) {
-    if (tag.state === "unknown") return ["check by hand", "ansi3"];
-    if (tag.kind === "watch") return [tag.state, tag.state === "closed" ? "ansi3" : "dim"];
-    if (tag.kind === "manual") return ["manual", "dim"];
-    const ready = tag.state === "ready";
+    const ready = tag.state === "ready", text = tag.text ?? "";
+    if (tag.state === "unknown") return ["check by hand", "ansi3", text.replace(/^not checked: /, "")];
+    if (tag.kind === "watch") return [tag.state, tag.state === "closed" ? "ansi3" : "dim", null];
+    if (tag.kind === "manual") return ["manual", "dim", /· (.+)$/.test(text) ? `checked ${/· (.+)$/.exec(text)[1]}` : null];
     switch (tag.kind) {
-      case "unstable": return ready ? ["in unstable", "ansi2"] : [/not merged|unmerged/.test(tag.text) ? "not merged" : "not in unstable", "dim"];
-      case "merged": return ready ? ["merged", "ansi2"] : ["not merged", "dim"];
-      case "closed": return ready ? ["closed", "ansi2"] : ["open", "dim"];
-      case "green": return ready ? ["green", "ansi2"] : ["Hydra red", "dim"];
-      case "version": return ready ? ["available", "ansi2"] : [tag.text, "dim"];
+      case "unstable":
+        if (ready) return ["in unstable", "ansi2", null];
+        return /not merged|unmerged/.test(text) ? ["not merged", "dim", null] : ["not in unstable", "dim", "PR merged"];
+      case "merged": return ready ? ["merged", "ansi2", null] : ["not merged", "dim", null];
+      case "closed": return ready ? ["closed", "ansi2", /not planned/.test(text) ? "not planned" : null] : ["open", "dim", null];
+      case "green": return ready ? ["green", "ansi2", text] : ["Hydra red", "dim", text];
+      case "version": return ready ? ["available", "ansi2", text] : [text, "dim", null];
     }
-    return [tag.text, "dim"];
+    return [text, "dim", null];
   }
 
   watchItem(tag, i, t) {
-    const [chipText, chipColor] = Deploy.tagChip(tag);
+    const [chipText, chipColor, detail] = Deploy.tagChip(tag);
     const watch = tag.kind === "watch";
     const dot = { ready: "ansi2", unknown: "ansi3", closed: "ansi3" }[tag.state] ?? "dim";
-    const sub = [shortRef(tag), tag.text !== chipText ? tag.text : null].filter(Boolean).join(" · ");
+    const ref = tag.kind === "version" ? "nixos-unstable" : shortRef(tag);
+    const sub = [ref, detail].filter(Boolean).join(" · ");
     return this.item(`watch-${i}`, this.marker(dot, watch, t),
       div().font_medium().truncate().text_color(watch ? t.muted : t.foreground).child(tag.label), sub, this.chip(chipText, chipColor, t), t)
       .cursor_pointer()
