@@ -45,8 +45,10 @@
   custom.opencode.enable = true;
   custom.herdr.enable = true;
   custom.herdr.desktop = true;
+  custom.herdr.mods.agentTree.enable = true;
   custom.hex.enable = true;
   custom.sleepmode.enable = true;
+  custom.mpv.enable = true;
 
   home.stateVersion = "26.05";
 
