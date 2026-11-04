@@ -42,11 +42,11 @@ in
     })
   );
 
-  # OVMF/OVMFFull run QEMU during build to generate UEFI vars. Vanilla QEMU
+  # OVMF runs QEMU during build to generate UEFI vars. Vanilla QEMU
   # keeps them identical to the cached builds, and a znver4 QEMU could not run
-  # on builders without those CPU features.
+  # on builders without those CPU features. OVMFFull is an override of OVMF,
+  # so it inherits this.
   OVMF = super.OVMF.override { qemu = super.qemu; };
-  OVMFFull = super.OVMFFull.override { qemu = super.qemu; };
 
   # binfmt's interpreter. nixpkgs derives it from `qemu`, which above adds
   # softmmu targets that a user-only build rejects; vanilla also hits the cache.
