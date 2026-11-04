@@ -77,11 +77,16 @@ const hostTab = (p, name, cmd) =>
 const askRefresh = (host, extra = {}) => setShared("deploy.refresh", { host, at: Date.now(), ...extra });
 
 // A host row's right-click menu; `p` is the popup's props (see Deploy.hostTarget).
+// Deploy actions go through comin-deploy (a mode means it is installed) and
+// wait while comin is busy or suspended.
 function hostMenuItems(p) {
   const items = [];
-  if (p.pending) {
+  const free = Boolean(p.mode) && !p.busy && !p.suspended;
+  if (free && p.pending) {
     items.push({ label: "Switch now", icon: "terminal", id: "switch" });
     if (!p.darwin) items.push({ label: "Schedule for next boot", icon: "clock", id: "boot" });
+  } else if (free && p.rebootPending) {
+    items.push({ label: "Switch now", icon: "terminal", id: "switch" });
   }
   if (p.diffTo) items.push({ label: "Check diff", icon: "git-compare", id: "diff" });
   // Modes need comin-deploy, which reports one.
@@ -149,9 +154,19 @@ function parseProbe(stdout) {
   const s = JSON.parse(json);
   const dep = s.deployer?.deployment ?? {};
   const gen = s.builder?.generation ?? {};
-  const pendingOut = gen.uuid && gen.uuid === s.deploy_confirmer?.submitted ? gen.out_path ?? "" : "";
+  // The held generation, from the store: the builder may have moved on to a
+  // newer commit since.
+  const held = (s.store?.generations ?? []).find((g) => g.uuid && g.uuid === s.deploy_confirmer?.submitted);
+  // What boots next: the last successful deployment.
+  const done = (s.store?.deployments ?? []).filter((d) => d.status === "done")
+    .sort((a, b) => String(b.ended_at).localeCompare(String(a.ended_at)))[0];
+  const staged = done?.generation?.out_path ?? "";
+  // comin holds systems equal to the staged one too; comin-deploy auto
+  // releases those within a minute, so they are not shown as pending.
+  const noop = Boolean(held?.out_path) && held.out_path === staged;
+  const pendingOut = held && !noop ? held.out_path ?? "" : "";
   // The newest system comin has for this host: held, built, or staged.
-  const newest = pendingOut || (gen.build_status === "built" ? gen.out_path : "") || dep.generation?.out_path || "";
+  const newest = pendingOut || (gen.build_status === "built" ? gen.out_path : "") || staged || "";
   return {
     deployed: dep.generation?.selected_commit_id ?? "",
     depStatus: dep.status ?? "",
@@ -162,15 +177,24 @@ function parseProbe(stdout) {
     // comin skips deploying a commit whose system is unchanged.
     unchanged: gen.build_status === "built" && Boolean(gen.out_path) && gen.out_path === dep.generation?.out_path,
     buildError: gen.eval_err || gen.build_err || "",
-    busy: Boolean(s.builder?.is_evaluating || s.builder?.is_building || s.deployer?.is_deploying),
-    suspended: Boolean(s.is_suspended),
+    building_: Boolean(s.builder?.is_evaluating || s.builder?.is_building),
+    deploying: Boolean(s.deployer?.is_deploying || s.deployer?.generation_to_deploy),
+    busy: Boolean(s.builder?.is_evaluating || s.builder?.is_building || s.deployer?.is_deploying || s.deployer?.generation_to_deploy),
+    suspended: Boolean(s.is_suspended || s.deployer?.is_suspended),
     // A generation comin built and holds for confirmation (custom.autoDeploy.confirm).
-    pending: s.deploy_confirmer?.submitted || "",
+    pending: held && !noop ? held.uuid : "",
     pendingOut,
+    pendingCommit: held?.selected_commit_id ?? "",
+    stagedCommit: done?.generation?.selected_commit_id ?? "",
     // What Check diff compares the running system with, when they differ.
     diffTo: current && newest && newest !== current ? newest : "",
     mode: modeOut.trim(),
-    rebootPending: Boolean(booted && dep.operation === "boot" && dep.status === "done" && dep.generation?.out_path && booted !== dep.generation.out_path),
+    // A boot deployment not yet running. Darwin has no booted-system to
+    // compare with in comin's sense: its operation is always switch.
+    rebootPending: Boolean(booted && dep.operation === "boot" && dep.status === "done" && dep.generation?.out_path
+      && booted !== dep.generation.out_path && current !== dep.generation.out_path),
+    // Switched live, but the kernel changed: comin's own check.
+    kernelReboot: Boolean(s.need_to_reboot) && dep.operation !== "boot",
   };
 }
 
@@ -180,10 +204,12 @@ function verdict(h, deploySha) {
   if (h.depStatus === "failed") return ["deploy failed", "ansi1"];
   if (h.buildError && h.building === deploySha) return ["build failed", "ansi1"];
   if (h.suspended) return ["suspended", "blocked"];
-  if (h.busy) return ["deploying", "working"];
+  if (h.deploying) return ["deploying", "working"];
+  if (h.building_) return ["building", "working"];
   if (h.pending) return ["pending", "ansi4"];
   if (deploySha && h.deployed !== deploySha && !(h.building === deploySha && h.unchanged)) return ["behind", "blocked"];
   if (h.rebootPending) return ["reboot pending", "blocked"];
+  if (h.kernelReboot) return ["reboot (kernel)", "blocked"];
   return ["up to date", "ansi2"];
 }
 
@@ -295,12 +321,16 @@ export default class Deploy extends View {
   // seconds to pick the confirmation up, hence the first three probes.
   async followDeploy(host, cx) {
     this.deploying.add(host);
+    let idle = 0;
     try {
       for (let i = 0; i < 360; i++) {
         await this.loadHost(host, this.local);
         cx.notify();
         const h = this.hosts[host];
-        if (i >= 3 && (h.offline || (!h.busy && !h.pending))) break;
+        // Idle for 20 s: a Switch now on a boot host has a few idle seconds
+        // between its boot and its switch.
+        idle = !h.offline && !h.busy && !h.pending ? idle + 1 : 0;
+        if (h.offline || (i >= 3 && idle >= 4)) break;
         await exec("sleep", ["5"]);
       }
     } finally {
@@ -452,7 +482,7 @@ export default class Deploy extends View {
       .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
       .hover((s) => s.opacity(0.88)).on_click(action).child(text);
     const go = () => {
-      hostTab(p, `switch: ${p.host}`, `comin-deploy switch ${p.pending}`);
+      hostTab(p, `switch: ${p.host}`, `comin-deploy switch${p.pending ? ` ${p.pending}` : ""}`);
       askRefresh(p.host, { watch: true });
       closeOverlay(o.overlay);
     };
@@ -461,7 +491,7 @@ export default class Deploy extends View {
       .child(div().text_size(15).font_semibold().child(`Switch ${p.host} now?`))
       .child(div().pt(8).flex_1().text_size(12.5).text_color(t.muted).child(p.darwin
         ? `Activates ${short(p.commit)} on ${p.host} now. Progress shows in a new tab.`
-        : `Activates ${short(p.commit)} on ${p.host} now: changed services restart. It also becomes the next boot. Progress shows in a new tab.`))
+        : `Activates ${short(p.commit)} on ${p.host} now: changed services restart, and it becomes the next boot. If it changes a switch-inhibitor, comin stages it for boot instead. Progress shows in a new tab.`))
       .child(h_flex().pt(14).gap(8).justify_end()
         .child(button("sw-cancel", "Cancel", false, () => closeOverlay(o.overlay)))
         .child(button("sw-go", "Switch now", true, go)));
@@ -471,7 +501,8 @@ export default class Deploy extends View {
   hostTarget(name) {
     const h = this.hosts[name];
     return { host: name, alias: name.toLowerCase(), local: name.toLowerCase() === this.local, darwin: DARWIN.has(name),
-      pending: h.pending, pendingOut: h.pendingOut, diffTo: h.diffTo, commit: h.building, mode: h.mode };
+      pending: h.pending, pendingOut: h.pendingOut, diffTo: h.diffTo, mode: h.mode, busy: h.busy, suspended: h.suspended,
+      rebootPending: h.rebootPending, commit: h.pending ? h.pendingCommit : h.rebootPending ? h.stagedCommit : h.building };
   }
 
   openHostMenu(name) {
@@ -648,7 +679,7 @@ export default class Deploy extends View {
     const following = this.deploying.has(name);
     const [label, color] = following && h.depStatus !== "failed" ? ["deploying", "working"] : verdict(h, this.deploySha);
     const detail = h.offline ? h.reason || "no SSH answer"
-      : h.pending && !h.busy ? `${short(h.building)} waiting · right-click to deploy`
+      : h.pending && !h.busy ? `${short(h.pendingCommit)} held · right-click to deploy`
       : h.depStatus === "failed" ? h.depError
       : h.buildError && h.building === this.deploySha ? h.buildError
       : `${short(h.deployed)} · ${h.operation || "—"} · ${ago(h.depAt)}`;

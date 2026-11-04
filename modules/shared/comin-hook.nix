@@ -4,7 +4,9 @@
 # deployment whose system differs from the booted one is reported as
 # "reboot pending" (meant for operation = "boot"); deployments that produce
 # the already-booted or the running system stay silent, so a staged
-# generation later switched to live is not reported again.
+# generation later switched to live is not reported again, and each staged
+# system is reported once (comin-deploy re-stages an identical system when it
+# releases a commit that leaves this host alone).
 {
   pkgs,
   telegramEnvFile,
@@ -41,9 +43,13 @@ pkgs.writeShellScript "comin-post-deploy" ''
         booted=$(readlink -f /run/booted-system)
         staged=$(readlink -f /nix/var/nix/profiles/system-profiles/comin)
         current=$(readlink -f /run/current-system)
-        if [[ "$booted" != "$staged" && "$current" != "$staged" ]]; then
+        seen=/var/lib/comin-hook/staged
+        if [[ "$booted" != "$staged" && "$current" != "$staged" \
+              && "$(cat "$seen" 2>/dev/null || true)" != "$staged" ]]; then
           ${pkgs.telegram-notify}/bin/telegram-notify \
             "📦 @matteopacini \`$sha\` staged ($subject), reboot pending"
+          mkdir -p "$(dirname "$seen")"
+          printf "%s\n" "$staged" >"$seen"
         fi
       ''}
       ;;

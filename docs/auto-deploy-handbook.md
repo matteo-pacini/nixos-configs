@@ -35,18 +35,21 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
 With `custom.autoDeploy.confirm`, comin fetches and builds each new `deploy` commit (from attic), then holds it: `comin status` shows a deploy confirmation waiting. Nothing is activated until `comin-deploy` releases it. This also holds `testing-<Host>` pushes.
 
 ```bash
-comin-deploy boot       # stage the waiting generation for the next boot (NixOS only)
-comin-deploy switch     # activate it now; on NixOS it is staged with boot first,
-                        # then comin resubmits the same deployment with switch
+comin-deploy boot       # stage the held generation for the next boot (NixOS only)
+comin-deploy switch     # make the newest system live: the held generation, or with
+                        # nothing held, the one staged for boot. On NixOS it is staged
+                        # with boot first, then comin resubmits it with switch
 comin-deploy mode       # print the mode
 comin-deploy mode boot  # manual | boot | switch (Darwin: manual | switch)
 ```
 
-The mode (`/var/lib/comin-deploy/mode`, writable by `wheel` / `admin`) decides what happens without anyone: `manual` (the default, also when the file is missing) waits; `boot` and `switch` are released that way by `comin-deploy auto`, which a timer (systemd on NixOS, launchd on Darwin, log in `/var/log/comin-deploy.log`) runs every minute. No sudo is needed: comin's socket is world-writable and the root daemon does the activation.
+If the new system changes a switch-inhibitor, comin stages it for boot instead of switching; `comin-deploy` reports that and never forces it. Every comin call has a timeout and survives comin restarting itself, which it does after a deployment that changes its own unit.
 
-The herdr Deploy panel shows a waiting host as **pending**. Right-click its row for Switch now (asks first), Schedule for next boot, Check diff (`dix diff` of `/run/current-system` against the newest system comin has for the host, held, built or staged; any enrolled host, peeked over the tab) and the three modes.
+The mode (`/var/lib/comin-deploy/mode`, writable by `wheel` / `admin`) decides what happens without anyone: `manual` (the default, also when the file is missing) waits; `boot` and `switch` are released that way by `comin-deploy auto`, which a timer (systemd on NixOS, launchd on Darwin, log in `/var/log/comin-deploy.log`) runs every minute. In every mode, `auto` also releases a held system that equals the staged one: comin holds commits that leave a host alone, and the same commit again after a restart. No sudo is needed: comin's socket is world-writable and the root daemon does the activation.
 
-Not covered: a held generation sends no Telegram message, and the 7-day reminder only counts generations already staged.
+The herdr Deploy panel shows a held host as **pending**. Right-click its row for Switch now (asks first), Schedule for next boot (both hidden while comin is busy or suspended), Check diff (`dix diff` of `/run/current-system` against the newest system comin has for the host, held, built or staged; any enrolled host) and the three modes. A host with a boot deployment that is not running yet also gets Switch now. After a live switch that changed the kernel, the row shows **Reboot (kernel)**.
+
+Each staged system is reported on Telegram once. Not covered: a held generation sends no Telegram message, and the 7-day reminder only counts generations already staged.
 
 `boot` means services, secrets (agenix decrypts at activation) and Home Manager changes all wait for the reboot. Kernel, NVIDIA module and userspace driver always change together, which is why Linux hosts use it.
 
