@@ -145,9 +145,9 @@ in
 
       })
       scheduler
+      uix
     ];
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
-      card-mod
       bubble-card
       sankey-chart
       mushroom
