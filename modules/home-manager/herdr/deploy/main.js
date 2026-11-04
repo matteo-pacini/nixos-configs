@@ -192,6 +192,7 @@ export default class Deploy extends View {
     if (props()?.menu) return this.initMenu(cx);
     if (props()?.review) return this.initReview();
     if (props()?.confirmSwitch) return;
+    if (props()?.diffView) return this.initDiff(cx);
     this.hosts = {};
     // Hosts whose deploy, started from the menu, is being followed.
     this.deploying = new Set();
@@ -250,20 +251,43 @@ export default class Deploy extends View {
         await exec(cmd, args);
       }
       if (ask.watch) return this.followDeploy(ask.host, cx);
-      if (ask.diff) return this.peekDiff(ask.target, ask.diff);
       await this.loadHost(ask.host, this.local);
       cx.notify();
     });
   }
 
-  // dix of the running system against `to`, in a background terminal peeked
-  // over the tab (keep it as a tab or close it from there). The read keeps it
-  // open after dix exits.
-  async peekDiff(p, to) {
-    const argv = onHost(p, `nix run nixpkgs#dix -- diff /run/current-system ${to}; printf '\\nPress Enter to close. '; read _`, true);
-    const r = await exec("hc", ["run", "--bg", "--name", `diff: ${p.host}`, ...argv]);
-    const address = r.code === 0 ? JSON.parse(r.stdout).address : null;
-    if (address) run("terminal.peek", { terminal: address });
+  // The Check diff dialog runs dix itself, so it shows progress while open.
+  initDiff(cx) {
+    const p = props().diffView;
+    this.diff = null;
+    cx.spawn(async (cx) => {
+      const [cmd, ...args] = onHost(p, `nix run nixpkgs#dix -- --color=never diff /run/current-system ${p.diffTo}`);
+      const r = await exec(cmd, args).catch((e) => ({ code: 1, stdout: "", stderr: String(e.message ?? e) }));
+      this.diff = r.code === 0 ? { text: r.stdout.trim() } : { error: (r.stderr || r.stdout).trim().split("\n").slice(-6).join("\n") };
+      cx.notify();
+    });
+  }
+
+  diffDialog(t) {
+    const o = props(), p = o.diffView, d = this.diff;
+    const mono = settings().font_family ?? "JetBrains Mono";
+    const close = () => closeOverlay(o.overlay);
+    const body = !d
+      ? h_flex().flex_1().gap(8).items_center().justify_center().text_color(t.muted)
+        .child(svg("mods/workspace-chrome/spinner.svg").size(14).text_color(t.working).spin(900))
+        .child(`Running dix on ${p.host}… the first run fetches it.`)
+      : v_flex().id("diff-out").flex_1().min_h(0).p(10).rounded(9).border_1().border_color(t.border).bg(t.background)
+        .overflow_y_scrollbar().font_family(mono).text_size(11.5)
+        .text_color(d.error ? t.ansi1 : t.foreground)
+        .children((d.error ?? (d.text || "No differences.")).split("\n").map((line) => div().flex_none().whitespace_nowrap().child(line || " ")));
+    return v_flex().size_full().min_h(0).p(18).gap(10).bg(t.popover).text_color(t.foreground)
+      .on_key_down((e, cx) => { if (e.key === "escape") { close(); cx.stop_propagation(); } })
+      .child(div().text_size(15).font_semibold().child(`${p.host}: running system → ${short(p.commit)}`))
+      .child(div().mt(-6).text_size(11.5).text_color(t.dim).truncate().child(p.diffTo))
+      .child(body)
+      .child(h_flex().justify_end()
+        .child(h_flex().id("diff-close").h(32).px(14).items_center().rounded(8).border_1().border_color(t.input).bg(t.raised)
+          .text_size(12.5).font_medium().cursor_pointer().hover((s) => s.opacity(0.88)).on_click(close).child("Close")));
   }
 
   // Probes a host every 5 s while a deploy started from its menu runs, until
@@ -397,11 +421,13 @@ export default class Deploy extends View {
   chooseMenu(i) {
     const o = props(), p = o.menu, it = menuItems(p)[i];
     if (!it) return;
+    // Act before closing: what a closed popup asks for (shared values, new
+    // overlays) is dropped.
+    if (p.host) Deploy.chooseHost(p, it.id);
+    else if (it.id === "nvim") openTab(p.tag.label, p.root, p.space, ["nvim", `+${p.tag.line}`, p.tag.file, "-c", "Neotree show reveal"]);
+    else if (it.id === "upstream") openUrl(p.tag.url);
+    else if (it.id === "claude") openReview(p);
     closeOverlay(o.overlay);
-    if (p.host) return Deploy.chooseHost(p, it.id);
-    if (it.id === "nvim") openTab(p.tag.label, p.root, p.space, ["nvim", `+${p.tag.line}`, p.tag.file, "-c", "Neotree show reveal"]);
-    if (it.id === "upstream") openUrl(p.tag.url);
-    if (it.id === "claude") openReview(p);
   }
 
   // Switch now asks first: it restarts services on a running machine. The
@@ -413,7 +439,7 @@ export default class Deploy extends View {
       hostTab(p, `boot: ${p.host}`, `comin-deploy boot ${p.pending}`);
       askRefresh(p.host, { watch: true });
     } else if (id === "diff") {
-      askRefresh(p.host, { diff: p.diffTo, target: p });
+      openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 760, height: 560, props: { diffView: p } });
     } else if (id.startsWith("mode-")) {
       askRefresh(p.host, { mode: id.slice(5), target: p });
     }
@@ -426,9 +452,9 @@ export default class Deploy extends View {
       .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
       .hover((s) => s.opacity(0.88)).on_click(action).child(text);
     const go = () => {
-      closeOverlay(o.overlay);
       hostTab(p, `switch: ${p.host}`, `comin-deploy switch ${p.pending}`);
       askRefresh(p.host, { watch: true });
+      closeOverlay(o.overlay);
     };
     return v_flex().size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground)
       .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(o.overlay); cx.stop_propagation(); } })
@@ -767,6 +793,7 @@ export default class Deploy extends View {
     if (props()?.menu) return this.menuPopup(t);
     if (props()?.review) return this.reviewDialog(t);
     if (props()?.confirmSwitch) return this.confirmSwitchDialog(t);
+    if (props()?.diffView) return this.diffDialog(t);
     this.follow(cx);
     this.answerRefresh(cx);
     return v_flex().id("deploy-panel").size_full().min_h(0).pb(8).overflow_y_scrollbar().bg(t.chrome).text_color(t.foreground).text_size(13)
