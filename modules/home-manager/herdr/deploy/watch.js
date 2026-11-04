@@ -30,8 +30,30 @@ export async function findTags(root, on) {
     files[tag.file] ??= (await readTextFile(`${root}/${tag.file}`, { on }).catch(() => "")).split("\n");
     tag.label = labelAfter(files[tag.file], tag.line);
   }
-  return tags;
+  return mergeSites(tags);
 }
+
+// One tag per condition and ref: a workaround spread over several files (an
+// input in flake.nix and the overlay that uses it) carries the same tag in
+// each. The result keeps the first site's file and line, every site in
+// `sites`, and the shortest label.
+function mergeSites(tags) {
+  const byTag = new Map();
+  for (const { file, line, label, ...tag } of tags) {
+    const key = `${tag.kind} ${tag.rest}`;
+    const site = { file, line, label };
+    const seen = byTag.get(key);
+    if (!seen) byTag.set(key, { ...tag, file, line, label, sites: [site] });
+    else {
+      seen.sites.push(site);
+      if (label.length < seen.label.length) seen.label = label;
+    }
+  }
+  return [...byTag.values()];
+}
+
+// "file:line, file:line" for every site of a tag.
+export const sitesText = (tag) => tag.sites.map((s) => `${s.file}:${s.line}`).join(", ");
 
 // Names a tag after the code it annotates: the first non-comment line below it.
 function labelAfter(lines, line) {

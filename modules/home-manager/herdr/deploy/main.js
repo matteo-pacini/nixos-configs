@@ -9,12 +9,16 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Textarea, TextareaState } from "gpui-base";
-import { exec, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props } from "herdr";
+import { exec, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
-import { claudeAction } from "./prompts.js";
+import { claudeAction, fixAll } from "./prompts.js";
 
 const REPO = "matteo-pacini/nixos-configs";
 const HOSTS = ["BrightFalls", "Nexus", "NightSprings", "CauldronLake", "WorkLaptop"];
+// nix-darwin has no boot: these hosts only switch.
+const DARWIN = new Set(["NightSprings", "WorkLaptop"]);
+// comin-deploy modes (modules/shared/comin-deploy.nix), as the host menu names them.
+const MODES = { manual: "Manual", boot: "Automatic (boot)", switch: "Automatic (switch)" };
 // comin polls every 60 s; refreshing faster shows nothing new.
 const REFRESH_MS = 60000;
 // Upstream moves in days; each check is ~15 API calls.
@@ -48,13 +52,45 @@ async function describeCheckout({ root, on }) {
 // Staged = the system comin last deployed (comin status), not the
 // system-profiles/comin link, which only root can read. Only a `boot`
 // deployment waits for a reboot; `switch` (Darwin) is live at once.
+// The mode is empty on a host without custom.autoDeploy.confirm (no comin-deploy).
 const PROBE = [
   "comin status --json",
   "echo '@@booted'; readlink -f /run/booted-system 2>/dev/null || true",
+  "echo '@@mode'; comin-deploy mode 2>/dev/null || true",
 ].join("; ");
+
+// argv running `cmd` on the host: through sh here, through ssh elsewhere.
+// `tty` keeps a terminal for a tab.
+function onHost(p, cmd, tty) {
+  return p.local ? ["sh", "-c", cmd] : ["ssh", ...(tty ? ["-t"] : ["-o", "BatchMode=yes"]), p.alias, cmd];
+}
+
+// A tab named `name` running `cmd` on the host, left open until Enter so the
+// outcome can be read.
+const hostTab = (p, name, cmd) =>
+  run("tab.new", { name, argv: onHost(p, `${cmd}; printf '\\nPress Enter to close. '; read _`, true) });
+
+// Asks the panel to probe `host` again now; a menu or dialog is another view.
+const askRefresh = (host) => setShared("deploy.refresh", { host, at: Date.now() });
+
+// A host row's right-click menu; `p` is the popup's props (see Deploy.hostTarget).
+function hostMenuItems(p) {
+  const items = [];
+  if (p.pending) {
+    items.push({ label: "Switch now", icon: "terminal", id: "switch" });
+    if (!p.darwin) items.push({ label: "Schedule for next boot", icon: "clock", id: "boot" });
+    if (p.pendingOut) items.push({ label: "Check diff", icon: "git-compare", id: "diff" });
+  }
+  for (const [mode, label] of Object.entries(MODES)) {
+    if (p.darwin && mode === "boot") continue;
+    items.push({ label, icon: mode === p.mode ? "check" : "square", id: `mode-${mode}` });
+  }
+  return items;
+}
 
 // A Watch row's right-click menu; `p` is the popup's props ({ tag, root, space }).
 function menuItems(p) {
+  if (p.host) return hostMenuItems(p);
   const claude = claudeAction(p.tag);
   return [
     { label: "Open in nvim", icon: "file-text", id: "nvim" },
@@ -67,17 +103,29 @@ const openUrl = (url) => {
   if (url) exec(window()?.platform === "macos" ? "open" : "xdg-open", [url]);
 };
 
+// The review dialog for a Claude Code prompt. `review`: { root, space, title,
+// text, name (the new tab's), about (a dim line under the title) }.
+function openReviewDialog(review) {
+  openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 640, height: 520, props: { review } });
+}
+
 // The review dialog for `p.tag`'s Claude Code prompt; `p` is { tag, root, space }.
 function openReview(p) {
   const a = claudeAction(p.tag);
-  openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 640, height: 520,
-    props: { review: { ...p, title: a.label, text: a.text } } });
+  openReviewDialog({ root: p.root, space: p.space, title: a.label, text: a.text, name: p.tag.label,
+    about: `${p.tag.label} · ${p.tag.sites.map((s) => `${s.file}:${s.line}`).join(", ")}` });
 }
 
 // A new tab in `space`, at the checkout's root, running `argv`.
 const openTab = (name, root, space, argv) => run("tab.new", { name, space, folder: root, argv });
 
 const short = (sha) => (sha ? sha.slice(0, 7) : "—");
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// The Spaces badge fills; a tag's label picks one, so it keeps its colour
+// across refreshes.
+const BADGES = ["#22a99a", "#e3814f", "#5b8def", "#8b7cf6", "#3fae6a", "#d9649a"];
+const badgeColor = (label) => BADGES[[...label].reduce((n, ch) => n + ch.codePointAt(0), 0) % BADGES.length];
 
 function ago(iso) {
   const ms = Date.now() - Date.parse(iso);
@@ -91,7 +139,8 @@ function ago(iso) {
 
 function parseProbe(stdout) {
   const [json, rest = ""] = stdout.split("@@booted");
-  const booted = rest.trim();
+  const [bootedOut, modeOut = ""] = rest.split("@@mode");
+  const booted = bootedOut.trim();
   const s = JSON.parse(json);
   const dep = s.deployer?.deployment ?? {};
   const gen = s.builder?.generation ?? {};
@@ -107,6 +156,10 @@ function parseProbe(stdout) {
     buildError: gen.eval_err || gen.build_err || "",
     busy: Boolean(s.builder?.is_evaluating || s.builder?.is_building || s.deployer?.is_deploying),
     suspended: Boolean(s.is_suspended),
+    // A generation comin built and holds for confirmation (custom.autoDeploy.confirm).
+    pending: s.deploy_confirmer?.submitted || "",
+    pendingOut: gen.uuid && gen.uuid === s.deploy_confirmer?.submitted ? gen.out_path ?? "" : "",
+    mode: modeOut.trim(),
     rebootPending: Boolean(booted && dep.operation === "boot" && dep.status === "done" && dep.generation?.out_path && booted !== dep.generation.out_path),
   };
 }
@@ -118,6 +171,7 @@ function verdict(h, deploySha) {
   if (h.buildError && h.building === deploySha) return ["build failed", "ansi1"];
   if (h.suspended) return ["suspended", "blocked"];
   if (h.busy) return ["deploying", "working"];
+  if (h.pending) return ["pending", "ansi4"];
   if (deploySha && h.deployed !== deploySha && !(h.building === deploySha && h.unchanged)) return ["behind", "blocked"];
   if (h.rebootPending) return ["reboot pending", "blocked"];
   return ["up to date", "ansi2"];
@@ -127,6 +181,7 @@ export default class Deploy extends View {
   init(_props, cx) {
     if (props()?.menu) return this.initMenu(cx);
     if (props()?.review) return this.initReview();
+    if (props()?.confirmSwitch) return;
     this.hosts = {};
     this.collapsed = JSON.parse(localStorage.getItem("collapsed") ?? "{}");
     this.follow(cx);
@@ -166,6 +221,17 @@ export default class Deploy extends View {
         this.repo = { root, on: loc.on };
         this.loadWatch(cx);
       }
+    });
+  }
+
+  // A menu or dialog asked for a host to be probed again (askRefresh).
+  answerRefresh(cx) {
+    const ask = shared("deploy.refresh");
+    if (!ask || ask.at === this.refreshAsked || !this.local) return;
+    this.refreshAsked = ask.at;
+    cx.spawn(async (cx) => {
+      await this.loadHost(ask.host, this.local);
+      cx.notify();
     });
   }
 
@@ -282,9 +348,63 @@ export default class Deploy extends View {
     const o = props(), p = o.menu, it = menuItems(p)[i];
     if (!it) return;
     closeOverlay(o.overlay);
+    if (p.host) return Deploy.chooseHost(p, it.id);
     if (it.id === "nvim") openTab(p.tag.label, p.root, p.space, ["nvim", `+${p.tag.line}`, p.tag.file, "-c", "Neotree show reveal"]);
     if (it.id === "upstream") openUrl(p.tag.url);
     if (it.id === "claude") openReview(p);
+  }
+
+  // Switch now asks first: it restarts services on a running machine. The
+  // generation id makes comin-deploy refuse if a newer one arrived meanwhile.
+  static chooseHost(p, id) {
+    if (id === "switch") {
+      openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 440, height: 190, props: { confirmSwitch: p } });
+    } else if (id === "boot") {
+      hostTab(p, `boot: ${p.host}`, `comin-deploy boot ${p.pending}`);
+      askRefresh(p.host);
+    } else if (id === "diff") {
+      hostTab(p, `diff: ${p.host}`, `nix run nixpkgs#dix -- /run/current-system ${p.pendingOut}`);
+    } else if (id.startsWith("mode-")) {
+      const [cmd, ...args] = onHost(p, `comin-deploy mode ${id.slice(5)}`);
+      exec(cmd, args).then(() => askRefresh(p.host));
+    }
+  }
+
+  confirmSwitchDialog(t) {
+    const o = props(), p = o.confirmSwitch;
+    const button = (id, text, primary, action) => h_flex().id(id).h(32).px(14).items_center().rounded(8)
+      .border_1().border_color(primary ? t.solid : t.input).bg(primary ? t.solid : t.raised)
+      .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
+      .hover((s) => s.opacity(0.88)).on_click(action).child(text);
+    const go = () => {
+      closeOverlay(o.overlay);
+      hostTab(p, `switch: ${p.host}`, `comin-deploy switch ${p.pending}`);
+      askRefresh(p.host);
+    };
+    return v_flex().size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground)
+      .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(o.overlay); cx.stop_propagation(); } })
+      .child(div().text_size(15).font_semibold().child(`Switch ${p.host} now?`))
+      .child(div().pt(8).flex_1().text_size(12.5).text_color(t.muted).child(p.darwin
+        ? `Activates ${short(p.commit)} on ${p.host} now. Progress shows in a new tab.`
+        : `Activates ${short(p.commit)} on ${p.host} now: changed services restart. It also becomes the next boot. Progress shows in a new tab.`))
+      .child(h_flex().pt(14).gap(8).justify_end()
+        .child(button("sw-cancel", "Cancel", false, () => closeOverlay(o.overlay)))
+        .child(button("sw-go", "Switch now", true, go)));
+  }
+
+  // The props a host row's menu and its actions need.
+  hostTarget(name) {
+    const h = this.hosts[name];
+    return { host: name, alias: name.toLowerCase(), local: name.toLowerCase() === this.local, darwin: DARWIN.has(name),
+      pending: h.pending, pendingOut: h.pendingOut, commit: h.building, mode: h.mode };
+  }
+
+  openHostMenu(name) {
+    const h = this.hosts[name];
+    // Only hosts with comin-deploy (a mode) have anything to offer.
+    if (!h || h.offline || !h.mode) return;
+    const p = this.hostTarget(name);
+    openOverlay({ mod: "deploy", kind: "popup", width: 230, height: hostMenuItems(p).length * 31 + 10, props: { menu: p } });
   }
 
   menuPopup(t) {
@@ -314,7 +434,7 @@ export default class Deploy extends View {
   startClaude() {
     const p = props(), r = p.review;
     closeOverlay(p.overlay);
-    openTab(`claude: ${r.tag.label}`, r.root, r.space, ["claude", this.prompt.value()]);
+    openTab(`claude: ${r.name}`, r.root, r.space, ["claude", this.prompt.value()]);
   }
 
   reviewDialog(t) {
@@ -327,7 +447,7 @@ export default class Deploy extends View {
       .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(p.overlay); cx.stop_propagation(); } })
       .child(div().text_size(15).font_semibold().child(r.title))
       .child(div().pt(4).pb(10).text_size(11.5).text_color(t.dim)
-        .child(`${r.tag.label} · ${r.tag.file}:${r.tag.line} · runs in a new tab at the checkout. Edit the prompt if you like.`))
+        .child(`${r.about} · runs in a new tab at the checkout. Edit the prompt if you like.`))
       .child(Textarea.new(this.prompt).flex_1().min_h(0).p(10).rounded(9).border_1().border_color(t.accent)
         .bg(t.background).text_size(12.5).text_color(t.foreground))
       .child(h_flex().pt(14).gap(8).justify_end()
@@ -351,7 +471,9 @@ export default class Deploy extends View {
     return null;
   }
 
-  // ---- Drawing: two cards, Deploy above Watch, in the agent tree's idiom ----
+
+  // ---- Drawing: flat sections, Deploy above Watch, in the idiom of the
+  // Agents and Spaces sidebars ----
 
   // A status pill tinted with a theme colour (by name).
   chip(text, color, t) {
@@ -362,38 +484,31 @@ export default class Deploy extends View {
 
   marker(color, hollow, t) {
     const c = t[color] ?? t.dim;
-    return div().size(8).flex_none().rounded(4).when(hollow, (el) => el.border(1.5).border_color(c)).when(!hollow, (el) => el.bg(c));
+    return div().size(7).flex_none().rounded(4).when(hollow, (el) => el.border(1.5).border_color(c)).when(!hollow, (el) => el.bg(c));
   }
 
-  // One row of a card: marker, name over a dim detail line, a chip.
-  item(id, marker, name, sub, right, t) {
-    return h_flex().id(id).gap(9).px(8).py(7).rounded(8).items_center().hover((s) => s.bg(t.hover))
-      .child(marker)
-      .child(v_flex().flex_1().min_w(0).gap(1)
-        .child(name)
-        .when(Boolean(sub), (el) => el.child(div().text_size(11).text_color(t.dim).truncate().child(sub))))
+  // A section title like the Agents sidebar's; clicking it folds the section.
+  section(id, label, right, t) {
+    const folded = Boolean(this.collapsed[id]);
+    return h_flex().h(41).px(16).pt(14).pb(5).flex_none().gap(6).items_center()
+      .child(h_flex().id(`toggle-${id}`).flex_1().gap(6).items_center().cursor_pointer()
+        .on_click((_e, cx) => this.toggle(id, cx))
+        .child(div().text_size(11.5).font_medium().text_color(t.dim).child(label))
+        .when(folded, (el) => el.child(svg("mods/workspace-chrome/chevron-right.svg").size(10).flex_none().text_color(t.dim))))
       .child(right);
   }
 
-  card(t) {
-    return v_flex().bg(t.background).border_1().border_color(t.border).rounded(10).overflow_hidden().flex_none();
+  // An uppercase group label like the Agents sidebar's, with an optional
+  // control on the right.
+  groupLabel(id, text, color, right, onClick) {
+    return h_flex().id(id).pl(8).pr(8).pt(10).pb(4).flex_none().gap(6).items_center()
+      .text_size(10.5).font_semibold().text_color(color)
+      .when(Boolean(onClick), (el) => el.cursor_pointer().on_click(onClick))
+      .child(div().flex_1().child(text))
+      .child(right ?? div());
   }
 
-  // The card's header bar; the chevron, icon and title collapse the card.
-  cardHeader(section, label, icon, tint, right, t) {
-    const c = t[tint] ?? t.accent;
-    return h_flex().h(46).flex_none().pl(12).pr(10).gap(9).items_center().bg(t.raised)
-      .child(h_flex().id(`toggle-${section}`).gap(9).items_center().cursor_pointer()
-        .on_click((_e, cx) => this.toggle(section, cx))
-        .child(svg(`mods/workspace-chrome/chevron-${this.collapsed[section] ? "right" : "down"}.svg`).size(11).flex_none().text_color(t.dim))
-        .child(div().size(22).flex_none().rounded(6).bg(c + "26").flex().items_center().justify_center()
-          .child(svg(`mods/workspace-chrome/${icon}.svg`).size(13).text_color(c)))
-        .child(div().text_size(15).font_semibold().child(label)))
-      .child(div().flex_1())
-      .child(right);
-  }
-
-  // Header chips: whatever needs attention, else one "up to date".
+  // Header chips: whatever needs attention, else one "Up to date".
   deployChips(t) {
     if (this.loading && !this.checked) return [div().text_size(11).text_color(t.dim).child("checking…")];
     const counts = {};
@@ -408,63 +523,82 @@ export default class Deploy extends View {
     const chips = Object.entries(counts).map(([label, { n, color }]) =>
       this.chip(`${n} ${label === "reboot pending" ? "reboot" : label}`, color, t));
     if (this.run?.status === "completed" && this.run.conclusion !== "success") chips.unshift(this.chip("build failed", "ansi1", t));
-    return chips.length ? chips : [this.chip("up to date", "ansi2", t)];
+    return chips.length ? chips : [this.chip("Up to date", "ansi2", t)];
   }
 
-  steps(t) {
+  // master › build › deploy on one line; the build opens its run.
+  pipeline(t) {
     const run = this.run;
-    const ci = !run ? ["no run", "dim"]
-      : run.status !== "completed" ? ["building", "working"]
-      : run.conclusion === "success" ? ["passed", "ansi2"]
-      : [run.conclusion || "failed", "ansi1"];
+    const [ci, color] = !run ? ["no run", t.dim]
+      : run.status !== "completed" ? ["building", t.working]
+      : run.conclusion === "success" ? ["passed", t.ansi2]
+      : [run.conclusion || "failed", t.ansi1];
     const mono = settings().font_family ?? "JetBrains Mono";
-    const sha = (s, color) => div().font_family(mono).text_size(11.5).text_color(color ?? t.foreground).child(short(s));
-    const step = (id, label, value, onClick) => v_flex().id(id).flex_1().min_w(0).gap(4).px(8).py(7).rounded(8).bg(t.hover)
-      .when(Boolean(onClick), (el) => el.cursor_pointer().hover((s) => s.bg(t.selected)).on_click(onClick))
-      .child(div().text_size(10).text_color(t.dim).truncate().child(label))
-      .child(value);
-    return h_flex().gap(6).px(12).pt(12).pb(6)
-      .child(step("step-master", "MASTER", sha(this.master)))
-      .child(step("step-ci", "BUILD.YML", h_flex().child(this.chip(ci[0], ci[1], t)), () => this.openRun()))
-      .child(step("step-deploy", this.ahead ? `DEPLOY · ${this.ahead} BEHIND` : "DEPLOY", sha(this.deploySha, this.ahead ? t.blocked : null)));
+    const name = (text) => div().flex_none().font_medium().text_color(t.muted).child(text);
+    const sha = (s, c) => div().flex_none().font_family(mono).text_size(10.5).text_color(c ?? t.dim).child(short(s));
+    const sep = () => div().flex_none().text_color(t.input).child("›");
+    return h_flex().h(28).mx(8).px(8).gap(6).flex_none().items_center().text_size(11).text_color(t.dim)
+      .child(name("master")).child(sha(this.master))
+      .child(sep())
+      .child(h_flex().id("pipe-build").gap(6).items_center().rounded(5).cursor_pointer()
+        .hover((s) => s.bg(t.hover)).on_click(() => this.openRun())
+        .child(name("build")).child(div().flex_none().text_color(color).child(ci)))
+      .child(sep())
+      .child(name("deploy")).child(sha(this.deploySha, this.ahead ? t.blocked : null))
+      .when(this.ahead > 0, (el) => el.child(div().min_w(0).truncate().text_color(t.blocked).child(`${this.ahead} behind`)));
+  }
+
+  // A host row like a Spaces machine header: icon tile, name over detail, pill.
+  host(id, icon, name, sub, right, t) {
+    return h_flex().id(id).h(34).flex_none().pl(2).pr(6).gap(9).items_center().rounded(8).hover((s) => s.bg(t.hover))
+      .child(div().size(26).flex_none().rounded(7).bg(t.selected).flex().items_center().justify_center()
+        .child(svg(`mods/workspace-chrome/${icon}.svg`).size(14).text_color(t.muted)))
+      .child(v_flex().flex_1().min_w(0).child(name).child(sub))
+      .child(right);
   }
 
   hostItem(name, t) {
     const h = this.hosts[name];
     const [label, color] = verdict(h, this.deploySha);
-    const detail = h.depStatus === "failed" ? h.depError
+    const detail = h.offline ? h.reason || "no SSH answer"
+      : h.pending && !h.busy ? `${short(h.building)} waiting · right-click to deploy`
+      : h.depStatus === "failed" ? h.depError
       : h.buildError && h.building === this.deploySha ? h.buildError
       : `${short(h.deployed)} · ${h.operation || "—"} · ${ago(h.depAt)}`;
-    const title = h_flex().gap(6).items_center().min_w(0)
-      .child(div().font_medium().truncate().child(name))
-      .when(name.toLowerCase() === this.local, (el) => el.child(div().flex_none().px(5).h(16).rounded(4).border(1).border_color(t.dim)
-        .flex().items_center().text_size(10).text_color(t.muted).child("this machine")));
+    const title = h_flex().gap(6).items_center().min_w(0).text_size(12.5)
+      .child(div().truncate().when(Boolean(h.offline), (el) => el.text_color(t.muted)).child(name))
+      .when(name.toLowerCase() === this.local, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("this computer")))
+      .when(Boolean(h.mode) && h.mode !== "manual", (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(`auto ${h.mode}`)));
+    const sub = h_flex().gap(5).items_center().min_w(0).text_size(10.5).text_color(t.dim)
+      .child(this.marker(color, Boolean(h.offline), t))
+      .child(div().truncate().child(detail));
     const right = h_flex().gap(6).items_center()
-      .when(h.busy, (el) => el.child(div().text_color(t.working).frames(SPINNER, 90)))
-      .child(this.chip(label === "reboot pending" ? "reboot" : label, color, t));
-    return this.item(`host-${name}`, this.marker(color, false, t), title, detail, right, t);
+      .when(h.busy, (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
+      .child(this.chip(cap(label === "reboot pending" ? "reboot" : label), color, t));
+    return this.host(`host-${name}`, name === "Nexus" ? "server" : "monitor", title, sub, right, t)
+      .when(Boolean(h.mode), (el) => el.cursor_pointer().tooltip("Right-click to deploy or change mode")
+        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openHostMenu(name); }));
   }
 
-  deployCard(t) {
+  deploySection(t) {
     const open = !this.collapsed.deploy;
     const known = HOSTS.filter((name) => this.hosts[name]);
     const online = known.filter((name) => !this.hosts[name].offline);
     const offline = known.filter((name) => this.hosts[name].offline);
     const pending = HOSTS.filter((name) => !this.hosts[name]);
-    const header = h_flex().gap(5).items_center()
+    const right = h_flex().gap(5).items_center()
       .children(this.deployChips(t))
-      .child(div().id("refresh").ml(4).px(6).py(2).rounded(6).cursor_pointer().text_size(11).text_color(t.muted)
-        .hover((s) => s.bg(t.hover)).on_click((_e, cx) => { this.refresh(cx); this.loadWatch(cx); })
+      .child(div().id("refresh").px(6).py(2).rounded(6).cursor_pointer().text_size(11).text_color(t.dim)
+        .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click((_e, cx) => { this.refresh(cx); this.loadWatch(cx); })
         .child(this.loading ? "…" : "Refresh"));
-    return this.card(t)
-      .child(this.cardHeader("deploy", "Deploy", "server", "accent", header, t))
-      .when(Boolean(this.ghError), (el) => el.child(div().px(14).pt(8).text_size(11).text_color(t.ansi1).child(`GitHub: ${this.ghError}`)))
+    return v_flex().flex_none()
+      .child(this.section("deploy", "Deploy", right, t))
+      .when(Boolean(this.ghError), (el) => el.child(div().px(16).pb(4).text_size(11).text_color(t.ansi1).child(`GitHub: ${this.ghError}`)))
       .when(open, (el) => el
-        .child(this.steps(t))
-        .child(v_flex().p(6).gap(2)
+        .child(this.pipeline(t))
+        .child(v_flex().px(8).gap(1)
           .children(online.map((name) => this.hostItem(name, t)))
-          .when(offline.length > 0, (el) => el.child(this.item("host-offline", this.marker("dim", true, t),
-            div().font_medium().text_color(t.muted).truncate().child(offline.join(" · ")), null, this.chip("offline", "dim", t), t)))
+          .children(offline.map((name) => this.hostItem(name, t)))
           .when(pending.length > 0, (el) => el.child(div().px(8).py(7).text_size(12).text_color(t.dim).truncate()
             .child(`Checking ${pending.join(" · ")}…`)))));
   }
@@ -473,102 +607,109 @@ export default class Deploy extends View {
   // chip (null when the chip already says it all).
   static tagChip(tag) {
     const ready = tag.state === "ready", text = tag.text ?? "";
-    if (tag.state === "unknown") return ["check by hand", "ansi3", text.replace(/^not checked: /, "")];
-    if (tag.kind === "watch") return [tag.state, tag.state === "closed" ? "ansi3" : "dim", null];
-    if (tag.kind === "manual") return ["manual", "dim", /· (.+)$/.test(text) ? `checked ${/· (.+)$/.exec(text)[1]}` : null];
+    if (tag.state === "unknown") return ["Check by hand", "ansi3", text.replace(/^not checked: /, "")];
+    if (tag.kind === "watch") return [cap(tag.state), tag.state === "closed" ? "ansi3" : "dim", null];
+    if (tag.kind === "manual") return ["Manual", "dim", /· (.+)$/.test(text) ? `checked ${/· (.+)$/.exec(text)[1]}` : null];
     switch (tag.kind) {
       case "unstable":
-        if (ready) return ["in unstable", "ansi2", null];
-        return /not merged|unmerged/.test(text) ? ["not merged", "dim", null] : ["not in unstable", "dim", "PR merged"];
-      case "merged": return ready ? ["merged", "ansi2", null] : ["not merged", "dim", null];
-      case "closed": return ready ? ["closed", "ansi2", /not planned/.test(text) ? "not planned" : null] : ["open", "dim", null];
-      case "green": return ready ? ["green", "ansi2", text] : ["Hydra red", "dim", text];
-      case "version": return ready ? ["available", "ansi2", text] : [text, "dim", null];
+        if (ready) return ["In unstable", "ansi2", null];
+        return /not merged|unmerged/.test(text) ? ["Not merged", "dim", null] : ["Not in unstable", "dim", "PR merged"];
+      case "merged": return ready ? ["Merged", "ansi2", null] : ["Not merged", "dim", null];
+      case "closed": return ready ? ["Closed", "ansi2", /not planned/.test(text) ? "not planned" : null] : ["Open", "dim", null];
+      case "green": return ready ? ["Green", "ansi2", text] : ["Hydra red", "dim", text];
+      case "version": return ready ? ["Available", "ansi2", text] : [text, "dim", null];
     }
     return [text, "dim", null];
   }
 
+  // A tag: a lettered badge, its label and chip, then the ref and every site
+  // it sits at. Click opens upstream; the right-click menu holds the actions.
   watchItem(tag, i, t) {
     const [chipText, chipColor, detail] = Deploy.tagChip(tag);
     const watch = tag.kind === "watch";
-    const dot = { ready: "ansi2", unknown: "ansi3", closed: "ansi3" }[tag.state] ?? "dim";
     const ref = tag.kind === "version" ? "nixos-unstable" : shortRef(tag);
-    const action = claudeAction(tag);
-    const ready = tag.state === "ready";
-    const right = action
-      ? h_flex().id(`watch-act-${i}`).flex_none().h(20).px(8).rounded(6).items_center().text_size(11).font_semibold().cursor_pointer()
-        .when(ready, (el) => el.bg(t.ansi2).text_color(t.background))
-        .when(!ready, (el) => el.border_1().border_color(t.input).text_color(t.muted).hover((s) => s.text_color(t.foreground)))
-        .on_click((_e, cx) => { cx.stop_propagation(); if (this.repo) openReview(this.target(tag)); })
-        .child(ready ? "Fix" : "Check")
-      : div();
-    const sub = [ref, chipText, detail].filter(Boolean).join(" · ");
-    return this.item(`watch-${i}`, this.marker(dot, watch, t),
-      div().truncate().text_color(watch ? t.muted : t.foreground).when(ready, (el) => el.font_semibold()).child(tag.label), sub, right, t)
-      .cursor_pointer()
+    const mono = settings().font_family ?? "JetBrains Mono";
+    const site = (s) => div().flex_none().h(17).px(6).rounded(5).bg(t.hover).flex().items_center()
+      .font_family(mono).text_size(10).text_color(t.muted).child(`${s.file.split("/").pop()}:${s.line}`);
+    return v_flex().id(`watch-${i}`).flex_none().px(8).py(5).gap(3).rounded(8).cursor_pointer().hover((s) => s.bg(t.hover))
       .when(Boolean(tag.url), (el) => el.on_click(() => openUrl(tag.url)))
-      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(tag); });
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(tag); })
+      .tooltip(tag.url ? "Click opens upstream · right-click for more" : "Right-click for more")
+      .child(h_flex().gap(8).items_center()
+        .child(div().size(16).flex_none().rounded(4).bg(badgeColor(tag.label)).flex().items_center().justify_center()
+          .text_size(9.5).font_bold().text_color("#ffffff").child([...tag.label][0]?.toUpperCase() ?? "?"))
+        .child(div().flex_1().min_w(0).truncate().text_size(12.5).text_color(watch ? t.muted : t.foreground).child(tag.label))
+        .child(this.chip(chipText, chipColor, t)))
+      .child(h_flex().pl(24).flex_wrap().gap(4).gap_y(3).items_center().text_size(10.5).text_color(t.dim)
+        .child(div().child([ref, detail].filter(Boolean).join(" · ")))
+        .children(tag.sites.map(site)));
   }
 
-  watchCard(t) {
+  // Fix all: one review dialog, one session, for every ready tag.
+  openFixAll(ready) {
+    if (!this.repo) return;
+    const { root, space } = this.target(ready[0]);
+    const names = ready.map((tag) => tag.label).join(", ");
+    openReviewDialog({ root, space, name: ready.length === 1 ? ready[0].label : "ready tags", about: names,
+      title: `Fix ${ready.length} ready tag${ready.length === 1 ? "" : "s"} in Claude Code`, text: fixAll(ready) });
+  }
+
+  watchSection(t) {
     const open = !this.collapsed.watch;
     const tags = this.tags ?? [];
-    const count = (state) => tags.filter((tag) => tag.state === state).length;
-    const header = h_flex().gap(5).items_center()
-      .when(this.watchLoading, (el) => el.child(div().text_size(11).text_color(t.dim).child("checking…")))
-      .when(!this.watchLoading && Boolean(this.tags), (el) => el
-        .when(count("ready") > 0, (el) => el.child(this.chip(`${count("ready")} ready`, "ansi2", t)))
-        .child(this.chip(`${count("waiting")} waiting`, "dim", t)));
-    // Ready tags in a box of their own; every other group folds to a line
-    // with a count, folded until opened.
+    const right = this.watchLoading ? div().text_size(11).text_color(t.dim).child("checking…") : div();
+    // Ready tags are always open, with Fix all; every other group folds to
+    // its label, folded until opened.
     const ready = tags.filter((tag) => tag.state === "ready");
     const groups = [
-      ["check", "Check by hand", "ansi3", (tag) => tag.state === "unknown"],
-      ["waiting", "Waiting", "dim", (tag) => tag.state === "waiting"],
-      ["manual", "Manual", "dim", (tag) => tag.state === "manual"],
-      ["watching", "Watching", "dim", (tag) => tag.kind === "watch"],
+      ["check", "Check by hand", t.ansi3, (tag) => tag.state === "unknown"],
+      ["waiting", "Waiting", t.dim, (tag) => tag.state === "waiting"],
+      ["manual", "Manual", t.dim, (tag) => tag.state === "manual"],
+      ["watching", "Watching", t.dim, (tag) => tag.kind === "watch"],
     ];
     const rows = [];
-    if (ready.length) rows.push(v_flex().mt(4).mb(4).p(4).gap(2).rounded(10).bg(t.ansi2 + "14").border_1().border_color(t.ansi2 + "40")
-      .child(div().px(6).pt(4).pb(2).text_size(10.5).font_semibold().text_color(t.ansi2).child(`READY TO FIX · ${ready.length}`))
-      .children(ready.map((tag) => this.watchItem(tag, tags.indexOf(tag), t))));
+    if (ready.length) {
+      const fix = h_flex().id("fix-all").flex_none().h(20).px(8).rounded(6).items_center().bg(t.ansi2).text_color(t.background)
+        .text_size(11).font_semibold().cursor_pointer().hover((s) => s.opacity(0.88))
+        .on_click((_e, cx) => { cx.stop_propagation(); this.openFixAll(ready); })
+        .tooltip("One Claude Code session for every ready tag")
+        .child("Fix all");
+      rows.push(this.groupLabel("grp-ready", `READY · ${ready.length}`, t.ansi2, fix));
+      rows.push(...ready.map((tag) => this.watchItem(tag, tags.indexOf(tag), t)));
+    }
     for (const [id, label, color, test] of groups) {
       const members = tags.filter(test);
       if (!members.length) continue;
       const key = `open-${id}`, shown = Boolean(this.collapsed[key]);
-      rows.push(h_flex().id(`grp-${id}`).h(30).px(8).gap(8).rounded(8).items_center().cursor_pointer()
-        .text_size(12.5).text_color(shown ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
-        .on_click((_e, cx) => this.toggle(key, cx))
-        .child(svg(`mods/workspace-chrome/chevron-${shown ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim))
-        .child(this.marker(color, id === "watching", t))
-        .child(div().flex_1().child(label))
-        .child(div().text_size(11).text_color(t.dim).child(String(members.length))));
-      if (shown) rows.push(v_flex().pl(14).gap(2).children(members.map((tag) => this.watchItem(tag, tags.indexOf(tag), t))));
+      rows.push(this.groupLabel(`grp-${id}`, `${label.toUpperCase()} · ${members.length}`, color,
+        shown ? null : svg("mods/workspace-chrome/chevron-right.svg").size(10).flex_none(),
+        (_e, cx) => this.toggle(key, cx)));
+      if (shown) rows.push(...members.map((tag) => this.watchItem(tag, tags.indexOf(tag), t)));
     }
     const behind = this.checkoutBehind();
     const c = this.checkout;
-    // Ends with its content; the whole panel scrolls when that's too tall.
-    return this.card(t)
-      .child(this.cardHeader("watch", "Watch", "clock", "ansi2", header, t))
-      .when(open && Boolean(c), (el) => el.child(h_flex().flex_none().px(14).pt(8).gap(4).text_size(11).text_color(t.dim).min_w(0)
-        .child(div().truncate().child(`${c.machine ?? this.local ?? "this machine"} · ${c.branch ?? "?"} @ ${c.head?.slice(0, 7) ?? "?"}`))
+    return v_flex().flex_none()
+      .child(this.section("watch", "Watch", right, t))
+      .when(open && Boolean(c), (el) => el.child(h_flex().flex_none().px(16).pb(2).gap(4).text_size(10.5).text_color(t.dim).min_w(0)
+        .child(div().truncate().child(`${c.machine ?? this.local ?? "this computer"} · ${c.branch ?? "?"} @ ${c.head?.slice(0, 7) ?? "?"}`))
         .when(Boolean(behind), (el) => el.child(div().flex_none().text_color(t.blocked).child(`· ${behind}`)))))
-      .when(open, (el) => el.child(div().flex_none().px(14).pt(2).text_size(11).text_color(t.dim).child("Click opens upstream · right-click for more")))
-      .when(open && Boolean(this.watchError), (el) => el.child(div().px(14).pt(6).text_size(11).text_color(t.ansi1).child(this.watchError)))
+      .when(open && Boolean(this.watchError), (el) => el.child(div().px(16).pt(4).text_size(11).text_color(t.ansi1).child(this.watchError)))
       .when(open && Boolean(this.tags) && !tags.length && !this.watchLoading, (el) => el.child(
-        div().px(14).py(10).text_size(12).text_color(t.muted).child(behind
+        div().px(16).py(8).text_size(12).text_color(t.dim).child(behind
           ? "No WAIT-FOR / WATCH tags in this checkout. Pull master to see them."
           : "No WAIT-FOR / WATCH tags in this checkout.")))
-      .when(open, (el) => el.child(v_flex().px(6).pb(6).gap(2).children(rows)));
+      .when(open, (el) => el.child(v_flex().px(8).gap(1).children(rows)));
   }
 
   render(cx) {
     const t = theme();
     if (props()?.menu) return this.menuPopup(t);
     if (props()?.review) return this.reviewDialog(t);
+    if (props()?.confirmSwitch) return this.confirmSwitchDialog(t);
     this.follow(cx);
-    return v_flex().id("deploy-panel").size_full().min_h(0).overflow_y_scrollbar().gap(8).text_color(t.foreground).text_size(13)
-      .child(this.deployCard(t))
-      .child(this.watchCard(t));
+    this.answerRefresh(cx);
+    return v_flex().id("deploy-panel").size_full().min_h(0).pb(8).overflow_y_scrollbar().bg(t.chrome).text_color(t.foreground).text_size(13)
+      .child(this.deploySection(t))
+      .child(this.watchSection(t));
   }
 }

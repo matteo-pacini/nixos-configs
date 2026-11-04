@@ -22,13 +22,31 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
 
 ## Per-host behaviour
 
-| Host | Operation | When it takes effect | Notifications |
-|---|---|---|---|
-| Nexus | `boot` | Next reboot, which is always manual | Telegram: staged, failed, daily reminder after 7 days |
-| BrightFalls | `boot` | Next reboot. A merge made while it is off is staged at the next power-on and runs from the one after. | Desktop: reboot required. Telegram: `[BrightFalls]` staged, failed, daily reminder after 7 days |
-| NightSprings | `switch` | Immediately (Darwin has no `boot`) | Telegram: `[NightSprings]` failures |
-| CauldronLake | `boot` | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` staged, failed, daily reminder after 7 days |
-| WorkLaptop | `switch` | Immediately (Darwin has no `boot`) | None. No Telegram hook, so the bot token stays off the company machine; check `comin status` |
+| Host | Operation | Confirmed | When it takes effect | Notifications |
+|---|---|---|---|---|
+| Nexus | `boot` | yes | As the mode says (below); a staged one at the next reboot, which is always manual | Telegram: staged, failed, daily reminder after 7 days |
+| BrightFalls | `boot` | yes | As the mode says (below) | Desktop: reboot required. Telegram: `[BrightFalls]` staged, failed, daily reminder after 7 days |
+| NightSprings | `switch` | yes | As the mode says (below); Darwin has no `boot` | Telegram: `[NightSprings]` failures |
+| CauldronLake | `boot` | no | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` staged, failed, daily reminder after 7 days |
+| WorkLaptop | `switch` | yes | As the mode says (below); Darwin has no `boot` | None. No Telegram hook, so the bot token stays off the company machine; check `comin status` |
+
+### Confirmed deployments
+
+With `custom.autoDeploy.confirm`, comin fetches and builds each new `deploy` commit (from attic), then holds it: `comin status` shows a deploy confirmation waiting. Nothing is activated until `comin-deploy` releases it. This also holds `testing-<Host>` pushes.
+
+```bash
+comin-deploy boot       # stage the waiting generation for the next boot (NixOS only)
+comin-deploy switch     # activate it now; on NixOS it is staged with boot first,
+                        # then comin resubmits the same deployment with switch
+comin-deploy mode       # print the mode
+comin-deploy mode boot  # manual | boot | switch (Darwin: manual | switch)
+```
+
+The mode (`/var/lib/comin-deploy/mode`, writable by `wheel` / `admin`) decides what happens without anyone: `manual` (the default, also when the file is missing) waits; `boot` and `switch` are released that way by `comin-deploy auto`, which a timer (systemd on NixOS, launchd on Darwin, log in `/var/log/comin-deploy.log`) runs every minute. No sudo is needed: comin's socket is world-writable and the root daemon does the activation.
+
+The herdr Deploy panel shows a waiting host as **pending**. Right-click its row for Switch now (asks first), Schedule for next boot, Check diff (`dix` of `/run/current-system` against the waiting system, in a new tab) and the three modes.
+
+Not covered: a held generation sends no Telegram message, and the 7-day reminder only counts generations already staged.
 
 `boot` means services, secrets (agenix decrypts at activation) and Home Manager changes all wait for the reboot. Kernel, NVIDIA module and userspace driver always change together, which is why Linux hosts use it.
 
@@ -51,6 +69,9 @@ The hook lives in `modules/shared/comin-hook.nix`. Text that comes from git or c
 ```bash
 # What comin has fetched, built and deployed, and whether a reboot is needed
 comin status
+
+# Confirmed hosts: release what comin is holding
+comin-deploy switch
 
 # Nexus: apply a staged deployment
 sudo systemctl reboot
@@ -93,5 +114,6 @@ tail -f /var/log/comin.log        # Darwin
 | NixOS module (`custom.autoDeploy`, reminder timer) | `modules/nixos/auto-deploy.nix` |
 | Darwin module | `modules/darwin/auto-deploy.nix` |
 | Post-deployment hook | `modules/shared/comin-hook.nix` |
+| `comin-deploy` (confirmed deployments, modes) | `modules/shared/comin-deploy.nix` |
 | `telegram-notify` | `overlays/shared.nix` |
 | CI gate (`deploy` job) | `.github/workflows/build.yml` |

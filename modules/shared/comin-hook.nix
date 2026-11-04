@@ -3,7 +3,8 @@
 # Failures are always reported. When notifyStaged is set, a successful
 # deployment whose system differs from the booted one is reported as
 # "reboot pending" (meant for operation = "boot"); deployments that produce
-# the already-booted system stay silent.
+# the already-booted or the running system stay silent, so a staged
+# generation later switched to live is not reported again.
 {
   pkgs,
   telegramEnvFile,
@@ -39,7 +40,8 @@ pkgs.writeShellScript "comin-post-deploy" ''
       ${pkgs.lib.optionalString notifyStaged ''
         booted=$(readlink -f /run/booted-system)
         staged=$(readlink -f /nix/var/nix/profiles/system-profiles/comin)
-        if [[ "$booted" != "$staged" ]]; then
+        current=$(readlink -f /run/current-system)
+        if [[ "$booted" != "$staged" && "$current" != "$staged" ]]; then
           ${pkgs.telegram-notify}/bin/telegram-notify \
             "📦 @matteopacini \`$sha\` staged ($subject), reboot pending"
         fi
