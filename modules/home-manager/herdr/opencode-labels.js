@@ -2,7 +2,8 @@
 // herdr-app terminal, sets the labels Claude Code's statusLine sets (model,
 // effort, context, version) from opencode's session events, for the mod to
 // draw, and the session id for its restart button. opencode reports no
-// prompt-cache expiry, so there is no cache label.
+// prompt-cache expiry, so there is no cache label. While it waits on a
+// permission or a question, `agent.ask` says what for.
 // Uses the opencode 2 plugin API (a default export with `id` and `setup`).
 
 import { execFile } from "node:child_process";
@@ -34,11 +35,21 @@ export default {
     void (async () => {
       for await (const event of ctx.event.subscribe({
         signal: controller.signal,
-        types: ["session.created", "session.step.started", "session.step.ended"],
+        types: [
+          "session.created", "session.step.started", "session.step.ended",
+          "permission.asked", "permission.replied", "form.created", "form.replied", "form.cancelled",
+        ],
       })) {
         const d = event.data ?? {};
         if (event.type === "session.created" && d.parentID) children.add(d.sessionID);
-        if (children.has(d.sessionID)) continue;
+        if (children.has(d.sessionID ?? d.form?.sessionID)) continue;
+        if (event.type === "permission.asked") label({ "agent.ask": `${d.action}: ${(d.resources ?? []).join(" && ")}`.split("\n")[0].slice(0, 200) });
+        // A question tool's form; MCP elicitations are forms too.
+        if (event.type === "form.created" && d.form?.metadata?.kind === "question")
+          label({ "agent.ask": (d.form.fields?.[0]?.description ?? "Has a question").split("\n")[0].slice(0, 200) });
+        // An aborted session drops its pending ask without a reply; the office
+        // only trusts the label while the agent is blocked.
+        if (["permission.replied", "form.replied", "form.cancelled"].includes(event.type)) label({ "agent.ask": "" });
         if (event.type === "session.step.started" && d.model) {
           model = d.model;
           if (!models.has(`${model.providerID}/${model.id}`)) await loadModels();
