@@ -557,6 +557,17 @@ export default class Deploy extends View {
       .child(right);
   }
 
+  // How the host takes new commits, outlined like the Agents effort pill:
+  // manual in dim, an automatic mode in the accent. A host without
+  // comin-deploy deploys every commit with its comin operation.
+  modePill(name, h, t) {
+    const mode = h.mode || (DARWIN.has(name) ? "switch" : "boot");
+    const auto = mode !== "manual";
+    return div().flex_none().px(5).h(16).rounded(4).border(1).border_color(auto ? t.accent : t.dim)
+      .flex().items_center().text_size(10).text_color(auto ? t.accent : t.dim)
+      .child(auto ? `auto ${mode}` : "manual");
+  }
+
   hostItem(name, t) {
     const h = this.hosts[name];
     const [label, color] = verdict(h, this.deploySha);
@@ -568,7 +579,7 @@ export default class Deploy extends View {
     const title = h_flex().gap(6).items_center().min_w(0).text_size(12.5)
       .child(div().truncate().when(Boolean(h.offline), (el) => el.text_color(t.muted)).child(name))
       .when(name.toLowerCase() === this.local, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("this computer")))
-      .when(Boolean(h.mode) && h.mode !== "manual", (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(`auto ${h.mode}`)));
+      .when(!h.offline, (el) => el.child(this.modePill(name, h, t)));
     const sub = h_flex().gap(5).items_center().min_w(0).text_size(10.5).text_color(t.dim)
       .child(this.marker(color, Boolean(h.offline), t))
       .child(div().truncate().child(detail));
