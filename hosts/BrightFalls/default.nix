@@ -75,9 +75,6 @@
   custom.autoDeploy = {
     enable = true;
     confirm = true;
-    telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
-    telegramPrefix = "[BrightFalls] ";
-    notifyStaged = true;
   };
   # comin's own user service; notifies when a staged deployment needs a reboot.
   services.comin.desktop.enable = true;

@@ -36,9 +36,6 @@
 
   custom.autoDeploy = {
     enable = true;
-    telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
-    telegramPrefix = "[CauldronLake] ";
-    notifyStaged = true;
   };
   # comin's own user service; notifies when a staged deployment needs a reboot.
   services.comin.desktop.enable = true;

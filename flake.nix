@@ -210,7 +210,6 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."brightfalls/attic-netrc".file = ./secrets/brightfalls/attic-netrc.age;
-            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."openrouter.env" = {
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it
@@ -317,7 +316,6 @@
           inputs.agenix.nixosModules.default
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
           }
           inputs.home-manager.nixosModules.home-manager
           {
@@ -399,7 +397,6 @@
           {
             age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
             age.secrets."nightsprings/attic-netrc".file = ./secrets/nightsprings/attic-netrc.age;
-            age.secrets."nexus/janitor.env".file = ./secrets/nexus/janitor.env.age;
             age.secrets."openrouter.env" = {
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it

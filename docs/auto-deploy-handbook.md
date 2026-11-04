@@ -24,11 +24,13 @@ PR merged ─► master ─► build.yml builds all 5 configs, pushes closures t
 
 | Host | Operation | Confirmed | When it takes effect | Notifications |
 |---|---|---|---|---|
-| Nexus | `boot` | yes | As the mode says (below); a staged one at the next reboot, which is always manual | Telegram: staged, failed, daily reminder after 7 days |
-| BrightFalls | `boot` | yes | As the mode says (below) | Desktop: reboot required. Telegram: `[BrightFalls]` staged, failed, daily reminder after 7 days |
-| NightSprings | `switch` | yes | As the mode says (below); Darwin has no `boot` | Telegram: `[NightSprings]` failures |
-| CauldronLake | `boot` | no | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required. Telegram: `[CauldronLake]` staged, failed, daily reminder after 7 days |
-| WorkLaptop | `switch` | yes | As the mode says (below); Darwin has no `boot` | None. No Telegram hook, so the bot token stays off the company machine; check `comin status` |
+| Nexus | `boot` | yes | As the mode says (below); a staged one at the next reboot, which is always manual | None |
+| BrightFalls | `boot` | yes | As the mode says (below) | Desktop: reboot required |
+| NightSprings | `switch` | yes | As the mode says (below); Darwin has no `boot` | None |
+| CauldronLake | `boot` | no | Next reboot. A merge made while it is off or asleep is staged once it is back online. | Desktop: reboot required |
+| WorkLaptop | `switch` | yes | As the mode says (below); Darwin has no `boot` | None |
+
+Deploys send no messages: the herdr Deploy panel shows each host's state (held, staged, reboot pending, failed). Elsewhere, `comin status` on the host.
 
 ### Confirmed deployments
 
@@ -49,23 +51,8 @@ The mode (`/var/lib/comin-deploy/mode`, writable by `wheel` / `admin`) decides w
 
 The herdr Deploy panel shows a held host as **pending**. Right-click its row for Switch now (asks first), Schedule for next boot (both hidden while comin is busy or suspended), Check diff (`dix diff` of `/run/current-system` against the newest system comin has for the host, held, built or staged; any enrolled host) and the three modes. A host with a boot deployment that is not running yet also gets Switch now. After a live switch that changed the kernel, the row shows **Reboot (kernel)**.
 
-Each staged system is reported on Telegram once. Not covered: a held generation sends no Telegram message, and the 7-day reminder only counts generations already staged.
 
 `boot` means services, secrets (agenix decrypts at activation) and Home Manager changes all wait for the reboot. Kernel, NVIDIA module and userspace driver always change together, which is why Linux hosts use it.
-
-## Notifications
-
-All messages go to the Telegram group in `secrets/nexus/janitor.env.age` (`BOT_TOKEN`, `CHANNEL_ID`) through `telegram-notify` (`overlays/shared.nix`). Messages that need action mention `@matteopacini`. Nexus messages have no prefix; other hosts set `custom.autoDeploy.telegramPrefix`. On Darwin, leaving `telegramEnvFile` unset (WorkLaptop) disables the hook entirely.
-
-| Message | Sent when |
-|---|---|
-| `🚨 … deploy of <sha> failed (<subject>): <error>` | Activation of a built generation fails, on any enrolled host |
-| `📦 … <sha> staged (<subject>), reboot pending` | Linux hosts (`notifyStaged`): a deployment succeeds and the staged system differs from the booted one. Commits that do not change the host stay silent. |
-| `⏰ … staged for N days, reboot pending` | Linux hosts (`notifyStaged`): `comin-reboot-reminder.timer`, daily at 09:00, once the staged generation is 7+ days old |
-
-The hook lives in `modules/shared/comin-hook.nix`. Text that comes from git or comin is escaped for Telegram's legacy Markdown (`_ * \` [`); an unescaped one makes Telegram reject the message, and `telegram-notify` does not report the error.
-
-**Not covered:** comin only runs the hook after a deployment. An evaluation or build failure on the host itself (attic unreachable, timeout) produces no Telegram message. CI having built the same commit makes this rare. Check `comin status` when a host seems stuck.
 
 ## Day-to-day
 
@@ -92,31 +79,21 @@ tail -f /var/log/comin.log        # Darwin
 
 ## Enrolling a host
 
-1. Add the host's key to `"nexus/janitor.env.age".publicKeys` in `secrets/secrets.nix`, then re-encrypt that one file to the new recipient list. Only host keys can decrypt it, and `agenix --rekey` on Nexus would also try (and fail on) secrets Nexus cannot read, so pipe it through `age` on Nexus instead. Copy `janitor.env.age` and a `recipients.txt` (one public key per line, matching `secrets.nix`) to a private directory there and run:
-   ```bash
-   A=$(nix build nixpkgs#age --no-link --print-out-paths)/bin/age
-   sudo $A -d -i /etc/ssh/ssh_host_ed25519_key janitor.env.age | $A -R recipients.txt -o janitor.env.age.new
-   ```
-   Check the result has one `-> ssh-ed25519` stanza per recipient, copy it back over `secrets/nexus/janitor.env.age`, and delete the copies on Nexus.
-2. Declare `age.secrets."nexus/janitor.env"` for the host in `flake.nix`.
-3. Enable the module in `hosts/<Host>/default.nix`:
+1. Enable the module in `hosts/<Host>/default.nix`:
    ```nix
    custom.autoDeploy = {
      enable = true;
-     telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
-     telegramPrefix = "[<Host>] ";
+     confirm = true; # hold each commit for comin-deploy / the herdr panel
    };
    ```
    Darwin hosts also need `services.comin.hostname = "<Host>";`, because `networking.hostName` is unset there and comin uses it to pick `darwinConfigurations.<Host>`.
-4. The first activation has to be manual (`nixos-rebuild` / `darwin-rebuild switch`); comin takes over from then on.
+2. The first activation has to be manual (`nixos-rebuild` / `darwin-rebuild switch`); comin takes over from then on.
 
 ## Files
 
 | What | Where |
 |---|---|
-| NixOS module (`custom.autoDeploy`, reminder timer) | `modules/nixos/auto-deploy.nix` |
+| NixOS module (`custom.autoDeploy`) | `modules/nixos/auto-deploy.nix` |
 | Darwin module | `modules/darwin/auto-deploy.nix` |
-| Post-deployment hook | `modules/shared/comin-hook.nix` |
 | `comin-deploy` (confirmed deployments, modes) | `modules/shared/comin-deploy.nix` |
-| `telegram-notify` | `overlays/shared.nix` |
 | CI gate (`deploy` job) | `.github/workflows/build.yml` |
