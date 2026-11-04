@@ -1,6 +1,8 @@
 // Prompts the Watch menu hands to a new Claude Code session at the checkout's
-// root, for a tag as checkTag left it ({ kind, rest, url, file, line, label,
-// state, text }).
+// root, for a tag as checkTag left it ({ kind, rest, url, file, line, sites,
+// label, state, text }).
+
+import { sitesText } from "./watch.js";
 
 const tagLine = (tag) => (tag.kind === "watch" ? `WATCH: ${tag.rest}` : `WAIT-FOR ${tag.kind}: ${tag.rest}`);
 
@@ -31,12 +33,12 @@ function checkStep(tag) {
 
 function check(tag) {
   if (tag.kind === "watch")
-    return `${tag.url}, WATCHed at ${tag.file}:${tag.line} (no workaround here), is now ${tag.text}.
+    return `${tag.url}, WATCHed at ${sitesText(tag)} (no workaround here), is now ${tag.text}.
 
 Read the comment around the tag first. Find what closed it (fix version, flag, duplicate) and whether our pinned ${tag.label} contains it. Propose one of: delete the whole comment bullet, act on it here (describe the change), or point the tag at the successor issue.
 
 Don't change any files.`;
-  return `Check the upstream tag at ${tag.file}:${tag.line}:
+  return `Check the upstream tag at ${sitesText(tag)}:
   ${tagLine(tag)}
 The Watch panel says: ${tag.state}, ${tag.text}.
 
@@ -48,7 +50,7 @@ Report briefly: where upstream stands; whether the workaround is still needed wi
 }
 
 function fix(tag) {
-  return `The tag at ${tag.file}:${tag.line} reports its condition met:
+  return `The tag at ${sitesText(tag)} reports its condition met:
   ${tagLine(tag)}  → ${tag.text}
 Remove the workaround it guards, if it's really done.
 
@@ -57,6 +59,23 @@ Remove the workaround it guards, if it's really done.
 3. Remove the workaround and its comment, plus any patches, overlays or options only it used.
 4. Verify as AGENTS.md › Verification describes: build for this platform, eval the rest, build aarch64-darwin on NightSprings. If the workaround fixes runtime behaviour, list the manual test I should run.
 5. Show me the diff and the results. Don't commit or open a PR.`;
+}
+
+// One session for every ready tag: they usually share a flake input bump and
+// one verification run.
+export function fixAll(tags) {
+  const list = tags.map((tag, i) => `${i + 1}. ${sitesText(tag)}  ${tagLine(tag)}  → ${tag.text}`).join("\n");
+  return `These upstream tags report their condition met. Remove each workaround they guard, if it's really done:
+
+${list}
+
+For each tag:
+- Read the whole comment around it. If it states another condition for removal (e.g. a runtime test), report it and skip that tag.
+- Find the flake input the package comes from (e.g. masterPkgs → nixpkgs-master) and check that its locked rev contains the fix. If it doesn't, update only that input (nix flake update <input>) and say so.
+- Remove the workaround and its comment, plus any patches, overlays, inputs or options only it used.
+
+Then verify once for all of them, as AGENTS.md › Verification describes: build for this platform, eval the rest, build aarch64-darwin on NightSprings. List any manual runtime test I should run.
+Show me the diff and the results. Don't commit or open a PR.`;
 }
 
 // { label, text } for the tag's Claude Code menu item, or null when there's
