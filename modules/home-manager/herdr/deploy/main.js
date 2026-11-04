@@ -56,6 +56,7 @@ async function describeCheckout({ root, on }) {
 const PROBE = [
   "comin status --json",
   "echo '@@booted'; readlink -f /run/booted-system 2>/dev/null || true",
+  "echo '@@current'; readlink -f /run/current-system 2>/dev/null || true",
   "echo '@@mode'; comin-deploy mode 2>/dev/null || true",
 ].join("; ");
 
@@ -81,9 +82,10 @@ function hostMenuItems(p) {
   if (p.pending) {
     items.push({ label: "Switch now", icon: "terminal", id: "switch" });
     if (!p.darwin) items.push({ label: "Schedule for next boot", icon: "clock", id: "boot" });
-    if (p.pendingOut) items.push({ label: "Check diff", icon: "git-compare", id: "diff" });
   }
-  for (const [mode, label] of Object.entries(MODES)) {
+  if (p.diffTo) items.push({ label: "Check diff", icon: "git-compare", id: "diff" });
+  // Modes need comin-deploy, which reports one.
+  if (p.mode) for (const [mode, label] of Object.entries(MODES)) {
     if (p.darwin && mode === "boot") continue;
     items.push({ label, icon: mode === p.mode ? "check" : "square", id: `mode-${mode}` });
   }
@@ -141,11 +143,15 @@ function ago(iso) {
 
 function parseProbe(stdout) {
   const [json, rest = ""] = stdout.split("@@booted");
-  const [bootedOut, modeOut = ""] = rest.split("@@mode");
-  const booted = bootedOut.trim();
+  const [bootedOut, afterBooted = ""] = rest.split("@@current");
+  const [currentOut, modeOut = ""] = afterBooted.split("@@mode");
+  const booted = bootedOut.trim(), current = currentOut.trim();
   const s = JSON.parse(json);
   const dep = s.deployer?.deployment ?? {};
   const gen = s.builder?.generation ?? {};
+  const pendingOut = gen.uuid && gen.uuid === s.deploy_confirmer?.submitted ? gen.out_path ?? "" : "";
+  // The newest system comin has for this host: held, built, or staged.
+  const newest = pendingOut || (gen.build_status === "built" ? gen.out_path : "") || dep.generation?.out_path || "";
   return {
     deployed: dep.generation?.selected_commit_id ?? "",
     depStatus: dep.status ?? "",
@@ -160,7 +166,9 @@ function parseProbe(stdout) {
     suspended: Boolean(s.is_suspended),
     // A generation comin built and holds for confirmation (custom.autoDeploy.confirm).
     pending: s.deploy_confirmer?.submitted || "",
-    pendingOut: gen.uuid && gen.uuid === s.deploy_confirmer?.submitted ? gen.out_path ?? "" : "",
+    pendingOut,
+    // What Check diff compares the running system with, when they differ.
+    diffTo: current && newest && newest !== current ? newest : "",
     mode: modeOut.trim(),
     rebootPending: Boolean(booted && dep.operation === "boot" && dep.status === "done" && dep.generation?.out_path && booted !== dep.generation.out_path),
   };
@@ -242,9 +250,20 @@ export default class Deploy extends View {
         await exec(cmd, args);
       }
       if (ask.watch) return this.followDeploy(ask.host, cx);
+      if (ask.diff) return this.peekDiff(ask.target, ask.diff);
       await this.loadHost(ask.host, this.local);
       cx.notify();
     });
+  }
+
+  // dix of the running system against `to`, in a background terminal peeked
+  // over the tab (keep it as a tab or close it from there). The read keeps it
+  // open after dix exits.
+  async peekDiff(p, to) {
+    const argv = onHost(p, `nix run nixpkgs#dix -- diff /run/current-system ${to}; printf '\\nPress Enter to close. '; read _`, true);
+    const r = await exec("hc", ["run", "--bg", "--name", `diff: ${p.host}`, ...argv]);
+    const address = r.code === 0 ? JSON.parse(r.stdout).address : null;
+    if (address) run("terminal.peek", { terminal: address });
   }
 
   // Probes a host every 5 s while a deploy started from its menu runs, until
@@ -394,7 +413,7 @@ export default class Deploy extends View {
       hostTab(p, `boot: ${p.host}`, `comin-deploy boot ${p.pending}`);
       askRefresh(p.host, { watch: true });
     } else if (id === "diff") {
-      hostTab(p, `diff: ${p.host}`, `nix run nixpkgs#dix -- /run/current-system ${p.pendingOut}`);
+      askRefresh(p.host, { diff: p.diffTo, target: p });
     } else if (id.startsWith("mode-")) {
       askRefresh(p.host, { mode: id.slice(5), target: p });
     }
@@ -426,14 +445,14 @@ export default class Deploy extends View {
   hostTarget(name) {
     const h = this.hosts[name];
     return { host: name, alias: name.toLowerCase(), local: name.toLowerCase() === this.local, darwin: DARWIN.has(name),
-      pending: h.pending, pendingOut: h.pendingOut, commit: h.building, mode: h.mode };
+      pending: h.pending, pendingOut: h.pendingOut, diffTo: h.diffTo, commit: h.building, mode: h.mode };
   }
 
   openHostMenu(name) {
     const h = this.hosts[name];
-    // Only hosts with comin-deploy (a mode) have anything to offer.
-    if (!h || h.offline || !h.mode) return;
+    if (!h || h.offline) return;
     const p = this.hostTarget(name);
+    if (!hostMenuItems(p).length) return;
     openOverlay({ mod: "deploy", kind: "popup", width: 230, height: hostMenuItems(p).length * 31 + 10, props: { menu: p } });
   }
 
@@ -618,7 +637,7 @@ export default class Deploy extends View {
       .when(h.busy || following, (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
       .child(this.chip(cap(label === "reboot pending" ? "reboot" : label), color, t));
     return this.host(`host-${name}`, name === "Nexus" ? "server" : "monitor", title, sub, right, t)
-      .when(Boolean(h.mode), (el) => el.cursor_pointer().tooltip("Right-click to deploy or change mode")
+      .when(Boolean(h.mode || h.diffTo), (el) => el.cursor_pointer().tooltip("Right-click for options")
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openHostMenu(name); }));
   }
 

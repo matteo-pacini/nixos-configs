@@ -44,7 +44,7 @@ comin-deploy mode boot  # manual | boot | switch (Darwin: manual | switch)
 
 The mode (`/var/lib/comin-deploy/mode`, writable by `wheel` / `admin`) decides what happens without anyone: `manual` (the default, also when the file is missing) waits; `boot` and `switch` are released that way by `comin-deploy auto`, which a timer (systemd on NixOS, launchd on Darwin, log in `/var/log/comin-deploy.log`) runs every minute. No sudo is needed: comin's socket is world-writable and the root daemon does the activation.
 
-The herdr Deploy panel shows a waiting host as **pending**. Right-click its row for Switch now (asks first), Schedule for next boot, Check diff (`dix` of `/run/current-system` against the waiting system, in a new tab) and the three modes.
+The herdr Deploy panel shows a waiting host as **pending**. Right-click its row for Switch now (asks first), Schedule for next boot, Check diff (`dix diff` of `/run/current-system` against the newest system comin has for the host, held, built or staged; any enrolled host, peeked over the tab) and the three modes.
 
 Not covered: a held generation sends no Telegram message, and the 7-day reminder only counts generations already staged.
 
