@@ -70,8 +70,10 @@ function onHost(p, cmd, tty) {
 const hostTab = (p, name, cmd) =>
   run("tab.new", { name, argv: onHost(p, `${cmd}; printf '\\nPress Enter to close. '; read _`, true) });
 
-// Asks the panel to probe `host` again now; a menu or dialog is another view.
-const askRefresh = (host) => setShared("deploy.refresh", { host, at: Date.now() });
+// Hands work to the panel: a menu or dialog is another view, closed before
+// its own async work could finish. `extra`: { mode, target } to set a mode,
+// { watch: true } to follow a deploy until it settles.
+const askRefresh = (host, extra = {}) => setShared("deploy.refresh", { host, at: Date.now(), ...extra });
 
 // A host row's right-click menu; `p` is the popup's props (see Deploy.hostTarget).
 function hostMenuItems(p) {
@@ -183,6 +185,8 @@ export default class Deploy extends View {
     if (props()?.review) return this.initReview();
     if (props()?.confirmSwitch) return;
     this.hosts = {};
+    // Hosts whose deploy, started from the menu, is being followed.
+    this.deploying = new Set();
     this.collapsed = JSON.parse(localStorage.getItem("collapsed") ?? "{}");
     this.follow(cx);
     // A hidden block is not rendered, so render() alone could never show it
@@ -230,9 +234,36 @@ export default class Deploy extends View {
     if (!ask || ask.at === this.refreshAsked || !this.local) return;
     this.refreshAsked = ask.at;
     cx.spawn(async (cx) => {
+      if (ask.mode) {
+        // Shown at once; the probe below corrects it if the write failed.
+        if (this.hosts[ask.host]) this.hosts[ask.host].mode = ask.mode;
+        cx.notify();
+        const [cmd, ...args] = onHost(ask.target, `comin-deploy mode ${ask.mode}`);
+        await exec(cmd, args);
+      }
+      if (ask.watch) return this.followDeploy(ask.host, cx);
       await this.loadHost(ask.host, this.local);
       cx.notify();
     });
+  }
+
+  // Probes a host every 5 s while a deploy started from its menu runs, until
+  // comin is idle with nothing held (at most 30 minutes). comin takes a few
+  // seconds to pick the confirmation up, hence the first three probes.
+  async followDeploy(host, cx) {
+    this.deploying.add(host);
+    try {
+      for (let i = 0; i < 360; i++) {
+        await this.loadHost(host, this.local);
+        cx.notify();
+        const h = this.hosts[host];
+        if (i >= 3 && (h.offline || (!h.busy && !h.pending))) break;
+        await exec("sleep", ["5"]);
+      }
+    } finally {
+      this.deploying.delete(host);
+      cx.notify();
+    }
   }
 
   refresh(cx) {
@@ -361,12 +392,11 @@ export default class Deploy extends View {
       openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 440, height: 190, props: { confirmSwitch: p } });
     } else if (id === "boot") {
       hostTab(p, `boot: ${p.host}`, `comin-deploy boot ${p.pending}`);
-      askRefresh(p.host);
+      askRefresh(p.host, { watch: true });
     } else if (id === "diff") {
       hostTab(p, `diff: ${p.host}`, `nix run nixpkgs#dix -- /run/current-system ${p.pendingOut}`);
     } else if (id.startsWith("mode-")) {
-      const [cmd, ...args] = onHost(p, `comin-deploy mode ${id.slice(5)}`);
-      exec(cmd, args).then(() => askRefresh(p.host));
+      askRefresh(p.host, { mode: id.slice(5), target: p });
     }
   }
 
@@ -379,7 +409,7 @@ export default class Deploy extends View {
     const go = () => {
       closeOverlay(o.overlay);
       hostTab(p, `switch: ${p.host}`, `comin-deploy switch ${p.pending}`);
-      askRefresh(p.host);
+      askRefresh(p.host, { watch: true });
     };
     return v_flex().size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground)
       .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(o.overlay); cx.stop_propagation(); } })
@@ -570,7 +600,8 @@ export default class Deploy extends View {
 
   hostItem(name, t) {
     const h = this.hosts[name];
-    const [label, color] = verdict(h, this.deploySha);
+    const following = this.deploying.has(name);
+    const [label, color] = following && h.depStatus !== "failed" ? ["deploying", "working"] : verdict(h, this.deploySha);
     const detail = h.offline ? h.reason || "no SSH answer"
       : h.pending && !h.busy ? `${short(h.building)} waiting · right-click to deploy`
       : h.depStatus === "failed" ? h.depError
@@ -584,7 +615,7 @@ export default class Deploy extends View {
       .child(this.marker(color, Boolean(h.offline), t))
       .child(div().truncate().child(detail));
     const right = h_flex().gap(6).items_center()
-      .when(h.busy, (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
+      .when(h.busy || following, (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
       .child(this.chip(cap(label === "reboot pending" ? "reboot" : label), color, t));
     return this.host(`host-${name}`, name === "Nexus" ? "server" : "monitor", title, sub, right, t)
       .when(Boolean(h.mode), (el) => el.cursor_pointer().tooltip("Right-click to deploy or change mode")
