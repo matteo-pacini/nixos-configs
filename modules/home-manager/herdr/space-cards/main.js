@@ -1,14 +1,14 @@
 // Spaces as machine cards: a copy of herdr-app's shipped `spaces` mod (0.1.10)
 // with its git, worktree, folding and drag logic kept, drawn differently. Each
-// machine is a card with its device icon, OS and connection state; under each
-// space's name, its branch badge and ahead/behind (a worktree badge below that
-// for a linked checkout), or its folder when it isn't a repo, and a marker while
-// it is working or waiting.
+// machine is a header with its device tile, OS and connection state, its spaces
+// hung off a line below it, one line each: the name, then its branch off
+// master/main and ahead/behind, or its folder when it isn't a repo, and a
+// marker while it is working or waiting.
 // Click to switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout } from "herdr";
+import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, settings, watchFolder, window, layout } from "herdr";
 
 // The fleet in this repo (hosts/), by the lower-case name hc and `hostname -s`
 // use. A machine missing here is drawn as a server with no OS.
@@ -284,7 +284,7 @@ export default class Spaces extends View {
         .on_click(() => run("space.new", m ? { machine: m } : {}))
         .child(svg("mods/workspace-chrome/plus.svg").size(12)).when(!collapsed, el => el.child("New space there"));
       const body = folded ? [] : mine.length ? mine.map(draw) : [loading(m) ? loadingRow(m) : empty];
-      if (!collapsed) return [this.machineCard(m, machine, connected, folded, toggle, body, t)];
+      if (!collapsed) return [this.machineCard(m, machine, connected, folded, toggle, body, t, mine.length)];
       const head = h_flex().id(`machine-${m ?? "local"}`).h(26).flex_none().px(collapsed ? 2 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
         .cursor_pointer().hover(s => s.bg(t.hover))
         .on_click(toggle)
@@ -299,66 +299,59 @@ export default class Spaces extends View {
     });
   }
 
-  // A machine: device icon, name, connection and OS, then its spaces indented
-  // under it.
-  machineCard(m, machine, connected, folded, toggle, body, t) {
+  // A machine: its device in a tile, name over OS and connection, then its
+  // spaces hung off a line down from the tile. Its + and chevron show on hover
+  // (the chevron always, once folded).
+  machineCard(m, machine, connected, folded, toggle, body, t, count) {
     const host = hostOf(m ?? this.local);
     const state = (machine?.state ?? "asleep").replace(/_/g, " ");
-    const head = h_flex().id(`machine-${m ?? "local"}`).gap(9).px(4).pt(4).pb(folded ? 4 : 6).items_center().cursor_pointer().rounded(8)
+    const key = m ?? "local";
+    const shown = this.hovered === key;
+    const sub = [m && !connected ? state : null, host.os, m ? null : "this computer"].filter(Boolean).join(" · ");
+    const head = h_flex().id(`machine-${key}`).h(34).flex_none().gap(9).pl(2).pr(6).items_center().cursor_pointer().rounded(8)
+      .on_hover((over, cx) => {
+        if (over) this.hovered = key;
+        else if (this.hovered === key) this.hovered = null;
+        cx.notify();
+      })
       .on_click(toggle)
-      .child(div().w(22).h(30).flex_none().flex().items_center().justify_center()
-        .child(svg(`mods/space-cards/${host.device}.svg`).size(18).text_color(connected ? t.foreground : t.dim)))
-      .child(v_flex().flex_1().min_w(0).gap(1)
+      .child(div().size(26).flex_none().rounded(7).bg(t.selected).flex().items_center().justify_center()
+        .child(svg(`mods/space-cards/${host.device}.svg`).size(15).text_color(connected ? t.foreground : t.dim)))
+      .child(v_flex().flex_1().min_w(0)
         .child(div().truncate().font_semibold().text_color(connected ? t.foreground : t.muted).child(host.label ?? "This computer"))
         .child(h_flex().gap(5).items_center().text_size(10.5).text_color(t.dim)
-          .when(!m, (el) => el.child(div().flex_none().px(5).h(16).rounded(4).border(1).border_color(t.dim)
-            .flex().items_center().text_size(10).text_color(t.muted).child("this computer")))
-          .when(Boolean(m), (el) => el.child(div().size(6).flex_none().rounded(3).bg(connected ? t.ansi2 : t.dim))
-            .child(div().flex_none().child(connected ? "connected" : state)))
-          .when(Boolean(host.os), (el) => el.child(div().flex_none().child(m ? `· ${host.os}` : host.os)))))
-      .when(connected, (el) => el.child(div().id(`machine-add-${m ?? "local"}`).size(22).flex_none().rounded(6).flex().items_center().justify_center()
+          .when(Boolean(m), (el) => el.child(div().size(6).flex_none().rounded(3).bg(connected ? t.ansi2 : t.dim)))
+          .child(div().min_w(0).truncate().child(sub))))
+      .child(div().flex_none().text_size(11).text_color(t.dim).child(String(count)))
+      .when(connected && shown, (el) => el.child(div().id(`machine-add-${key}`).size(20).flex_none().rounded(5).flex().items_center().justify_center()
         .text_color(t.dim).hover((s) => s.bg(t.hover).text_color(t.foreground))
         .on_click((_e, cx) => { cx.stop_propagation(); run("space.new", m ? { machine: m } : {}); })
         .child(svg("mods/workspace-chrome/plus.svg").size(12))))
-      .child(svg(`mods/workspace-chrome/chevron-${folded ? "right" : "down"}.svg`).size(11).flex_none().text_color(t.dim));
-    return v_flex().id(`machine-card-${m ?? "local"}`).flex_none().mt(10).gap(2)
+      .when(shown || folded, (el) => el.child(svg(`mods/workspace-chrome/chevron-${folded ? "right" : "down"}.svg`).size(11).flex_none().text_color(t.dim)));
+    return v_flex().id(`machine-card-${key}`).flex_none().mt(10).gap(1)
       .child(head)
-      .when(body.length > 0, (el) => el.child(v_flex().gap(2).pl(10).children(body)));
+      .when(body.length > 0, (el) => el.child(v_flex().ml(14).pl(8).border_l(1.5).border_color(t.border).gap(1).children(body)));
   }
 
-  // A tinted pill, like the agent tree's: colour by theme name.
-  chip(child, color, t) {
-    const c = t[color] ?? t.dim;
-    return h_flex().flex_none().h(17).px(6).gap(3).rounded(5).bg(c + "26").items_center()
-      .text_size(10.5).font_semibold().text_color(c).child(child);
-  }
-
-  // Under the name: the branch as a badge (accent off master/main) with
-  // ahead/behind, then a worktree badge on its own line for a linked checkout.
-  // The repo's name only when it differs from the space's; the folder when the
-  // space isn't in a repo.
+  // Right of the name, on the same line: the branch only off master/main, then
+  // ahead/behind. A worktree not nested under its repo (its repo isn't open)
+  // gets the compare icon; the repo's name shows when it differs from the
+  // space's and no branch does; the folder's last part when it isn't a repo.
   detail(g, w, tree, t) {
-    const line = () => h_flex().gap(5).items_center().min_w(0).text_size(11).text_color(t.dim);
+    const line = () => h_flex().flex_1().min_w(0).gap(6).justify_end().items_center().text_size(11).text_color(t.dim);
     if (!g) {
       const folder = place(w, this.ps ?? panes());
-      return folder ? line().child(div().min_w(0).truncate().child(folder.replace(/^\/(home|Users)\/[^/]+/, "~"))) : null;
+      return folder ? line().child(div().min_w(0).truncate().child(`${base(folder)}/`)) : null;
     }
     const branch = g.branch ?? "detached";
     const plain = branch === "master" || branch === "main";
-    // Wraps rather than running into the card's edge.
-    const first = line().flex_wrap().gap_y(3)
-      .child(this.chip(h_flex().gap(3).items_center().min_w(0)
-        .child(svg("mods/workspace-chrome/git-branch.svg").size(10).flex_none())
-        .child(div().min_w(0).truncate().child(branch)), plain ? "dim" : "accent", t).flex_shrink(1).min_w(0))
-      .when(g.ahead > 0, (el) => el.child(this.chip(`↑${g.ahead}`, "ansi2", t)))
-      .when(g.behind > 0, (el) => el.child(this.chip(`↓${g.behind}`, "ansi3", t)))
-      .when(!tree && g.name.toLowerCase() !== w.name.toLowerCase(), (el) => el.child(div().min_w(0).truncate().child(g.name)));
-    // Any linked checkout, nested under its repo or not (its repo not open).
-    if (!g.linked) return first;
-    return v_flex().gap(3).min_w(0).child(first)
-      .child(line().child(this.chip(h_flex().gap(3).items_center()
-        .child(svg("mods/workspace-chrome/git-compare.svg").size(10).flex_none())
-        .child("worktree"), "ansi5", t)));
+    const count = (text, color) => div().flex_none().text_size(10.5).font_semibold().text_color(color).child(text);
+    return line()
+      .when(g.linked && !tree, (el) => el.child(svg("mods/workspace-chrome/git-compare.svg").size(10).flex_none().text_color(t.ansi5)))
+      .when(!plain, (el) => el.child(div().min_w(0).truncate().font_family(settings().font_family ?? "JetBrains Mono").text_size(10.5).text_color(t.accent).child(branch)))
+      .when(plain && !tree && g.name.toLowerCase() !== w.name.toLowerCase(), (el) => el.child(div().min_w(0).truncate().child(g.name)))
+      .when(g.ahead > 0, (el) => el.child(count(`↑${g.ahead}`, t.ansi2)))
+      .when(g.behind > 0, (el) => el.child(count(`↓${g.behind}`, t.ansi3)));
   }
 
   // Shown only while something in the space is going on or needs you.
@@ -379,10 +372,10 @@ export default class Spaces extends View {
       .relative()
       .id(`space-${w.id}`)
       .px(6)
-      .py(6)
+      .h(28)
       .flex_none()
       .justify_center()
-      .rounded(8)
+      .rounded(6)
       .when(on, (el) => el.bg(t.selected))
       .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
       .when(this.pressed === i && this.over !== i, (el) => el.opacity(0.5))
@@ -415,13 +408,12 @@ export default class Spaces extends View {
       .on_mouse_down("right", () => this.menu(w))
       .child(
         h_flex()
-          .gap(9)
+          .gap(8)
           .items_center()
-          .when(Boolean(tree), el => el.pl(16).child(svg("mods/workspace-chrome/branch.svg").size(13).flex_none().text_color(t.dim)))
-          .when(!tree, el => el.child(h_flex().size(20).flex_none().rounded(6).bg(fill).items_center().justify_center().text_size(11).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
-          .child(v_flex().flex_1().min_w(0).gap(3)
-            .child(div().truncate().font_medium().text_color(tree ? t.muted : t.foreground).child(w.name))
-            .when(Boolean(detail), (el) => el.child(detail)))
+          .when(Boolean(tree), el => el.pl(8).child(div().w(10).h(14).flex_none().self_start().border_l(1).border_b(1).border_color(t.border).rounded_bl(4)))
+          .when(!tree, el => el.child(h_flex().size(16).flex_none().rounded(4).bg(fill).items_center().justify_center().text_size(9.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
+          .child(div().min_w(0).truncate().font_medium().text_color(tree ? t.muted : t.foreground).child(w.name))
+          .child(detail ?? div().flex_1())
           .when(Boolean(mark), (el) => el.child(mark)),
       );
   }
