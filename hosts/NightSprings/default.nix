@@ -30,8 +30,6 @@
   custom.autoDeploy = {
     enable = true;
     confirm = true;
-    telegramEnvFile = config.age.secrets."nexus/janitor.env".path;
-    telegramPrefix = "[NightSprings] ";
   };
   # networking.hostName is unset here; comin needs the darwinConfigurations name.
   services.comin.hostname = "NightSprings";

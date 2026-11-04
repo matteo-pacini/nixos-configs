@@ -35,7 +35,6 @@
   custom.fonts.enable = true;
   custom.nix-index.enable = true;
 
-  # No Telegram hook: the bot token stays off the company machine.
   custom.autoDeploy = {
     enable = true;
     confirm = true;

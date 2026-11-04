@@ -19,16 +19,6 @@ in
 
   options.custom.autoDeploy = {
     enable = lib.mkEnableOption "comin pull deployments of the CI-gated `deploy` branch";
-    telegramEnvFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      description = "Env file with BOT_TOKEN and CHANNEL_ID for telegram-notify. Null disables the post-deployment hook, so nothing is reported.";
-    };
-    telegramPrefix = lib.mkOption {
-      type = lib.types.str;
-      default = "";
-      description = "Text prepended to every Telegram message sent by the deploy hook.";
-    };
     confirm = lib.mkEnableOption "confirmed deployments: comin fetches and builds each new commit, then waits. `comin-deploy` (and the herdr Deploy panel's host menu) releases it with switch, or sets a mode that does so on its own";
   };
 
@@ -47,12 +37,6 @@ in
             }
           ];
           deployConfirmer.mode = if cfg.confirm then "manual" else "without";
-          postDeploymentCommand = lib.mkIf (cfg.telegramEnvFile != null) (
-            import ../shared/comin-hook.nix {
-              inherit pkgs;
-              inherit (cfg) telegramEnvFile telegramPrefix;
-            }
-          );
         };
 
         # comin runs `activate` in comin's own process group, and activation unloads
