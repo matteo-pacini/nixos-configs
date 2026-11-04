@@ -177,7 +177,10 @@ export default class Deploy extends View {
       try {
         const local = (await exec("hostname", ["-s"])).stdout.trim().toLowerCase();
         this.local = local;
-        await Promise.all([this.loadGitHub(), ...HOSTS.map((name) => this.loadHost(name, local))]);
+        // Each probe repaints as it lands: an offline host holds its SSH
+        // ConnectTimeout, and the rest shouldn't wait for it.
+        const draw = () => cx.notify();
+        await Promise.all([this.loadGitHub().then(draw), ...HOSTS.map((name) => this.loadHost(name, local).then(draw))]);
         this.checked = new Date().toISOString();
       } finally {
         this.loading = false;
@@ -447,6 +450,7 @@ export default class Deploy extends View {
     const known = HOSTS.filter((name) => this.hosts[name]);
     const online = known.filter((name) => !this.hosts[name].offline);
     const offline = known.filter((name) => this.hosts[name].offline);
+    const pending = HOSTS.filter((name) => !this.hosts[name]);
     const header = h_flex().gap(5).items_center()
       .children(this.deployChips(t))
       .child(div().id("refresh").ml(4).px(6).py(2).rounded(6).cursor_pointer().text_size(11).text_color(t.muted)
@@ -461,7 +465,8 @@ export default class Deploy extends View {
           .children(online.map((name) => this.hostItem(name, t)))
           .when(offline.length > 0, (el) => el.child(this.item("host-offline", this.marker("dim", true, t),
             div().font_medium().text_color(t.muted).truncate().child(offline.join(" · ")), null, this.chip("offline", "dim", t), t)))
-          .when(!known.length, (el) => el.child(div().px(8).py(7).text_size(12).text_color(t.dim).child("Checking hosts…")))));
+          .when(pending.length > 0, (el) => el.child(div().px(8).py(7).text_size(12).text_color(t.dim).truncate()
+            .child(`Checking ${pending.join(" · ")}…`)))));
   }
 
   // A Watch row's chip, its colour, and what the detail line adds beyond the
