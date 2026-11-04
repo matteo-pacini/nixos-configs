@@ -71,9 +71,9 @@ function onHost(p, cmd, tty) {
 const hostTab = (p, name, cmd) =>
   run("tab.new", { name, argv: onHost(p, `${cmd}; printf '\\nPress Enter to close. '; read _`, true) });
 
-// Hands work to the panel: a menu or dialog is another view, closed before
-// its own async work could finish. `extra`: { mode, target } to set a mode,
-// { watch: true } to follow a deploy until it settles.
+// Asks the panel, another view, to probe `host` again. `extra`: { mode } shows
+// a mode the menu is writing at once; { watch: true } follows a deploy until
+// it settles.
 const askRefresh = (host, extra = {}) => setShared("deploy.refresh", { host, at: Date.now(), ...extra });
 
 // A host row's right-click menu; `p` is the popup's props (see Deploy.hostTarget).
@@ -222,11 +222,13 @@ export default class Deploy extends View {
     this.hosts = {};
     // Hosts whose deploy, started from the menu, is being followed.
     this.deploying = new Set();
+    // Requests from menus and dialogs, answered by the 1 s timer.
+    this.asks = [];
     this.collapsed = JSON.parse(localStorage.getItem("collapsed") ?? "{}");
     this.follow(cx);
     // A hidden block is not rendered, so render() alone could never show it
     // again. follow() only runs git when the focused folder has changed.
-    cx.timer.every(1000, (cx) => this.follow(cx));
+    cx.timer.every(1000, (cx) => { this.follow(cx); this.answerAsks(cx); });
     // Skipped while hidden: no SSH round-trips for a panel nobody sees.
     cx.timer.every(REFRESH_MS, (cx) => { if (this.shown) this.refresh(cx); });
     cx.timer.every(WATCH_MS, (cx) => { if (this.shown) this.loadWatch(cx); });
@@ -264,22 +266,28 @@ export default class Deploy extends View {
   }
 
   // A menu or dialog asked for a host to be probed again (askRefresh).
-  answerRefresh(cx) {
+  // A menu or dialog asked for something (askRefresh). Render only takes the
+  // request: work spawned from render never runs, so the 1 s timer does it.
+  takeAsk() {
     const ask = shared("deploy.refresh");
-    if (!ask || ask.at === this.refreshAsked || !this.local) return;
+    if (!ask || ask.at === this.refreshAsked) return;
     this.refreshAsked = ask.at;
-    cx.spawn(async (cx) => {
-      if (ask.mode) {
-        // Shown at once; the probe below corrects it if the write failed.
-        if (this.hosts[ask.host]) this.hosts[ask.host].mode = ask.mode;
+    // Shown at once; the probe corrects it if the write failed.
+    if (ask.mode && this.hosts[ask.host]) this.hosts[ask.host].mode = ask.mode;
+    this.asks.push(ask);
+  }
+
+  answerAsks(cx) {
+    if (!this.local) return;
+    for (const ask of this.asks.splice(0)) {
+      cx.spawn(async (cx) => {
+        if (ask.watch) return this.followDeploy(ask.host, cx);
+        // Give the mode write, which the menu runs, a moment.
+        if (ask.mode) await exec("sleep", ["2"]);
+        await this.loadHost(ask.host, this.local);
         cx.notify();
-        const [cmd, ...args] = onHost(ask.target, `comin-deploy mode ${ask.mode}`);
-        await exec(cmd, args);
-      }
-      if (ask.watch) return this.followDeploy(ask.host, cx);
-      await this.loadHost(ask.host, this.local);
-      cx.notify();
-    });
+      });
+    }
   }
 
   // The Check diff dialog runs dix itself, so it shows progress while open.
@@ -471,7 +479,11 @@ export default class Deploy extends View {
     } else if (id === "diff") {
       openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 760, height: 560, props: { diffView: p } });
     } else if (id.startsWith("mode-")) {
-      askRefresh(p.host, { mode: id.slice(5), target: p });
+      // The write runs here (it outlives the popup); the panel shows the new
+      // mode at once and probes again.
+      const [cmd, ...args] = onHost(p, `comin-deploy mode ${id.slice(5)}`);
+      exec(cmd, args);
+      askRefresh(p.host, { mode: id.slice(5) });
     }
   }
 
@@ -826,7 +838,7 @@ export default class Deploy extends View {
     if (props()?.confirmSwitch) return this.confirmSwitchDialog(t);
     if (props()?.diffView) return this.diffDialog(t);
     this.follow(cx);
-    this.answerRefresh(cx);
+    this.takeAsk();
     return v_flex().id("deploy-panel").size_full().min_h(0).pb(8).overflow_y_scrollbar().bg(t.chrome).text_color(t.foreground).text_size(13)
       .child(this.deploySection(t))
       .child(this.watchSection(t));
