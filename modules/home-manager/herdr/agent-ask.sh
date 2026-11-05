@@ -1,9 +1,9 @@
 # Claude Code and Codex hook for hosts with the herdr-app agent-tree mod.
 # Inside a herdr-app terminal, a PermissionRequest sets `agent.ask` (one line:
 # the tool and its command, file or question) and `agent.ask_detail` (the
-# agent's own description of it); any other event clears both. The office
-# view shows them only while the agent is blocked: denying a Claude prompt
-# fires no hook, so a stale label is possible until the next event.
+# agent's own description of it); any other event clears both. Trust them
+# only while the agent is blocked: denying a Claude prompt fires no hook, so a
+# stale label is possible until the next event.
 # Prints nothing: both apps read a PermissionRequest hook's stdout as its
 # decision, and an empty one leaves the prompt to the person.
 input=$(cat)

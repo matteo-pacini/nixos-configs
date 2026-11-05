@@ -55,8 +55,8 @@ let
   };
 
   # Sets and clears `agent.ask`, what a waiting agent asks, from Claude Code's
-  # and Codex's hooks; the office view draws it. On PATH under a fixed name for
-  # the same reason as herdr-codex-labels.
+  # and Codex's hooks, as a terminal label mods can read. On PATH under a fixed
+  # name for the same reason as herdr-codex-labels.
   agentAsk = pkgs.writeShellApplication {
     name = "herdr-agent-ask";
     runtimeInputs = [
@@ -75,11 +75,6 @@ let
       ];
     }
   ];
-
-  # The office view's people: one SVG per pose and app, from the pixel maps.
-  officeSprites = pkgs.runCommand "herdr-office-sprites" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
-    node ${./herdr/agent-tree/sprites}/render.mjs "$out"
-  '';
 
   # The agent-tree layout, adjusted for the mods that live in it: agent-pane
   # as the pane header, the deploy block beside the work area (mods.deploy),
@@ -176,7 +171,7 @@ in
               }
             ];
           }
-          # The office view's agent.ask: set when a prompt shows, cleared by the
+          # agent.ask: set when a prompt shows, cleared by the
           # rest. A denied prompt fires none of them.
           // lib.optionalAttrs cfg.mods.agentTree.enable {
             PermissionRequest = agentAskHook;
@@ -226,8 +221,6 @@ in
           run rm -rf "$dir"
           run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
-          run cp -r --no-preserve=mode ${./herdr/agent-tree/office} "$dir/office"
-          run cp -r --no-preserve=mode ${officeSprites} "$dir/office/art/sprites"
           # Its name before it covered Codex and opencode.
           run rm -rf "${config.xdg.configHome}/herdr-app/mods/claude-pane"
           dir="${config.xdg.configHome}/herdr-app/mods/agent-pane"

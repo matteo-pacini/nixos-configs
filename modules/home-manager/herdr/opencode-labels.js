@@ -47,8 +47,8 @@ export default {
         // A question tool's form; MCP elicitations are forms too.
         if (event.type === "form.created" && d.form?.metadata?.kind === "question")
           label({ "agent.ask": (d.form.fields?.[0]?.description ?? "Has a question").split("\n")[0].slice(0, 200) });
-        // An aborted session drops its pending ask without a reply; the office
-        // only trusts the label while the agent is blocked.
+        // An aborted session drops its pending ask without a reply, so trust
+        // the label only while the agent is blocked.
         if (["permission.replied", "form.replied", "form.cancelled"].includes(event.type)) label({ "agent.ask": "" });
         if (event.type === "session.step.started" && d.model) {
           model = d.model;

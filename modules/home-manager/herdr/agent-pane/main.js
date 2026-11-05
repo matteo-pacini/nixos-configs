@@ -25,10 +25,14 @@ function folder(cwd) {
 // The agents that label their version and session id (claude-statusline.sh,
 // codex-labels.sh, opencode-labels.js), by the app herdr reports: the command
 // on PATH, the package name in its store path, the label holding the session,
-// and how to quit (text to send, or `keys:` to press) and resume one. opencode
-// takes pasted text as a prompt, so it's quit with a key.
+// how to quit (text to send, or `keys:` to press) and resume one, and the
+// screen text of a prompt quitting can raise instead, which Enter answers.
+// opencode takes pasted text as a prompt, so it's quit with a key. Claude asks
+// before quitting with background work running; Enter takes its default, "Exit
+// and stop tasks". Its "Move to background" would keep the old version running
+// in a daemon under a forked session, so the resume would only reattach to it.
 const APPS = {
-  "claude-code": { name: "Claude Code", bin: "claude", pkg: "claude-code", session: "claude.session", quit: "/exit", resume: "claude --resume" },
+  "claude-code": { name: "Claude Code", bin: "claude", pkg: "claude-code", session: "claude.session", quit: "/exit", resume: "claude --resume", asks: "Background work is running" },
   codex: { name: "Codex", bin: "codex", pkg: "codex", session: "codex.session", quit: "/quit", resume: "codex resume" },
   opencode: { name: "opencode", bin: "opencode", pkg: "opencode", session: "opencode.session", quit: "keys:ctrl+c", resume: "opencode -s" },
 };
@@ -68,7 +72,8 @@ function installedVersion(machine, app, cx) {
   return known?.version ?? null;
 }
 
-// Quits the agent in `address`, waits for its shell's prompt, then resumes
+// Quits the agent in `address`, answers the prompt quitting can raise (when
+// its screen shows `app.asks`) with Enter, waits for its shell's prompt, then resumes
 // `session` with the version now on PATH. The terminal's program has to be a
 // shell that outlives the agent: an interactive one, which runs the agent in
 // its own process group (hc's foreground is then another process), or a
@@ -95,10 +100,13 @@ async function restartAgent(address, app, session) {
     if (!fromShell(t)) throw new Error("it isn't running from a shell");
     const quit = app.quit.startsWith("keys:") ? ["keys", address, app.quit.slice(5)] : ["send", address, app.quit];
     if ((await hc(quit)).code !== 0) throw new Error("couldn't tell it to quit");
-    let quitted = false;
+    let quitted = false, asked = false;
     for (let i = 0; i < 60 && !quitted; i++) {
       await exec("sleep", ["0.5"]);
       quitted = atPrompt(await get());
+      if (!quitted && app.asks && !asked && (await hc(["read", "--lines", "40", address])).stdout?.includes(app.asks)) {
+        asked = (await hc(["keys", address, "enter"])).code === 0;
+      }
     }
     if (!quitted) throw new Error("it didn't quit");
     await hc(["send", address, `${app.resume} ${session}`]);
