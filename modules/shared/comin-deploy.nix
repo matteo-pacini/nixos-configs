@@ -72,7 +72,17 @@ pkgs.writeShellApplication {
       for _ in $(seq 600); do
         status || return 1
         if [[ $(dep uuid) != "$prev" ]] && ! busy; then
-          case $(dep status) in done | failed) return 0 ;; esac
+          case $(dep status) in
+            done | failed) return 0 ;;
+            # comin was restarted mid-activation (Darwin reloads its launchd
+            # job when comin's own config changes): the record stays
+            # running forever although the system is live.
+            running)
+              if [[ $(dep generation.out_path) == "$(readlink -f /run/current-system)" ]]; then
+                return 0
+              fi
+              ;;
+          esac
         fi
         sleep 3
       done
