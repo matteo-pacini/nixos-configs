@@ -2,11 +2,14 @@
 // each says where it runs (machine, space, tab). Each agent is named
 // by its terminal's `agent.name` label (right-click a row, or
 // `hc label <t> agent.name=...`), falling back to its hc name, then its title.
+// Visualise, beside the heading, opens office/ (index.js): the same agents as workers
+// in an office of machines, repos and worktrees.
 // Derived from Herdr's shipped `agents` mod.
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, spaces, focused, run, hc, exec, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
+import { officeInit, officeRender } from "./office/index.js";
 
 const LABEL = "agent.name";
 
@@ -47,6 +50,15 @@ const ORANGE = MARK.ansi3;
 // cold would mean paying for that context again.
 const EXPIRING_MS = 5 * 60000;
 const EXPIRING_CTX = 20;
+// Context fill's colour, as herdr-agent-report bands it: Claude auto-compacts at 80%.
+const ctxBand = (t, pct, expiring) => (expiring ? ORANGE : pct >= 70 ? t.ansi1 : pct >= 50 ? t.ansi3 : t.ansi2);
+// An idle agent whose prompt cache goes cold soon, by its statusLine labels.
+function cacheExpiring(a, labels, now) {
+  if (a.status !== "idle") return false;
+  const pct = parseInt(labels?.["agent.ctx"], 10);
+  const left = parseInt(labels?.["agent.cache_until"], 10) * 1000 - now;
+  return pct >= EXPIRING_CTX && left > 0 && left < EXPIRING_MS;
+}
 const top = (statuses) => statuses.reduce((m, s) => ((RANK[s] ?? 0) > (RANK[m] ?? 0) ? s : m), null);
 
 function duration(ms) {
@@ -160,6 +172,10 @@ export default class AgentTree extends View {
   init(_props, cx) {
     if (props()?.rename) return this.initRename();
     if (props()?.menu) return this.initMenu(cx);
+    if (props()?.office) {
+      this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
+      return officeInit(this, cx);
+    }
     this.folded = new Set(JSON.parse(localStorage.getItem("folded") ?? "[]"));
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
@@ -318,7 +334,7 @@ export default class AgentTree extends View {
     const until = parseInt(labels?.["agent.cache_until"], 10);
     if (Number.isNaN(pct) && Number.isNaN(until)) return null;
     // Bands match herdr-agent-report: Claude auto-compacts at 80%.
-    const band = expiring ? ORANGE : pct >= 70 ? t.ansi1 : pct >= 50 ? t.ansi3 : t.ansi2;
+    const band = ctxBand(t, pct, expiring);
     const k = labels?.["agent.ctxk"];
     const left = Math.floor((until * 1000 - now) / 60000);
     const cache = left < 0 ? ["cold", t.ansi1] : left < 1 ? ["<1m", ORANGE] : left < 5 ? [`${left}m`, ORANGE] : [`${left}m`, t.dim];
@@ -425,6 +441,19 @@ export default class AgentTree extends View {
     const t = theme();
     if (props()?.rename) return this.renameDialog(t);
     if (props()?.menu) return this.menuPopup(t);
+    if (props()?.office) {
+      const all = terminals();
+      const terms = new Map(all.map((k) => [k.address, k]));
+      const listed = new Map(agents().map((a) => [a.address, a.status]));
+      return officeRender(this, cx, {
+        agentName: (a) => agentName(a, terms.get(a.address)),
+        blockedKid: (a) => this.tree(all, a.address).map((s) => s.t).find((k) => kidStatus(k, listed) === "blocked"),
+        duration, MARK, ORANGE,
+        band: ctxBand,
+        expiring: cacheExpiring,
+        changedAt: (address) => this.changed[address]?.at,
+      });
+    }
     const collapsed = narrow();
     const list = agents();
     const all = terminals();
@@ -485,6 +514,7 @@ export default class AgentTree extends View {
         if (!this.folded.has(`ag-${a.address}`)) rows.push(...subs.map((s) => this.subRow(t, s, 0, shown)));
       }
     }
+    this.needs = list.some((a) => ["blocked", "done"].includes(a.status));
     return this.frame(t, false, rows, list.length);
   }
 
@@ -497,7 +527,14 @@ export default class AgentTree extends View {
       .border_color(t.border)
       .text_size(13)
       .when(!collapsed, (el) => el.child(h_flex().px(16).h(41).pt(14).pb(5).flex_none().items_center()
-        .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Agents"))))
+        .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Agents"))
+        .child(div().flex_1())
+        .when(count > 0, (el) => el.child(h_flex().id("visualise").h(22).px(8).gap(6).rounded(6).items_center()
+          .border_1().border_color(t.input).bg(t.raised).text_size(11).font_medium().text_color(t.foreground)
+          .cursor_pointer().hover((s) => s.border_color(t.accent))
+          .on_click(() => openOverlay({ mod: "agent-tree", kind: "dialog", width: 0.9, height: 0.85, props: { office: true } }))
+          .when(Boolean(this.needs), (el) => el.child(div().size(6).rounded(3).bg(t.blocked)))
+          .child("Visualise")))))
       .when(count === 0 && !collapsed, (el) =>
         el.child(div().px(12).text_size(12).text_color(t.dim).child("No agent status yet. Agents show up here when they report their status.")))
       .child(v_flex().id("ag-list").flex_1().min_h(0).px(collapsed ? 0 : 8).overflow_y_scrollbar().mode("always").children(rows))
