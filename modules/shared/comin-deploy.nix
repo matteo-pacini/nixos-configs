@@ -142,6 +142,13 @@ pkgs.writeShellApplication {
         # Already released (by the timer, or another click): follow it.
         echo "comin is already deploying; following it…"
         wait_new "" || return 1
+      elif [[ $(dep status) == failed ]]; then
+        # Retry: comin redeploys its latest deployment's generation, the one
+        # that failed, as a new deployment.
+        prev=$(dep uuid)
+        echo "Retrying the failed deployment of $(dep generation.selected_commit_id | cut -c1-7) with $branch_operation…"
+        timeout 20 comin deployment submit-latest --operation "$branch_operation"
+        wait_new "$prev" || return 1
       elif [[ $target == boot ]]; then
         echo "Nothing is held."; return 0
       fi

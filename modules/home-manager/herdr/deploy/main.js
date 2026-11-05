@@ -9,7 +9,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Textarea, TextareaState } from "gpui-base";
-import { exec, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
+import { exec, hc, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
 import { claudeAction, fixAll } from "./prompts.js";
 
@@ -85,10 +85,12 @@ function hostMenuItems(p) {
   if (free && p.pending) {
     items.push({ label: "Switch now", icon: "terminal", id: "switch" });
     if (!p.darwin) items.push({ label: "Schedule for next boot", icon: "clock", id: "boot" });
-  } else if (free && p.rebootPending) {
+  } else if (free && (p.rebootPending || p.failed)) {
     items.push({ label: "Switch now", icon: "terminal", id: "switch" });
   }
   if (p.diffTo) items.push({ label: "Check diff", icon: "git-compare", id: "diff" });
+  // Not while comin is busy: a reboot would cut a build or activation short.
+  if (!p.darwin && !p.busy) items.push({ label: "Reboot", icon: "monitor", id: "reboot" });
   // Modes need comin-deploy, which reports one.
   if (p.mode) for (const [mode, label] of Object.entries(MODES)) {
     if (p.darwin && mode === "boot") continue;
@@ -148,11 +150,12 @@ function ago(iso) {
 
 // This machine, as a lowercase HOSTS name: comin's configured hostname (the
 // configuration it deploys), since WorkLaptop's system hostname is the
-// company's; `hostname -s` when comin has no generation yet (just restarted).
+// company's. The builder reports it even with no generation (just after comin
+// restarts); `hostname -s` only when comin does not answer.
 async function localHost() {
   const r = await exec("comin", ["status", "--json"]).catch(() => null);
   let name = "";
-  try { name = JSON.parse(r?.stdout ?? "").builder?.generation?.hostname ?? ""; } catch {}
+  try { name = JSON.parse(r?.stdout ?? "").builder?.hostname ?? ""; } catch {}
   return (name || (await exec("hostname", ["-s"])).stdout.trim()).toLowerCase();
 }
 
@@ -180,6 +183,9 @@ function parseProbe(stdout) {
   return {
     deployed: dep.generation?.selected_commit_id ?? "",
     depStatus: dep.status ?? "",
+    // A failed deployment of a system that is not running: Switch now retries
+    // it (comin-deploy redeploys a failed latest deployment).
+    failed: dep.status === "failed" && Boolean(dep.generation?.out_path) && dep.generation.out_path !== current,
     depError: dep.error_msg ?? "",
     depAt: dep.ended_at ?? "",
     operation: dep.operation ?? "",
@@ -227,7 +233,7 @@ export default class Deploy extends View {
   init(_props, cx) {
     if (props()?.menu) return this.initMenu(cx);
     if (props()?.review) return this.initReview();
-    if (props()?.confirmSwitch) return;
+    if (props()?.confirmSwitch || props()?.confirmReboot) return;
     if (props()?.diffView) return this.initDiff(cx);
     this.hosts = {};
     // Hosts whose deploy, started from the menu, is being followed.
@@ -292,6 +298,7 @@ export default class Deploy extends View {
     for (const ask of this.asks.splice(0)) {
       cx.spawn(async (cx) => {
         if (ask.watch) return this.followDeploy(ask.host, cx);
+        if (ask.reboot) return this.reboot(ask.host);
         // Give the mode write, which the menu runs, a moment.
         if (ask.mode) await exec("sleep", ["2"]);
         await this.loadHost(ask.host, this.local);
@@ -355,6 +362,19 @@ export default class Deploy extends View {
       this.deploying.delete(host);
       cx.notify();
     }
+  }
+
+  // Reboots without asking when sudo needs no password. Otherwise the reboot
+  // runs in a terminal peeked over the tab, where the password is typed; it
+  // waits for Enter only if sudo fails, since a reboot ends the session.
+  async reboot(host) {
+    const p = this.hostTarget(host);
+    const [cmd, ...args] = onHost(p, "sudo -n systemctl reboot");
+    const r = await exec(cmd, args).catch((e) => ({ code: 1, stderr: String(e.message ?? e) }));
+    if (r.code === 0 || !/password is required/.test(r.stderr)) return;
+    const argv = onHost(p, "sudo systemctl reboot || { printf '\\nPress Enter to close. '; read _; }", true);
+    const t = await hc(["run", "--bg", "--json", "--no-parent", "--rm", "--name", `reboot-${p.alias}`, ...argv]);
+    if (t.code === 0) run("terminal.peek", { terminal: JSON.parse(t.stdout).address });
   }
 
   refresh(cx) {
@@ -486,6 +506,8 @@ export default class Deploy extends View {
     } else if (id === "boot") {
       hostTab(p, `boot: ${p.host}`, `comin-deploy boot ${p.pending}`);
       askRefresh(p.host, { watch: true });
+    } else if (id === "reboot") {
+      openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 440, height: 170, props: { confirmReboot: p } });
     } else if (id === "diff") {
       openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 760, height: 560, props: { diffView: p } });
     } else if (id.startsWith("mode-")) {
@@ -519,12 +541,35 @@ export default class Deploy extends View {
         .child(button("sw-go", "Switch now", true, go)));
   }
 
+  // The reboot itself runs in the panel (askRefresh), which outlives this
+  // dialog and can open the sudo peek after it closes.
+  confirmRebootDialog(t) {
+    const o = props(), p = o.confirmReboot;
+    const button = (id, text, primary, action) => h_flex().id(id).h(32).px(14).items_center().rounded(8)
+      .border_1().border_color(primary ? t.solid : t.input).bg(primary ? t.solid : t.raised)
+      .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
+      .hover((s) => s.opacity(0.88)).on_click(action).child(text);
+    const go = () => {
+      askRefresh(p.host, { reboot: true });
+      closeOverlay(o.overlay);
+    };
+    return v_flex().size_full().min_h(0).p(18).bg(t.popover).text_color(t.foreground)
+      .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(o.overlay); cx.stop_propagation(); } })
+      .child(div().text_size(15).font_semibold().child(`Reboot ${p.host}?`))
+      .child(div().pt(8).flex_1().text_size(12.5).text_color(t.muted)
+        .child(`Reboots ${p.host} now. If sudo asks for a password, a terminal opens for it.`))
+      .child(h_flex().pt(14).gap(8).justify_end()
+        .child(button("rb-cancel", "Cancel", false, () => closeOverlay(o.overlay)))
+        .child(button("rb-go", "Reboot", true, go)));
+  }
+
   // The props a host row's menu and its actions need.
   hostTarget(name) {
     const h = this.hosts[name];
     return { host: name, alias: name.toLowerCase(), local: name.toLowerCase() === this.local, darwin: DARWIN.has(name),
       pending: h.pending, pendingOut: h.pendingOut, diffTo: h.diffTo, mode: h.mode, busy: h.busy, suspended: h.suspended,
-      rebootPending: h.rebootPending, commit: h.pending ? h.pendingCommit : h.rebootPending ? h.stagedCommit : h.building };
+      rebootPending: h.rebootPending, failed: h.failed,
+      commit: h.pending ? h.pendingCommit : h.rebootPending ? h.stagedCommit : h.failed ? h.deployed : h.building };
   }
 
   openHostMenu(name) {
@@ -846,6 +891,7 @@ export default class Deploy extends View {
     if (props()?.menu) return this.menuPopup(t);
     if (props()?.review) return this.reviewDialog(t);
     if (props()?.confirmSwitch) return this.confirmSwitchDialog(t);
+    if (props()?.confirmReboot) return this.confirmRebootDialog(t);
     if (props()?.diffView) return this.diffDialog(t);
     this.follow(cx);
     this.takeAsk();
