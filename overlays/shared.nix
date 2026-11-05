@@ -146,6 +146,60 @@
     # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/582675
     opencode = opencodePkgs.opencode;
 
+    # nixpkgs ships 0.1.10; 0.1.11 stopped mods freezing the window while they
+    # load and run. overrideAttrs keeps the cargo and Zig vendors of the old
+    # version, so both are re-fetched here. Tests added since 0.1.10 need what
+    # the sandbox lacks: /var/tmp (window.rs), git and curl (given below), and
+    # /bin/bash, /bin/test or a non-busybox /bin/sh (skipped below). Drop the
+    # whole override once nixpkgs reaches 0.1.13.
+    # WAIT-FOR version: herdr-desktop >= 0.1.13
+    herdr-desktop = super.herdr-desktop.overrideAttrs (
+      finalAttrs: old: {
+        version = "0.1.13";
+        src = super.fetchFromGitHub {
+          owner = "herdrdev";
+          repo = "herdr-app";
+          tag = "v${finalAttrs.version}";
+          fetchSubmodules = true;
+          hash = "sha256-vM25epPf+4Y+gUj/2BTQ6fpOIBI7T5UddFdlMAr6X0o=";
+        };
+        cargoDeps = super.rustPlatform.fetchCargoVendor {
+          inherit (finalAttrs) pname version src;
+          hash = "sha256-7bz9iEMvf2o2I0SsnXaZ0135PlMm73DrJ9ZhSqAjcKY=";
+        };
+        zigDeps = super.zig_0_16.fetchDeps {
+          inherit (finalAttrs) pname version;
+          src = "${finalAttrs.src}/vendor/ghostty";
+          fetchAll = true;
+          hash = "sha256-G9xbZ/pyQTDIfzG0h++i70a45zpwyYpZMBZfAnoOQw0=";
+        };
+        postPatch = old.postPatch + ''
+          substituteInPlace src/window.rs --replace-fail /var/tmp "$TMPDIR"
+        '';
+        # tests/shot_pixels.rs panics without a system font; DejaVu Sans is in
+        # gpui's fallback stack.
+        preCheck = old.preCheck + ''
+          export FONTCONFIG_FILE=${super.makeFontsConf { fontDirectories = [ super.dejavu_fonts ]; }}
+        '';
+        nativeCheckInputs = old.nativeCheckInputs ++ [
+          super.curl
+          super.git
+        ];
+        checkFlags = old.checkFlags ++ [
+          "--skip=core_bin::tests::bundle_completion_skips_unwritable_directories"
+          "--skip=remote_shell::tests::absolute_command_overrides_keep_paths_and_arguments_literal"
+          "--skip=remote_shell::tests::bash_detects_agents_from_login_and_interactive_profiles"
+          "--skip=remote_shell::tests::bash_launches_agents_with_literal_arguments"
+          "--skip=remote_shell::tests::missing_shell_keeps_working_with_sh"
+          "--skip=remote_shell::tests::remote_shell_paths_with_spaces_are_not_split"
+          # Read element bounds that only debug builds record.
+          "--skip=terminal::tests::each_terminal_keeps_its_find_bar_inside_its_own_pane"
+          "--skip=terminal::tests::find_bar_chevrons_step_older_up_and_newer_down"
+          "--skip=terminal::tests::shipped_find_binding_opens_search_but_ctrl_f_reaches_the_program"
+        ];
+      }
+    );
+
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but
     # pipewire-pulse can transiently report a card with zero profiles during
