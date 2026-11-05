@@ -226,9 +226,8 @@ in
           run rm -rf "$dir"
           run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
           run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
-          run install -Dm644 ${./herdr/agent-tree/office.js} "$dir/office.js"
           run cp -r --no-preserve=mode ${./herdr/agent-tree/office} "$dir/office"
-          run cp -r --no-preserve=mode ${officeSprites} "$dir/office/sprites"
+          run cp -r --no-preserve=mode ${officeSprites} "$dir/office/art/sprites"
           # Its name before it covered Codex and opencode.
           run rm -rf "${config.xdg.configHome}/herdr-app/mods/claude-pane"
           dir="${config.xdg.configHome}/herdr-app/mods/agent-pane"

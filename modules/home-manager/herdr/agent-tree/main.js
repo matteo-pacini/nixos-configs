@@ -2,14 +2,14 @@
 // each says where it runs (machine, space, tab). Each agent is named
 // by its terminal's `agent.name` label (right-click a row, or
 // `hc label <t> agent.name=...`), falling back to its hc name, then its title.
-// Visualise, beside the heading, opens office.js: the same agents as workers
+// Visualise, beside the heading, opens office/ (index.js): the same agents as workers
 // in an office of machines, repos and worktrees.
 // Derived from Herdr's shipped `agents` mod.
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, spaces, focused, run, hc, exec, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
-import { officeInit, officeRender } from "./office.js";
+import { officeInit, officeRender } from "./office/index.js";
 
 const LABEL = "agent.name";
 
@@ -442,9 +442,12 @@ export default class AgentTree extends View {
     if (props()?.rename) return this.renameDialog(t);
     if (props()?.menu) return this.menuPopup(t);
     if (props()?.office) {
-      const terms = new Map(terminals().map((k) => [k.address, k]));
+      const all = terminals();
+      const terms = new Map(all.map((k) => [k.address, k]));
+      const listed = new Map(agents().map((a) => [a.address, a.status]));
       return officeRender(this, cx, {
         agentName: (a) => agentName(a, terms.get(a.address)),
+        blockedKid: (a) => this.tree(all, a.address).map((s) => s.t).find((k) => kidStatus(k, listed) === "blocked"),
         duration, MARK, ORANGE,
         band: ctxBand,
         expiring: cacheExpiring,
