@@ -146,6 +146,16 @@ function ago(iso) {
   return h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
 }
 
+// This machine, as a lowercase HOSTS name: comin's configured hostname (the
+// configuration it deploys), since WorkLaptop's system hostname is the
+// company's; `hostname -s` when comin has no generation yet (just restarted).
+async function localHost() {
+  const r = await exec("comin", ["status", "--json"]).catch(() => null);
+  let name = "";
+  try { name = JSON.parse(r?.stdout ?? "").builder?.generation?.hostname ?? ""; } catch {}
+  return (name || (await exec("hostname", ["-s"])).stdout.trim()).toLowerCase();
+}
+
 function parseProbe(stdout) {
   const [json, rest = ""] = stdout.split("@@booted");
   const [bootedOut, afterBooted = ""] = rest.split("@@current");
@@ -353,7 +363,7 @@ export default class Deploy extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const local = (await exec("hostname", ["-s"])).stdout.trim().toLowerCase();
+        const local = await localHost();
         this.local = local;
         // Each probe repaints as it lands: an offline host holds its SSH
         // ConnectTimeout, and the rest shouldn't wait for it.
