@@ -10,10 +10,6 @@
       inherit (super.stdenv.hostPlatform) system;
       config = super.config;
     };
-    opencodePkgs = import inputs.nixpkgs-opencode {
-      inherit (super.stdenv.hostPlatform) system;
-      config = super.config;
-    };
   in
   {
     # gh: disable telemetry (https://cli.github.com/telemetry). Nixpkgs does not
@@ -138,13 +134,7 @@
     # opencode sourced from the master pin: its OpenAI-chat mapper reports
     # OpenRouter's billed usage.cost (#43818, verified on 2.2.1), whereas
     # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
-    #
-    # Temporarily held at 2.2.1 via the nixpkgs-opencode input: on master,
-    # 2.2.5's node_modules fails its fixed-output hash on every build (Hydra
-    # too, NixOS/nixpkgs#582673). Once the hash fix is merged, switch back to
-    # masterPkgs.opencode and drop the nixpkgs-opencode input from flake.nix.
-    # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/582675
-    opencode = opencodePkgs.opencode;
+    opencode = masterPkgs.opencode;
 
     # nixpkgs ships 0.1.10; 0.1.11 stopped mods freezing the window while they
     # load and run. overrideAttrs keeps the cargo and Zig vendors of the old

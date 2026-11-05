@@ -500,22 +500,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-opencode": {
-      "locked": {
-        "lastModified": 1793330439,
-        "narHash": "sha256-CYU4ahsbVtorBcplIBAtRSDikRmBzAwAFgJ+oQ5keM0=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "f188e1d0674ccfa03dadf09fcebd58fcba3da4b0",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "f188e1d0674ccfa03dadf09fcebd58fcba3da4b0",
-        "type": "github"
-      }
-    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1761236834,
@@ -642,7 +626,6 @@
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-master": "nixpkgs-master",
-        "nixpkgs-opencode": "nixpkgs-opencode",
         "nur": "nur",
         "nvf": "nvf",
         "sublime-dracula-theme": "sublime-dracula-theme",

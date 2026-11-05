@@ -2,14 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # Bleeding-edge nixpkgs master, used only to source a handful of
-    # fast-moving packages (claude-code) ahead of the
+    # fast-moving packages (claude-code, opencode) ahead of the
     # nixos-unstable pin. Injected via overlays/shared.nix. Bump with
     # `nix flake update nixpkgs-master`.
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
-    # Pinned by rev, so `nix flake update` leaves it alone: the last master
-    # with a buildable opencode. See the opencode entry in overlays/shared.nix.
-    # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/582675
-    nixpkgs-opencode.url = "github:NixOS/nixpkgs/f188e1d0674ccfa03dadf09fcebd58fcba3da4b0";
     ################
     # Home Manager #
     ################
