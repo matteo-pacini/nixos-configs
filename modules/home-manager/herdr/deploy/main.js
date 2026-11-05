@@ -240,6 +240,9 @@ export default class Deploy extends View {
     this.deploying = new Set();
     // Requests from menus and dialogs, answered by the 1 s timer.
     this.asks = [];
+    // Shared values persist (shared.json): the last request, however old,
+    // would otherwise be answered again each time the panel starts.
+    this.refreshAsked = shared("deploy.refresh")?.at;
     this.collapsed = JSON.parse(localStorage.getItem("collapsed") ?? "{}");
     this.follow(cx);
     // A hidden block is not rendered, so render() alone could never show it
