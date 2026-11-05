@@ -100,7 +100,7 @@ let
         if node.id or null == "main" then
           lib.recursiveUpdate node { content.pane.header.content.mod = "agent-pane"; }
         else if node.id or null == "work-body" && cfg.mods.deploy.enable then
-          node // { children = node.children ++ [ deployBlock ]; }
+          node // { children = map adjust node.children ++ [ deployBlock ]; }
         else if node.id or null == "spaces" && cfg.mods.spaceCards.enable then
           node
           // {
