@@ -139,27 +139,43 @@ function installedVersion(machine, app, cx) {
   return known?.version ?? null;
 }
 
-// Quits the agent in `address`, waits for its shell (the foreground process
-// is the terminal's own again), then resumes `session` with the version now
-// on PATH. Refuses when the agent is the terminal's own program: quitting it
-// would end the terminal, and the resume would have no shell to type into.
-// hc addresses remote terminals itself, so this runs here.
-const RESTART = `pids() { hc get "$1" --json | grep -o '"pid":[0-9]*' | sort -u | wc -l; }
-[ "$(pids "$1")" -ge 2 ] || { echo "it isn't running from a shell" >&2; exit 1; }
-case "$2" in
-  keys:*) hc keys "$1" "\${2#keys:}" >/dev/null ;;
-  *) hc send "$1" "$2" >/dev/null ;;
-esac || exit 1
-for _ in $(seq 60); do
-  [ "$(pids "$1")" -le 1 ] && break
-  sleep 0.5
-done
-[ "$(pids "$1")" -le 1 ] || { echo "it didn't quit" >&2; exit 1; }
-hc send "$1" "$3" >/dev/null`;
+// Quits the agent in `address`, waits for its shell's prompt, then resumes
+// `session` with the version now on PATH. The terminal's program has to be a
+// shell that outlives the agent: an interactive one, which runs the agent in
+// its own process group (hc's foreground is then another process), or a
+// `sh -c "agent; exec sh"`, whose agent shares its group (the foreground is
+// the script until it execs the shell). Quitting an agent that is the
+// terminal's own program would end the terminal, and the resume would have
+// no shell to type into. hc addresses remote terminals itself, so this runs here.
+const SHELLS = /^-?(sh|bash|zsh|fish|dash|ksh)$/;
+const isShell = (argv) => SHELLS.test((argv?.[0] ?? "").split("/").pop());
+const isScript = (argv) => argv.slice(1).some((a) => /^-[a-z]*c[a-z]*$/.test(a));
+const atPrompt = (t) => t.foreground?.pid === t.pid && isShell(t.foreground.argv) && !isScript(t.foreground.argv);
+const fromShell = (t) => isShell(t.argv) && Boolean(t.foreground) && (t.foreground.pid !== t.pid
+  || (isShell(t.foreground.argv) && /;\s*exec\s+\S*sh\b[^;]*$/.test(t.foreground.argv.at(-1))));
 
 async function restartAgent(address, app, session) {
-  const r = await exec("sh", ["-c", RESTART, "restart", address, app.quit, `${app.resume} ${session}`]);
-  if (r.code !== 0) notify({ title: `Couldn't restart ${app.name}`, body: r.stderr || r.stdout, level: "error" });
+  const get = async () => {
+    const r = await hc(["get", address, "--json"]);
+    if (r.code !== 0) throw new Error(r.stderr.trim());
+    return JSON.parse(r.stdout);
+  };
+  try {
+    const t = await get();
+    if (atPrompt(t)) throw new Error("it isn't running");
+    if (!fromShell(t)) throw new Error("it isn't running from a shell");
+    const quit = app.quit.startsWith("keys:") ? ["keys", address, app.quit.slice(5)] : ["send", address, app.quit];
+    if ((await hc(quit)).code !== 0) throw new Error("couldn't tell it to quit");
+    let quitted = false;
+    for (let i = 0; i < 60 && !quitted; i++) {
+      await exec("sleep", ["0.5"]);
+      quitted = atPrompt(await get());
+    }
+    if (!quitted) throw new Error("it didn't quit");
+    await hc(["send", address, `${app.resume} ${session}`]);
+  } catch (e) {
+    notify({ title: `Couldn't restart ${app.name}`, body: String(e.message ?? e), level: "error" });
+  }
 }
 
 // Types `text` and Enter into an agent's terminal (`machine/t7` for a remote one).
