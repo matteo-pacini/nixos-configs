@@ -11,8 +11,28 @@ $(printf '%s' "$input" | jq -r '[.session_id // "", .transcript_path // "", .mod
 EOF
 
 effort="" version="" pct="" ktokens=""
+
+# The version in the store path of the Codex running this hook: its parent, or
+# a shell's parent.
+p=$PPID
+for _ in 1 2 3; do
+  [ "${p:-0}" -gt 1 ] || break
+  if [ -r "/proc/$p/stat" ]; then
+    exe=$(readlink "/proc/$p/exe" 2>/dev/null || true)
+    p=$(sed 's/.*) //' "/proc/$p/stat" | cut -d' ' -f2)
+  else
+    # Darwin: no /proc, and ps reports only argv[0].
+    exe=$(/usr/sbin/lsof -a -p "$p" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1 || true)
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ') || p=0
+  fi
+  version=$(printf '%s' "$exe" | grep -oE -- '-codex-[0-9][0-9.]*/' | tr -dc '0-9.' || true)
+  [ -z "$version" ] || break
+done
+
 if [ -n "$transcript" ] && [ -f "$transcript" ]; then
-  version=$(head -n 1 "$transcript" | jq -r 'select(.type == "session_meta") | .payload.cli_version // ""')
+  # The session's first version: a `codex resume` on a newer Codex keeps it.
+  [ -n "$version" ] ||
+    version=$(head -n 1 "$transcript" | jq -r 'select(.type == "session_meta") | .payload.cli_version // ""')
   effort=$(grep '"type":"turn_context"' "$transcript" | tail -n 1 | jq -r '.payload.effort // ""')
   # Context as Codex's own status line counts it: the first 12000 tokens
   # (system prompt and tools) are a baseline that never counts as used.
