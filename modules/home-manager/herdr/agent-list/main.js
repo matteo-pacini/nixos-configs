@@ -469,18 +469,22 @@ export default class AgentTree extends View {
       return this.frame(t, true, rail, list.length);
     }
 
+    // A live sub-agent of a listed agent is drawn under its parent only, and
+    // its status already reaches the parent through urgency.
+    const tops = list.filter((a) => !(this.terms.get(a.address)?.state === "live" && this.listed.has(this.terms.get(a.address)?.parent)));
+
     // Pinned: everyone who needs you (done counts: it finished and you haven't
     // looked yet). They stay in their space below as well.
-    const rows = list.filter((a) => ["blocked", "done"].includes(this.urgency.get(a.address)))
+    const rows = tops.filter((a) => ["blocked", "done"].includes(this.urgency.get(a.address)))
       .map((a) => this.pinRow(t, a, agentName(a, this.terms.get(a.address)), now, cx));
     if (rows.length) rows.unshift(div().h(2).flex_none());
 
     // Then by machine (this computer first) and space, in the Spaces list's order.
     const spaceList = spaces();
     const machines = [...new Set([null, ...spaceList.map((s) => s.machine ?? null)])];
-    const multi = new Set(spaceList.filter((s) => list.some((a) => a.space === s.id)).map((s) => s.machine ?? null)).size > 1;
+    const multi = new Set(spaceList.filter((s) => tops.some((a) => a.space === s.id)).map((s) => s.machine ?? null)).size > 1;
     for (const machine of machines) {
-      const here = spaceList.filter((s) => (s.machine ?? null) === machine && list.some((a) => a.space === s.id));
+      const here = spaceList.filter((s) => (s.machine ?? null) === machine && tops.some((a) => a.space === s.id));
       if (!here.length) continue;
       if (multi) rows.push(h_flex().pl(8).pt(12).pb(2).flex_none().gap(6).items_center()
         .text_size(10.5).font_semibold().text_color(t.dim)
@@ -488,7 +492,7 @@ export default class AgentTree extends View {
         .child(div().child((machine ?? "This computer").toUpperCase())));
       for (const sp of here) {
         // Most urgent first; the list's own order otherwise.
-        const members = list.filter((a) => a.space === sp.id)
+        const members = tops.filter((a) => a.space === sp.id)
           .map((a, i) => [a, i]).sort(([x, i], [y, j]) => (RANK[this.urgency.get(y.address)] ?? 0) - (RANK[this.urgency.get(x.address)] ?? 0) || i - j)
           .map(([a]) => a);
         // A space where everyone is idle folds to one line unless opened; any
