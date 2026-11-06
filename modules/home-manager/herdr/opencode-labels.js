@@ -1,4 +1,4 @@
-// opencode plugin for hosts with the herdr-app agent-tree mod. Inside a
+// opencode plugin for hosts with the herdr-app agent-list mod. Inside a
 // herdr-app terminal, sets the labels Claude Code's statusLine sets (model,
 // effort, context, version) from opencode's session events, for the mod to
 // draw, and the session id for its restart button. opencode reports no

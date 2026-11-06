@@ -231,7 +231,7 @@ export default class AgentTree extends View {
   }
 
   rename(a, current) {
-    openOverlay({ mod: "agent-tree", kind: "dialog", width: 380, height: 220, props: { rename: a.address, value: current } });
+    openOverlay({ mod: "agent-list", kind: "dialog", width: 380, height: 220, props: { rename: a.address, value: current } });
   }
 
   // Right-click menu, a popup at the pointer drawn like the shipped `menu` mod.
@@ -239,7 +239,7 @@ export default class AgentTree extends View {
   openMenu(a, current, restart = null) {
     const p = { menu: a.address, value: current, claude: a.app === "claude-code", blocked: a.status === "blocked",
       restart, busy: a.status === "blocked" || a.status === "working" };
-    openOverlay({ mod: "agent-tree", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: p });
+    openOverlay({ mod: "agent-list", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: p });
   }
 
   initMenu(cx) {

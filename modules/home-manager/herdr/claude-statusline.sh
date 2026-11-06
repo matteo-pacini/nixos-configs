@@ -1,4 +1,4 @@
-# Claude Code statusLine command for hosts with the herdr-app agent-tree mod.
+# Claude Code statusLine command for hosts with the herdr-app agent-list mod.
 # Renders the in-pane status line with ccstatusline and, inside a herdr-app
 # terminal, sets context usage, prompt-cache expiry, model, effort and version as
 # terminal labels for the mod to draw. The mod counts the cache down itself.

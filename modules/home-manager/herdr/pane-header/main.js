@@ -1,5 +1,5 @@
 // A pane's header, for layouts that frame their panes:
-//   { "tab": "active", "pane": { "header": { "content": { "mod": "agent-pane" } } } }
+//   { "tab": "active", "pane": { "header": { "content": { "mod": "pane-header" } } } }
 // Shows the program's icon (the app's program table), the agent's name or
 // the terminal's title, the folder, and the agent's status; buttons split, zoom and close
 // this pane. Props from the app: { pane, terminal }. Click: focus the pane.

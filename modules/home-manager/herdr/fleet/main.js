@@ -1,8 +1,8 @@
 // Deploy pipeline for matteo-pacini/nixos-configs: master → build.yml → the
 // deploy branch → each host's comin; below it, the checkout's upstream tags
-// (watch.js) and whether each is ready to act on. The `deploy` block of the
-// agent-tree layout, shown only while the focused terminal is in a checkout
-// of that repo (any machine). A manual `layout.toggle deploy` sticks until
+// (watch.js) and whether each is ready to act on. The `fleet` block of the
+// workbench layout, shown only while the focused terminal is in a checkout
+// of that repo (any machine). A manual `layout.toggle fleet` sticks until
 // the focus moves to another folder.
 // Hosts are read over plain SSH using the aliases in ~/.ssh/config; the
 // machine this runs on is read locally.
@@ -74,7 +74,7 @@ const hostTab = (p, name, cmd) =>
 // Asks the panel, another view, to probe `host` again. `extra`: { mode } shows
 // a mode the menu is writing at once; { watch: true } follows a deploy until
 // it settles.
-const askRefresh = (host, extra = {}) => setShared("deploy.refresh", { host, at: Date.now(), ...extra });
+const askRefresh = (host, extra = {}) => setShared("fleet.refresh", { host, at: Date.now(), ...extra });
 
 // A host row's right-click menu; `p` is the popup's props (see Deploy.hostTarget).
 // Deploy actions go through comin-deploy (a mode means it is installed) and
@@ -117,7 +117,7 @@ const openUrl = (url) => {
 // The review dialog for a Claude Code prompt. `review`: { root, space, title,
 // text, name (the new tab's), about (a dim line under the title) }.
 function openReviewDialog(review) {
-  openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 640, height: 520, props: { review } });
+  openOverlay({ mod: "fleet", kind: "dialog", modal: true, width: 640, height: 520, props: { review } });
 }
 
 // The review dialog for `p.tag`'s Claude Code prompt; `p` is { tag, root, space }.
@@ -242,7 +242,7 @@ export default class Deploy extends View {
     this.asks = [];
     // Shared values persist (shared.json): the last request, however old,
     // would otherwise be answered again each time the panel starts.
-    this.refreshAsked = shared("deploy.refresh")?.at;
+    this.refreshAsked = shared("fleet.refresh")?.at;
     this.collapsed = JSON.parse(localStorage.getItem("collapsed") ?? "{}");
     this.follow(cx);
     // A hidden block is not rendered, so render() alone could never show it
@@ -269,7 +269,7 @@ export default class Deploy extends View {
         } catch {}
       }
       if (this.where !== where) return;
-      run(ours ? "layout.show" : "layout.hide", { id: "deploy" });
+      run(ours ? "layout.show" : "layout.hide", { id: "fleet" });
       // Refreshes when it appears, and when the focus moves to a checkout on
       // another machine; switching between spaces on one machine does not.
       const otherMachine = Boolean(this.repo) && loc.on !== this.repo.on;
@@ -288,7 +288,7 @@ export default class Deploy extends View {
   // A menu or dialog asked for something (askRefresh). Render only takes the
   // request: work spawned from render never runs, so the 1 s timer does it.
   takeAsk() {
-    const ask = shared("deploy.refresh");
+    const ask = shared("fleet.refresh");
     if (!ask || ask.at === this.refreshAsked) return;
     this.refreshAsked = ask.at;
     // Shown at once; the probe corrects it if the write failed.
@@ -468,7 +468,7 @@ export default class Deploy extends View {
     openUrl(this.run?.url);
   }
 
-  // Right-click on a Watch row: a popup at the pointer, drawn like agent-tree's.
+  // Right-click on a Watch row: a popup at the pointer, drawn like agent-list's.
   // The repo's space is the one shown, so a remote checkout's tabs open on its
   // own machine.
   target(tag) {
@@ -478,7 +478,7 @@ export default class Deploy extends View {
   openMenu(tag) {
     if (!this.repo) return;
     const p = this.target(tag);
-    openOverlay({ mod: "deploy", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: { menu: p } });
+    openOverlay({ mod: "fleet", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: { menu: p } });
   }
 
   initMenu(cx) {
@@ -505,14 +505,14 @@ export default class Deploy extends View {
   // generation id makes comin-deploy refuse if a newer one arrived meanwhile.
   static chooseHost(p, id) {
     if (id === "switch") {
-      openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 440, height: 190, props: { confirmSwitch: p } });
+      openOverlay({ mod: "fleet", kind: "dialog", modal: true, width: 440, height: 190, props: { confirmSwitch: p } });
     } else if (id === "boot") {
       hostTab(p, `boot: ${p.host}`, `comin-deploy boot ${p.pending}`);
       askRefresh(p.host, { watch: true });
     } else if (id === "reboot") {
-      openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 440, height: 170, props: { confirmReboot: p } });
+      openOverlay({ mod: "fleet", kind: "dialog", modal: true, width: 440, height: 170, props: { confirmReboot: p } });
     } else if (id === "diff") {
-      openOverlay({ mod: "deploy", kind: "dialog", modal: true, width: 760, height: 560, props: { diffView: p } });
+      openOverlay({ mod: "fleet", kind: "dialog", modal: true, width: 760, height: 560, props: { diffView: p } });
     } else if (id.startsWith("mode-")) {
       // The write runs here (it outlives the popup); the panel shows the new
       // mode at once and probes again.
@@ -580,7 +580,7 @@ export default class Deploy extends View {
     if (!h || h.offline) return;
     const p = this.hostTarget(name);
     if (!hostMenuItems(p).length) return;
-    openOverlay({ mod: "deploy", kind: "popup", width: 230, height: hostMenuItems(p).length * 31 + 10, props: { menu: p } });
+    openOverlay({ mod: "fleet", kind: "popup", width: 230, height: hostMenuItems(p).length * 31 + 10, props: { menu: p } });
   }
 
   menuPopup(t) {
@@ -748,18 +748,22 @@ export default class Deploy extends View {
     const h = this.hosts[name];
     const following = this.deploying.has(name);
     const [label, color] = following && h.depStatus !== "failed" ? ["deploying", "working"] : verdict(h, this.deploySha);
+    // A newer commit whose system is the deployed one: comin skipped it, but
+    // the host already has (or boots into) what it builds.
+    const same = h.unchanged && Boolean(h.building) && h.building !== h.deployed;
     const detail = h.offline ? h.reason || "no SSH answer"
       : h.pending && !h.busy ? `${short(h.pendingCommit)} held · right-click to deploy`
       : h.depStatus === "failed" ? h.depError
       : h.buildError && h.building === this.deploySha ? h.buildError
-      : `${short(h.deployed)} · ${h.operation || "—"} · ${ago(h.depAt)}`;
+      : `${short(same ? h.building : h.deployed)} · ${h.operation || "—"} · ${ago(h.depAt)}`;
     const title = h_flex().gap(6).items_center().min_w(0).text_size(12.5)
       .child(div().truncate().when(Boolean(h.offline), (el) => el.text_color(t.muted)).child(name))
       .when(name.toLowerCase() === this.local, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("this computer")))
       .when(!h.offline, (el) => el.child(this.modePill(name, h, t)));
     const sub = h_flex().gap(5).items_center().min_w(0).text_size(10.5).text_color(t.dim)
       .child(this.marker(color, Boolean(h.offline), t))
-      .child(div().truncate().child(detail));
+      .child(div().truncate().child(detail))
+      .when(same, (el) => el.id(`host-same-${name}`).tooltip(`Same system as ${short(h.deployed)}, deployed ${ago(h.depAt)}`));
     const right = h_flex().gap(6).items_center()
       .when(h.busy || following, (el) => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
       .child(this.chip(cap(label === "reboot pending" ? "reboot" : label), color, t));

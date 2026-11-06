@@ -1,5 +1,5 @@
 # Codex hook (SessionStart, Stop, PostToolUse) for hosts with the herdr-app
-# agent-tree mod. Inside a herdr-app terminal, sets the labels Claude Code's
+# agent-list mod. Inside a herdr-app terminal, sets the labels Claude Code's
 # statusLine sets (model, effort, context, version) from the session's rollout
 # log, for the mod to draw. Codex reports no prompt-cache expiry, so there is
 # no cache label. Prints nothing: Codex reads a hook's stdout.

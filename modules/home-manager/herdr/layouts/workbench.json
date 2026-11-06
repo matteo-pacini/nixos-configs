@@ -61,7 +61,7 @@
               },
               "min": 90,
               "content": {
-                "mod": "agent-tree"
+                "mod": "agent-list"
               }
             }
           ]

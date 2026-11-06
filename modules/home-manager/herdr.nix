@@ -28,7 +28,7 @@ let
     text = builtins.readFile ./herdr/claude-resume.sh;
   };
 
-  # Sets the context, cache, model and effort labels the agent-tree mod draws, then renders
+  # Sets the context, cache, model and effort labels the agent-list mod draws, then renders
   # ccstatusline as the plain statusLine does.
   claudeStatusLine = pkgs.writeShellApplication {
     name = "claude-statusline";
@@ -76,27 +76,32 @@ let
     }
   ];
 
-  # The agent-tree layout, adjusted for the mods that live in it: agent-pane
-  # as the pane header, the deploy block beside the work area (mods.deploy),
-  # and space-cards in place of the shipped spaces list (mods.spaceCards).
+  # The workbench layout, adjusted for the mods that live in it: pane-header
+  # as the pane header, pane-menu as the terminal right-click menu, the fleet
+  # and nixpkgs-prs blocks beside the work area (workbench.fleet,
+  # workbench.nixpkgsPrs), and space-cards in place of the shipped spaces list
+  # (workbench.spaceCards).
   # Generated rather than a second snapshot of `main`.
-  agentTreeLayout =
+  workbenchLayout =
     let
-      deployBlock = {
-        id = "deploy";
+      sideBlock = mod: {
+        id = mod;
         type = "block";
-        content.mod = "deploy";
+        content.mod = mod;
         size.px = 340;
         min = 280;
         max = 600;
       };
+      sideBlocks =
+        lib.optional cfg.workbench.fleet.enable (sideBlock "fleet")
+        ++ lib.optional cfg.workbench.nixpkgsPrs.enable (sideBlock "nixpkgs-prs");
       adjust =
         node:
         if node.id or null == "main" then
-          lib.recursiveUpdate node { content.pane.header.content.mod = "agent-pane"; }
-        else if node.id or null == "work-body" && cfg.mods.deploy.enable then
-          node // { children = map adjust node.children ++ [ deployBlock ]; }
-        else if node.id or null == "spaces" && cfg.mods.spaceCards.enable then
+          lib.recursiveUpdate node { content.pane.header.content.mod = "pane-header"; }
+        else if node.id or null == "work-body" then
+          node // { children = map adjust node.children ++ sideBlocks; }
+        else if node.id or null == "spaces" && cfg.workbench.spaceCards.enable then
           node
           // {
             content = node.content // {
@@ -108,28 +113,37 @@ let
         else
           node;
     in
-    pkgs.writeText "agent-tree.json" (
-      builtins.toJSON (adjust (lib.importJSON ./herdr/layouts/agent-tree.json))
+    pkgs.writeText "workbench.json" (
+      builtins.toJSON (
+        adjust (lib.importJSON ./herdr/layouts/workbench.json) // { terminal_menu = "pane-menu"; }
+      )
     );
 in
 {
   options.custom.herdr = {
     enable = lib.mkEnableOption "herdr-core (`hc`), the server that runs Herdr's terminals and agents";
     desktop = lib.mkEnableOption "the Herdr desktop app";
-    mods.agentTree.enable = lib.mkEnableOption ''
-      the desktop app's `agent-tree` layout: the Agents sidebar as host > space > tab > agent,
-      each agent named by its `agent.name` terminal label, with Claude's model, effort,
-      context fill and prompt-cache time left. The first activation with the app open shows it
+    workbench.enable = lib.mkEnableOption ''
+      the desktop app's `workbench` layout: the `agent-list` Agents sidebar (agents
+      by machine and space, those that need you pinned on top, each named by its
+      `agent.name` terminal label, with Claude's model, effort, context fill and
+      prompt-cache time left) and the `pane-header` pane header (outdated agents
+      restart on the installed version). The first activation with the app open shows it
     '';
-    mods.deploy.enable = lib.mkEnableOption ''
-      the nixos-configs panel in the agent-tree layout: the deploy pipeline
+    workbench.fleet.enable = lib.mkEnableOption ''
+      the nixos-configs panel in the workbench layout: the deploy pipeline
       (master, build.yml, the deploy branch, each host's comin) above the
       repo's WAIT-FOR / WATCH tags and their upstream status. Shown only while
       the focused terminal is in a checkout of this repo. Needs `gh` signed in
       and SSH to the other hosts
     '';
-    mods.spaceCards.enable = lib.mkEnableOption ''
-      the `space-cards` Spaces list in the agent-tree layout, in place of the shipped one:
+    workbench.nixpkgsPrs.enable = lib.mkEnableOption ''
+      the nixpkgs panel in the workbench layout: open NixOS/nixpkgs PRs that
+      involve you, with nixpkgs-review or a Claude Code review a right-click away.
+      Shown only while the focused terminal is in a nixpkgs checkout. Needs `gh` signed in
+    '';
+    workbench.spaceCards.enable = lib.mkEnableOption ''
+      the `space-cards` Spaces list in the workbench layout, in place of the shipped one:
       each machine a card with its device icon, OS and connection state, each space
       with its branch badge, ahead/behind the default branch, and a worktree badge
     '';
@@ -173,7 +187,7 @@ in
           }
           # agent.ask: set when a prompt shows, cleared by the
           # rest. A denied prompt fires none of them.
-          // lib.optionalAttrs cfg.mods.agentTree.enable {
+          // lib.optionalAttrs cfg.workbench.enable {
             PermissionRequest = agentAskHook;
             PostToolUse = agentAskHook;
             UserPromptSubmit = agentAskHook;
@@ -203,60 +217,73 @@ in
         };
       }
 
-      (lib.mkIf cfg.mods.agentTree.enable {
+      (lib.mkIf cfg.workbench.enable {
         home.packages = [ agentAsk ];
 
         assertions = [
           {
             assertion = cfg.desktop;
-            message = "custom.herdr.mods.agentTree needs custom.herdr.desktop.";
+            message = "custom.herdr.workbench needs custom.herdr.desktop.";
           }
         ];
 
         # Copied, not linked: herdr-app (0.1.10) reports "no `main.js`" when a mod's
         # main.js is a symlink. The folder is replaced whole, hand-made copies and
         # stale files included; the app regenerates its own typings in it on start.
-        home.activation.herdrAgentTreeMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          dir="${config.xdg.configHome}/herdr-app/mods/agent-tree"
+        home.activation.herdrWorkbenchMods = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          dir="${config.xdg.configHome}/herdr-app/mods/agent-list"
           run rm -rf "$dir"
-          run install -Dm644 ${./herdr/agent-tree/main.js} "$dir/main.js"
-          run install -Dm644 ${./herdr/agent-tree/mod.json} "$dir/mod.json"
-          # Its name before it covered Codex and opencode.
-          run rm -rf "${config.xdg.configHome}/herdr-app/mods/claude-pane"
-          dir="${config.xdg.configHome}/herdr-app/mods/agent-pane"
+          run install -Dm644 ${./herdr/agent-list/main.js} "$dir/main.js"
+          run install -Dm644 ${./herdr/agent-list/mod.json} "$dir/mod.json"
+          dir="${config.xdg.configHome}/herdr-app/mods/pane-header"
           run rm -rf "$dir"
-          run install -Dm644 ${./herdr/agent-pane/main.js} "$dir/main.js"
-          run install -Dm644 ${./herdr/agent-pane/mod.json} "$dir/mod.json"
+          run install -Dm644 ${./herdr/pane-header/main.js} "$dir/main.js"
+          run install -Dm644 ${./herdr/pane-header/mod.json} "$dir/mod.json"
+          dir="${config.xdg.configHome}/herdr-app/mods/pane-menu"
+          run rm -rf "$dir"
+          run install -Dm644 ${./herdr/pane-menu/main.js} "$dir/main.js"
+          run install -Dm644 ${./herdr/pane-menu/mod.json} "$dir/mod.json"
+          # Their earlier names.
+          for old in claude-pane agent-tree agent-pane deploy; do
+            run rm -rf "${config.xdg.configHome}/herdr-app/mods/$old"
+          done
         '';
 
         # A snapshot of herdr-app's shipped `main` layout with the agents block
         # swapped; shipped layouts live in the binary, so re-snapshot it when
-        # upstream changes `main`. force: replaces hand-made copies instead of
-        # failing activation.
-        xdg.configFile."herdr-app/layouts/agent-tree.json" = {
-          source = agentTreeLayout;
-          force = true;
-        };
+        # upstream changes `main`. Copied, not linked, so mods can be tried in
+        # it live; each activation replaces it, first saving a copy that differs
+        # from the one activation last wrote (a hand edit) to the state folder.
+        home.activation.herdrWorkbenchLayoutFile = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          file="${config.xdg.configHome}/herdr-app/layouts/workbench.json"
+          last="${config.xdg.stateHome}/herdr-app/workbench.json"
+          if [ -f "$file" ] && [ ! -L "$file" ] && ! cmp -s "$file" "$last"; then
+            run install -Dm644 "$file" "${config.xdg.stateHome}/herdr-app/workbench.$(date +%Y%m%d-%H%M%S).json"
+          fi
+          run rm -f "$file"
+          run install -Dm644 ${workbenchLayout} "$file"
+          run install -Dm644 ${workbenchLayout} "$last"
+        '';
 
         # Shows the layout once per machine, so a later pick of another layout
         # sticks. A running window switches at once. With none open (activation
         # at boot), the app's shared.json, where it keeps the shown layout, is set
         # so the next start opens on it.
-        home.activation.herdrAgentTreeLayout =
+        home.activation.herdrWorkbenchLayout =
           let
             herdrApp = lib.getExe' pkgs.herdr-desktop "herdr-app";
           in
-          lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-            marker="${config.xdg.stateHome}/herdr-app/agent-tree-shown"
+          lib.hm.dag.entryAfter [ "herdrWorkbenchLayoutFile" ] ''
+            marker="${config.xdg.stateHome}/herdr-app/workbench-shown"
             shared="${config.xdg.configHome}/herdr-app/shared.json"
             if [ ! -e "$marker" ]; then
               shown=0
               if ${herdrApp} status >/dev/null 2>&1; then
-                run ${herdrApp} do layout.switch --name agent-tree >/dev/null && shown=1
+                run ${herdrApp} do layout.switch --name workbench >/dev/null && shown=1
               else
                 tmp=$(mktemp)
                 { cat "$shared" 2>/dev/null || echo '{}'; } |
-                  ${lib.getExe pkgs.jq} '.layout = "agent-tree"' >"$tmp" &&
+                  ${lib.getExe pkgs.jq} '.layout = "workbench"' >"$tmp" &&
                   run install -Dm644 "$tmp" "$shared" && shown=1
                 rm -f "$tmp"
               fi
@@ -275,7 +302,7 @@ in
         };
       })
 
-      (lib.mkIf (cfg.mods.agentTree.enable && config.custom.codex.enable) {
+      (lib.mkIf (cfg.workbench.enable && config.custom.codex.enable) {
         home.packages = [ codexLabels ];
 
         # hooks.json is Codex's own runtime file (it records trust beside it in
@@ -309,40 +336,57 @@ in
         '';
       })
 
-      (lib.mkIf (cfg.mods.agentTree.enable && config.custom.opencode.enable) {
+      (lib.mkIf (cfg.workbench.enable && config.custom.opencode.enable) {
         # Loaded from the plugins folder on start; sets the same labels from
         # opencode's session events.
         xdg.configFile."opencode/plugins/herdr-labels.js".source = ./herdr/opencode-labels.js;
       })
 
-      (lib.mkIf cfg.mods.deploy.enable {
+      (lib.mkIf cfg.workbench.fleet.enable {
         assertions = [
           {
-            assertion = cfg.mods.agentTree.enable;
-            message = "custom.herdr.mods.deploy lives in the agent-tree layout; enable custom.herdr.mods.agentTree.";
+            assertion = cfg.workbench.enable;
+            message = "custom.herdr.workbench.fleet lives in the workbench layout; enable custom.herdr.workbench.";
           }
         ];
 
-        # Copied and replaced whole, like agent-tree above.
-        home.activation.herdrDeployMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          dir="${config.xdg.configHome}/herdr-app/mods/deploy"
+        # Copied and replaced whole, like agent-list above.
+        home.activation.herdrFleetMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          dir="${config.xdg.configHome}/herdr-app/mods/fleet"
           run rm -rf "$dir"
-          run install -Dm644 ${./herdr/deploy/main.js} "$dir/main.js"
-          run install -Dm644 ${./herdr/deploy/watch.js} "$dir/watch.js"
-          run install -Dm644 ${./herdr/deploy/prompts.js} "$dir/prompts.js"
-          run install -Dm644 ${./herdr/deploy/mod.json} "$dir/mod.json"
+          for f in main.js watch.js prompts.js mod.json; do
+            run install -Dm644 "${./herdr/fleet}/$f" "$dir/$f"
+          done
         '';
       })
 
-      (lib.mkIf cfg.mods.spaceCards.enable {
+      (lib.mkIf cfg.workbench.nixpkgsPrs.enable {
         assertions = [
           {
-            assertion = cfg.mods.agentTree.enable;
-            message = "custom.herdr.mods.spaceCards lives in the agent-tree layout; enable custom.herdr.mods.agentTree.";
+            assertion = cfg.workbench.enable;
+            message = "custom.herdr.workbench.nixpkgsPrs lives in the workbench layout; enable custom.herdr.workbench.";
           }
         ];
 
-        # Copied and replaced whole, like agent-tree above.
+        # Copied and replaced whole, like agent-list above.
+        home.activation.herdrNixpkgsPrsMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          dir="${config.xdg.configHome}/herdr-app/mods/nixpkgs-prs"
+          run rm -rf "$dir"
+          for f in main.js prompts.js mod.json; do
+            run install -Dm644 "${./herdr/nixpkgs-prs}/$f" "$dir/$f"
+          done
+        '';
+      })
+
+      (lib.mkIf cfg.workbench.spaceCards.enable {
+        assertions = [
+          {
+            assertion = cfg.workbench.enable;
+            message = "custom.herdr.workbench.spaceCards lives in the workbench layout; enable custom.herdr.workbench.";
+          }
+        ];
+
+        # Copied and replaced whole, like agent-list above.
         home.activation.herdrSpaceCardsMod = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
           dir="${config.xdg.configHome}/herdr-app/mods/space-cards"
           run rm -rf "$dir"
