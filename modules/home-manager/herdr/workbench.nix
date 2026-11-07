@@ -9,12 +9,20 @@ let
   cfg = config.custom.herdr;
   modsHome = "${config.xdg.configHome}/herdr-app/mods";
 
-  # Every mod folder under mods/, as installed. Symlinks are followed, so a mod
-  # may link in files from elsewhere in the tree and still install as a plain
-  # folder: herdr-app (0.1.10) reports "no `main.js`" when a mod's main.js is a
-  # symlink.
+  # Every mod folder under mods/, as installed. A mod's `lib` is a symlink to
+  # the shared lib/; symlinks are followed, so each mod installs as a plain,
+  # self-contained folder: herdr-app (0.1.10) reports "no `main.js`" when a
+  # mod's main.js is a symlink. lib/ is in the source so the links resolve.
   mods = pkgs.runCommand "herdr-mods" { } ''
-    cp -rL ${./mods} $out
+    cp -rL ${
+      lib.fileset.toSource {
+        root = ./.;
+        fileset = lib.fileset.unions [
+          ./mods
+          ./lib
+        ];
+      }
+    }/mods $out
   '';
 
   # Installed with the layout; the optional ones only when enabled.

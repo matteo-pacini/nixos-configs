@@ -4,6 +4,7 @@
 // and whether each one is ready to act on.
 
 import { exec, readTextFile } from "herdr";
+import { cmpVersion } from "./lib/version.js";
 
 const TAG = /(WAIT-FOR (unstable|merged|closed|green|version|manual)|WATCH): (\S.*)$/;
 // Only at the start of a comment line: code and strings that quote a tag
@@ -97,15 +98,6 @@ async function pkgVersion(attr, ref) {
   } catch {
     return null;
   }
-}
-
-function cmpVersion(a, b) {
-  const x = a.split(/[.-]/).map(Number), y = b.split(/[.-]/).map(Number);
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const d = (x[i] || 0) - (y[i] || 0);
-    if (d) return Math.sign(d);
-  }
-  return 0;
 }
 
 const is = (state, text) => ({ state, text });

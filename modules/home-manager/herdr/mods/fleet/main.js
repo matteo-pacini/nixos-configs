@@ -9,7 +9,8 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Textarea, TextareaState } from "gpui-base";
-import { exec, hc, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
+import { exec, hc, theme, run, spaces, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
+import { location, openUrl } from "./lib/ui.js";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
 import { claudeAction, fixAll } from "./prompts.js";
 
@@ -25,14 +26,6 @@ const REFRESH_MS = 60000;
 const WATCH_MS = 30 * 60000;
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const ORIGIN = /[:/]matteo-pacini\/nixos-configs(\.git)?$/;
-
-// Where the focused terminal is, resolved the same way as the shipped `changes` mod.
-function location() {
-  const space = spaces().find((s) => s.active), f = focused();
-  const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
-  const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
-  return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
-}
 
 // The checkout Watch reads: its tags come from the working tree, not from
 // GitHub, so a stale checkout shows stale or no tags.
@@ -109,10 +102,6 @@ function menuItems(p) {
     ...(p.tag.url ? [{ label: "Open upstream", icon: "search", id: "upstream" }] : []),
   ];
 }
-
-const openUrl = (url) => {
-  if (url) exec(window()?.platform === "macos" ? "open" : "xdg-open", [url]);
-};
 
 // The review dialog for a Claude Code prompt. `review`: { root, space, title,
 // text, name (the new tab's), about (a dim line under the title) }.
@@ -256,7 +245,8 @@ export default class Deploy extends View {
   // Shows the block in a nixos-configs checkout and hides it elsewhere. Acts
   // only when the location changes, so a manual toggle sticks until then.
   follow(cx) {
-    const loc = location(), where = JSON.stringify(loc);
+    // Not keyed on the space: a manual toggle sticks across spaces in one folder.
+    const { cwd, on } = location(), loc = { cwd, on }, where = JSON.stringify(loc);
     if (where === this.where) return;
     this.where = where;
     cx.spawn(async (cx) => {

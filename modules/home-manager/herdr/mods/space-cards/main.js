@@ -9,6 +9,7 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, settings, watchFolder, window, layout } from "herdr";
+import { narrow } from "./lib/ui.js";
 
 // The fleet in this repo (hosts/), by the lower-case name hc and `hostname -s`
 // use. A machine missing here is drawn as a server with no OS.
@@ -20,18 +21,6 @@ const HOSTS = {
   worklaptop: { label: "WorkLaptop", device: "laptop", os: "macOS" },
 };
 const hostOf = (name) => HOSTS[name?.toLowerCase()] ?? { label: name, device: "server", os: null };
-
-function find(node, id) {
-  if (node?.id === id) return node;
-  for (const child of node?.children ?? []) {
-    const found = find(child, id);
-    if (found) return found;
-  }
-  return null;
-}
-
-// The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
-const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 // `ps`: panes(), read once by the caller (each read copies every pane).
