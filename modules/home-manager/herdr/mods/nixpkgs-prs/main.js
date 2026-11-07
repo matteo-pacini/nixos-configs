@@ -7,7 +7,8 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Input, InputState, Textarea, TextareaState } from "gpui-base";
-import { exec, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props, shared, setShared, readTextFile } from "herdr";
+import { exec, theme, run, focused, settings, openOverlay, closeOverlay, props, shared, setShared, readTextFile } from "herdr";
+import { location, openUrl } from "./lib/ui.js";
 import { reviewPrompt } from "./prompts.js";
 
 const BLOCK = "nixpkgs-prs";
@@ -18,14 +19,6 @@ const REFRESH_MS = 5 * 60000;
 // While a PR sits in the merge queue, so it drops out soon after it merges.
 const QUEUED_REFRESH_MS = 60000;
 const LAST = "nixpkgs-prs.last";
-
-// Where the focused terminal is, resolved as the shipped `changes` mod does.
-function location() {
-  const space = spaces().find((s) => s.active), f = focused();
-  const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
-  const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
-  return { cwd: pane?.cwd || f?.cwd || space?.folder, on, space: space?.id };
-}
 
 // ---- GitHub ----
 
@@ -73,7 +66,6 @@ async function fetchPRs() {
 }
 
 const url = (n) => `https://github.com/NixOS/nixpkgs/pull/${n}`;
-const openUrl = (u) => exec(window()?.platform === "macos" ? "open" : "xdg-open", [u]);
 
 function ago(t) {
   const m = (Date.now() - t) / 60000;

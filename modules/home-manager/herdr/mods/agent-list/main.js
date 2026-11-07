@@ -5,23 +5,13 @@
 // `hc label <t> agent.name=...`), falling back to its hc name, then its title.
 // Derived from Herdr's shipped `agents` mod.
 
-import { View, div, image, svg } from "gpui-kit";
+import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, spaces, focused, run, hc, exec, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
+import { agents, terminals, spaces, focused, run, hc, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
+import { APPS, agentVersion, restartAgent } from "./lib/agents.js";
+import { icon, find, narrow } from "./lib/ui.js";
 
 const LABEL = "agent.name";
-
-function find(node, id) {
-  if (node?.id === id) return node;
-  for (const child of node?.children ?? []) {
-    const found = find(child, id);
-    if (found) return found;
-  }
-  return null;
-}
-
-// The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
-const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
 
 function toggleSidebar() {
   const width = find(layout(), "sidebar")?.size?.px;
@@ -65,11 +55,6 @@ function duration(ms) {
   return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
 }
 
-function icon(p, size, color) {
-  if (!p?.icon) return null;
-  return p.tint ? svg(p.icon).size(size).flex_none().text_color(color) : image(p.icon).w(size).h(size).flex_none();
-}
-
 // `term`: the agent's entry in terminals(), if listed yet.
 function agentName(a, term) {
   return term?.labels?.[LABEL] || term?.name || clean(a.title) || a.program?.name || a.address;
@@ -87,99 +72,6 @@ function menuItems(p) {
     ...(p.restart ? [{ label: `Restart on ${p.restart.latest}`, icon: "terminal", action: "restart",
       disabled: p.busy, hint: p.busy ? "wait for idle" : "resume" }] : []),
   ];
-}
-
-// The agents that label their version and session id (claude-statusline.sh,
-// codex-labels.sh, opencode-labels.js), by the app herdr reports: the command
-// on PATH, the package name in its store path, the label holding the session,
-// how to quit (text to send, or `keys:` to press) and resume one, and the
-// screen text of a prompt quitting can raise instead, which Enter answers.
-// opencode takes pasted text as a prompt, so it's quit with a key. Claude asks
-// before quitting with background work running; Enter takes its default, "Exit
-// and stop tasks". Its "Move to background" would keep the old version running
-// in a daemon under a forked session, so the resume would only reattach to it.
-const APPS = {
-  "claude-code": { name: "Claude Code", bin: "claude", pkg: "claude-code", session: "claude.session", quit: "/exit", resume: "claude --resume", asks: "Background work is running" },
-  codex: { name: "Codex", bin: "codex", pkg: "codex", session: "codex.session", quit: "/quit", resume: "codex resume" },
-  opencode: { name: "opencode", bin: "opencode", pkg: "opencode", session: "opencode.session", quit: "keys:ctrl+c", resume: "opencode -s" },
-};
-
-// Installed versions, `${machine}:${app}` -> { version, at }, re-read at most
-// once a minute.
-const installed = new Map();
-const INSTALLED_MS = 60000;
-// The command's store path, or for a wrapper script (opencode's launcher)
-// the package path it execs.
-const INSTALLED = `p=$(readlink -f /etc/profiles/per-user/"$USER"/bin/"$1" 2>/dev/null || readlink -f "$(command -v "$1")")
-case "$p" in *-"$2"-[0-9]*) echo "$p" ;; *) grep -a -o -m1 -E "/nix/store/[a-z0-9]+-$2-[0-9][0-9.]*/" "$p" ;; esac`;
-
-function cmpVersion(a, b) {
-  const x = a.split(".").map(Number), y = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const d = (x[i] || 0) - (y[i] || 0);
-    if (d) return Math.sign(d);
-  }
-  return 0;
-}
-
-// The installed version of `app` on `machine` (null: this one), or null until
-// read; reading it notifies `cx`.
-function installedVersion(machine, app, cx) {
-  const key = `${machine ?? ""}:${app.pkg}`;
-  const known = installed.get(key);
-  if (!known || Date.now() - known.at > INSTALLED_MS) {
-    installed.set(key, { version: known?.version ?? null, at: Date.now() });
-    cx.spawn(async (cx) => {
-      const r = await exec("sh", ["-c", INSTALLED, "installed", app.bin, app.pkg], { on: machine }).catch(() => null);
-      const version = new RegExp(`-${app.pkg}-(\\d[\\d.]*)/`).exec(r?.stdout ?? "")?.[1] ?? null;
-      installed.set(key, { version, at: Date.now() });
-      cx.notify();
-    });
-  }
-  return known?.version ?? null;
-}
-
-// Quits the agent in `address`, answers the prompt quitting can raise (when
-// its screen shows `app.asks`) with Enter, waits for its shell's prompt, then resumes
-// `session` with the version now on PATH. The terminal's program has to be a
-// shell that outlives the agent: an interactive one, which runs the agent in
-// its own process group (hc's foreground is then another process), or a
-// `sh -c "agent; exec sh"`, whose agent shares its group (the foreground is
-// the script until it execs the shell). Quitting an agent that is the
-// terminal's own program would end the terminal, and the resume would have
-// no shell to type into. hc addresses remote terminals itself, so this runs here.
-const SHELLS = /^-?(sh|bash|zsh|fish|dash|ksh)$/;
-const isShell = (argv) => SHELLS.test((argv?.[0] ?? "").split("/").pop());
-const isScript = (argv) => argv.slice(1).some((a) => /^-[a-z]*c[a-z]*$/.test(a));
-const atPrompt = (t) => t.foreground?.pid === t.pid && isShell(t.foreground.argv) && !isScript(t.foreground.argv);
-const fromShell = (t) => isShell(t.argv) && Boolean(t.foreground) && (t.foreground.pid !== t.pid
-  || (isShell(t.foreground.argv) && /;\s*exec\s+\S*sh\b[^;]*$/.test(t.foreground.argv.at(-1))));
-
-async function restartAgent(address, app, session) {
-  const get = async () => {
-    const r = await hc(["get", address, "--json"]);
-    if (r.code !== 0) throw new Error(r.stderr.trim());
-    return JSON.parse(r.stdout);
-  };
-  try {
-    const t = await get();
-    if (atPrompt(t)) throw new Error("it isn't running");
-    if (!fromShell(t)) throw new Error("it isn't running from a shell");
-    const quit = app.quit.startsWith("keys:") ? ["keys", address, app.quit.slice(5)] : ["send", address, app.quit];
-    if ((await hc(quit)).code !== 0) throw new Error("couldn't tell it to quit");
-    let quitted = false, asked = false;
-    for (let i = 0; i < 60 && !quitted; i++) {
-      await exec("sleep", ["0.5"]);
-      quitted = atPrompt(await get());
-      if (!quitted && app.asks && !asked && (await hc(["read", "--lines", "40", address])).stdout?.includes(app.asks)) {
-        asked = (await hc(["keys", address, "enter"])).code === 0;
-      }
-    }
-    if (!quitted) throw new Error("it didn't quit");
-    await hc(["send", address, `${app.resume} ${session}`]);
-  } catch (e) {
-    notify({ title: `Couldn't restart ${app.name}`, body: String(e.message ?? e), level: "error" });
-  }
 }
 
 // Types `text` and Enter into an agent's terminal (`machine/t7` for a remote one).
@@ -364,12 +256,8 @@ export default class AgentTree extends View {
 
   // Version, outdated flag and restart offer for `a`, for its row and menu.
   versionOf(a, labels, cx) {
-    const app = APPS[a.app];
-    const running = app ? labels?.["agent.version"] : null;
-    const machine = a.address.includes("/") ? a.address.split("/")[0] : null;
-    const latest = running ? installedVersion(machine, app, cx) : null;
-    const outdated = Boolean(latest) && cmpVersion(running, latest) < 0;
-    const restart = outdated && labels?.[app.session] ? { app: a.app, latest, session: labels[app.session] } : null;
+    const { latest, outdated, session } = agentVersion(a.app, a.address, labels, cx);
+    const restart = outdated && session ? { app: a.app, latest, session } : null;
     return { latest, outdated, restart };
   }
 

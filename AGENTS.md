@@ -88,3 +88,4 @@ All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), an
 | Nexus storage docs | `docs/nexus/` |
 | CI/CD | `.github/workflows/` |
 | Auto-deploy (comin, `deploy` branch) | `docs/auto-deploy-handbook.md` |
+| Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md` |

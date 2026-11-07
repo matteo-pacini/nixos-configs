@@ -9,14 +9,17 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Textarea, TextareaState } from "gpui-base";
-import { exec, hc, theme, window, run, spaces, panes, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
+import { exec, hc, theme, run, spaces, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
+import { location, openUrl } from "./lib/ui.js";
+import { SELF, FLEET, HOSTS as MESH } from "./lib/hosts.js";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
 import { claudeAction, fixAll } from "./prompts.js";
 
 const REPO = "matteo-pacini/nixos-configs";
-const HOSTS = ["BrightFalls", "Nexus", "NightSprings", "CauldronLake", "WorkLaptop"];
+// The hosts this machine can reach over the SSH mesh, itself first.
+const HOSTS = FLEET;
 // nix-darwin has no boot: these hosts only switch.
-const DARWIN = new Set(["NightSprings", "WorkLaptop"]);
+const DARWIN = new Set(Object.values(MESH).filter((h) => h.darwin).map((h) => h.label));
 // comin-deploy modes (modules/shared/comin-deploy.nix), as the host menu names them.
 const MODES = { manual: "Manual", boot: "Automatic (boot)", switch: "Automatic (switch)" };
 // comin polls every 60 s; refreshing faster shows nothing new.
@@ -25,14 +28,6 @@ const REFRESH_MS = 60000;
 const WATCH_MS = 30 * 60000;
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const ORIGIN = /[:/]matteo-pacini\/nixos-configs(\.git)?$/;
-
-// Where the focused terminal is, resolved the same way as the shipped `changes` mod.
-function location() {
-  const space = spaces().find((s) => s.active), f = focused();
-  const pane = f?.pane ? panes().find((p) => p.pane === f.pane) : null;
-  const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
-  return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
-}
 
 // The checkout Watch reads: its tags come from the working tree, not from
 // GitHub, so a stale checkout shows stale or no tags.
@@ -110,10 +105,6 @@ function menuItems(p) {
   ];
 }
 
-const openUrl = (url) => {
-  if (url) exec(window()?.platform === "macos" ? "open" : "xdg-open", [url]);
-};
-
 // The review dialog for a Claude Code prompt. `review`: { root, space, title,
 // text, name (the new tab's), about (a dim line under the title) }.
 function openReviewDialog(review) {
@@ -146,17 +137,6 @@ function ago(iso) {
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   return h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
-}
-
-// This machine, as a lowercase HOSTS name: comin's configured hostname (the
-// configuration it deploys), since WorkLaptop's system hostname is the
-// company's. The builder reports it even with no generation (just after comin
-// restarts); `hostname -s` only when comin does not answer.
-async function localHost() {
-  const r = await exec("comin", ["status", "--json"]).catch(() => null);
-  let name = "";
-  try { name = JSON.parse(r?.stdout ?? "").builder?.hostname ?? ""; } catch {}
-  return (name || (await exec("hostname", ["-s"])).stdout.trim()).toLowerCase();
 }
 
 function parseProbe(stdout) {
@@ -256,7 +236,8 @@ export default class Deploy extends View {
   // Shows the block in a nixos-configs checkout and hides it elsewhere. Acts
   // only when the location changes, so a manual toggle sticks until then.
   follow(cx) {
-    const loc = location(), where = JSON.stringify(loc);
+    // Not keyed on the space: a manual toggle sticks across spaces in one folder.
+    const { cwd, on } = location(), loc = { cwd, on }, where = JSON.stringify(loc);
     if (where === this.where) return;
     this.where = where;
     cx.spawn(async (cx) => {
@@ -386,7 +367,7 @@ export default class Deploy extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const local = await localHost();
+        const local = SELF;
         this.local = local;
         // Each probe repaints as it lands: an offline host holds its SSH
         // ConnectTimeout, and the rest shouldn't wait for it.

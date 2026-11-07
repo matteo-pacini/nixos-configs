@@ -167,7 +167,7 @@
           ./modules/home-manager/codex.nix
           ./modules/home-manager/opencode.nix
           ./modules/home-manager/phone-scrcpy.nix
-          ./modules/home-manager/herdr.nix
+          ./modules/home-manager/herdr
           ./modules/home-manager/hex.nix
         ];
       };
@@ -469,6 +469,11 @@
             { }
         }/bin/xcode-fetch";
       };
+
+      checks = inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (
+        system:
+        import ./modules/home-manager/herdr/tests { pkgs = inputs.nixpkgs.legacyPackages.${system}; }
+      );
 
       formatter = {
         x86_64-linux = inputs.nixpkgs.legacyPackages.x86_64-linux.nixfmt;
