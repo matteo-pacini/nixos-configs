@@ -93,7 +93,11 @@ let
   ]
   ++ lib.optional cfg.workbench.fleet.enable "fleet"
   ++ lib.optional cfg.workbench.nixpkgsPrs.enable "nixpkgs-prs"
-  ++ lib.optional cfg.workbench.spaceCards.enable "space-cards";
+  ++ lib.optionals cfg.workbench.spaceCards.enable [
+    "space-cards"
+    "space-menu"
+    "teleport"
+  ];
 
   workbenchLayout = pkgs.writeText "workbench.json" (
     builtins.toJSON (
@@ -134,7 +138,9 @@ in
     spaceCards.enable = lib.mkEnableOption ''
       the `space-cards` Spaces list in the workbench layout, in place of the shipped one:
       each machine a card with its device icon, OS and connection state, each space
-      with its branch badge, ahead/behind the default branch, and a worktree badge
+      with its branch badge, ahead/behind the default branch, and a worktree badge;
+      its right-click menu (`space-menu`) adds Teleport, which moves a space's branch
+      to a worktree on another machine (`teleport`)
     '';
   };
 
