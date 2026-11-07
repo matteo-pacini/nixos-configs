@@ -3,16 +3,19 @@ import assert from "node:assert/strict";
 import { mock } from "herdr";
 import { findTags, checkTag, shortRef } from "../../mods/fleet/watch.js";
 
+// Spelled from parts: a whole tag at the start of a line here would be one
+// in this repo, listed in its own Watch panel.
+const W = "WAIT-FOR", WATCH = "WATCH:";
 const FILES = {
   "/r/flake.nix": `{
-    # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/100
+    # ${W} merged: https://github.com/NixOS/nixpkgs/pull/100
     foo-source.url = "github:x/foo";
   }`,
   "/r/overlays/shared.nix": `
-    # WAIT-FOR merged: https://github.com/NixOS/nixpkgs/pull/100
+    # ${W} merged: https://github.com/NixOS/nixpkgs/pull/100
     # (and more comment)
     foo = super.foo.overrideAttrs (o: { patches = [ ./patches/foo-fix.patch ]; });
-    # WATCH: https://github.com/a/b/issues/7
+    # ${WATCH} https://github.com/a/b/issues/7
     barbazquux = 1;`,
 };
 const GREP = [
