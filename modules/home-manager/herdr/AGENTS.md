@@ -23,7 +23,27 @@ The **Herdr** design canvas is the visual reference:
   - Side panels (`fleet`, `nixpkgs-prs`).
 - Its **Teleport** page holds the feature's mockups.
 
-When a change alters what a mod draws, update the matching artboard.
+The canvas is the source of truth for design, and it changes only through an
+accepted draft:
+
+1. **Draft first.** For any change to what a mod draws (new mod, new state,
+   new row, restyle), make a draft before writing code.
+   - The draft is a *separate* Design canvas, titled `Herdr draft: <change>`.
+   - It holds the new or changed artboards, drawn in the main canvas's tokens
+     and patterns, showing every state the change adds.
+   - Present the draft's link to the user and wait for acceptance. Revise the
+     draft until it's accepted. Never edit the main canvas for an unaccepted
+     change.
+2. **Merge on acceptance.** Copy the accepted artboards into the main canvas:
+   - the feature's own page (create it if new; mockups as "Mockup ·", built
+     states as "As built ·");
+   - every Design system artboard the change affects (Foundations for a new
+     token or icon, Sidebar, Menus, and so on).
+3. **Build to the canvas.** Implement what the main canvas shows. Once built,
+   check it against the canvas in the sandbox (Testing, step 6 below).
+   - If the build had to differ, update the main canvas to the built version
+     (say so in your report).
+   - Never leave a known difference unrecorded on the canvas.
 
 Rules the mods follow, and new ones should too:
 
