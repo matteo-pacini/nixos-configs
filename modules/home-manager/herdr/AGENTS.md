@@ -19,9 +19,14 @@ The **Herdr** design canvas is the visual reference:
   - Foundations: theme tokens with their Dracula values, type, shape, icons;
   - Spaces sidebar (`space-cards`);
   - Agents and pane headers (`agent-list`, `pane-header`);
-  - Menus and dialogs;
-  - Side panels (`fleet`, `nixpkgs-prs`).
-- Its **Teleport** page holds the feature's mockups.
+  - Menus and dialogs.
+- Its **Teleport** page holds the original mockups, then every built state:
+  menus, sidebar, the dialog, and the flow of what runs where.
+- Its **Side panels** page holds an overview of `fleet` and `nixpkgs-prs`,
+  then a section per `fleet` part, each in every state: Deploy, Watch, and
+  its menus and dialogs.
+- A feature or mod with many states gets its own page or section like
+  these, not a corner of a Design system artboard.
 
 The canvas is the source of truth for design, and it changes only through an
 accepted draft:
