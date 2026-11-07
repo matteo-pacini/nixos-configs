@@ -1,9 +1,9 @@
 // Spaces as machine cards: a copy of herdr-app's shipped `spaces` mod (0.1.10)
 // with its git, worktree, folding and drag logic kept, drawn differently. Each
 // machine is a header with its device tile, OS and connection state, its spaces
-// hung off a line below it, one line each: the name, then its branch off
-// master/main and ahead/behind, or its folder when it isn't a repo, and a
-// marker while it is working or waiting.
+// hung off a line below it: the name, its folder when it isn't a repo, and a
+// marker while it is working or waiting; a branch other than master/main on a
+// second line. Ahead/behind is the status bar's (mods/status-bar).
 // Click to switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
@@ -12,6 +12,7 @@ import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, set
 import { narrow } from "./lib/ui.js";
 import { HOSTS, SELF } from "./lib/hosts.js";
 import { MARKS, parseMarks } from "./lib/teleport.js";
+import { gitInfo, plain } from "./lib/git.js";
 
 // A machine missing from HOSTS (lib/hosts.js, the SSH mesh by the lower-case
 // name hc uses) is drawn as a server with no OS.
@@ -158,48 +159,20 @@ export default class Spaces extends View {
     this.checked[key] = Date.now();
     this.unsure.delete(key);
     try {
-      // No optional locks: a status that touched the index would wake the watch again.
-      // Writes nothing under .git (index lock, fsmonitor cookie): watch() would wake on it.
-      const r = await exec("git", ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain=v2", "--branch"], { cwd, on });
-      if (r.code !== 0) {
+      const r = await gitInfo(cwd, on);
+      if (!r.info) {
         // Only git's own "no" is remembered as no repo; anything else is asked again.
-        if (!/not a git repository/i.test(r.stderr)) this.unsure.add(key);
+        if (r.unsure) this.unsure.add(key);
         this.git[key] = null;
         return;
       }
-      // The repo's own .git folder names it; a worktree's top differs from it.
-      const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd, on });
-      const common = await exec("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd, on });
-      const repo = common.stdout.trim();
-      const name = repo.endsWith("/.git") ? base(repo.slice(0, -5)) : base(repo).replace(/\.git$/, "");
-      const info = { name, branch: null, ahead: 0, behind: 0, repo: JSON.stringify([on, repo]), linked: repo !== `${top.stdout.trim()}/.git` };
+      const info = r.info;
       // Teleport marks (lib/teleport.js): where this branch came from, and the
       // repo's branches that went to another machine.
       const marks = await exec("git", MARKS, { cwd, on });
       info.marks = parseMarks(marks.code === 0 ? marks.stdout : "");
-      for (const line of r.stdout.split("\n")) {
-        if (line.startsWith("# branch.head ")) info.branch = line.slice(14);
-        else if (line.startsWith("# branch.ab ")) {
-          const [a, b] = line.slice(12).split(" ");
-          info.ahead = Math.abs(parseInt(a, 10)) || 0;
-          info.behind = Math.abs(parseInt(b, 10)) || 0;
-        }
-      }
-      // Ahead/behind the repo's default branch rather than the branch's own
-      // upstream, so a feature branch shows how far it is from master. As fresh
-      // as the checkout's last fetch; without an origin default, the upstream's.
-      const head = await exec("git", ["rev-parse", "--abbrev-ref", "origin/HEAD"], { cwd, on });
-      let main = head.code === 0 ? head.stdout.trim() : null;
-      for (const ref of main ? [] : ["origin/master", "origin/main"]) {
-        if ((await exec("git", ["rev-parse", "--verify", "--quiet", ref], { cwd, on })).code === 0) { main = ref; break; }
-      }
-      if (main) {
-        const ab = await exec("git", ["rev-list", "--left-right", "--count", `${main}...HEAD`], { cwd, on });
-        const [behind, ahead] = ab.code === 0 ? ab.stdout.trim().split(/\s+/).map((n) => parseInt(n, 10) || 0) : [];
-        if (ab.code === 0) Object.assign(info, { ahead, behind });
-      }
       this.git[key] = info;
-      if (!on) this.watch(repo, cx);
+      if (!on) this.watch(JSON.parse(info.repo)[1], cx);
     } catch {
       // Couldn't ask (the machine is away): keep what it showed, look again later.
       this.git[key] ??= null;
@@ -329,25 +302,32 @@ export default class Spaces extends View {
       .when(body.length > 0, (el) => el.child(v_flex().ml(14).pl(8).border_l(1.5).border_color(t.border).gap(1).children(body)));
   }
 
-  // Right of the name, on the same line: the branch only off master/main, then
-  // ahead/behind. A worktree not nested under its repo (its repo isn't open)
-  // gets the compare icon; the repo's name shows when it differs from the
-  // space's and no branch does; the folder's last part when it isn't a repo.
+  // Right of the name, on the same line: the repo's name when it differs from
+  // the space's (on master/main), the folder's last part when it isn't a repo.
+  // A worktree not nested under its repo (its repo isn't open) gets the
+  // compare icon, here on master/main, else on its branch line.
+  // Ahead/behind is the status bar's, for the focused terminal.
   detail(g, w, tree, t) {
     const line = () => h_flex().flex_1().min_w(0).gap(6).justify_end().items_center().text_size(11).text_color(t.dim);
     if (!g) {
       const folder = place(w, this.ps ?? panes());
       return folder ? line().child(div().min_w(0).truncate().child(`${base(folder)}/`)) : null;
     }
-    const branch = g.branch ?? "detached";
-    const plain = branch === "master" || branch === "main";
-    const count = (text, color) => div().flex_none().text_size(10.5).font_semibold().text_color(color).child(text);
+    if (!plain(g.branch)) return null;
     return line()
       .when(g.linked && !tree, (el) => el.child(svg("mods/workspace-chrome/git-compare.svg").size(10).flex_none().text_color(t.ansi5)))
-      .when(!plain, (el) => el.child(div().min_w(0).truncate().font_family(settings().font_family ?? "JetBrains Mono").text_size(10.5).text_color(t.accent).child(branch)))
-      .when(plain && !tree && g.name.toLowerCase() !== w.name.toLowerCase(), (el) => el.child(div().min_w(0).truncate().child(g.name)))
-      .when(g.ahead > 0, (el) => el.child(count(`↑${g.ahead}`, t.ansi2)))
-      .when(g.behind > 0, (el) => el.child(count(`↓${g.behind}`, t.ansi3)));
+      .when(!tree && g.name.toLowerCase() !== w.name.toLowerCase(), (el) => el.child(div().min_w(0).truncate().child(g.name)));
+  }
+
+  // The second line of a space on a branch other than master/main: the branch
+  // under the name's first letter. `lead`: how far in the name starts.
+  branchLine(g, tree, lead, t) {
+    if (!g || plain(g.branch)) return null;
+    return h_flex().h(14).pl(lead).gap(6).items_center()
+      .when(g.linked && !tree, (el) => el.child(svg("mods/workspace-chrome/git-compare.svg").size(10).flex_none().text_color(t.ansi5)))
+      .child(g.branch
+        ? div().min_w(0).truncate().font_family(settings().font_family ?? "JetBrains Mono").text_size(10.5).text_color(t.accent).child(g.branch)
+        : div().text_size(10.5).text_color(t.dim).child("detached"));
   }
 
   // Shown only while something in the space is going on or needs you.
@@ -387,11 +367,15 @@ export default class Spaces extends View {
     // Teleported here (lib/teleport.js): the portal icon in place of the avatar.
     const came = g?.branch ? g.marks?.from?.[g.branch] : null;
     const portal = () => svg("mods/space-menu/teleport.svg").size(14).flex_none().text_color(t.ansi5);
+    // Line 2 starts where the name does: past the connector (8 + 10 + gap 8)
+    // and the avatar or portal (16 or 14, + gap 8).
+    const second = this.branchLine(g, tree, (tree ? 26 : 0) + (came ? 22 : tree ? 0 : 24), t);
     return v_flex()
       .relative()
       .id(`space-${w.id}`)
       .px(6)
-      .h(28)
+      .h(second ? 40 : 28)
+      .gap(1)
       .flex_none()
       .justify_center()
       .rounded(6)
@@ -442,7 +426,8 @@ export default class Spaces extends View {
           .child(div().min_w(0).truncate().font_medium().text_color(tree ? t.muted : t.foreground).child(w.name))
           .child(detail ?? div().flex_1())
           .when(Boolean(mark), (el) => el.child(mark)),
-      );
+      )
+      .when(Boolean(second), (el) => el.child(second));
   }
 
   compact({ w, i }, t) {

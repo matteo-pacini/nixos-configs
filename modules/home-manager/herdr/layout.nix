@@ -4,7 +4,7 @@
 #
 #   import ./layout.nix { inherit lib; } { fleet = true; nixpkgsPrs = false; spaceCards = true; }
 #
-# The adjustments find nodes by id (`main`, `work-body`, `spaces`); if a
+# The adjustments find nodes by id (`main`, `work-body`, `spaces`, `status`); if a
 # re-snapshot renames one, the matching adjustment silently stops applying;
 # tests/layout.nix (the herdr-layout check) fails on that.
 { lib }:
@@ -28,6 +28,8 @@ let
     node:
     if node.id or null == "main" then
       lib.recursiveUpdate node { content.pane.header.content.mod = "pane-header"; }
+    else if node.id or null == "status" then
+      lib.recursiveUpdate node { content.mod = "status-bar"; }
     else if node.id or null == "work-body" then
       node // { children = map adjust node.children ++ sideBlocks; }
     else if node.id or null == "spaces" && spaceCards then

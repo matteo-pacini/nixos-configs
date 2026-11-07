@@ -107,7 +107,8 @@ edit is made in the snapshot itself: the `agents` block draws `agent-list`.
 
 - `pane-header` as `main`'s pane header and `pane-menu` as `terminal_menu`;
 - `fleet` and `nixpkgs-prs` appended to `work-body`, each when enabled;
-- `space-cards` in place of the `spaces` block's mod, when enabled.
+- `space-cards` in place of the `spaces` block's mod, when enabled;
+- `status-bar` in place of the `status` block's `workspace-status`.
 
 Activation installs the result as `layouts/workbench.json`, first saving a
 hand-edited copy to `~/.local/state/herdr-app/`. Once per machine it also
@@ -122,7 +123,7 @@ switches to the layout (`herdrWorkbenchLayout`).
    `content.mod` back to `agent-list`, and delete the clone.
 3. `nix build .#checks.x86_64-linux.herdr-layout` fails by name if a node
    `layout.nix` or the mods rely on (`main`, `work-body`, `spaces`, `agents`,
-   `sidebar`) was renamed.
+   `sidebar`, `status`) was renamed.
 
 ## Tests
 
@@ -144,5 +145,5 @@ CI runs all three on pull requests (the `herdr-tests` job in
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
   `hc` that logs its arguments.
 - **Not covered:** drawing (there's no headless gpui), and the parts of
-  `fleet/main.js` and `space-cards/main.js` that need `lib/hosts.js` or the
+  `fleet/main.js`, `space-cards/main.js` and `status-bar/main.js` that need `lib/hosts.js` or the
   live app. For those, use `herdr-app check` and `herdr-app shot`.

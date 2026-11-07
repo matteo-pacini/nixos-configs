@@ -33,6 +33,7 @@ lib.runTests {
       "spaces"
       "agents"
       "sidebar"
+      "status"
     ];
     expected = true;
   };
@@ -44,6 +45,17 @@ lib.runTests {
   testPaneHeader = {
     expr = (find "main" off).content.pane.header.content.mod or null;
     expected = "pane-header";
+  };
+  testStatusBar = {
+    expr = (find "status" off).content.mod or null;
+    expected = "status-bar";
+  };
+  # Only the mod changes: the block keeps its size.
+  testStatusBarKeepsTheBlock = {
+    expr = (find "status" off).size or null;
+    expected = {
+      px = 28;
+    };
   };
   testTerminalMenu = {
     expr = off.terminal_menu;
