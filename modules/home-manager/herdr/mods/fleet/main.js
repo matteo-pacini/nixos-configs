@@ -11,13 +11,15 @@ import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Textarea, TextareaState } from "gpui-base";
 import { exec, hc, theme, run, spaces, focused, settings, openOverlay, closeOverlay, props, shared, setShared } from "herdr";
 import { location, openUrl } from "./lib/ui.js";
+import { SELF, FLEET, HOSTS as MESH } from "./lib/hosts.js";
 import { findTags, checkTag, shortRef, ORDER } from "./watch.js";
 import { claudeAction, fixAll } from "./prompts.js";
 
 const REPO = "matteo-pacini/nixos-configs";
-const HOSTS = ["BrightFalls", "Nexus", "NightSprings", "CauldronLake", "WorkLaptop"];
+// The hosts this machine can reach over the SSH mesh, itself first.
+const HOSTS = FLEET;
 // nix-darwin has no boot: these hosts only switch.
-const DARWIN = new Set(["NightSprings", "WorkLaptop"]);
+const DARWIN = new Set(Object.values(MESH).filter((h) => h.darwin).map((h) => h.label));
 // comin-deploy modes (modules/shared/comin-deploy.nix), as the host menu names them.
 const MODES = { manual: "Manual", boot: "Automatic (boot)", switch: "Automatic (switch)" };
 // comin polls every 60 s; refreshing faster shows nothing new.
@@ -135,17 +137,6 @@ function ago(iso) {
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   return h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
-}
-
-// This machine, as a lowercase HOSTS name: comin's configured hostname (the
-// configuration it deploys), since WorkLaptop's system hostname is the
-// company's. The builder reports it even with no generation (just after comin
-// restarts); `hostname -s` only when comin does not answer.
-async function localHost() {
-  const r = await exec("comin", ["status", "--json"]).catch(() => null);
-  let name = "";
-  try { name = JSON.parse(r?.stdout ?? "").builder?.hostname ?? ""; } catch {}
-  return (name || (await exec("hostname", ["-s"])).stdout.trim()).toLowerCase();
 }
 
 function parseProbe(stdout) {
@@ -376,7 +367,7 @@ export default class Deploy extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const local = await localHost();
+        const local = SELF;
         this.local = local;
         // Each probe repaints as it lands: an offline host holds its SSH
         // ConnectTimeout, and the rest shouldn't wait for it.

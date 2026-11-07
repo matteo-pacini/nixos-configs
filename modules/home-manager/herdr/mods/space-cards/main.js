@@ -10,16 +10,10 @@ import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, settings, watchFolder, window, layout } from "herdr";
 import { narrow } from "./lib/ui.js";
+import { HOSTS, SELF } from "./lib/hosts.js";
 
-// The fleet in this repo (hosts/), by the lower-case name hc and `hostname -s`
-// use. A machine missing here is drawn as a server with no OS.
-const HOSTS = {
-  brightfalls: { label: "BrightFalls", device: "desktop", os: "NixOS" },
-  nexus: { label: "Nexus", device: "server", os: "NixOS" },
-  cauldronlake: { label: "CauldronLake", device: "laptop", os: "NixOS" },
-  nightsprings: { label: "NightSprings", device: "laptop", os: "macOS" },
-  worklaptop: { label: "WorkLaptop", device: "laptop", os: "macOS" },
-};
+// A machine missing from HOSTS (lib/hosts.js, the SSH mesh by the lower-case
+// name hc uses) is drawn as a server with no OS.
 const hostOf = (name) => HOSTS[name?.toLowerCase()] ?? { label: name, device: "server", os: null };
 
 // Where a space is now: its first terminal's live folder, else where it was made.
@@ -68,12 +62,7 @@ export default class Spaces extends View {
     this.refreshMachines(cx);
     cx.timer.every(15000, cx => this.refreshMachines(cx));
     // Names this computer's card: hc has no name for the local machine.
-    this.local = null;
-    cx.spawn(async (cx) => {
-      const r = await exec("hostname", ["-s"]).catch(() => null);
-      this.local = r?.stdout.trim().toLowerCase() || null;
-      cx.notify();
-    });
+    this.local = SELF;
     // `git status` walks the whole tree, on another machine a process there:
     // only when its answer could have changed (see `due`).
     cx.timer.every(250, (cx) => this.checkNew(cx));
