@@ -1,7 +1,7 @@
 // The Teleport dialog, opened from `space-menu`: what moving a space's branch
 // to a worktree on another machine will do, with the choice to carry its
-// uncommitted files, then doing it (lib/teleport.js) and opening a shell in a
-// new space there. Agents in the space stay where they are.
+// uncommitted files, then doing it (lib/teleport.js) step by step, opening a
+// shell in a new space there. Agents in the space stay where they are.
 // Props: { space, to } (`to`: an hc machine name, null for this computer).
 
 import { View, div, svg } from "gpui-kit";
@@ -53,23 +53,65 @@ export default class Teleport extends View {
     if (!this.ready || this.busy) return;
     this.busy = true;
     this.error = "";
+    this.step = null;
+    this.failed = null;
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const { worktree, warnings } = await teleport({
-          src: this.src, dst: this.dst, bring: this.bring, self: SELF,
+        const { worktree, warnings, carried } = await teleport({
+          src: this.src, dst: this.dst, bring: this.bring,
+          step: (name) => { this.step = name; cx.notify(); },
+          // Unnamed, so it follows the worktree folder and nests under its repo
+          // there. "" is this computer; left out, it would be the focused
+          // space's machine, the one being left.
+          arrive: (worktree) => run("space.new", { folder: worktree, machine: this.to ?? "" }),
           closeSource: () => run("space.close", { id: this.spaceId, confirmed: true }),
         });
+        // Only now: closing the dialog ends this task.
         this.close();
-        // Unnamed, so it follows the worktree folder and nests under its repo there.
-        run("space.new", { folder: worktree, ...(this.to ? { machine: this.to } : {}) });
-        for (const w of warnings) notify({ title: "Teleported, with a problem", body: w, level: "warning" });
+        for (const w of warnings) notify({ title: "Moved, with a problem", body: w, level: "warning" });
+        if (warnings.length) return;
+        const there = spaces().find((s) => (s.machine ?? null) === this.to && s.folder === worktree);
+        notify({
+          title: `Moved to ${label(this.to)}`,
+          body: `${this.src.repo.branch}${carried ? ` · ${carried} uncommitted file${carried === 1 ? "" : "s"}` : ""}`,
+          level: "success",
+          ...(there ? { action: { name: "space.select", args: { id: there.id } } } : {}),
+        });
       } catch (e) {
         this.busy = false;
+        this.failed = this.step;
         this.error = String(e.message ?? e);
         cx.notify();
       }
     });
+  }
+
+  // The steps of a teleport under way (lib/teleport.js), each done, current,
+  // failed or still to come.
+  steps(t, mono) {
+    const r = this.src.repo, to = label(this.to), here = label(this.from);
+    const branch = div().font_family(mono).text_size(11.5).text_color(t.accent).child(r.branch);
+    const all = [
+      ...(this.bring && r.files > 0 ? [["save", [`Saving ${r.files} uncommitted file${r.files === 1 ? "" : "s"}`]]] : []),
+      ["send", this.from ? ["Fetching", branch, `from ${here}`] : ["Pushing", branch, `to ${to}`]],
+      ["worktree", [`Making the worktree ${this.to ? `on ${to}` : "here"}`]],
+      ["open", ["Opening its space"]],
+      ["leave", [r.linked ? `Removing it from ${here}` : `Switching ${here} back to ${r.base}`]],
+    ];
+    const at = all.findIndex(([name]) => name === (this.failed ?? this.step));
+    const icon = (n) => {
+      if (this.failed && n === at) return svg("mods/status-bar/failed.svg").size(12).flex_none().text_color(t.blocked);
+      if (n < at) return svg("mods/status-bar/passed.svg").size(12).flex_none().text_color(t.ansi2);
+      if (n === at) return svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.muted).spin(900);
+      return h_flex().size(12).flex_none().items_center().justify_center().child(div().size(4).rounded(2).bg(t.dim));
+    };
+    return v_flex().gap(8).px(12).py(10).rounded(8).bg(t.background).text_size(12)
+      .children(all.map(([name, parts], n) => v_flex().gap(4)
+        .child(h_flex().gap(8).items_center().text_color(n > at ? t.dim : t.foreground)
+          .child(icon(n))
+          .children(parts.map((p) => (typeof p === "string" ? div().child(p) : p))))
+        .when(Boolean(this.failed) && n === at, (el) => el.child(div().pl(20).text_size(11.5).text_color(t.blocked).child(this.error)))));
   }
 
   render(cx) {
@@ -111,22 +153,23 @@ export default class Teleport extends View {
         .child(v_flex().gap(3)
           .child(field("Branch", r.branch))
           .child(div().pl(82).text_size(11.5).text_color(t.dim).child(`${r.ahead} commit${r.ahead === 1 ? "" : "s"} ahead of ${r.base} · ${moves}`)))
-        .when(r.files > 0, (el) => el
+        .when(Boolean(this.step), (el) => el.child(this.steps(t, mono)))
+        .when(!this.step && r.files > 0, (el) => el
           .child(div().text_color(t.foreground).child(`${r.files} uncommitted file${r.files === 1 ? "" : "s"}`))
           .child(choice(this.bring, "Bring them along", `Applied on ${to}, still uncommitted. Here they go into a stash, in case.`, true))
           .child(choice(!this.bring, "Committed work only", r.linked
             ? `${to} starts at the last commit. The files go into a stash here.`
             : `${to} starts at the last commit. The files stay here, on ${r.base}.`, false)))
-        .child(v_flex().gap(4).p(10).rounded(8).bg(t.background)
+        .when(!this.step, (el) => el.child(v_flex().gap(4).p(10).rounded(8).bg(t.background)
           .child(field("Repo", `${this.to ?? SELF}:${tilde(this.dst.repo, this.dst.home)}`))
           .child(field("Worktree", tilde(worktreePath(this.dst.home, r, r.branch), this.dst.home)))
-          .child(field("Opens", `a shell in a new space on ${to}, nested under ${r.name}`)))
+          .child(field("Opens", `a shell in a new space on ${to}, nested under ${r.name}`))))
         .when(this.agents > 0, (el) => el.child(div().text_color(t.ansi3)
           .child(`${this.agents} agent${this.agents === 1 ? "" : "s"} in this space stay${this.agents === 1 ? "s" : ""} on ${here}.`))))
-      .when(Boolean(this.error), (el) => el.child(div().text_color(t.blocked).child(this.error)))
+      .when(Boolean(this.error) && !this.failed, (el) => el.child(div().text_color(t.blocked).child(this.error)))
       .child(div().flex_1())
       .child(h_flex().gap(8).justify_end()
-        .child(div().id("tp-cancel").px(14).h(30).flex().items_center().rounded(7).border(1).border_color(t.border).text_color(t.foreground)
+        .child(div().id("tp-cancel").px(14).h(30).flex().items_center().rounded(7).border(1).border_color(t.border).text_color(this.busy ? t.dim : t.foreground)
           .when(!this.busy, (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)).on_click(() => this.close()))
           .child("Cancel"))
         .child(div().id("tp-go").px(14).h(30).flex().items_center().rounded(7).font_semibold()

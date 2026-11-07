@@ -1,17 +1,11 @@
 // Teleport: moves a space's branch to a git worktree on another machine, with
 // its uncommitted files if asked, and leaves this side on the default branch.
-// Used by the `space-menu` (where it can go), the `teleport` dialog (doing it)
-// and `space-cards` (the marks it leaves). See the herdr README.
+// Used by the `space-menu` (where it can go) and the `teleport` dialog (doing
+// it). See the herdr README.
 //
 // Every git transfer runs on this computer, over SSH to the other machine by
 // its hc name (the SSH mesh's alias for it): a push to a remote target, a
 // fetch from a remote source. So one side is always this computer.
-//
-// Marks, in each side's repo config, keyed by branch:
-//   branch.<b>.herdrTeleportFrom = {"from","path","at","files"}  where it came from
-//   branch.<b>.herdrTeleportTo   = {"to","path","at"}            where it went
-// `from`/`to` are hc machine names, the computer that ran it under its own
-// (`self`), so the marks read the same from any machine.
 
 import { exec } from "herdr";
 
@@ -104,13 +98,20 @@ git commit-tree "$(git write-tree)" -p HEAD -m "herdr teleport: uncommitted file
 // arrive uncommitted (deletions included).
 const APPLY = 'git read-tree -m -u HEAD "$1" && git reset -q';
 
-const unset = (repo, key, on) => git(repo, ["config", "--unset", key], on);
+// Earlier versions recorded each move in the branch's config; a teleport of
+// that branch clears them on both sides.
+const FORGET = 'git config --unset "branch.$1.herdrTeleportFrom"; git config --unset "branch.$1.herdrTeleportTo"; true';
 
 /**
  * Moves `src.repo.branch` from `src` to a new worktree on `dst`.
  * src: { on, home, repo (repoOf), label }; dst: { on, home, repo (the clone's
- * path), label }; `bring`: carry the uncommitted files; `self`: this computer's
- * hc name, for the marks. Exactly one of src.on / dst.on is null (this computer).
+ * path), label }; `bring`: carry the uncommitted files. Exactly one of src.on /
+ * dst.on is null (this computer).
+ *
+ * `step(name)` is called as each part starts: "save" (only when files are
+ * carried), "send", "worktree", "open", "leave". At "open" the worktree is
+ * ready on `dst`, and `arrive(worktree)` is called next, before anything on
+ * `src` changes, to open its space; "leave" is the changes on `src`.
  *
  * Nothing changes on `src` until `dst` has the worktree: a failure before that
  * throws with `src` as it was. After it, src's uncommitted files go to a stash
@@ -118,18 +119,20 @@ const unset = (repo, key, on) => git(repo, ["config", "--unset", key], on);
  * checkout goes back to the default branch, or a linked worktree is removed
  * (`closeSource` is called first, to close its space). Problems there come
  * back in `warnings`: the teleport itself has happened.
- * Returns { worktree, warnings }.
+ * Returns { worktree, warnings, carried (files carried) }.
  */
-export async function teleport({ src, dst, bring, self, closeSource = () => {}, now = () => new Date().toISOString() }) {
+export async function teleport({ src, dst, bring, step = () => {}, arrive = () => {}, closeSource = () => {} }) {
   const { branch } = src.repo;
   const ref = `refs/herdr/teleport/${branch}`;
   const carry = bring && src.repo.files > 0;
   const worktree = worktreePath(dst.home, src.repo, branch);
   const sshPath = (side, path) => `${side.on}:${path.slice(side.home.length + 1)}`;
 
+  if (carry) step("save");
   const snap = carry ? await must("Snapshot", exec("sh", ["-c", SNAPSHOT], { cwd: src.repo.top, on: src.on }).then((r) => ({ ok: r.code === 0, out: r.stdout.trim(), err: r.stderr.trim() }))) : null;
   const refs = [`refs/heads/${branch}:refs/heads/${branch}`, ...(snap ? [`${ref}:${ref}`] : [])];
   if (snap) await must("Snapshot", git(src.repo.top, ["update-ref", ref, snap], src.on));
+  step("send");
   try {
     // Fast-forward only: a branch with commits there that this one lacks is refused.
     const moved = src.on
@@ -141,6 +144,7 @@ export async function teleport({ src, dst, bring, self, closeSource = () => {}, 
     if (snap) await git(src.repo.top, ["update-ref", "-d", ref], src.on);
   }
 
+  step("worktree");
   const added = await git(dst.repo, ["worktree", "add", worktree, branch], dst.on);
   if (!added.ok) {
     if (snap) await git(dst.repo, ["update-ref", "-d", ref], dst.on);
@@ -152,11 +156,13 @@ export async function teleport({ src, dst, bring, self, closeSource = () => {}, 
     if (applied.code !== 0) warnings.push(`The uncommitted files didn't apply on ${dst.label} (${applied.stderr.trim()}); they stay in the stash here.`);
     await git(dst.repo, ["update-ref", "-d", ref], dst.on);
   }
-  await git(dst.repo, ["config", `branch.${branch}.herdrTeleportFrom`, JSON.stringify({ from: src.on ?? self, path: src.repo.top, at: now(), files: carry ? src.repo.files : 0 })], dst.on);
-  await unset(dst.repo, `branch.${branch}.herdrTeleportTo`, dst.on);
+  await exec("sh", ["-c", FORGET, "sh", branch], { cwd: dst.repo, on: dst.on });
+  step("open");
+  arrive(worktree);
 
   // This side, now that the other has it.
-  const here = (step, r) => r.then((r) => { if (!r.ok) warnings.push(`${step} here: ${r.err}`); return r.ok; });
+  step("leave");
+  const here = (what, r) => r.then((r) => { if (!r.ok) warnings.push(`${what} here: ${r.err}`); return r.ok; });
   const stashed = src.repo.files > 0 && (carry || src.repo.linked)
     ? await here("Stashing", git(src.repo.top, ["stash", "push", "--include-untracked", "-m", `herdr-teleport ${branch}`], src.on))
     : true;
@@ -168,22 +174,6 @@ export async function teleport({ src, dst, bring, self, closeSource = () => {}, 
   } else {
     await here(`Switching to ${src.repo.base}`, git(src.repo.top, ["switch", src.repo.base], src.on));
   }
-  await git(src.repo.main, ["config", `branch.${branch}.herdrTeleportTo`, JSON.stringify({ to: dst.on ?? self, path: worktree, at: now() })], src.on);
-  await unset(src.repo.main, `branch.${branch}.herdrTeleportFrom`, src.on);
-  return { worktree, warnings };
+  await exec("sh", ["-c", FORGET, "sh", branch], { cwd: src.repo.main, on: src.on });
+  return { worktree, warnings, carried: carry ? src.repo.files : 0 };
 }
-
-/** The marks in `git config --get-regexp` output for herdrTeleport keys:
- *  { from: { branch: mark }, to: { branch: mark } }. */
-export function parseMarks(out) {
-  const marks = { from: {}, to: {} };
-  for (const line of (out ?? "").split("\n")) {
-    const m = /^branch\.(.+)\.herdrteleport(from|to) (.*)$/i.exec(line);
-    if (!m) continue;
-    try { marks[m[2].toLowerCase()][m[1]] = JSON.parse(m[3]); } catch {}
-  }
-  return marks;
-}
-
-/** git config args that read every mark (for parseMarks). */
-export const MARKS = ["config", "--get-regexp", "^branch\\..*\\.herdrteleport(from|to)$"];

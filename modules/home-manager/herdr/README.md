@@ -90,11 +90,16 @@ default branch, or a linked worktree is removed. The logic is in
 - **Refused.** It refuses a branch already checked out there, and a branch
   there with commits this one lacks (the push or fetch is fast-forward only).
   A failure before the worktree exists leaves this side untouched.
-- **Marks.** `git config branch.<b>.herdrTeleportFrom` and `.herdrTeleportTo`
-  record each move, with machine names, paths and times. `space-cards` draws
-  them as the pink portal icon on the arrival row and a dashed pointer row
-  under the repo it left. Remove a stale pointer with
-  `git config --unset branch.<b>.herdrTeleportTo`.
+- **The dialog** lists each step as it runs: saving the files, sending the
+  branch, making the worktree, opening its space, then this side. It stays
+  open until this side is done, because closing it would stop the move.
+- **Afterwards** both sides are ordinary spaces: the worktree nests under its
+  repo there like any other, and nothing marks it as teleported. A toast says
+  where it went (click it to select the new space); a problem on this side
+  after the move comes as a warning toast instead.
+- **Old marks.** Earlier versions recorded each move in
+  `git config branch.<b>.herdrTeleportFrom` and `.herdrTeleportTo`. Nothing
+  reads them now, and teleporting that branch unsets both, on both sides.
 - **Not moved:** agents, and the Claude conversation. The dialog says how many
   agents stay behind.
 
