@@ -90,6 +90,7 @@ let
     "agent-list"
     "pane-header"
     "pane-menu"
+    "status-bar"
   ]
   ++ lib.optional cfg.workbench.fleet.enable "fleet"
   ++ lib.optional cfg.workbench.nixpkgsPrs.enable "nixpkgs-prs"

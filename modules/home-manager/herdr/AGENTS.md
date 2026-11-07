@@ -25,6 +25,9 @@ The **Herdr** design canvas is the visual reference:
 - Its **Side panels** page holds an overview of `fleet` and `nixpkgs-prs`,
   then a section per `fleet` part, each in every state: Deploy, Watch, and
   its menus and dialogs.
+- Its **PR and CI status** page holds the mockups of the status bar
+  (`status-bar`) with the focused terminal's branch, PR and checks, and of
+  the two-line sidebar rows.
 - A feature or mod with many states gets its own page or section like
   these, not a corner of a Design system artboard.
 
@@ -67,7 +70,7 @@ Rules the mods follow, and new ones should too:
   going on (working spinner) or needs you (blocked or done dot). Idle shows
   nothing.
 - **Sizes.**
-  - Space row: 28 high, radius 6.
+  - Space row: 28 high, radius 6; 40 high with a branch line.
   - Menu item: 31 high (44 with a sub line), px 8, gap 9, radius 7, in a
     popup with p 5.
   - Dialog: p 18, title 15/600, buttons 32 high with radius 8. The primary
