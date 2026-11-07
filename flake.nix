@@ -470,6 +470,11 @@
         }/bin/xcode-fetch";
       };
 
+      checks = inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (
+        system:
+        import ./modules/home-manager/herdr/tests { pkgs = inputs.nixpkgs.legacyPackages.${system}; }
+      );
+
       formatter = {
         x86_64-linux = inputs.nixpkgs.legacyPackages.x86_64-linux.nixfmt;
         aarch64-linux = inputs.nixpkgs.legacyPackages.aarch64-linux.nixfmt;
