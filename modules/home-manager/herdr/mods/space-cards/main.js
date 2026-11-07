@@ -8,10 +8,9 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, settings, watchFolder, window, layout } from "herdr";
+import { spaces, machines, panes, run, openOverlay, hc, theme, shared, setShared, settings, watchFolder, window, layout } from "herdr";
 import { narrow } from "./lib/ui.js";
 import { HOSTS, SELF } from "./lib/hosts.js";
-import { MARKS, parseMarks } from "./lib/teleport.js";
 import { gitInfo, plain } from "./lib/git.js";
 
 // A machine missing from HOSTS (lib/hosts.js, the SSH mesh by the lower-case
@@ -33,15 +32,6 @@ const FALLBACK = 60000;
 // What a stored color name looks like on an avatar (the same in every mod
 // that draws space avatars): one strong color per hue, light and dark alike.
 const MARK = { ansi6: "#22a99a", ansi3: "#e3814f", ansi4: "#5b8def", ansi5: "#8b7cf6", ansi2: "#3fae6a", ansi1: "#d9649a" };
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-// An ISO time as "7 Nov, 08:12" (local time).
-function when(iso) {
-  const d = new Date(iso);
-  if (isNaN(d)) return "";
-  const two = (n) => String(n).padStart(2, "0");
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${two(d.getHours())}:${two(d.getMinutes())}`;
-}
 
 // A space speaks up only when something in it needs you.
 export function glyph(status) {
@@ -167,10 +157,6 @@ export default class Spaces extends View {
         return;
       }
       const info = r.info;
-      // Teleport marks (lib/teleport.js): where this branch came from, and the
-      // repo's branches that went to another machine.
-      const marks = await exec("git", MARKS, { cwd, on });
-      info.marks = parseMarks(marks.code === 0 ? marks.stdout : "");
       this.git[key] = info;
       if (!on) this.watch(JSON.parse(info.repo)[1], cx);
     } catch {
@@ -215,19 +201,15 @@ export default class Spaces extends View {
       if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
       placed.add(r.g.repo);
       const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo);
-      // Its branches that teleported to another machine, unless a space here is on one again.
-      const here = new Set([r, ...kids].map((k) => k.g.branch));
-      const away = Object.entries(r.g.marks?.to ?? {}).filter(([branch]) => !here.has(branch)).map(([branch, mark]) => ({ w: r.w, away: { branch, ...mark } }));
-      const under = [...kids, ...away];
-      under.forEach((k, n) => out.push({ ...k, tree: n === under.length - 1 ? "└─" : "├─" }));
+      kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
     }
     return out;
   }
 
   // The rows, under a header per machine once one isn't this computer.
   grouped(t, collapsed) {
-    const rows = this.ordered().filter((r) => !(collapsed && r.away));
-    const draw = (r) => (collapsed ? this.compact(r, t) : r.away ? this.pointer(r, t) : this.row(r, t));
+    const rows = this.ordered();
+    const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t));
     const remote = [...new Set([...rows.map(r => r.w.machine).filter(Boolean), ...this.machines.map(m => m.name)])].sort();
     const loading = m => {
       const layout = machines().find(k => k.name === m)?.layout;
@@ -253,7 +235,7 @@ export default class Spaces extends View {
         .on_click(() => run("space.new", m ? { machine: m } : {}))
         .child(svg("mods/workspace-chrome/plus.svg").size(12)).when(!collapsed, el => el.child("New space there"));
       const body = folded ? [] : mine.length ? mine.map(draw) : [loading(m) ? loadingRow(m) : empty];
-      if (!collapsed) return [this.machineCard(m, machine, connected, folded, toggle, body, t, mine.filter((r) => !r.away).length)];
+      if (!collapsed) return [this.machineCard(m, machine, connected, folded, toggle, body, t, mine.length)];
       const head = h_flex().id(`machine-${m ?? "local"}`).h(26).flex_none().px(collapsed ? 2 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
         .cursor_pointer().hover(s => s.bg(t.hover))
         .on_click(toggle)
@@ -337,26 +319,6 @@ export default class Spaces extends View {
     return null;
   }
 
-  // A branch its repo here teleported away: struck through, with where it went.
-  // Click: the space there, or a new one on its worktree.
-  pointer({ w, away, tree }, t) {
-    // Marks name every machine, this one included (lib/teleport.js).
-    const to = !away.to || away.to === this.local ? null : away.to;
-    const go = () => {
-      const there = spaces().find((s) => (s.machine ?? null) === to && place(s, this.ps ?? panes()) === away.path);
-      if (there) run("space.select", { id: there.id });
-      else run("space.new", { folder: away.path, ...(to ? { machine: to } : {}) });
-    };
-    return h_flex().id(`away-${w.id}-${away.branch}`).h(24).flex_none().px(6).gap(8).items_center().rounded(6)
-      .border(1).border_dashed().border_color(t.border).cursor_pointer().hover((s) => s.bg(t.hover))
-      .tooltip(`Teleported to ${hostOf(to ?? this.local).label} ${when(away.at)}\n${away.path}`)
-      .on_click(go)
-      .child(h_flex().pl(8).child(div().w(10).h(12).flex_none().self_start().border_l(1).border_b(1).border_color(t.border).rounded_bl(4)))
-      .child(div().min_w(0).truncate().line_through().font_family(settings().font_family ?? "JetBrains Mono").text_size(10.5).text_color(t.dim).child(away.branch))
-      .child(div().flex_1())
-      .child(div().flex_none().text_size(11).text_color(t.ansi5).child(`on ${hostOf(to ?? this.local).label} ↗`));
-  }
-
   row({ w, i, g, tree }, t) {
     const on = w.active;
     const colors = shared("space.colors") ?? {};
@@ -364,12 +326,9 @@ export default class Spaces extends View {
     const fill = color.startsWith("#") ? color : (MARK[color] ?? t[color]);
     const mark = this.marker(w, t);
     const detail = this.detail(g, w, tree, t);
-    // Teleported here (lib/teleport.js): the portal icon in place of the avatar.
-    const came = g?.branch ? g.marks?.from?.[g.branch] : null;
-    const portal = () => svg("mods/space-menu/teleport.svg").size(14).flex_none().text_color(t.ansi5);
     // Line 2 starts where the name does: past the connector (8 + 10 + gap 8)
-    // and the avatar or portal (16 or 14, + gap 8).
-    const second = this.branchLine(g, tree, (tree ? 26 : 0) + (came ? 22 : tree ? 0 : 24), t);
+    // or the avatar (16 + gap 8).
+    const second = this.branchLine(g, tree, tree ? 26 : 24, t);
     return v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -409,20 +368,12 @@ export default class Spaces extends View {
         cx.notify();
       })
       .on_mouse_down("right", () => this.menu(w))
-      .when(Boolean(came), (el) => el.tooltip([
-        "Teleported worktree",
-        `From ${hostOf(came.from ?? this.local).label} · ${base(came.path)}`,
-        `When ${when(came.at)}${came.files ? ` · ${came.files} file${came.files === 1 ? "" : "s"} carried` : ""}`,
-        `Here ${place(w, this.ps ?? panes())}`,
-        "Right-click: Teleport back · Remove worktree",
-      ].join("\n")))
       .child(
         h_flex()
           .gap(8)
           .items_center()
           .when(Boolean(tree), el => el.pl(8).child(div().w(10).h(14).flex_none().self_start().border_l(1).border_b(1).border_color(t.border).rounded_bl(4)))
-          .when(Boolean(came), el => el.child(portal()))
-          .when(!tree && !came, el => el.child(h_flex().size(16).flex_none().rounded(4).bg(fill).items_center().justify_center().text_size(9.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
+          .when(!tree, el => el.child(h_flex().size(16).flex_none().rounded(4).bg(fill).items_center().justify_center().text_size(9.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
           .child(div().min_w(0).truncate().font_medium().text_color(tree ? t.muted : t.foreground).child(w.name))
           .child(detail ?? div().flex_1())
           .when(Boolean(mark), (el) => el.child(mark)),

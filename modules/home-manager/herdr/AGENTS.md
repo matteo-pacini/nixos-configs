@@ -20,19 +20,20 @@ The **Herdr** design canvas is the visual reference:
   - Spaces sidebar (`space-cards`);
   - Agents and pane headers (`agent-list`, `pane-header`);
   - Menus and dialogs.
-- Its **Teleport** page holds the original mockups, then every built state:
-  menus, sidebar, the dialog, and the flow of what runs where.
+- Its **Teleport** page holds every built state: menus, sidebar, the
+  dialog, and the flow of what runs where.
 - Its **Side panels** page holds an overview of `fleet` and `nixpkgs-prs`,
   then a section per `fleet` part, each in every state: Deploy, Watch, and
   its menus and dialogs.
-- Its **PR and CI status** page holds the mockups of the status bar
-  (`status-bar`) with the focused terminal's branch, PR and checks, and of
-  the two-line sidebar rows.
+- Its **PR and CI status** page holds the status bar (`status-bar`) with
+  the focused terminal's branch, PR and checks, and the two-line sidebar
+  rows, as built.
 - A feature or mod with many states gets its own page or section like
   these, not a corner of a Design system artboard.
 
 The canvas is the source of truth for design, and it changes only through an
-accepted draft:
+accepted draft. It shows only the current state: no mockups, no earlier
+versions, no "before" comparisons. Those stay on the draft canvas.
 
 1. **Draft first.** For any change to what a mod draws (new mod, new state,
    new row, restyle), make a draft before writing code.
@@ -42,16 +43,16 @@ accepted draft:
    - Present the draft's link to the user and wait for acceptance. Revise the
      draft until it's accepted. Never edit the main canvas for an unaccepted
      change.
-2. **Merge on acceptance.** Copy the accepted artboards into the main canvas:
-   - the feature's own page (create it if new; mockups as "Mockup ·", built
-     states as "As built ·");
+2. **Build to the draft.** Implement what the accepted draft shows. Once
+   built, check it in the sandbox (Testing, step 6 below). Where the build
+   had to differ, say so in your report.
+3. **Merge what was built.** Bring the main canvas to the built state:
+   - the feature's own page (create it if new), with every state as built
+     ("As built ·"), from sandbox screenshots where they help;
    - every Design system artboard the change affects (Foundations for a new
-     token or icon, Sidebar, Menus, and so on).
-3. **Build to the canvas.** Implement what the main canvas shows. Once built,
-   check it against the canvas in the sandbox (Testing, step 6 below).
-   - If the build had to differ, update the main canvas to the built version
-     (say so in your report).
-   - Never leave a known difference unrecorded on the canvas.
+     token or icon, Sidebar, Menus, and so on);
+   - remove or redraw whatever the change made untrue: superseded boards,
+     states and notes. Nothing on the canvas may describe how it used to be.
 
 Rules the mods follow, and new ones should too:
 
@@ -169,8 +170,13 @@ Gotchas from doing this:
   is `types.attrs`, which merges shallowly: a second `hooks` set would replace
   the first. Every Claude hook is in `core.nix` (README).
 - **Store machine names, not null, in data another machine reads.** "null =
-  this computer" means something different on each machine. The Teleport marks
-  record `self`.
+  this computer" means something different on each machine.
+- **`space.new` from a mod: name the machine.** Left out, `machine` is the
+  focused space's machine, not this computer. Pass `""` for this computer, as
+  `mods/teleport` does.
+- **Closing an overlay ends its tasks.** A `cx.spawn` started by a dialog
+  stops when the dialog closes, so a dialog that runs a job closes itself only
+  once the job is done (`mods/teleport`).
 - **`exec` limits.** It has a 30 s limit and no stdin. Wrap anything that
   needs a pipe, an env var or a temp index in `sh -c`, as the
   `lib/teleport.js` scripts do.
