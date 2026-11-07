@@ -167,7 +167,7 @@
           ./modules/home-manager/codex.nix
           ./modules/home-manager/opencode.nix
           ./modules/home-manager/phone-scrcpy.nix
-          ./modules/home-manager/herdr.nix
+          ./modules/home-manager/herdr
           ./modules/home-manager/hex.nix
         ];
       };
