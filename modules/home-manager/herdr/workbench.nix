@@ -66,8 +66,7 @@ let
 
   # Every mod folder under mods/, as installed. A mod's `lib` is a symlink to
   # the shared lib/; symlinks are followed, so each mod installs as a plain,
-  # self-contained folder: herdr-app (0.1.10) reports "no `main.js`" when a
-  # mod's main.js is a symlink. lib/ is in the source so the links resolve.
+  # self-contained folder. lib/ is in the source so the links resolve.
   mods = pkgs.runCommand "herdr-mods" { } ''
     cp -rL ${
       lib.fileset.toSource {
@@ -166,10 +165,10 @@ in
 
       (lib.mkIf cfg.workbench.enable {
 
-        # Copied, not linked (see `mods`), so mods can be tried live in place. Each
-        # folder is replaced whole, hand edits and stale files included; the app
-        # regenerates its own typings in it on start. A mod that is turned off is
-        # left where it is.
+        # Copied, not linked: the app writes its typings (gpui-kit.d.ts,
+        # jsconfig.json) into each mod folder, and a copy can be edited live, the
+        # app reloading it on save. Each folder is replaced whole, hand edits and
+        # stale files included. A mod that is turned off is left where it is.
         home.activation.herdrWorkbenchMods = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
           for mod in ${lib.escapeShellArgs enabledMods}; do
             run rm -rf "${modsHome}/$mod"

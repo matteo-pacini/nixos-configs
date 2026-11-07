@@ -5,7 +5,8 @@
 #   import ./layout.nix { inherit lib; } { fleet = true; nixpkgsPrs = false; spaceCards = true; }
 #
 # The adjustments find nodes by id (`main`, `work-body`, `spaces`); if a
-# re-snapshot renames one, the matching adjustment silently stops applying.
+# re-snapshot renames one, the matching adjustment silently stops applying;
+# tests/layout.nix (the herdr-layout check) fails on that.
 { lib }:
 {
   fleet,
