@@ -271,51 +271,30 @@ in
           runHook postInstall
         '';
       })
-      # Not in nixpkgs. The budget figures it draws are configured on the card
-      # in the UI and stay in .storage, out of this public repository.
+      # Not in nixpkgs. One file with the budget sankey, the food and water
+      # stockpile and the meds streak cards. Their data stays out of this
+      # public repository: the budget figures are configured on the card in
+      # .storage, and the stock lives in the Local To-do lists above.
       (pkgs.stdenvNoCC.mkDerivation rec {
-        pname = "budget-sankey-card";
+        pname = "zp-cards";
         version = "1.0.0";
 
         src = pkgs.fetchFromGitHub {
           owner = "matteo-pacini";
-          repo = "HASSBudgetCard";
+          repo = "ZPCards";
           tag = "v${version}";
-          hash = "sha256-aTWevDzuaFHUiyRb5oiewtfzDnOXnuf4Z9jptEZIeVw=";
+          hash = "sha256-URkaVFkJBNTpLTQIlFcTzNNhHZNc+sVP4Cgjn/dpMO0=";
         };
 
         installPhase = ''
           runHook preInstall
 
-          install -Dm444 budget-sankey-card.js $out/budget-sankey-card.js
+          install -Dm444 zp-cards.js $out/zp-cards.js
 
           runHook postInstall
         '';
 
-        passthru.entrypoint = "budget-sankey-card.js";
-      })
-      # Not in nixpkgs. The stock it counts lives in the Local To-do lists
-      # above, also out of this public repository.
-      (pkgs.stdenvNoCC.mkDerivation rec {
-        pname = "prepping-cards";
-        version = "1.1.0";
-
-        src = pkgs.fetchFromGitHub {
-          owner = "matteo-pacini";
-          repo = "HASSPrepping";
-          tag = "v${version}";
-          hash = "sha256-nB17J86vN9qTrC4YMKdfGapagH5y043Oxz3jI05lmvg=";
-        };
-
-        installPhase = ''
-          runHook preInstall
-
-          install -Dm444 prepping-cards.js $out/prepping-cards.js
-
-          runHook postInstall
-        '';
-
-        passthru.entrypoint = "prepping-cards.js";
+        passthru.entrypoint = "zp-cards.js";
       })
     ];
     extraPackages =
