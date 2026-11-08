@@ -2,6 +2,7 @@
 {
   systemd.tmpfiles.rules = [
     "d /diskpool/paperless 2770 paperless paperless"
+    "d /diskpool/paperless-export 0750 paperless paperless"
   ];
 
   # POSIX default ACLs on the paperless media directory.
@@ -41,6 +42,15 @@
     # origin when reached through Caddy. configureNginx stays off.
     domain = "docs.matteopacini.me";
     mediaDir = "/diskpool/paperless";
+
+    # Nightly document_exporter (default 01:30, before the 03:00 backup job).
+    # The unit stops the paperless services while it runs and starts them
+    # again afterwards, so never run it from inside backup-job. Kept off the
+    # default /var/lib/paperless/export, which would copy media onto the root SSD.
+    exporter = {
+      enable = true;
+      directory = "/diskpool/paperless-export";
+    };
 
     # Database configuration
     database.createLocally = true;

@@ -66,8 +66,14 @@ let
 
   configExcludes = [
     "/diskpool/configuration/nextcloud/data/*/files"
+    "/diskpool/configuration/paperless"
     "*.log"
     "cache/"
+  ];
+
+  paperlessExcludes = [
+    "/diskpool/configuration/paperless/data/log"
+    "/diskpool/configuration/paperless/data/index"
   ];
 
   personalRetention = [
@@ -84,12 +90,21 @@ let
     "--keep-yearly 2"
   ];
 
+  # Archival documents (tax, legal): a deletion has to stay recoverable for
+  # years, and append-only originals make old snapshots nearly free.
+  paperlessRetention = [
+    "--keep-daily 14"
+    "--keep-weekly 8"
+    "--keep-monthly 24"
+    "--keep-yearly 10"
+  ];
+
   # ── Wrapper script for interactive restic queries ────────────────────
 
   restic-b2 = pkgs.writeShellScriptBin "restic-b2" ''
     set -euo pipefail
 
-    REPOS="matteo debora fabrizio config immich"
+    REPOS="matteo debora fabrizio config immich paperless"
 
     if [[ $# -lt 2 ]]; then
       echo "Usage: restic-b2 <repo> <restic command...>"
@@ -106,6 +121,7 @@ let
       fabrizio)  REPO_URL="${b2Endpoint}/fabrizio-nexus-backup" ;;
       config)    REPO_URL="${b2Endpoint}/config-nexus-backup" ;;
       immich)    REPO_URL="${b2Endpoint}/immich-nexus-backup" ;;
+      paperless) REPO_URL="${b2Endpoint}/paperless-nexus-backup" ;;
       *)
         echo "Unknown repo: $REPO_NAME"
         echo "Available repos: $REPOS"
@@ -208,10 +224,11 @@ let
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
     # bazarr (provider credentials live in its UI-managed config)
     ''${RSYNC_CMD} ${config.services.bazarr.dataDir} ${backupDestination}/
-    # paperless - data directory
-    ''${RSYNC_CMD} ${config.services.paperless.dataDir} ${backupDestination}/
-    # paperless - media directory
-    ''${RSYNC_CMD} ${config.services.paperless.mediaDir} ${backupDestination}/
+    # paperless: dataDir and mediaDir share the basename "paperless", so each
+    # gets its own subdirectory; with --delete one copy would wipe the other
+    mkdir -p ${backupDestination}/paperless
+    ''${RSYNC_CMD} ${config.services.paperless.dataDir}/ ${backupDestination}/paperless/data/
+    ''${RSYNC_CMD} ${config.services.paperless.mediaDir}/ ${backupDestination}/paperless/media/
     # n8n - application data
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
     # nextcloud
@@ -262,6 +279,7 @@ in
     "restic-backups-debora".after = [ "backup-job.service" ];
     "restic-backups-fabrizio".after = [ "backup-job.service" ];
     "restic-backups-immich".after = [ "backup-job.service" ];
+    "restic-backups-paperless".after = [ "backup-job.service" ];
   };
 
   services.restic.backups = {
@@ -283,6 +301,31 @@ in
 
       timerConfig = {
         OnCalendar = "*-*-* 04:30:00";
+        Persistent = true;
+      };
+    };
+
+    # The exporter output and the rsync copy hold the same original files, so
+    # restic dedup stores them once. The export restores via document_importer
+    # without a matching DB dump or Paperless version.
+    paperless = {
+      initialize = true;
+      user = "root";
+      repository = "${b2Endpoint}/paperless-nexus-backup";
+      environmentFile = resticEnvFile;
+      passwordFile = resticPasswordFile;
+      paths = [
+        config.services.paperless.exporter.directory
+        "${backupDestination}/paperless"
+      ];
+      exclude = paperlessExcludes;
+      pruneOpts = paperlessRetention;
+      runCheck = true;
+      checkOpts = [ "--read-data-subset=10%" ];
+      extraOptions = b2ExtraOptions;
+      extraBackupArgs = b2ExtraBackupArgs;
+      timerConfig = {
+        OnCalendar = "*-*-* 04:45:00";
         Persistent = true;
       };
     };
