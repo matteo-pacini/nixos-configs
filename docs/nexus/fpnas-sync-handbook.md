@@ -15,7 +15,7 @@
 ## What is mirrored
 
 - Synology metadata and junk are not copied: see the `--exclude` list in the unit.
-- Regular files at the top of `/diskpool/fabrizio` that match the unit's `P` filter exist only on Nexus and are kept by `--delete`.
+- `/diskpool/fabrizio/nexus-only/` holds files that exist only on Nexus (gone from fpnas). The unit's `P` filter keeps `--delete` from removing it. Before a deletion-heavy first run, move such files there with their relative paths.
 - Anything else written directly into `/diskpool/fabrizio` is deleted on the next run. Changes belong on fpnas.
 
 ## Access

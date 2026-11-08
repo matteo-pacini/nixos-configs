@@ -19,7 +19,7 @@ let
       --exclude '.DS_Store' \
       --exclude 'desktop.ini' \
       --exclude 'Thumbs.db' \
-      --filter 'P /*.mpg' \
+      --filter 'P /nexus-only/' \
       --stats \
       -e '${pkgs.openssh}/bin/ssh -p ${port} -i ${keyFile} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes' \
       'fabrizio@${host}:/volume1/legacy/' ${destination}/
