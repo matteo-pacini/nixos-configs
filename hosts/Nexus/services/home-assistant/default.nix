@@ -85,6 +85,7 @@ in
       "ping"
       # Shield
       "androidtv"
+      "androidtv_remote"
       # LG TV
       "webostv"
       # Shell commands
@@ -156,6 +157,7 @@ in
       trash-card
       button-card
       clock-weather-card
+      universal-remote-card
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
       # ./editor.js, so both must land in the merged lovelace module dir.
       # No other module here ships an editor.js, so the buildEnv merge is safe.
