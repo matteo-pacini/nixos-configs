@@ -13,6 +13,44 @@ let
   fanRpm = pkgs.writeShellScript "nexus-fan-rpm" ''
     ${ipmitool} sdr type fan | ${pkgs.gawk}/bin/awk -F'|' '$5 ~ /RPM/ { gsub(/[^0-9]/, "", $5); s += $5; c++ } END { if (c) printf "%d", s / c }'
   '';
+
+  # Nocturne theme, see the header of ./themes/nocturne.yaml.
+  # Design system: https://claude.ai/artifact/LE95HYdwkCBnrbFUE9pvKY
+  nocturneTheme =
+    pkgs.runCommand "home-assistant-theme-nocturne"
+      {
+        passthru.isHomeAssistantTheme = true;
+      }
+      ''
+        install -Dm644 ${./themes/nocturne.yaml} $out/themes/nocturne.yaml
+      '';
+
+  # Served at /local/nocturne-fonts/ and loaded by the theme's uix-fonts block,
+  # so the frontend never fetches fonts from a third-party CDN.
+  nocturneFonts = pkgs.linkFarm "nocturne-fonts" (
+    map
+      (font: {
+        name = "${font.name}.woff2";
+        path = pkgs.fetchurl {
+          url = "https://cdn.jsdelivr.net/npm/@fontsource-variable/${font.name}@5.3.0/files/${font.name}-latin-wght-normal.woff2";
+          inherit (font) hash;
+        };
+      })
+      [
+        {
+          name = "figtree";
+          hash = "sha256-S6fT0JZpWBj+Boa+Tx6CxrBRNOGKIiYDNhMDNQJ0Yt0=";
+        }
+        {
+          name = "sora";
+          hash = "sha256-+iZAbu2po8bsPZ6ogTwwRdbcdV4wxxbVwJTo70O+Wn8=";
+        }
+        {
+          name = "jetbrains-mono";
+          hash = "sha256-GL5FJyS/3CNsB0ypSiSaf0GoZ1LH0EqyWM6e1WUfan4=";
+        }
+      ]
+  );
 in
 {
   # Allow hass user to restart specific services via polkit (no sudo needed).
@@ -48,6 +86,9 @@ in
 
   services.home-assistant = {
     enable = true;
+
+    # Sets frontend.themes itself; don't also set it under config.
+    themes = [ nocturneTheme ];
 
     # Symlinked into ${configDir}/blueprints/automation. Blueprints only supply
     # the template; each automation built from one is still created in the UI
@@ -689,10 +730,6 @@ in
       # lives outside version control; restore it via Settings > System >
       # Network if /var/lib/hass is ever rebuilt from scratch.
 
-      frontend = {
-        themes = "!include_dir_merge_named themes";
-      };
-
       lovelace = {
         resource_mode = "yaml";
         dashboards.lovelace = {
@@ -713,6 +750,7 @@ in
 
   systemd.tmpfiles.rules = [
     "d /var/lib/hass/www 0755 hass hass"
+    "L+ /var/lib/hass/www/nocturne-fonts - - - - ${nocturneFonts}"
   ];
 
   systemd.services.home-assistant.preStart = ''

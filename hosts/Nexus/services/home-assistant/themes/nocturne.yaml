@@ -1,0 +1,190 @@
+# Nocturne: the Dracula-based theme for this Home Assistant.
+#
+# Design system (tokens, usage rules, card previews, captures of every view):
+#   https://claude.ai/artifact/LE95HYdwkCBnrbFUE9pvKY
+# Motion study; the uix-card block below is the "Lacquer" direction:
+#   https://claude.ai/artifact/N6fbU7Mxn4jxovYGMmQ8YU
+#
+# Colours come from the design system's tokens (Night = dark mode, Dawn =
+# light mode). Change a colour there first, then here, so the two stay in step.
+#
+# uix-fonts and uix-card are read by the UIX integration (custom component
+# "uix"). Without it the theme still applies; cards just lose the motion and
+# the faces fall back to the system stacks below.
+Nocturne:
+  uix-fonts: |
+    Figtree:
+      source: url(/local/nocturne-fonts/figtree.woff2) format('woff2')
+      descriptors:
+        weight: 300 900
+    Sora:
+      source: url(/local/nocturne-fonts/sora.woff2) format('woff2')
+      descriptors:
+        weight: 100 800
+    JetBrains Mono:
+      source: url(/local/nocturne-fonts/jetbrains-mono.woff2) format('woff2')
+      descriptors:
+        weight: 100 800
+
+  ha-font-family-body: '"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif'
+  ha-font-family-heading: '"Sora", "Figtree", system-ui, sans-serif'
+  ha-font-family-code: '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace'
+  mdc-typography-font-family: '"Figtree", system-ui, sans-serif'
+
+  ha-card-border-radius: 20px
+  ha-card-border-width: 0px
+
+  # Lacquer: cards rise in when a view loads, lift 2px on hover and a band of
+  # light sweeps across them once. Fill mode is "backwards", not "both": a
+  # finished animation that kept its end state would override the hover lift.
+  # The sheen is a background-image on ha-card rather than a pseudo-element,
+  # so ha-card needs no overflow: hidden (that would clip dropdown menus).
+  uix-card: |
+    ha-card {
+      background-image: linear-gradient(105deg, transparent 35%, rgba(248, 248, 242, 0.06) 50%, transparent 65%);
+      background-size: 250% 100%;
+      background-position: 150% 0;
+      background-repeat: no-repeat;
+      transition:
+        transform 280ms cubic-bezier(.2, .8, .2, 1),
+        box-shadow 280ms cubic-bezier(.2, .8, .2, 1),
+        background-color 280ms cubic-bezier(.2, .8, .2, 1),
+        background-position 750ms cubic-bezier(.2, .8, .2, 1);
+      animation: nocturne-rise 520ms cubic-bezier(.2, .8, .2, 1) backwards;
+    }
+    @media (hover: hover) {
+      ha-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--nocturne-shadow-lift);
+        background-position: -50% 0;
+      }
+    }
+    @keyframes nocturne-rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      ha-card { animation: none; transition: none; }
+      ha-card:hover { transform: none; }
+    }
+
+  modes:
+    # Night
+    dark:
+      primary-background-color: "#121219"
+      lovelace-background: "radial-gradient(900px 520px at 0% 0%, rgba(189, 147, 249, 0.22), transparent 70%) fixed, #121219"
+      secondary-background-color: "#1b1c25"
+      sidebar-background-color: "#1b1c25"
+      app-header-background-color: "#1b1c25"
+      card-background-color: "#242633"
+      ha-card-background: "#242633"
+      input-fill-color: "#2e3042"
+      code-editor-background-color: "#2e3042"
+      markdown-code-background-color: "#2e3042"
+      divider-color: "#393c52"
+
+      primary-text-color: "#f8f8f2"
+      app-header-text-color: "#f8f8f2"
+      sidebar-selected-text-color: "#f8f8f2"
+      secondary-text-color: "#b6b9d3"
+      sidebar-text-color: "#b6b9d3"
+      disabled-text-color: "#6272a4"
+      disabled-color: "#6272a4"
+      sidebar-icon-color: "#6272a4"
+      state-icon-color: "#6272a4"
+      text-primary-color: "#1b1c25"
+
+      primary-color: "#bd93f9"
+      accent-color: "#ff79c6"
+      sidebar-selected-icon-color: "#bd93f9"
+      switch-checked-color: "#bd93f9"
+      switch-checked-button-color: "#bd93f9"
+      switch-checked-track-color: "#bd93f9"
+      switch-unchecked-button-color: "#b6b9d3"
+      switch-unchecked-track-color: "#44475a"
+
+      red-color: "#ff5555"
+      deep-orange-color: "#ff5555"
+      error-color: "#ff5555"
+      pink-color: "#ff79c6"
+      purple-color: "#bd93f9"
+      deep-purple-color: "#bd93f9"
+      blue-color: "#8be9fd"
+      light-blue-color: "#8be9fd"
+      cyan-color: "#8be9fd"
+      teal-color: "#8be9fd"
+      info-color: "#8be9fd"
+      green-color: "#50fa7b"
+      light-green-color: "#50fa7b"
+      lime-color: "#50fa7b"
+      success-color: "#50fa7b"
+      amber-color: "#ffb86c"
+      orange-color: "#ffb86c"
+      warning-color: "#ffb86c"
+      yellow-color: "#f1fa8c"
+      state-light-on-color: "#f1fa8c"
+      grey-color: "#6272a4"
+      blue-grey-color: "#6272a4"
+
+      ha-card-box-shadow: "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 32px rgba(0, 0, 0, 0.35)"
+      nocturne-shadow-lift: "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px rgba(0, 0, 0, 0.45)"
+
+    # Dawn (Dracula's official light variant, Alucard)
+    light:
+      primary-background-color: "#efe9d6"
+      lovelace-background: "radial-gradient(900px 520px at 0% 0%, rgba(100, 74, 201, 0.12), transparent 70%) fixed, #efe9d6"
+      secondary-background-color: "#f7f2e2"
+      sidebar-background-color: "#f7f2e2"
+      app-header-background-color: "#f7f2e2"
+      card-background-color: "#fffcf2"
+      ha-card-background: "#fffcf2"
+      input-fill-color: "#f1ecda"
+      code-editor-background-color: "#f1ecda"
+      markdown-code-background-color: "#f1ecda"
+      divider-color: "#ddd6bf"
+
+      primary-text-color: "#1f1f1f"
+      app-header-text-color: "#1f1f1f"
+      sidebar-selected-text-color: "#1f1f1f"
+      secondary-text-color: "#5a5478"
+      sidebar-text-color: "#5a5478"
+      disabled-text-color: "#635d97"
+      disabled-color: "#635d97"
+      sidebar-icon-color: "#635d97"
+      state-icon-color: "#635d97"
+      text-primary-color: "#fffcf2"
+
+      primary-color: "#644ac9"
+      accent-color: "#a3144d"
+      sidebar-selected-icon-color: "#644ac9"
+      switch-checked-color: "#644ac9"
+      switch-checked-button-color: "#644ac9"
+      switch-checked-track-color: "#644ac9"
+      switch-unchecked-button-color: "#5a5478"
+      switch-unchecked-track-color: "#cfcfde"
+
+      red-color: "#cb3a2a"
+      deep-orange-color: "#cb3a2a"
+      error-color: "#cb3a2a"
+      pink-color: "#a3144d"
+      purple-color: "#644ac9"
+      deep-purple-color: "#644ac9"
+      blue-color: "#036a96"
+      light-blue-color: "#036a96"
+      cyan-color: "#036a96"
+      teal-color: "#036a96"
+      info-color: "#036a96"
+      green-color: "#14710a"
+      light-green-color: "#14710a"
+      lime-color: "#14710a"
+      success-color: "#14710a"
+      amber-color: "#a34d14"
+      orange-color: "#a34d14"
+      warning-color: "#a34d14"
+      yellow-color: "#846e15"
+      state-light-on-color: "#846e15"
+      grey-color: "#635d97"
+      blue-grey-color: "#635d97"
+
+      ha-card-box-shadow: "inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 0 rgba(120, 100, 40, 0.10), 0 8px 24px rgba(120, 100, 40, 0.08)"
+      nocturne-shadow-lift: "inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 0 rgba(120, 100, 40, 0.10), 0 14px 32px rgba(120, 100, 40, 0.12)"
