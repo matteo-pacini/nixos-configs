@@ -6,6 +6,7 @@
     ./smartd.nix
     ./jellyfin.nix
     ./backup.nix
+    ./fpnas-sync.nix
     ./nzbget.nix
     ./nzbhydra.nix
     ./radarr.nix
