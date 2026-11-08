@@ -16,7 +16,7 @@ layers:
 
 | Layer  | Draws                                                                                    | From                                         |
 |--------|------------------------------------------------------------------------------------------|----------------------------------------------|
-| Lights | A bulb per light: tap to toggle, hold for its dialog. Tapping a room switches all of its lights. | `rooms[].lights[].entity` (`light.*` or `switch.*`) |
+| Lights | A bulb per light: tap to toggle, hold for its dialog. Tapping a room switches all of its lights. A dimmable light is tinted from amber at low brightness to yellow at full. | `rooms[].lights[].entity` (`light.*` or `switch.*`) |
 | Heat   | A "current / target" pill. Current is green when at or above target, red below it. The pill turns orange with a flame while heating. A humidity pill sits under it. | `temperature`, `climate` (target and `hvac_action`), `humidity` |
 | Doors  | A bar on the wall: green when closed, red when open.                                      | `floors[].doors[].entity` (`binary_sensor.*`, on = open) |
 
@@ -86,6 +86,30 @@ On the current floors:
 - **Short rooms.** Leave about 8% of y between a dimmable bulb and the pill
   under it. If the room is too short, put `humidity_pill` beside the
   temperature pill, as the Office does.
+
+### Phones (narrow cards)
+
+When the card is under 500 px wide (`NARROW` in the code), it turns the plan a
+quarter anticlockwise, so a wide floor fills a portrait screen:
+
+- Whatever was on the left of the plan ends up at the bottom, which is why the
+  garage sits under the house.
+- Text stays upright.
+- Room names move to each room's top-left corner, and `label` is ignored.
+- Pills keep their usual place, unless the room sets `narrow_pill`.
+- The humidity pill goes under the temperature pill, unless the room sets
+  `narrow_humidity_pill`.
+- These narrow keys use the same unturned coordinates as everything else.
+- Turned, moving down the screen means *lower* x on the plan, and moving right
+  means higher y.
+
+Living Room and Office use `narrow_pill` to keep their pills clear of the
+bulb. Check a layout change at phone width as well as desktop width. A Pixel
+9 Pro Fold is about 412 px wide folded (the card is then about 380 px) and
+about 790 px unfolded. Chrome's window can't be made that narrow, so set the
+test element's width to 380px instead.
+
+### Testing a layout
 
 To try a layout before saving it, load the module in a browser tab on the HA
 frontend and render it with a test config:

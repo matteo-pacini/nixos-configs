@@ -9,7 +9,7 @@
 // Design system: https://claude.ai/artifact/LE95HYdwkCBnrbFUE9pvKY (Motion section)
 // Motion study:  https://claude.ai/artifact/N6fbU7Mxn4jxovYGMmQ8YU
 //
-// It works by wrapping connectedCallback of a few HA and mushroom elements
+// It works by wrapping Lit's firstUpdated on a few HA and mushroom elements
 // and adding a stylesheet to their shadow roots. Element and class names are
 // HA/mushroom internals, so a frontend update can silently turn an effect
 // off; nothing here can break a card, because every hook is wrapped in
@@ -52,12 +52,15 @@ function hook(tag, fn) {
     }
   };
   customElements.whenDefined(tag).then(() => {
+    // Not connectedCallback: the registry copies lifecycle callbacks when the
+    // element is defined, so patching it afterwards never runs. Lit looks up
+    // firstUpdated on every element, after its first render, and an adopted
+    // sheet stays in the shadow root across reconnects.
     const proto = customElements.get(tag).prototype;
-    const orig = proto.connectedCallback;
-    proto.connectedCallback = function () {
-      if (orig) orig.call(this);
-      // Lit renders on a microtask after connect; wait for the shadow root.
-      queueMicrotask(() => run(this));
+    const orig = proto.firstUpdated;
+    proto.firstUpdated = function (...args) {
+      if (orig) orig.apply(this, args);
+      run(this);
     };
     deepQuery(tag).forEach(run);
   });

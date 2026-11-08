@@ -2,9 +2,10 @@
 //
 // One card shows one floor at a time with three layers: lights (tap a bulb to
 // switch it, tap a room to switch all of its lights, hold a bulb for its
-// dialog), heat (a "current / target" pill per room, current green at or above
-// target and red below, orange with a flame while the radiator heats, and a
-// humidity pill beside it) and doors (green closed, red open).
+// dialog; a dimmed bulb is amber, a full one yellow), heat (a "current /
+// target" pill per room, current green at or above target and red below,
+// orange with a flame while the radiator heats, and a humidity pill beside
+// it) and doors (green closed, red open).
 //
 // The card only draws; the house lives in the card's YAML, so the layout and
 // entity ids stay in .storage rather than this repository. Coordinates are
@@ -13,7 +14,7 @@
 //
 //   type: custom:nocturne-floorplan
 //   title: House
-//   layers: [lights, heat]           # on when the card loads
+//   layers: [lights, heat, doors]    # on when the card loads (default: all)
 //   floors:
 //     - name: Ground
 //       width: 1797
@@ -25,6 +26,7 @@
 //           label: [8, 11]
 //           pill: [25, 40]           # centre of the temperature pill
 //           humidity_pill: [28, 39]  # optional; default is under the first
+//           narrow_pill: [62, 49.9]  # optional: pill position on phones (below)
 //           temperature: sensor.kitchen_temperature
 //           humidity: sensor.kitchen_humidity
 //           climate: climate.kitchen_radiator   # target and heating
@@ -32,6 +34,14 @@
 //           stairs: [46.5, 24, 55.4, 54.8]      # optional: x0, y0, x1, y1
 //           shell: [-21, 8.3, -5.6, 52.7]       # optional: its own outline
 //       doors: [{ entity: binary_sensor.main_door, a: [47.6, 97.6], b: [54.8, 97.6] }]
+//
+// Below NARROW px of card width (phones) the plan is turned a quarter
+// anticlockwise so a wide floor fills the portrait screen: what is left on the
+// plan (the garage) ends up at the bottom, and text stays upright. Room names
+// then sit at each room's top-left corner, and a room can move its pills for
+// this view with `narrow_pill` / `narrow_humidity_pill` (same coordinates as
+// the rest, before turning); without them the pills keep their usual place
+// and the humidity pill goes under the temperature one.
 //
 // Design system: https://claude.ai/artifact/LE95HYdwkCBnrbFUE9pvKY
 // Floorplan drafts (draft A): https://claude.ai/artifact/LFWSboBTmE83nFT9kYynnc
@@ -57,6 +67,7 @@ const PAD = 22;
 const ICON = 32;
 const GAP = 8;
 const HOLD_MS = 500;
+const NARROW = 500;
 
 const CSS = `
   :host {
@@ -102,7 +113,7 @@ const CSS = `
   .bulb { cursor: pointer; }
   .bulb circle { fill: var(--fp-card); stroke: var(--fp-line); stroke-width: 3; transition: fill .3s ease, stroke .3s ease; }
   .bulb path { fill: var(--fp-faint); transition: fill .3s ease; }
-  .bulb.on circle { fill: var(--yellow-color); stroke: var(--yellow-color); }
+  .bulb.on circle { fill: var(--bulb); stroke: var(--bulb); }
   .bulb.on path { fill: var(--text-primary-color); }
   .bulb.na { opacity: .4; }
   .bulb text { fill: var(--primary-text-color); font-family: var(--ha-font-family-code, monospace); font-size: 34px; font-weight: 500; }
@@ -131,7 +142,7 @@ class NocturneFloorplan extends HTMLElement {
     }
     this._config = config;
     this._floor = 0;
-    this._layers = new Set(config.layers || ["lights", "heat"]);
+    this._layers = new Set(config.layers || LAYERS.map((l) => l.id));
     this._entities = this._collect();
     this._seen = null;
     if (!this.shadowRoot) {
@@ -149,6 +160,21 @@ class NocturneFloorplan extends HTMLElement {
       }
     }
     this._render();
+  }
+
+  connectedCallback() {
+    this._resize = this._resize || new ResizeObserver(([e]) => {
+      const narrow = e.contentRect.width > 0 && e.contentRect.width < NARROW;
+      if (narrow !== this._narrow) {
+        this._narrow = narrow;
+        this._render();
+      }
+    });
+    this._resize.observe(this);
+  }
+
+  disconnectedCallback() {
+    this._resize?.disconnect();
   }
 
   set hass(hass) {
@@ -227,26 +253,42 @@ class NocturneFloorplan extends HTMLElement {
 
   _plan(floor) {
     const W = floor.width || 1000;
-    const px = (p) => [(p[0] * W) / 100, p[1] * 10];
+    const X0 = ((floor.x0 || 0) * W) / 100;
+    const turn = this._narrow;
+    // Floor percent to SVG units; turned, (x, y) becomes (y, W - x).
+    const px = (p) => {
+      const x = (p[0] * W) / 100;
+      const y = p[1] * 10;
+      return turn ? [y, W - x] : [x, y];
+    };
+    const rect = (b, cls) => {
+      const [a, c] = [px([b[0], b[1]]), px([b[2], b[3]])];
+      return `<rect class="${cls}" x="${Math.min(a[0], c[0])}" y="${Math.min(a[1], c[1])}" width="${Math.abs(c[0] - a[0])}" height="${Math.abs(c[1] - a[1])}" rx="28"/>`;
+    };
+    const view = turn ? [-20, -20, 1040, W - X0 + 40] : [X0 - 20, -20, W - X0 + 40, 1040];
+    const at = (r, key) => (turn && r[`narrow_${key}`]) || (key === "humidity_pill" && turn ? null : r[key]);
     const pts = (poly) => poly.map((p) => px(p).join(",")).join(" ");
-    const X0 = px([floor.x0 || 0, 0])[0];
     const on = (l) => this._layers.has(l);
     const rooms = floor.rooms || [];
     const name = (id, fallback) => esc(this._st(id)?.attributes.friendly_name || fallback || id);
     const uid = Math.random().toString(36).slice(2, 8);
 
-    let s = `<svg viewBox="${X0 - 20} -20 ${W - X0 + 40} 1040" role="img" aria-label="${esc(floor.name)} plan">`;
-    s += `<defs><radialGradient id="g${uid}"><stop offset="0" stop-color="var(--yellow-color)" stop-opacity=".42"/><stop offset="1" stop-color="var(--yellow-color)" stop-opacity="0"/></radialGradient>`;
+    const tint = (id) => {
+      const st = this._st(id);
+      const b = st?.attributes.brightness;
+      return b == null ? "var(--yellow-color)" : `color-mix(in srgb, var(--yellow-color) ${Math.round(b / 2.55)}%, var(--orange-color))`;
+    };
+    const glows = rooms.flatMap((r) => r.lights || []);
+
+    let s = `<svg viewBox="${view.join(" ")}" role="img" aria-label="${esc(floor.name)} plan">`;
+    // One glow per light: a dimmed light glows amber, a full one yellow.
+    s += `<defs>${glows.map((l, j) => `<radialGradient id="g${uid}-${j}"><stop offset="0" style="stop-color: ${tint(l.entity)}" stop-opacity=".42"/><stop offset="1" style="stop-color: ${tint(l.entity)}" stop-opacity="0"/></radialGradient>`).join("")}`;
     rooms.forEach((r, i) => (s += `<clipPath id="c${uid}-${i}"><polygon points="${pts(r.poly)}"/></clipPath>`));
-    s += `</defs><rect class="shell" x="0" y="0" width="${W}" height="1000" rx="28"/>`;
-    for (const r of rooms) {
-      if (!r.shell) continue;
-      const [a, b] = [px([r.shell[0], r.shell[1]]), px([r.shell[2], r.shell[3]])];
-      s += `<rect class="shell" x="${a[0]}" y="${a[1]}" width="${b[0] - a[0]}" height="${b[1] - a[1]}" rx="28"/>`;
-    }
+    s += `</defs>${rect([0, 0, 100, 100], "shell")}`;
+    for (const r of rooms) if (r.shell) s += rect(r.shell, "shell");
     for (const l of floor.labels || []) {
       const a = px(l.at);
-      s += `<text class="label" text-anchor="middle" dominant-baseline="middle" transform="translate(${a[0]},${a[1]}) rotate(${l.rotate || 0})">${esc(l.text)}</text>`;
+      s += `<text class="label" text-anchor="middle" dominant-baseline="middle" transform="translate(${a[0]},${a[1]}) rotate(${(l.rotate || 0) + (turn ? 90 : 0)})">${esc(l.text)}</text>`;
     }
 
     rooms.forEach((r, i) => {
@@ -258,17 +300,24 @@ class NocturneFloorplan extends HTMLElement {
       if (on("lights")) {
         for (const l of lights) {
           const c = px(l.at || centre(r.poly));
-          s += `<circle class="glow${this._on(l.entity) ? " on" : ""}" clip-path="url(#c${uid}-${i})" cx="${c[0]}" cy="${c[1]}" r="300" fill="url(#g${uid})"/>`;
+          s += `<circle class="glow${this._on(l.entity) ? " on" : ""}" clip-path="url(#c${uid}-${i})" cx="${c[0]}" cy="${c[1]}" r="300" fill="url(#g${uid}-${glows.indexOf(l)})"/>`;
         }
       }
       if (r.stairs) {
-        const [a, b] = [px([r.stairs[0], r.stairs[1]]), px([r.stairs[2], r.stairs[3]])];
+        // Treads run across the stairs every 44 units, inset 24 at each end.
+        const [x0, y0, x1, y1] = r.stairs;
+        const inset = (24 / W) * 100;
         s += `<g class="stairs">`;
-        for (let y = a[1]; y < b[1] - 20; y += 44) s += `<line x1="${a[0] + 24}" x2="${b[0] - 24}" y1="${y}" y2="${y}"/>`;
+        for (let y = y0; y < y1 - 2; y += 4.4) {
+          const [a, b] = [px([x0 + inset, y]), px([x1 - inset, y])];
+          s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
+        }
         s += `</g>`;
       }
       if (r.label) {
-        const l = px(r.label);
+        // Turned, the configured corner is no longer the top-left one.
+        const pts = r.poly.map(px);
+        const l = turn ? [Math.min(...pts.map((p) => p[0])) + 24, Math.min(...pts.map((p) => p[1])) + 56] : px(r.label);
         s += `<text class="name" x="${l[0]}" y="${l[1]}">${esc(r.name)}</text>`;
       }
       s += `</g>`;
@@ -291,29 +340,32 @@ class NocturneFloorplan extends HTMLElement {
           const na = !st || st.state === "unavailable";
           const b = lon && st.attributes.brightness != null ? Math.round(st.attributes.brightness / 2.55) : null;
           const c = px(l.at || centre(r.poly));
-          s += `<g class="bulb${lon ? " on" : ""}${na ? " na" : ""}" data-entity="${esc(l.entity)}" role="button" tabindex="0" aria-label="${name(l.entity)} ${lon ? "on" : "off"}" transform="translate(${c[0]},${c[1]})"><circle r="58"/><path transform="translate(-34,-34) scale(2.8333)" d="${lon ? MDI.bulb : MDI.bulbOff}"/>${b != null ? `<text y="104" text-anchor="middle">${b}%</text>` : ""}</g>`;
+          // Dimmable lights go from amber at low brightness to yellow at full.
+          s += `<g class="bulb${lon ? " on" : ""}${na ? " na" : ""}" style="--bulb: ${tint(l.entity)}" data-entity="${esc(l.entity)}" role="button" tabindex="0" aria-label="${name(l.entity)} ${lon ? "on" : "off"}" transform="translate(${c[0]},${c[1]})"><circle r="58"/><path transform="translate(-34,-34) scale(2.8333)" d="${lon ? MDI.bulb : MDI.bulbOff}"/>${b != null ? `<text y="104" text-anchor="middle">${b}%</text>` : ""}</g>`;
         }
       }
     }
 
     if (on("heat")) {
       for (const r of rooms) {
-        if (!r.pill) continue;
+        const pill = at(r, "pill");
+        if (!pill) continue;
         const h = this._heat(r);
         const more = esc(r.climate || r.temperature || r.humidity);
         if (h.now != null) {
           const cls = h.target == null ? "" : h.now >= h.target ? " ok" : " low";
           const tgt = r.climate ? (h.off ? "off" : h.target != null ? `${h.target}°` : null) : null;
           const label = `${h.now.toFixed(1)}°` + (tgt ? ` / ${tgt}` : "");
-          s += this._pill(px(r.pill), `pill${h.heating ? " heat" : ""}${cls}`, more, h.heating ? MDI.fire : null, label,
+          s += this._pill(px(pill), `pill${h.heating ? " heat" : ""}${cls}`, more, h.heating ? MDI.fire : null, label,
             `<tspan class="now">${h.now.toFixed(1)}°</tspan>${tgt ? `<tspan class="sep"> / </tspan><tspan class="tgt">${tgt}</tspan>` : ""}`,
             `${esc(r.name)}: ${h.now.toFixed(1)}° now${h.target != null ? `, target ${h.target}°` : ""}${h.heating ? ", heating" : ""}`);
         }
         const rh = num(this._st(r.humidity));
         if (rh != null) {
-          const at = r.humidity_pill ? px(r.humidity_pill) : [px(r.pill)[0], px(r.pill)[1] + 64];
+          const hp = at(r, "humidity_pill");
+          const c = hp ? px(hp) : [px(pill)[0], px(pill)[1] + 64];
           const text = `${Math.round(rh)}%`;
-          s += this._pill(at, "pill rh", esc(r.humidity), MDI.water, text, text, `${esc(r.name)}: ${text} relative humidity`);
+          s += this._pill(c, "pill rh", esc(r.humidity), MDI.water, text, text, `${esc(r.name)}: ${text} relative humidity`);
         }
       }
     }
