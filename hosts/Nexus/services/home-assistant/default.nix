@@ -504,6 +504,31 @@ in
             }
           ];
         }
+        # The boiler relay as one on/off run per call for heat, for the Climate
+        # dashboard's 24-hour timeline. The relay itself goes unavailable for
+        # about 40 s on every HA restart, which splits a run in two; a
+        # trigger-based entity only moves on a real on/off and restores its
+        # state across restarts, so the gap never shows.
+        {
+          trigger = [
+            {
+              platform = "state";
+              entity_id = "switch.boiler_switch";
+              to = [
+                "on"
+                "off"
+              ];
+            }
+          ];
+          binary_sensor = [
+            {
+              name = "Boiler calling for heat";
+              unique_id = "boiler_calling_for_heat";
+              icon = "mdi:fire";
+              state = "{{ trigger.to_state.state == 'on' }}";
+            }
+          ];
+        }
         # Entity map for the n8n Home Agent, read through /api/states because
         # the agent's non-admin token cannot render templates itself. Trigger
         # based so it holds no state listeners on the entities it lists; the
