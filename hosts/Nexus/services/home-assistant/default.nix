@@ -145,6 +145,23 @@ in
         ];
 
       })
+      (pkgs.buildHomeAssistantComponent rec {
+        owner = "jjjonesjr33";
+        domain = "petlibro";
+        version = "1.4";
+
+        src = pkgs.fetchFromGitHub {
+          inherit owner;
+          repo = "petlibro";
+          tag = "v${version}";
+          hash = "sha256-5lN53VaaMdk2/Iu9+myq3jskfEXlj8RAJvHnezdiCaY=";
+        };
+
+        # Imported at runtime but missing from the manifest's requirements.
+        dependencies = with pkgs.home-assistant.python3Packages; [
+          python-dateutil
+        ];
+      })
       scheduler
       uix
     ];
