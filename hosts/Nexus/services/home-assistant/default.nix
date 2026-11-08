@@ -239,6 +239,9 @@ in
       sankey-chart
       mushroom
       mini-graph-card
+      # Charts the plain statistics graph cannot draw, such as the healthy
+      # weight band behind the cats' weight on the Cats dashboard.
+      apexcharts-card
       scheduler-card
       trash-card
       button-card
