@@ -39,45 +39,72 @@ Nocturne:
 
   ha-card-border-radius: 20px
   ha-card-border-width: 0px
+  # Icon badges are rounded squares (the design system's radius-md), not circles.
+  ha-tile-icon-border-radius: 14px
 
   # Lacquer: cards rise in when a view loads, lift 2px on hover and a band of
   # light sweeps across them once. Fill mode is "backwards", not "both": a
   # finished animation that kept its end state would override the hover lift.
   # The sheen is a background-image on ha-card rather than a pseudo-element,
   # so ha-card needs no overflow: hidden (that would clip dropdown menus).
-  uix-card: |
-    ha-card {
-      background-image: linear-gradient(105deg, transparent 35%, rgba(248, 248, 242, 0.06) 50%, transparent 65%);
-      background-size: 250% 100%;
-      background-position: 150% 0;
-      background-repeat: no-repeat;
-      transition:
-        transform 280ms cubic-bezier(.2, .8, .2, 1),
-        box-shadow 280ms cubic-bezier(.2, .8, .2, 1),
-        background-color 280ms cubic-bezier(.2, .8, .2, 1),
-        background-position 750ms cubic-bezier(.2, .8, .2, 1);
-      animation: nocturne-rise 520ms cubic-bezier(.2, .8, .2, 1) backwards;
-    }
-    @media (hover: hover) {
-      ha-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--nocturne-shadow-lift);
-        background-position: -50% 0;
+  #
+  # The "." block styles the card's own shadow root; "ha-tile-icon $" reaches
+  # into the icon's shadow root, where HA only tints the badge when a card asks
+  # for a background. Mushroom template cards never do, so their icons sat bare.
+  uix-card-yaml: |
+    .: |
+      ha-card {
+        background-image: linear-gradient(105deg, transparent 35%, rgba(248, 248, 242, 0.06) 50%, transparent 65%);
+        background-size: 250% 100%;
+        background-position: 150% 0;
+        background-repeat: no-repeat;
+        transition:
+          transform 280ms cubic-bezier(.2, .8, .2, 1),
+          box-shadow 280ms cubic-bezier(.2, .8, .2, 1),
+          background-color 280ms cubic-bezier(.2, .8, .2, 1),
+          background-position 750ms cubic-bezier(.2, .8, .2, 1);
+        animation: nocturne-rise 520ms cubic-bezier(.2, .8, .2, 1) backwards;
       }
-      /* Heading cards have no surface, so there is nothing to lift. */
-      :host(hui-heading-card) ha-card:hover {
-        transform: none;
-        box-shadow: none;
+      @media (hover: hover) {
+        ha-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--nocturne-shadow-lift);
+          background-position: -50% 0;
+        }
+        /* Heading cards have no surface, so there is nothing to lift. */
+        :host(hui-heading-card) ha-card:hover {
+          transform: none;
+          box-shadow: none;
+        }
       }
-    }
-    @keyframes nocturne-rise {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: none; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      ha-card { animation: none; transition: none; }
-      ha-card:hover { transform: none; }
-    }
+      @keyframes nocturne-rise {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        ha-card { animation: none; transition: none; }
+        ha-card:hover { transform: none; }
+      }
+      /* The heading card always uses the body face; section titles are Sora. */
+      :host(hui-heading-card) .title {
+        font-family: var(--ha-font-family-heading);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      /* Values are set in mono; the gauge's SVG text inherits it. */
+      :host(hui-gauge-card) ha-gauge {
+        font-family: var(--ha-font-family-code);
+      }
+    ha-tile-icon $: |
+      .container::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-color: var(--tile-icon-color);
+        opacity: var(--tile-icon-opacity);
+        border-radius: inherit;
+        transition: background-color 280ms cubic-bezier(.2, .8, .2, 1), opacity 280ms cubic-bezier(.2, .8, .2, 1);
+      }
 
   modes:
     # Night
