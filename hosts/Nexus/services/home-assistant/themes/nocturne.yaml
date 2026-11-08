@@ -9,9 +9,15 @@
 # light mode). Change a colour there first, then here, so the two stay in step.
 #
 # uix-fonts and uix-card are read by the UIX integration (custom component
-# "uix"). Without it the theme still applies; cards just lose the motion and
-# the faces fall back to the system stacks below.
+# "uix"), which only runs once it has a config entry. That entry was added in
+# the UI and lives in /var/lib/hass/.storage, not here; re-add it (Settings >
+# Devices & services > Add integration > UIX) if .storage is ever rebuilt.
+# Without UIX the theme still applies; cards just lose the motion and the
+# faces fall back to the system stacks below.
 Nocturne:
+  # UIX looks up uix-card and the other per-element styles by this name; without
+  # it only uix-fonts applies.
+  uix-theme: Nocturne
   uix-fonts: |
     Figtree:
       source: url(/local/nocturne-fonts/figtree.woff2) format('woff2')
@@ -58,6 +64,11 @@ Nocturne:
         box-shadow: var(--nocturne-shadow-lift);
         background-position: -50% 0;
       }
+      /* Heading cards have no surface, so there is nothing to lift. */
+      :host(hui-heading-card) ha-card:hover {
+        transform: none;
+        box-shadow: none;
+      }
     }
     @keyframes nocturne-rise {
       from { opacity: 0; transform: translateY(8px); }
@@ -102,6 +113,20 @@ Nocturne:
       switch-checked-track-color: "#bd93f9"
       switch-unchecked-button-color: "#b6b9d3"
       switch-unchecked-track-color: "#44475a"
+      # ha-switch (2026.x) ignores the switch-* names above and reads these.
+      ha-switch-checked-background-color: "#bd93f9"
+      ha-switch-checked-background-color-hover: "#c9a6fb"
+      ha-switch-checked-border-color: "#bd93f9"
+      ha-switch-checked-border-color-hover: "#c9a6fb"
+      ha-switch-checked-thumb-background-color: "#1b1c25"
+      ha-switch-checked-thumb-background-color-hover: "#1b1c25"
+      ha-switch-checked-thumb-border-color: "#1b1c25"
+      ha-switch-checked-thumb-border-color-hover: "#1b1c25"
+      ha-switch-background-color: "#44475a"
+      ha-switch-background-color-hover: "#4d5068"
+      ha-switch-border-color: "#44475a"
+      ha-switch-thumb-background-color: "#b6b9d3"
+      ha-switch-thumb-border-color: "#b6b9d3"
 
       red-color: "#ff5555"
       deep-orange-color: "#ff5555"
@@ -162,6 +187,19 @@ Nocturne:
       switch-checked-track-color: "#644ac9"
       switch-unchecked-button-color: "#5a5478"
       switch-unchecked-track-color: "#cfcfde"
+      ha-switch-checked-background-color: "#644ac9"
+      ha-switch-checked-background-color-hover: "#7058d0"
+      ha-switch-checked-border-color: "#644ac9"
+      ha-switch-checked-border-color-hover: "#7058d0"
+      ha-switch-checked-thumb-background-color: "#fffcf2"
+      ha-switch-checked-thumb-background-color-hover: "#fffcf2"
+      ha-switch-checked-thumb-border-color: "#fffcf2"
+      ha-switch-checked-thumb-border-color-hover: "#fffcf2"
+      ha-switch-background-color: "#cfcfde"
+      ha-switch-background-color-hover: "#c4c4d6"
+      ha-switch-border-color: "#cfcfde"
+      ha-switch-thumb-background-color: "#5a5478"
+      ha-switch-thumb-border-color: "#5a5478"
 
       red-color: "#cb3a2a"
       deep-orange-color: "#cb3a2a"
