@@ -71,6 +71,37 @@ All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), an
   cd secrets && agenix --rekey -i /path/to/valid/identity
   ```
 
+## Home Assistant (Nexus)
+
+Read this before touching Home Assistant (https://home.matteopacini.me, `services.home-assistant` on Nexus). Half of it lives in this repo; the other half lives only in HA's state directory. Work out which half a change belongs to before you start.
+
+**In this repo, under `hosts/Nexus/services/home-assistant/`.** These need a commit and a deploy:
+- `default.nix`:
+  - Integrations: `extraComponents`, and `customComponents` for anything packaged here.
+  - Frontend modules: `customLovelaceModules`.
+  - YAML config under `config`: command_line sensors, template helpers, YAML automations, and the YAML-mode Overview dashboard.
+  - Blueprints, and the `www` symlinks.
+- `themes/`: the Nocturne theme (`nocturne.yaml`) and its motion script. The header links the design system artifact.
+- `cards/`: custom cards written for this HA, including the house floorplan on Home > Home. See `cards/README.md` for where the floorplan's layout lives and how to add sensors to it.
+- `blueprints/automation/`, `patches/`.
+
+**Only in HA (`/var/lib/hass/.storage` and `/var/lib/hass/*.yaml`).** These are edited live in the UI or over the websocket API. They are not in git and need no deploy:
+- Every UI dashboard and its cards, including the floorplan card's YAML.
+- UI automations (`automations.yaml`), plus scenes, scripts and UI helpers.
+- Integration config entries.
+- The sidebar order and the default theme.
+
+**Gotchas:**
+- **Public repo.** Keep house-specific data in HA, not here. This covers the floorplan layout and the budget figures.
+- **Frontend changes and the cache.** After a deploy, a change to a theme, card or module only shows after a hard refresh (Ctrl+Shift+R). The service worker serves the old index until then. Module versions are content hashes, so URLs change with each edit.
+- **Card styling uses UIX.** card-mod is gone from nixpkgs. Theme styling only applies while UIX has a config entry (added in the UI) and the theme sets `uix-theme`.
+- **Live config goes through the user's browser.** Read or change it with Claude in Chrome on the HA site:
+  - `document.querySelector("home-assistant").hass`
+  - `hass.connection.sendMessagePromise({ type: "lovelace/config", ... })`
+  - That `hass` object is a snapshot, so read it again after every await.
+  - The HA MCP server only sees entities exposed to Assist, which is not all of them.
+- **Deploys are the user's.** Commit and push when asked, then wait for them to say it is deployed before checking it live.
+
 ## Where to Find Things
 
 | What | Where |
@@ -88,4 +119,6 @@ All hosts use agenix secrets: Nexus holds the bulk (services, disk keyfiles), an
 | Nexus storage docs | `docs/nexus/` |
 | CI/CD | `.github/workflows/` |
 | Auto-deploy (comin, `deploy` branch) | `docs/auto-deploy-handbook.md` |
+| Home Assistant (what is in the repo vs only in HA) | "Home Assistant (Nexus)" above; `hosts/Nexus/services/home-assistant/` |
+| Home Assistant custom cards (house floorplan: where its layout lives, how to add sensors) | `hosts/Nexus/services/home-assistant/cards/README.md` |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |

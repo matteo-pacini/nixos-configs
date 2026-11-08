@@ -40,6 +40,19 @@ let
         install -Dm644 ${./themes/nocturne-motion.js} $out/nocturne-motion.js
       '';
 
+  # The layered house plan on Home > Home (lights, heating pills, doors). The
+  # card is generic; the house layout and entity ids live in the card's YAML in
+  # .storage. See ./cards/README.md before changing either.
+  nocturneFloorplan =
+    pkgs.runCommand "nocturne-floorplan"
+      {
+        pname = "nocturne-floorplan";
+        version = builtins.substring 0 12 (builtins.hashFile "sha256" ./cards/nocturne-floorplan.js);
+      }
+      ''
+        install -Dm644 ${./cards/nocturne-floorplan.js} $out/nocturne-floorplan.js
+      '';
+
   # Served at /local/nocturne-fonts/ and loaded by the theme's uix-fonts block,
   # so the frontend never fetches fonts from a third-party CDN.
   nocturneFonts = pkgs.linkFarm "nocturne-fonts" (
@@ -232,6 +245,7 @@ in
       clock-weather-card
       universal-remote-card
       nocturneMotion
+      nocturneFloorplan
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
       # ./editor.js, so both must land in the merged lovelace module dir.
       # No other module here ships an editor.js, so the buildEnv merge is safe.
