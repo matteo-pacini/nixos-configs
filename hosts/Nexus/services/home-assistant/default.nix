@@ -53,6 +53,18 @@ let
         install -Dm644 ${./cards/nocturne-floorplan.js} $out/nocturne-floorplan.js
       '';
 
+  # A medicine's last month as a calendar with its streak, on the Meds
+  # dashboard. Reads the "taken today" sensors' daily statistics.
+  nocturneMeds =
+    pkgs.runCommand "nocturne-meds"
+      {
+        pname = "nocturne-meds";
+        version = builtins.substring 0 12 (builtins.hashFile "sha256" ./cards/nocturne-meds.js);
+      }
+      ''
+        install -Dm644 ${./cards/nocturne-meds.js} $out/nocturne-meds.js
+      '';
+
   # Served at /local/nocturne-fonts/ and loaded by the theme's uix-fonts block,
   # so the frontend never fetches fonts from a third-party CDN.
   nocturneFonts = pkgs.linkFarm "nocturne-fonts" (
@@ -246,6 +258,7 @@ in
       universal-remote-card
       nocturneMotion
       nocturneFloorplan
+      nocturneMeds
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
       # ./editor.js, so both must land in the merged lovelace module dir.
       # No other module here ships an editor.js, so the buildEnv merge is safe.

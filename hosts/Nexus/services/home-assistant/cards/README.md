@@ -8,6 +8,23 @@ every change gets a new resource URL and browsers stop using a cached copy.
 After a deploy, hard-refresh the browser (Ctrl+Shift+R). The service worker
 keeps serving the old frontend index until then.
 
+## nocturne-meds
+
+One card per medicine on the Meds dashboard (`dashboard-meds`, History
+section). It draws the last 30 days as a Monday-first calendar, with the
+current streak, the best streak in the window and how many days were taken.
+The config keys are documented at the top of `nocturne-meds.js`.
+
+- **Data.** Past days come from the "taken today" sensor's daily long-term
+  statistics, which the recorder never purges. Today comes from its live
+  state. A day counts when its daily *mean* is above zero (a small threshold),
+  not its max: the sensor resets at midnight, so the max of every day after a
+  dose is 1 as well.
+- **Streak.** The run of taken days ending today, or ending yesterday while
+  today's dose is not logged yet. It is worked out from the data each time it
+  is drawn, so nothing has to run at midnight and a restart cannot break it.
+- **Redesign.** https://claude.ai/artifact/CeCqB9X7gFgtZ8aG7Erm9U
+
 ## nocturne-floorplan
 
 This card is the layered house plan on **Home > Home** (dashboard
