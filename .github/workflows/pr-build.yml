@@ -108,9 +108,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # Linux builds stay on ubuntu-24.04: on 26.04 this step's apt purge fails with
-      # "E: Solver timed out" (nothing-but-nix v10).
-      - uses: wimpysworld/nothing-but-nix@v10
+      # Linux builds stay on ubuntu-24.04: on 26.04 this step's apt purge failed with
+      # "E: Solver timed out" under nothing-but-nix v10; v12 is untested there.
+      - uses: wimpysworld/nothing-but-nix@v12
         if: ${{ matrix.os == 'ubuntu-24.04' || matrix.os == 'ubuntu-24.04-arm' }}
         with:
           hatchet-protocol: "rampage"
