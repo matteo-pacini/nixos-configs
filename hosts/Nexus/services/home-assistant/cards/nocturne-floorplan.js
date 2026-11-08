@@ -19,18 +19,21 @@
 //     - name: Ground
 //       width: 1797
 //       x0: -21                      # optional: draw left of 0 (detached rooms)
+//       y0: -9                       # optional: draw above 0 (names outside)
 //       labels: [{ text: Patio, at: [-2.8, 30.5], rotate: -90 }]
 //       rooms:
 //         - name: Kitchen
 //           poly: [[5.6, 4.9], [45.5, 4.9], ...]
 //           label: [8, 11]
+//           label_arrow: [[51, -2], [51, 4]]  # optional: from, to (wide only)
 //           pill: [25, 40]           # centre of the temperature pill
 //           humidity_pill: [28, 39]  # optional; default is under the first
 //           narrow_pill: [62, 49.9]  # optional: pill position on phones (below)
 //           temperature: sensor.kitchen_temperature
 //           humidity: sensor.kitchen_humidity
 //           climate: climate.kitchen_radiator   # target and heating
-//           lights: [{ entity: switch.kitchen_1, at: [21, 60] }]  # at: default room centre
+//           lights: [{ entity: switch.kitchen_1, at: [21, 60] }]  # at: default room centre;
+//                                       # narrow_at: optional position on phones
 //           stairs: [46.5, 24, 55.4, 54.8]      # optional: x0, y0, x1, y1
 //           shell: [-21, 8.3, -5.6, 52.7]       # optional: its own outline
 //       doors: [{ entity: binary_sensor.main_door, a: [47.6, 97.6], b: [54.8, 97.6] }]
@@ -39,8 +42,8 @@
 // anticlockwise so a wide floor fills the portrait screen: what is left on the
 // plan (the garage) ends up at the bottom, and text stays upright. Room names
 // then sit at each room's top-left corner, and a room can move its pills for
-// this view with `narrow_pill` / `narrow_humidity_pill` (same coordinates as
-// the rest, before turning); without them the pills keep their usual place
+// this view with `narrow_pill` / `narrow_humidity_pill`, and a light with
+// `narrow_at` (same coordinates as the rest, before turning); without them the pills keep their usual place
 // and the humidity pill goes under the temperature one.
 //
 // Design system: https://claude.ai/artifact/LE95HYdwkCBnrbFUE9pvKY
@@ -68,9 +71,18 @@ const ICON = 32;
 const GAP = 8;
 const HOLD_MS = 500;
 const NARROW = 500;
+// Text, pills and bulbs are drawn at a scale k. Wide, k grows with the
+// plan's width in SVG units (1 up to ZOOM_UNITS), so text is the same size
+// on every floor and stays readable on a wide floor. Turned, the plan is
+// always 1040 units wide, so k is fixed.
+const ZOOM_UNITS = 1550;
+const ZOOM_NARROW = 1.15;
 
 const CSS = `
   :host {
+    /* Block, not the default inline: ResizeObserver reports an inline box
+       as 0 wide, and the narrow layout depends on it. */
+    display: block;
     --fp-void: var(--primary-background-color);
     --fp-raised: var(--input-fill-color, var(--secondary-background-color));
     --fp-card: var(--ha-card-background, var(--card-background-color));
@@ -83,11 +95,15 @@ const CSS = `
   .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 16px 0; }
   .head h2 { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--ha-font-family-heading, inherit); font-size: 16px; font-weight: 600; }
   .head h2 ha-icon { --mdc-icon-size: 18px; color: var(--fp-muted); }
-  .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--fp-raised); margin-left: auto; }
+  /* The selection is one pill behind the buttons that glides to the chosen
+     floor; the header is kept between renders so the transition can run. */
+  .seg { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; border-radius: 999px; background: var(--fp-raised); margin-left: auto; }
+  .seg::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n)); border-radius: 999px; background: var(--primary-color); transform: translateX(calc(100% * var(--i, 0))); transition: transform 280ms var(--fp-ease); }
   button { all: unset; cursor: pointer; box-sizing: border-box; }
   button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
-  .seg button { padding: 0 12px; line-height: 28px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--fp-muted); transition: background .25s var(--fp-ease), color .25s ease; }
-  .seg button[aria-pressed="true"] { background: var(--primary-color); color: var(--text-primary-color); }
+  .seg button { position: relative; padding: 0 12px; line-height: 28px; text-align: center; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--fp-muted); transition: color 280ms var(--fp-ease); }
+  .seg button[aria-pressed="true"] { color: var(--text-primary-color); }
+  @media (prefers-reduced-motion: reduce) { .seg::before, .seg button { transition: none; } }
   .layers { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px 0; }
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 8px; border-radius: 999px; background: var(--fp-raised); font-size: 12px; font-weight: 600; color: var(--fp-muted); transition: background .25s ease, color .25s ease, box-shadow .25s ease; }
   .chip ha-icon { --mdc-icon-size: 16px; }
@@ -102,8 +118,9 @@ const CSS = `
   .room.lit .fill { fill: color-mix(in srgb, var(--yellow-color) 8%, var(--fp-raised)); }
   .room .glow { opacity: 0; pointer-events: none; }
   .room.lit .glow.on { opacity: 1; }
-  .room .name, .label { fill: var(--fp-muted); font-family: var(--ha-font-family-body, inherit); font-size: 32px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; pointer-events: none; }
-  .label { font-size: 26px; letter-spacing: .3em; opacity: .6; }
+  .arrow { fill: none; stroke: var(--fp-muted); stroke-width: calc(4px * var(--k)); stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .room .name, .label { fill: var(--fp-muted); font-family: var(--ha-font-family-body, inherit); font-size: calc(32px * var(--k)); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; pointer-events: none; }
+  .label { font-size: calc(26px * var(--k)); letter-spacing: .3em; opacity: .6; }
   .room.tappable { cursor: pointer; }
   @media (hover: hover) {
     .room.tappable:hover .fill { fill: color-mix(in srgb, var(--fp-raised) 82%, var(--primary-color)); }
@@ -236,7 +253,7 @@ class NocturneFloorplan extends HTMLElement {
     const c = this._config;
     const counts = this._counts();
     const floors = c.floors.length > 1
-      ? `<div class="seg" role="group" aria-label="Floor">${c.floors.map((f, i) => `<button type="button" data-floor="${i}" aria-pressed="${i === this._floor}">${esc(f.name)}</button>`).join("")}</div>`
+      ? `<div class="seg" role="group" aria-label="Floor" style="--n: ${c.floors.length}">${c.floors.map((f, i) => `<button type="button" data-floor="${i}">${esc(f.name)}</button>`).join("")}</div>`
       : "";
     const chips = LAYERS.map((l) => `<button class="chip" type="button" data-layer="${l.id}" aria-pressed="${this._layers.has(l.id)}" style="--c: ${l.color}"><ha-icon icon="${l.icon}"></ha-icon>${l.name} <span class="n">${counts[l.id]}</span></button>`).join("");
     // ha-card is created once and only its contents are replaced: a new
@@ -246,7 +263,15 @@ class NocturneFloorplan extends HTMLElement {
       const q = (sel) => this.shadowRoot.querySelector(sel);
       this._parts = { head: q(".head"), layers: q(".layers"), plan: q(".plan") };
     }
-    this._parts.head.innerHTML = `<h2><ha-icon icon="${esc(c.icon || "mdi:home")}"></ha-icon>${esc(c.title || "House")}</h2>${floors}`;
+    const head = `<h2><ha-icon icon="${esc(c.icon || "mdi:home")}"></ha-icon>${esc(c.title || "House")}</h2>${floors}`;
+    if (head !== this._head) {
+      this._parts.head.innerHTML = this._head = head;
+    }
+    const seg = this._parts.head.querySelector(".seg");
+    if (seg) {
+      seg.style.setProperty("--i", this._floor);
+      seg.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", i === this._floor));
+    }
     this._parts.layers.innerHTML = chips;
     this._parts.plan.innerHTML = this._plan(c.floors[this._floor]);
   }
@@ -265,10 +290,15 @@ class NocturneFloorplan extends HTMLElement {
       const [a, c] = [px([b[0], b[1]]), px([b[2], b[3]])];
       return `<rect class="${cls}" x="${Math.min(a[0], c[0])}" y="${Math.min(a[1], c[1])}" width="${Math.abs(c[0] - a[0])}" height="${Math.abs(c[1] - a[1])}" rx="28"/>`;
     };
-    const view = turn ? [-20, -20, 1040, W - X0 + 40] : [X0 - 20, -20, W - X0 + 40, 1040];
+    // y0 only widens the wide view: turned, room names are placed inside
+    // their rooms and labels outside the house are not drawn.
+    const Y0 = turn ? 0 : (floor.y0 || 0) * 10;
+    const view = turn ? [-20, -20, 1040, W - X0 + 40] : [X0 - 20, Y0 - 20, W - X0 + 40, 1040 - Y0];
+    const k = turn ? ZOOM_NARROW : Math.max(1, view[2] / ZOOM_UNITS);
     const at = (r, key) => (turn && r[`narrow_${key}`]) || (key === "humidity_pill" && turn ? null : r[key]);
     const pts = (poly) => poly.map((p) => px(p).join(",")).join(" ");
     const on = (l) => this._layers.has(l);
+    const spot = (l, r) => (turn && l.narrow_at) || l.at || centre(r.poly);
     const rooms = floor.rooms || [];
     const name = (id, fallback) => esc(this._st(id)?.attributes.friendly_name || fallback || id);
     const uid = Math.random().toString(36).slice(2, 8);
@@ -280,7 +310,7 @@ class NocturneFloorplan extends HTMLElement {
     };
     const glows = rooms.flatMap((r) => r.lights || []);
 
-    let s = `<svg viewBox="${view.join(" ")}" role="img" aria-label="${esc(floor.name)} plan">`;
+    let s = `<svg viewBox="${view.join(" ")}" style="--k: ${k}" role="img" aria-label="${esc(floor.name)} plan">`;
     // One glow per light: a dimmed light glows amber, a full one yellow.
     s += `<defs>${glows.map((l, j) => `<radialGradient id="g${uid}-${j}"><stop offset="0" style="stop-color: ${tint(l.entity)}" stop-opacity=".42"/><stop offset="1" style="stop-color: ${tint(l.entity)}" stop-opacity="0"/></radialGradient>`).join("")}`;
     rooms.forEach((r, i) => (s += `<clipPath id="c${uid}-${i}"><polygon points="${pts(r.poly)}"/></clipPath>`));
@@ -299,7 +329,7 @@ class NocturneFloorplan extends HTMLElement {
       s += `<polygon class="fill" points="${pts(r.poly)}"/>`;
       if (on("lights")) {
         for (const l of lights) {
-          const c = px(l.at || centre(r.poly));
+          const c = px(spot(l, r));
           s += `<circle class="glow${this._on(l.entity) ? " on" : ""}" clip-path="url(#c${uid}-${i})" cx="${c[0]}" cy="${c[1]}" r="300" fill="url(#g${uid}-${glows.indexOf(l)})"/>`;
         }
       }
@@ -317,8 +347,16 @@ class NocturneFloorplan extends HTMLElement {
       if (r.label) {
         // Turned, the configured corner is no longer the top-left one.
         const pts = r.poly.map(px);
-        const l = turn ? [Math.min(...pts.map((p) => p[0])) + 24, Math.min(...pts.map((p) => p[1])) + 56] : px(r.label);
+        const l = turn ? [Math.min(...pts.map((p) => p[0])) + 24, Math.min(...pts.map((p) => p[1])) + 24 + 32 * k] : px(r.label);
         s += `<text class="name" x="${l[0]}" y="${l[1]}">${esc(r.name)}</text>`;
+        if (!turn && r.label_arrow) {
+          const [a, b] = r.label_arrow.map(px);
+          const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          const [ux, uy] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+          const h = 14 * k;
+          const barb = (side) => `${b[0] - h * ux + side * h * uy},${b[1] - h * uy - side * h * ux}`;
+          s += `<path class="arrow" d="M${a} L${b} M${barb(1)} L${b} L${barb(-1)}"/>`;
+        }
       }
       s += `</g>`;
     });
@@ -339,9 +377,9 @@ class NocturneFloorplan extends HTMLElement {
           const lon = st?.state === "on";
           const na = !st || st.state === "unavailable";
           const b = lon && st.attributes.brightness != null ? Math.round(st.attributes.brightness / 2.55) : null;
-          const c = px(l.at || centre(r.poly));
+          const c = px(spot(l, r));
           // Dimmable lights go from amber at low brightness to yellow at full.
-          s += `<g class="bulb${lon ? " on" : ""}${na ? " na" : ""}" style="--bulb: ${tint(l.entity)}" data-entity="${esc(l.entity)}" role="button" tabindex="0" aria-label="${name(l.entity)} ${lon ? "on" : "off"}" transform="translate(${c[0]},${c[1]})"><circle r="58"/><path transform="translate(-34,-34) scale(2.8333)" d="${lon ? MDI.bulb : MDI.bulbOff}"/>${b != null ? `<text y="104" text-anchor="middle">${b}%</text>` : ""}</g>`;
+          s += `<g class="bulb${lon ? " on" : ""}${na ? " na" : ""}" style="--bulb: ${tint(l.entity)}" data-entity="${esc(l.entity)}" role="button" tabindex="0" aria-label="${name(l.entity)} ${lon ? "on" : "off"}" transform="translate(${c[0]},${c[1]}) scale(${k})"><circle r="58"/><path transform="translate(-34,-34) scale(2.8333)" d="${lon ? MDI.bulb : MDI.bulbOff}"/>${b != null ? `<text y="104" text-anchor="middle">${b}%</text>` : ""}</g>`;
         }
       }
     }
@@ -356,28 +394,28 @@ class NocturneFloorplan extends HTMLElement {
           const cls = h.target == null ? "" : h.now >= h.target ? " ok" : " low";
           const tgt = r.climate ? (h.off ? "off" : h.target != null ? `${h.target}°` : null) : null;
           const label = `${h.now.toFixed(1)}°` + (tgt ? ` / ${tgt}` : "");
-          s += this._pill(px(pill), `pill${h.heating ? " heat" : ""}${cls}`, more, h.heating ? MDI.fire : null, label,
+          s += this._pill(px(pill), k, `pill${h.heating ? " heat" : ""}${cls}`, more, h.heating ? MDI.fire : null, label,
             `<tspan class="now">${h.now.toFixed(1)}°</tspan>${tgt ? `<tspan class="sep"> / </tspan><tspan class="tgt">${tgt}</tspan>` : ""}`,
             `${esc(r.name)}: ${h.now.toFixed(1)}° now${h.target != null ? `, target ${h.target}°` : ""}${h.heating ? ", heating" : ""}`);
         }
         const rh = num(this._st(r.humidity));
         if (rh != null) {
           const hp = at(r, "humidity_pill");
-          const c = hp ? px(hp) : [px(pill)[0], px(pill)[1] + 64];
+          const c = hp ? px(hp) : [px(pill)[0], px(pill)[1] + 64 * k];
           const text = `${Math.round(rh)}%`;
-          s += this._pill(c, "pill rh", esc(r.humidity), MDI.water, text, text, `${esc(r.name)}: ${text} relative humidity`);
+          s += this._pill(c, k, "pill rh", esc(r.humidity), MDI.water, text, text, `${esc(r.name)}: ${text} relative humidity`);
         }
       }
     }
     return s + "</svg>";
   }
 
-  // A pill centred on `c`, sized to its text so the padding matches on both
+  // A pill centred on `c` and scaled by `k`, sized to its text so the padding matches on both
   // sides. `label` is the plain text (for the width), `body` its marked-up form.
-  _pill(c, cls, entity, icon, label, body, title) {
+  _pill(c, k, cls, entity, icon, label, body, title) {
     const lead = icon ? ICON + GAP : 0;
     const w = PAD * 2 + lead + label.length * CHAR;
-    return `<g class="${cls}" data-more="${entity}" role="button" tabindex="0" aria-label="${title}" transform="translate(${c[0] - w / 2},${c[1] - 28})"><title>${title}</title><rect width="${w}" height="56" rx="28"/>${icon ? `<path transform="translate(${PAD},12) scale(1.3333)" d="${icon}"/>` : ""}<text x="${PAD + lead}" y="39">${body}</text></g>`;
+    return `<g class="${cls}" data-more="${entity}" role="button" tabindex="0" aria-label="${title}" transform="translate(${c[0]},${c[1]}) scale(${k}) translate(${-w / 2},-28)"><title>${title}</title><rect width="${w}" height="56" rx="28"/>${icon ? `<path transform="translate(${PAD},12) scale(1.3333)" d="${icon}"/>` : ""}<text x="${PAD + lead}" y="39">${body}</text></g>`;
   }
 
   _click(e) {
@@ -388,7 +426,14 @@ class NocturneFloorplan extends HTMLElement {
     const t = e.target.closest("[data-floor],[data-layer],[data-entity],[data-more],[data-room]");
     if (!t) return;
     if (t.dataset.floor) {
-      this._floor = Number(t.dataset.floor);
+      const floor = Number(t.dataset.floor);
+      if (floor === this._floor) return;
+      this._floor = floor;
+      this._render();
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        this._parts.plan.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 280, easing: "cubic-bezier(.2, .8, .2, 1)" });
+      }
+      return;
     } else if (t.dataset.layer) {
       const l = t.dataset.layer;
       this._layers.has(l) ? this._layers.delete(l) : this._layers.add(l);

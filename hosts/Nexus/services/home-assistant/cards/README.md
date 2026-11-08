@@ -57,8 +57,17 @@ Add an entry to `floors[].rooms[]`:
 
 - `name`.
 - `poly`: the outline in floor percent.
-- `label`: the top-left of the name.
+- `label`: the left end of the name's baseline. It can sit outside the room
+  when the room is too small for its name. The Garage and the Stairs have
+  their names above their north walls. A label above the house needs the
+  floor's `y0` (negative, in y percent) to make room for it.
+- `label_arrow`: optional, `[[x, y], [x, y]]`, an arrow from the first point
+  to the second. Use it to point an outside name at its room, as the Stairs
+  name does.
 - Any sensor keys from the previous section.
+
+`label`, `label_arrow` and `y0` apply only to the wide layout. On phones, room
+names sit inside their rooms.
 
 Trace the polygon starting with the room's largest rectangle. The default light
 position and centre are the bounding box of its first four points, extended
@@ -79,8 +88,15 @@ On the current floors:
 
 - **Walls.** Rooms are inset about 1% from each other, and the house outline
   runs from 0 to 100.
+- **Zoom.** Pills, bulbs and room names are drawn at a scale `k`, so that
+  text stays readable when a wide floor shrinks to fit the card. On a wide
+  card, `k` is the plan's width in SVG units divided by 1550 (`ZOOM_UNITS`),
+  and at least 1. That makes text the same size on every floor: about 1.43
+  on the Ground floor, with the garage, and about 1.05 on the First floor.
+  On a phone, `k` is 1.15 (`ZOOM_NARROW`). The sizes below are at `k` = 1.
 - **Pills.** A pill is 56 units tall (5.6% of y). The humidity pill sits 64
   units (6.4%) below the temperature pill unless `humidity_pill` places it.
+  A temperature pill such as "20.5° / 20°" is about 255 units wide.
 - **Bulbs.** A bulb has a radius of 58 units. Its brightness text sits 104
   units below its centre.
 - **Short rooms.** Leave about 8% of y between a dimmable bulb and the pill
@@ -99,12 +115,16 @@ quarter anticlockwise, so a wide floor fills a portrait screen:
 - Pills keep their usual place, unless the room sets `narrow_pill`.
 - The humidity pill goes under the temperature pill, unless the room sets
   `narrow_humidity_pill`.
+- A light keeps its `at`, unless it sets `narrow_at`.
 - These narrow keys use the same unturned coordinates as everything else.
 - Turned, moving down the screen means *lower* x on the plan, and moving right
   means higher y.
 
-Living Room and Office use `narrow_pill` to keep their pills clear of the
-bulb. Check a layout change at phone width as well as desktop width. A Pixel
+On phones, the Kitchen stacks its pills under the upper bulb, level with the
+lower one. The Living Room puts its two pills side by side under the bulb. The
+Office moves its bulb up (`narrow_at`) to stack its pills underneath.
+
+Check a layout change at phone width as well as desktop width. A Pixel
 9 Pro Fold is about 412 px wide folded (the card is then about 380 px) and
 about 790 px unfolded. Chrome's window can't be made that narrow, so set the
 test element's width to 380px instead.
