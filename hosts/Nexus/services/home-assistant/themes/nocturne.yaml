@@ -5,6 +5,10 @@
 # Motion study; the uix-card block below is the "Lacquer" direction:
 #   https://claude.ai/artifact/N6fbU7Mxn4jxovYGMmQ8YU
 #
+# The rest of Lacquer (counting numbers, state-change ring, alert glow, slider
+# and gauge glides, touch press) lives in ./nocturne-motion.js, loaded as a
+# dashboard resource, because it needs to see values change.
+#
 # Colours come from the design system's tokens (Night = dark mode, Dawn =
 # light mode). Change a colour there first, then here, so the two stay in step.
 #

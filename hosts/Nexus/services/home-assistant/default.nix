@@ -25,6 +25,21 @@ let
         install -Dm644 ${./themes/nocturne.yaml} $out/themes/nocturne.yaml
       '';
 
+  # Nocturne's motion that needs to see values change (counting numbers, the
+  # state-change ring, alert glow, slider and gauge glides, touch press). See
+  # the header of ./themes/nocturne-motion.js.
+  nocturneMotion =
+    pkgs.runCommand "nocturne-motion"
+      {
+        pname = "nocturne-motion";
+        # A content hash, so the resource URL changes whenever the script does
+        # and browsers don't keep running a cached copy.
+        version = builtins.substring 0 12 (builtins.hashFile "sha256" ./themes/nocturne-motion.js);
+      }
+      ''
+        install -Dm644 ${./themes/nocturne-motion.js} $out/nocturne-motion.js
+      '';
+
   # Served at /local/nocturne-fonts/ and loaded by the theme's uix-fonts block,
   # so the frontend never fetches fonts from a third-party CDN.
   nocturneFonts = pkgs.linkFarm "nocturne-fonts" (
@@ -216,6 +231,7 @@ in
       button-card
       clock-weather-card
       universal-remote-card
+      nocturneMotion
       # Not in nixpkgs at all. Ships two chunks: the card lazily imports
       # ./editor.js, so both must land in the merged lovelace module dir.
       # No other module here ships an editor.js, so the buildEnv merge is safe.
