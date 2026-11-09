@@ -52,8 +52,6 @@
       # Other
       telegram-desktop
       whatsie
-      # Music
-      jellyfin-tui
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
       # Gaming

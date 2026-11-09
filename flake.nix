@@ -105,7 +105,7 @@
     #######
     # Hex #
     #######
-    hex.url = "github:anomalyco/hex/v3.2.0";
+    hex.url = "github:anomalyco/hex/v3.3.0";
     # Must share the system's glibc: Mesa's Vulkan drivers load into Hex's
     # process, and an older glibc leaves it with no GPU adapter.
     hex.inputs.nixpkgs.follows = "nixpkgs";

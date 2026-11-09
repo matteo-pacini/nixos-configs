@@ -14,7 +14,7 @@ stdenvNoCC.mkDerivation {
   # URL, so the hash fails until it is updated here.
   src = fetchurl {
     url = "https://github.com/anomalyco/hex/releases/download/v${version}/hex-${version}-macos-arm64.zip";
-    hash = "sha256-0pa5MbVzUHGaatzPSuJQ9bH70dVMN4WbzKio7w80Fu8=";
+    hash = "sha256-HCjWoeeQMj7xmbSBvJIx5q2OcKF4W+hJE+Cnvwpuuzk=";
   };
 
   nativeBuildInputs = [ unzip ];

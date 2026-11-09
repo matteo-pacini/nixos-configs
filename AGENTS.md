@@ -58,7 +58,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **Per-host CPU overlays** in `overlays/<host>.nix` (e.g. `znver4`, `apple-m4`). Shared overlays live in `overlays/shared.nix`.
 - **Darwin hosts** get extra modules NixOS hosts do not: `mac-app-util`, `custom.xcode` (Xcode from attic-cached `.xip` archives), and `nix-homebrew`.
 - **Shared Home Manager modules** are loaded on all hosts via `homeManagerModules.default` in `flake.nix`.
-- **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_1`.
+- **Kernel:** `modules/nixos/kernel.nix` sets `linuxPackages_7_3`.
 
 ## Secrets
 

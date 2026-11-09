@@ -22,8 +22,6 @@
     # Development
     gh
     rotate-github-key
-    # Music
-    jellyfin-tui
     # Window Management
     loopwm
   ];

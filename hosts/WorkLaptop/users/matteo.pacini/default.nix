@@ -24,8 +24,6 @@
     rotate-github-key
     # Window Management
     loopwm
-    # Music
-    jellyfin-tui
   ];
 
   custom.nvf.enable = true;
