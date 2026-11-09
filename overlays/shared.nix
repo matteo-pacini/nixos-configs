@@ -136,6 +136,19 @@
     # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
     opencode = masterPkgs.opencode;
 
+    # cargoSetupHook now makes aws-lc-sys, zstd-sys, libsqlite3-sys and onig
+    # link system libraries (NixOS/nixpkgs#537108), which codex does not list.
+    # Same inputs as the upstream fix.
+    # WAIT-FOR unstable: NixOS/nixpkgs#584667
+    codex = super.codex.overrideAttrs (old: {
+      buildInputs = old.buildInputs ++ [
+        super.aws-lc
+        super.oniguruma
+        super.sqlite
+        super.zstd
+      ];
+    });
+
     # nixpkgs ships 0.1.10; 0.1.11 stopped mods freezing the window while they
     # load and run. overrideAttrs keeps the cargo and Zig vendors of the old
     # version, so both are re-fetched here. Tests added since 0.1.10 need what
@@ -171,6 +184,12 @@
         preCheck = old.preCheck + ''
           export FONTCONFIG_FILE=${super.makeFontsConf { fontDirectories = [ super.dejavu_fonts ]; }}
         '';
+        # cargoSetupHook now makes zstd-sys link the system zstd through
+        # pkg-config (NixOS/nixpkgs#537108); nixpkgs only gives pkg-config on
+        # Linux and no zstd at all. Its 0.1.13 bump, NixOS/nixpkgs#584646,
+        # adds both.
+        nativeBuildInputs = old.nativeBuildInputs ++ [ super.pkg-config ];
+        buildInputs = old.buildInputs ++ [ super.zstd ];
         nativeCheckInputs = old.nativeCheckInputs ++ [
           super.curl
           super.git

@@ -16,22 +16,6 @@ in
   linuwux-runtime = super.callPackage ../packages/linuwux-runtime.nix { };
   plymouth-brightfalls = super.callPackage ../packages/plymouth-brightfalls { };
 
-  # GDM 50.2's hardened pam_gdm rejects any kernel-keyring payload whose last
-  # byte is not NUL — but systemd deliberately strips that trailing NUL from
-  # the LUKS passphrase it caches (ask-password-api.c, add_to_keyring). Result:
-  # autologin no longer unlocks the login keyring on this LUKS+autologin host
-  # (worked on gdm 50.1). See the patch header for the full write-up.
-  # Upstream: https://gitlab.gnome.org/GNOME/gdm/-/issues/1091
-  # Fixed upstream in gdm 50.3, but nixpkgs is still on 50.2. Drop this
-  # override (and patches/gdm/) once nixos-unstable ships gdm >= 50.3 — check
-  # the journal for "gkr-pam: ... unlocked keyring" after a clean boot without it.
-  # WAIT-FOR version: gdm >= 50.3
-  gdm = super.gdm.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [
-      ../patches/gdm/001-pam-gdm-accept-unterminated-cached-passphrase.patch
-    ];
-  });
-
   qemu = optimizedForBrightFalls (
     super.qemu.override ({
       hostCpuTargets = [
