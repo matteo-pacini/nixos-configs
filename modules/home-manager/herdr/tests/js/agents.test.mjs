@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mock, calls } from "herdr";
-import { APPS, atPrompt, fromShell, agentVersion, restartAgent } from "../../lib/agents.js";
+import { APPS, atPrompt, fromShell, agentVersion, restartAgent, typeAtPrompt } from "../../lib/agents.js";
 
 // `hc get --json` shapes, as hc reports them (paths trimmed).
 const shellAtPrompt = { pid: 71910, argv: ["zsh", "-l"], foreground: { pid: 71910, argv: ["zsh", "-l"] } };
@@ -110,4 +110,31 @@ test("restartAgent: refuses an agent that is the terminal's own program", async 
   await restartAgent("t1", APPS["claude-code"], "sess-1");
   assert.deepEqual(errors, ["it isn't running from a shell"]);
   assert.equal(calls.some(([n, a]) => n === "hc" && a[0] === "send"), false, "never told it to quit");
+});
+
+test("typeAtPrompt: waits for the prompt, then types the agent quoted", async () => {
+  const shellStarting = { pid: 71910, argv: ["zsh"], foreground: null };
+  const gets = [shellStarting, shellAtPrompt];
+  mock({
+    hc: (args) => (args[0] === "get" ? { code: 0, stdout: JSON.stringify(gets.shift()) } : { code: 0, stdout: "", stderr: "" }),
+    exec: () => ({ code: 0 }),
+  });
+  await typeAtPrompt("nexus/t7", ["claude", "--model", "it's"], "Claude Code");
+  const hcCalls = calls.filter((c) => c[0] === "hc").map((c) => c[1]);
+  assert.deepEqual(hcCalls, [
+    ["get", "nexus/t7", "--json"],
+    ["get", "nexus/t7", "--json"],
+    ["send", "nexus/t7", "claude --model 'it'\\''s'"],
+  ]);
+});
+
+test("typeAtPrompt: never types into a terminal that isn't at a prompt", async () => {
+  mock({
+    hc: (args) => (args[0] === "get" ? { code: 0, stdout: JSON.stringify(agentIsProgram) } : { code: 0 }),
+    exec: () => ({ code: 0 }),
+    notify: () => null,
+  });
+  await typeAtPrompt("t9", ["codex"], "Codex");
+  assert.equal(calls.some((c) => c[0] === "hc" && c[1][0] === "send"), false);
+  assert.equal(calls.filter((c) => c[0] === "notify").length, 1);
 });

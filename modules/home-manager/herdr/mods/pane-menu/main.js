@@ -7,7 +7,8 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, props, closeOverlay, openOverlay, theme, keys, terminals, panes, knownAgents, shared, setShared } from "herdr";
+import { run, props, closeOverlay, openOverlay, theme, keys, terminals, panes, knownAgents, shared, setShared, notify, exec } from "herdr";
+import { typeAtPrompt } from "./lib/agents.js";
 
 // The agents each machine last reported, so the split menu fills at once
 // while knownAgents() checks again.
@@ -47,12 +48,26 @@ function paneItems(target) {
   ];
 }
 
-// The new pane starts in the split one's current folder.
+// The new pane is a shell in the split one's current folder. An agent is typed
+// at its prompt rather than run as the pane's program, so it gets what the
+// shell sets up there (direnv's dev shell) and leaves the shell when it exits.
 function splitItems(split, agents) {
-  const open = (argv) => () => run("pane.split", { direction: split.direction, pane: split.pane, ...(argv ? { argv } : {}) });
+  const open = () => run("pane.split", { direction: split.direction, pane: split.pane });
+  // terminals() lists the split's terminal a moment after pane.split returns.
+  const start = (a) => async () => {
+    const before = new Set(terminals().map((t) => t.address));
+    open();
+    let address;
+    for (let i = 0; i < 50 && !address; i++) {
+      address = terminals().find((t) => !before.has(t.address))?.address;
+      if (!address) await exec("sleep", ["0.1"]);
+    }
+    if (address) await typeAtPrompt(address, a.run, a.name);
+    else notify({ title: `Couldn't start ${a.name}`, body: "the split has no terminal", level: "error" });
+  };
   return [
-    { label: "Shell", icon: "terminal", act: open(null) },
-    ...agents.map((a, i) => ({ label: a.name, agent: a, sep: i === 0, act: open(a.run) })),
+    { label: "Shell", icon: "terminal", act: open },
+    ...agents.map((a, i) => ({ label: a.name, agent: a, sep: i === 0, act: start(a) })),
   ];
 }
 
@@ -90,11 +105,17 @@ export default class PaneMenu extends View {
     return p.split ? splitItems(p.split, (this.agents ?? []).filter((a) => a.installed)) : paneItems(p.target ?? {});
   }
 
-  choose(i) {
+  // An act that returns a promise keeps the menu open until it settles:
+  // closing the overlay cancels the mod's unfinished work.
+  async choose(i) {
     const it = this.items()[i];
-    if (!it) return;
-    closeOverlay(props()?.overlay);
-    it.act();
+    if (!it || this.busy) return;
+    this.busy = true;
+    try {
+      await it.act();
+    } finally {
+      closeOverlay(props()?.overlay);
+    }
   }
 
   render(cx) {

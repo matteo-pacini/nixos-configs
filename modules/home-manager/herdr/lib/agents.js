@@ -76,6 +76,30 @@ export const atPrompt = (t) => t.foreground?.pid === t.pid && isShell(t.foregrou
 export const fromShell = (t) => isShell(t.argv) && Boolean(t.foreground) && (t.foreground.pid !== t.pid
   || (isShell(t.foreground.argv) && /;\s*exec\s+\S*sh\b[^;]*$/.test(t.foreground.argv.at(-1))));
 
+// Bare words stay bare, so the typed line reads as a person would type it.
+const quote = (a) => (/^[\w@%+=:,./#-]+$/.test(a) ? a : `'${a.replace(/'/g, "'\\''")}'`);
+
+/** Types `argv` at the prompt of `address`, a terminal whose program is an
+ *  interactive shell, once the shell is up. The agent then starts as if typed
+ *  by hand: after the shell's startup and prompt hooks (direnv's dev shell),
+ *  and it leaves the shell behind when it exits. Failures are shown as a
+ *  notification. */
+export async function typeAtPrompt(address, argv, name) {
+  try {
+    let up = false;
+    for (let i = 0; i < 40 && !up; i++) {
+      const r = await hc(["get", address, "--json"]);
+      up = r.code === 0 && atPrompt(JSON.parse(r.stdout));
+      if (!up) await exec("sleep", ["0.25"]);
+    }
+    if (!up) throw new Error("its shell didn't start");
+    const r = await hc(["send", address, argv.map(quote).join(" ")]);
+    if (r.code !== 0) throw new Error(r.stderr.trim());
+  } catch (e) {
+    notify({ title: `Couldn't start ${name}`, body: String(e.message ?? e), level: "error" });
+  }
+}
+
 /** Quits the agent in `address`, answers the prompt quitting can raise (when
  *  its screen shows `app.asks`) with Enter, waits for its shell's prompt, then
  *  resumes `session` with the version now on PATH. Failures are shown as a
