@@ -261,6 +261,8 @@
             age.secrets."nexus/restic-env".file = ./secrets/nexus/restic-env.age;
             age.secrets."nexus/restic-password".file = ./secrets/nexus/restic-password.age;
             age.secrets."nexus/route53-env".file = ./secrets/nexus/route53-env.age;
+            age.secrets."nexus/fuel-finder".file = ./secrets/nexus/fuel-finder.age;
+            age.secrets."nexus/fuel-finder-station".file = ./secrets/nexus/fuel-finder-station.age;
             age.secrets."nexus/fpnas-sync-key" = {
               file = ./secrets/nexus/fpnas-sync-key.age;
               owner = "fabrizio"; # fpnas-sync runs as fabrizio so pulled files get its ownership

@@ -46,6 +46,8 @@ in
   "nexus/grafana-secret-key.age".publicKeys = [ nexus ];
   "nexus/zigbee2mqtt.env.age".publicKeys = [ nexus ];
   "nexus/n8n-env.age".publicKeys = [ nexus ];
+  "nexus/fuel-finder.age".publicKeys = [ nexus ];
+  "nexus/fuel-finder-station.age".publicKeys = [ nexus ];
   "nexus/ssh-mesh-ca.age".publicKeys = [ nexus ];
 
   # WorkLaptop service secrets

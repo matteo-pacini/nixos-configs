@@ -7,6 +7,7 @@
     ./jellyfin.nix
     ./backup.nix
     ./fpnas-sync.nix
+    ./fuel-price
     ./nzbget.nix
     ./nzbhydra.nix
     ./radarr.nix

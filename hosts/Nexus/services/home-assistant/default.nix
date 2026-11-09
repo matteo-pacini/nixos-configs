@@ -356,6 +356,46 @@ in
             scan_interval = 5;
           };
         }
+        # Written by the fuel-price services (../fuel-price). Pence per litre.
+        {
+          sensor = {
+            name = "Fuel Price E10 Local";
+            unique_id = "fuel_price_e10_local";
+            command = "${pkgs.coreutils}/bin/cat /var/lib/fuel-price/e10.json";
+            value_template = "{{ value_json.price }}";
+            json_attributes = [
+              "changed"
+              "station"
+            ];
+            unit_of_measurement = "p/L";
+            state_class = "measurement";
+            icon = "mdi:gas-station";
+            scan_interval = 600;
+          };
+        }
+        {
+          # State is this month's projected spend; the attributes feed the
+          # fuel cost chart on the car view.
+          sensor = {
+            name = "Car Fuel Cost Estimate";
+            unique_id = "car_fuel_cost_estimate";
+            command = "${pkgs.coreutils}/bin/cat /var/lib/fuel-price/cost.json";
+            value_template = "{{ value_json.estimate_month }}";
+            json_attributes = [
+              "price"
+              "offset"
+              "km_per_month"
+              "l_per_100km"
+              "months"
+              "estimates"
+              "prices"
+            ];
+            unit_of_measurement = "GBP";
+            device_class = "monetary";
+            icon = "mdi:cash";
+            scan_interval = 600;
+          };
+        }
       ];
 
       # Parallel export to VictoriaMetrics, which speaks the InfluxDB v1 line
@@ -411,6 +451,10 @@ in
           "writeable"
           "dataCorrect"
           "dayname"
+          # sensor.car_fuel_cost_estimate's chart data; lists, not samples.
+          "months"
+          "estimates"
+          "prices"
         ];
         include = {
           domains = [
