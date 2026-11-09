@@ -396,6 +396,26 @@ in
             scan_interval = 600;
           };
         }
+        {
+          # State is the cheapest E10 among the stations we compare; the
+          # attributes carry every station's E10 and E5 for the price chart.
+          sensor = {
+            name = "Fuel Prices Nearby";
+            unique_id = "fuel_prices_nearby";
+            command = "${pkgs.coreutils}/bin/cat /var/lib/fuel-price/compare.json";
+            value_template = "{{ value_json.cheapest_e10 }}";
+            json_attributes = [
+              "stations"
+              "e10_station"
+              "cheapest_e5"
+              "e5_station"
+            ];
+            unit_of_measurement = "p/L";
+            state_class = "measurement";
+            icon = "mdi:gas-station-outline";
+            scan_interval = 600;
+          };
+        }
       ];
 
       # Parallel export to VictoriaMetrics, which speaks the InfluxDB v1 line
@@ -451,10 +471,12 @@ in
           "writeable"
           "dataCorrect"
           "dayname"
-          # sensor.car_fuel_cost_estimate's chart data; lists, not samples.
+          # Chart data on sensor.car_fuel_cost_estimate and
+          # sensor.fuel_prices_nearby; lists, not samples.
           "months"
           "estimates"
           "prices"
+          "stations"
         ];
         include = {
           domains = [

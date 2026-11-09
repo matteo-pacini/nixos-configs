@@ -1,14 +1,16 @@
 """Fuel price poller and monthly fuel cost model for the HA car view.
 
-fuel-price poll   Fetch one station's E10 price from the UK Fuel Finder API
-                  and write it to $STATE_DIRECTORY/e10.json.
+fuel-price poll   Fetch prices from the UK Fuel Finder API: our station's E10
+                  to $STATE_DIRECTORY/e10.json, and E10 and E5 at the
+                  stations we compare to $STATE_DIRECTORY/compare.json.
 fuel-price cost   Work out per-month fuel spend and a projection from the
                   car's history in VictoriaMetrics, and write it to
                   $STATE_DIRECTORY/cost.json.
 
 Credentials come from systemd credentials: "fuel-finder" holds
 FUEL_FINDER_CLIENT_ID and FUEL_FINDER_CLIENT_SECRET, "fuel-finder-station"
-holds FUEL_FINDER_NODE_ID.
+holds FUEL_FINDER_NODE_ID and FUEL_FINDER_COMPARE, a ";"-separated list of
+"node_id=label" in the order the chart shows them.
 """
 
 import calendar
@@ -72,6 +74,7 @@ def credential(name):
 def poll():
     creds = credential("fuel-finder") | credential("fuel-finder-station")
     node = creds["FUEL_FINDER_NODE_ID"]
+    compare = dict(item.split("=", 1) for item in creds["FUEL_FINDER_COMPARE"].split(";"))
     token = json.loads(http(
         f"{API}/oauth/generate_access_token",
         json.dumps({
@@ -82,17 +85,18 @@ def poll():
     ))["data"]["access_token"]
 
     out = STATE / "e10.json"
+    out_compare = STATE / "compare.json"
     since = STATE / "since"
     started = dt.datetime.now(UTC)
     params = {}
     # Ask only for prices changed since the last run. e10.json is rewritten
     # only when the station shows up, so once a day without a change this
     # falls back to the full snapshot (about 17 batches) to resync.
-    if out.exists() and since.exists() and time.time() - out.stat().st_mtime < DAY:
+    if out.exists() and out_compare.exists() and since.exists() and time.time() - out.stat().st_mtime < DAY:
         start = dt.datetime.fromisoformat(since.read_text()) - dt.timedelta(minutes=5)
         params["effective-start-timestamp"] = start.strftime("%Y-%m-%d %H:%M:%S")
 
-    found = None
+    found = {}
     batch = 1
     while True:
         query = urllib.parse.urlencode({"batch-number": batch, **params})
@@ -110,20 +114,46 @@ def poll():
         if not rows:
             break
         for row in rows:
-            if row.get("node_id") == node:
-                found = row
+            if row.get("node_id") in compare or row.get("node_id") == node:
+                found[row["node_id"]] = row
         batch += 1
         time.sleep(2.1)  # the API rate-limits bursts; stay above 2 s apart
 
-    if found:
-        e10 = next(p for p in found["fuel_prices"] if p["fuel_type"] == "E10")
+    if node in found:
+        e10 = next(p for p in found[node]["fuel_prices"] if p["fuel_type"] == "E10")
         write_json(out, {
             "price": e10["price"],
             "changed": e10["price_change_effective_timestamp"],
-            "station": found["trading_name"],
+            "station": found[node]["trading_name"],
         })
     elif not params:
         sys.exit(f"station {node} not in the full snapshot")
+
+    # An incremental run only returns the stations whose prices changed, so
+    # merge into the previous file.
+    known = {}
+    if params and out_compare.exists():
+        known = {s["node"]: s for s in json.loads(out_compare.read_text())["stations"]}
+    for node_id, row in found.items():
+        if node_id in compare:
+            fuels = {p["fuel_type"]: p["price"] for p in row["fuel_prices"]}
+            old = known.get(node_id, {})
+            known[node_id] = {
+                "node": node_id,
+                "e10": fuels.get("E10", old.get("e10")),
+                "e5": fuels.get("E5", old.get("e5")),
+            }
+    stations = [
+        {**known.get(node_id, {"node": node_id, "e10": None, "e5": None}), "name": label}
+        for node_id, label in compare.items()
+    ]
+    summary = {"stations": stations}
+    for fuel in ("e10", "e5"):
+        priced = [s for s in stations if s[fuel] is not None]
+        best = min(priced, key=lambda s: s[fuel]) if priced else None
+        summary[f"cheapest_{fuel}"] = best and best[fuel]
+        summary[f"{fuel}_station"] = best and best["name"]
+    write_json(out_compare, summary)
     since.write_text(started.isoformat())
 
 
