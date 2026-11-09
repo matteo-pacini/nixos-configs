@@ -179,7 +179,8 @@ in
       # feed URL and its API key live in .storage and stay out of this repo.
       "remote_calendar"
       # Holds the stock the prepping cards count (todo.food_stockpile,
-      # todo.water_stockpile); the cards can also create these lists.
+      # todo.water_stockpile, todo.cat_stockpile); the cards can also create
+      # these lists.
       "local_todo"
     ];
     customComponents = with pkgs.home-assistant-custom-components; [
@@ -274,19 +275,19 @@ in
           runHook postInstall
         '';
       })
-      # Not in nixpkgs. One file with the budget sankey, the food and water
-      # stockpile and the meds streak cards. Their data stays out of this
-      # public repository: the budget figures are configured on the card in
+      # Not in nixpkgs. One file with the budget sankey, the food, water and
+      # cat food stockpile and the meds streak cards. Their data stays out of
+      # this public repository: the budget figures are configured on the card in
       # .storage, and the stock lives in the Local To-do lists above.
       (pkgs.stdenvNoCC.mkDerivation rec {
         pname = "zp-cards";
-        version = "1.0.0";
+        version = "1.1.0";
 
         src = pkgs.fetchFromGitHub {
           owner = "matteo-pacini";
           repo = "ZPCards";
           tag = "v${version}";
-          hash = "sha256-URkaVFkJBNTpLTQIlFcTzNNhHZNc+sVP4Cgjn/dpMO0=";
+          hash = "sha256-dXpwQWLP5cHtfdHie/TViMSehU8WBU2yhsnkNk5qXS0=";
         };
 
         installPhase = ''
