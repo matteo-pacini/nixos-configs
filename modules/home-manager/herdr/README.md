@@ -71,38 +71,6 @@ symlinks, and activation copies each enabled mod into
   `enabledMods` in `workbench.nix`, and to `layout.nix` if it takes a place in
   the layout. New files must be `git add`ed before a build sees them.
 
-## Teleport
-
-Right-click a space in `space-cards` (the `space-menu` mod) → **Teleport to ›**
-a machine. The space's branch becomes a git worktree there, and a shell opens
-in a new space on that worktree. It is a move: this side goes back to the
-default branch, or a linked worktree is removed. The logic is in
-`lib/teleport.js`, the dialog is `mods/teleport`.
-
-- **Direction.** It only runs from this computer to another machine, or from
-  another machine back to this one. Every git transfer runs here over SSH, by
-  the machine's hc name (its mesh alias). The target needs a clone at the same
-  path relative to home, with the same `origin`.
-- **Uncommitted files.** With "Bring them along", they are snapshotted with a
-  throwaway index, sent as `refs/herdr/teleport/<branch>`, and laid over the
-  new worktree unstaged. Here they go to a stash named `herdr-teleport
-  <branch>`.
-- **Refused.** It refuses a branch already checked out there, and a branch
-  there with commits this one lacks (the push or fetch is fast-forward only).
-  A failure before the worktree exists leaves this side untouched.
-- **The dialog** lists each step as it runs: saving the files, sending the
-  branch, making the worktree, opening its space, then this side. It stays
-  open until this side is done, because closing it would stop the move.
-- **Afterwards** both sides are ordinary spaces: the worktree nests under its
-  repo there like any other, and nothing marks it as teleported. A toast says
-  where it went (click it to select the new space); a problem on this side
-  after the move comes as a warning toast instead.
-- **Old marks.** Earlier versions recorded each move in
-  `git config branch.<b>.herdrTeleportFrom` and `.herdrTeleportTo`. Nothing
-  reads them now, and teleporting that branch unsets both, on both sides.
-- **Not moved:** agents, and the Claude conversation. The dialog says how many
-  agents stay behind.
-
 ## The layout
 
 `layouts/workbench.json` is a snapshot of herdr-app's shipped `main` layout.

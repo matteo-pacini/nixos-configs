@@ -97,7 +97,6 @@ let
   ++ lib.optionals cfg.workbench.spaceCards.enable [
     "space-cards"
     "space-menu"
-    "teleport"
   ];
 
   workbenchLayout = pkgs.writeText "workbench.json" (
@@ -139,9 +138,8 @@ in
     spaceCards.enable = lib.mkEnableOption ''
       the `space-cards` Spaces list in the workbench layout, in place of the shipped one:
       each machine a card with its device icon, OS and connection state, each space
-      with its branch badge, ahead/behind the default branch, and a worktree badge;
-      its right-click menu (`space-menu`) adds Teleport, which moves a space's branch
-      to a worktree on another machine (`teleport`)
+      with its branch badge, ahead/behind the default branch, and a worktree badge,
+      and its right-click menu (`space-menu`)
     '';
   };
 
