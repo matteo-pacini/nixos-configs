@@ -1,7 +1,7 @@
 # Agent instructions: herdr module
 
 How to change this module: its mods, their look, how they're tested and how they
-reach the app. Architecture (files, terminal labels, Teleport, the layout) is
+reach the app. Architecture (files, terminal labels, the layout) is
 in [README.md](README.md); read it first. Repo-wide rules are in the root
 `AGENTS.md`.
 
@@ -20,8 +20,6 @@ The **Herdr** design canvas is the visual reference:
   - Spaces sidebar (`space-cards`);
   - Agents and pane headers (`agent-list`, `pane-header`);
   - Menus and dialogs.
-- Its **Teleport** page holds every built state: menus, sidebar, the
-  dialog, and the flow of what runs where.
 - Its **Side panels** page holds an overview of `fleet` and `nixpkgs-prs`,
   then a section per `fleet` part, each in every state: Deploy, Watch, and
   its menus and dialogs.
@@ -63,7 +61,7 @@ Rules the mods follow, and new ones should too:
 - **Fixed meanings:**
   - `ansi2` is ahead, connected or OK;
   - `ansi3` is behind or a caution;
-  - `ansi5` is Teleport;
+  - `ansi5` is a linked worktree;
   - `blocked` is an error or "needs you";
   - `working`, `done` and `idle` are agent states only;
   - branch names are mono in `accent`.
@@ -78,8 +76,6 @@ Rules the mods follow, and new ones should too:
     button is `solid`; the secondary is `raised` with an `input` border.
   - Icons: 14 in menus, 12 in rows.
   - Fonts: UI is the settings' UI font (Geist); branches and paths are mono.
-- **Known outlier:** the `teleport` dialog uses a 13 px title, 30/r7 buttons
-  and a pink primary. Align it the next time it changes.
 - **Copy:** plain words, sentence case, no exclamation marks. A disabled item
   says why in its hint ("needs you", "asleep").
 
@@ -113,8 +109,7 @@ each new test break the code once and watch the test fail before trusting it.
    - `herdr`, `gpui-kit` and `gpui-base` resolve to stubs.
    - `mock({ exec, hc, … })` installs handlers, and `calls` records every call.
      A herdr function with no handler throws.
-   - Test command sequences and their order. `tests/js/teleport.test.mjs`
-     asserts nothing changes on the source before the target succeeds.
+   - Test command sequences and their order.
    - Use real input shapes: capture `hc get --json` or a Codex rollout line
      rather than inventing one.
 2. **Script tests** (`tests/scripts/run.sh`). They run the hook scripts as
@@ -172,14 +167,13 @@ Gotchas from doing this:
 - **Store machine names, not null, in data another machine reads.** "null =
   this computer" means something different on each machine.
 - **`space.new` from a mod: name the machine.** Left out, `machine` is the
-  focused space's machine, not this computer. Pass `""` for this computer, as
-  `mods/teleport` does.
+  focused space's machine, not this computer. Pass `""` for this computer.
 - **Closing an overlay ends its tasks.** A `cx.spawn` started by a dialog
   stops when the dialog closes, so a dialog that runs a job closes itself only
-  once the job is done (`mods/teleport`).
+  once the job is done.
 - **`exec` limits.** It has a 30 s limit and no stdin. Wrap anything that
   needs a pipe, an env var or a temp index in `sh -c`, as the
-  `lib/teleport.js` scripts do.
+  `lib/agents.js` `INSTALLED` script does.
 
 ## Activation
 

@@ -149,6 +149,15 @@
       ];
     });
 
+    # `hc send --no-submit` pastes without pressing Enter, so pane-menu's "Add
+    # herdr context" leaves the text for the person to finish. Every machine
+    # whose agents get it needs this: an hc without it ignores the flag and
+    # presses Enter. Not proposed upstream yet.
+    # WAIT-FOR manual: none (checked 2026-11-10)
+    herdr-core = super.herdr-core.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [ ../patches/herdr-core/001-send-no-submit.patch ];
+    });
+
     # nixpkgs ships 0.1.10; 0.1.11 stopped mods freezing the window while they
     # load and run. overrideAttrs keeps the cargo and Zig vendors of the old
     # version, so both are re-fetched here. Tests added since 0.1.10 need what

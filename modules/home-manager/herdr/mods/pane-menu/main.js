@@ -1,14 +1,17 @@
 // The terminal right-click menu of the workbench layout (its `terminal_menu`):
-// the shipped `menu` mod's pane items, plus Rename for an agent, and splits
-// that open a second menu choosing what runs in the new pane: a shell (the
-// default, first and selected) or an agent installed on the pane's machine.
+// the shipped `menu` mod's pane items, plus Rename for an agent; for an idle
+// Claude Code, Codex or opencode, Add herdr context, whose second menu picks
+// how much of herdr to tell it about (lib/context.js); and splits that open a
+// second menu choosing what runs in the new pane: a shell (the default, first
+// and selected) or an agent installed on the pane's machine.
 // Props from the app: { tab: "pane", target: { pane, terminal }, overlay }; the
-// second menu gets { split: { direction, pane } }.
+// second menus get { context: { terminal, pane } } or { split: { direction, pane } }.
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, props, closeOverlay, openOverlay, theme, keys, terminals, panes, knownAgents, shared, setShared, notify, exec } from "herdr";
-import { typeAtPrompt } from "./lib/agents.js";
+import { run, props, closeOverlay, openOverlay, theme, keys, terminals, panes, knownAgents, shared, setShared, notify, exec, hc, agents, spaces, machines } from "herdr";
+import { APPS, typeAtPrompt } from "./lib/agents.js";
+import { LEVELS, contextPrompt, others } from "./lib/context.js";
 
 // The agents each machine last reported, so the split menu fills at once
 // while knownAgents() checks again.
@@ -35,6 +38,10 @@ function paneItems(target) {
       ? [{ label: "Rename", icon: "square-pen", act: () => openOverlay({ mod: "agent-list", kind: "dialog", width: 380, height: 220,
           props: { rename: term.address, value: term.labels?.["agent.name"] ?? "" } }) }]
       : []),
+    ...(term && APPS[pane?.app] && READY.has(pane.status)
+      ? [{ label: "Add herdr context", icon: "layers", hint: "▸", act: () => openOverlay({ mod: "pane-menu", kind: "popup", width: 220,
+          height: LEVELS.length * ROW + 10, props: { context: { terminal: term.address, pane: target.pane } } }) }]
+      : []),
     split("right"),
     split("down"),
     { label: "Zoom", icon: "square", hint: shortcut("pane.zoom"), act: () => run("pane.zoom", { pane: target.pane }) },
@@ -46,6 +53,34 @@ function paneItems(target) {
     ...(parent ? [{ label: `Send back to ${parent.name || parent.address}`, icon: "terminal", act: () => run("terminal.park", { terminal: term.address }) }] : []),
     { label: "Close pane", icon: "x", sep: true, hint: shortcut("pane.close"), act: () => run("pane.close", { pane: target.pane }) },
   ];
+}
+
+// An agent takes a paste only while it waits for the person.
+const READY = new Set(["idle", "done"]);
+
+// The levels' popup: each hint counts the other agents its context lists.
+function contextItems({ terminal, pane }) {
+  const self = agents().find((a) => a.address === terminal);
+  const offline = machines().filter((m) => m.layout === "unavailable").length;
+  return LEVELS.map((l) => {
+    const n = self ? others(l.key, self, agents(), spaces()).length : 0;
+    const count = n ? `${n} agent${n === 1 ? "" : "s"}` : "none";
+    return { label: l.label, icon: l.icon, hint: l.key === "everywhere" && offline ? `${count} · ${offline} offline` : count,
+      act: () => addContext(terminal, pane, l.key) };
+  });
+}
+
+// Pastes the context without pressing Enter (`hc send --no-submit`, carried as
+// a patch in overlays/shared.nix), so the person types the task after it.
+async function addContext(terminal, pane, level) {
+  const fail = (body) => notify({ title: "Couldn't add herdr context", body, level: "error" });
+  const self = agents().find((a) => a.address === terminal);
+  if (!self || !READY.has(self.status)) return fail(`${terminal} is ${self?.status ?? "gone"}`);
+  const host = (await exec("uname", ["-n"])).stdout.trim();
+  const text = contextPrompt({ level, self, agents: agents(), spaces: spaces(), names: (m) => m ?? host, now: new Date() });
+  const r = await hc(["send", terminal, text, "--no-submit"]);
+  if (r.code !== 0) return fail(r.stderr.trim());
+  run("pane.focus", { pane });
 }
 
 // The new pane is a shell in the split one's current folder. An agent is typed
@@ -102,6 +137,7 @@ export default class PaneMenu extends View {
 
   items() {
     const p = props() ?? {};
+    if (p.context) return contextItems(p.context);
     return p.split ? splitItems(p.split, (this.agents ?? []).filter((a) => a.installed)) : paneItems(p.target ?? {});
   }
 
