@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 let
   setupArrDatabases = pkgs.writeShellScriptBin "setup-arr-databases" ''
     set -euo pipefail
@@ -37,6 +37,8 @@ in
       "sonarr-log"
       "grafana"
       "n8n"
+      # ZPMyFitnessCards, owned by hass below.
+      "zp_my_fitness"
     ];
     ensureUsers = [
       {
@@ -69,6 +71,13 @@ in
       }
     ];
   };
+
+  # ensureDBOwnership only works when the role and database share a name.
+  # Home Assistant connects over the socket as the hass Unix user, so peer
+  # auth gives it the hass role, which must own this database.
+  systemd.services.postgresql-setup.postStart = lib.mkAfter ''
+    psql -tAc 'ALTER DATABASE "zp_my_fitness" OWNER TO hass;'
+  '';
 
   services.postgresqlBackup = {
     enable = true;

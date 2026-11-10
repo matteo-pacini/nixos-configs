@@ -232,6 +232,21 @@ in
           python-dateutil
         ];
       })
+      # Food diary and weight tracking, with its own cards, which it loads
+      # itself. Set up in the UI on Postgres: postgresql://@/zp_my_fitness,
+      # the database made in ../postgresql.nix.
+      (pkgs.buildHomeAssistantComponent rec {
+        owner = "matteo-pacini";
+        domain = "zp_my_fitness";
+        version = "0.1.0";
+
+        src = pkgs.fetchFromGitHub {
+          inherit owner;
+          repo = "ZPMyFitnessCards";
+          tag = "v${version}";
+          hash = "sha256-fvhhs2ck6rrqldk+e5MECIVO8Km+JWqHmu5SFSXMkU4=";
+        };
+      })
       scheduler
       uix
     ];
