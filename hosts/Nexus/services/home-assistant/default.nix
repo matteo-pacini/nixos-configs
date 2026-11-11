@@ -240,13 +240,13 @@ in
       (pkgs.buildHomeAssistantComponent rec {
         owner = "matteo-pacini";
         domain = "fork_and_scale";
-        version = "0.4.0";
+        version = "0.4.1";
 
         src = pkgs.fetchFromGitHub {
           inherit owner;
           repo = "fork-and-scale";
           tag = "v${version}";
-          hash = "sha256-nvQMnOFio7uXbxjhX7beY2IwDDG2sjZ3KOELUE6dxAw=";
+          hash = "sha256-BU5JSSy3TTxu5eG/1la0HNMeLbSyBXXXnWQUVDX/hDQ=";
         };
       })
       scheduler
