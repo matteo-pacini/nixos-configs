@@ -4,6 +4,9 @@
   ...
 }:
 with lib.hm.gvariant;
+let
+  audioOutputCycle = pkgs.callPackage ./audio-output-cycle.nix { };
+in
 {
   xdg.configFile."monitors.xml".source = ../../monitors.xml;
 
@@ -42,6 +45,17 @@ with lib.hm.gvariant;
     "org/gnome/mutter" = {
       check-alive-timeout = mkUint32 10000;
       edge-tiling = false;
+    };
+    # Replaces any custom shortcuts added in Settings.
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/audio-output-cycle/"
+      ];
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/audio-output-cycle" = {
+      name = "Cycle audio output";
+      command = lib.getExe audioOutputCycle;
+      binding = "<Shift><Super>o";
     };
     "org/gnome/desktop/notifications" = {
       # Explicit true, not removed: Home Manager never resets dropped dconf keys.
