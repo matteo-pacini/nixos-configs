@@ -37,7 +37,8 @@ in
       "sonarr-log"
       "grafana"
       "n8n"
-      # ZPMyFitnessCards, owned by hass below.
+      # Fork & Scale (named after its old name, ZPMyFitnessCards), owned by
+      # hass below.
       "zp_my_fitness"
     ];
     ensureUsers = [
