@@ -129,6 +129,10 @@ let
           # output would fall back to the default sink, which can be the
           # other surround sink, and the two would feed each other.
           "node.dont-fallback" = true;
+          # Without linger, WirePlumber destroys a dont-fallback stream whose
+          # target is missing, and the filter-chain module (sink included)
+          # unloads with it.
+          "node.linger" = true;
         };
       };
     };
