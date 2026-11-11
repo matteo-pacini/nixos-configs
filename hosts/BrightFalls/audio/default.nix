@@ -1,6 +1,6 @@
-_:
-{
+_: {
   imports = [
+    ./surround.nix
   ];
   services.pulseaudio.enable = false;
 
@@ -71,10 +71,9 @@ _:
   #                             follow behaviour so an off-list rate (e.g.
   #                             192 kHz) cleanly resamples to 96 kHz instead
   #                             of being attempted on hardware that can't.
-  # api.alsa.use-acp = false    Skip alsa-card-profile (mixers, profile
-  #                             switching) — Modi 2 is a single stereo output;
-  #                             raw ALSA passthrough is simpler and avoids
-  #                             ACP-side conversions.
+  #
+  # The remaining rules trim the output picker down to the Modi and the
+  # surround sinks in surround.nix.
   services.pipewire.wireplumber.extraConfig."50-alsa-config" = {
     "monitor.alsa.rules" = [
       {
@@ -88,7 +87,60 @@ _:
             "audio.format" = "S24LE";
             "audio.rate" = 0;
             "audio.allowed-rates" = "44100,48000,88200,96000";
-            "api.alsa.use-acp" = false;
+            "node.description" = "Modi 2 (Stereo)";
+          };
+        };
+      }
+      {
+        matches = [
+          {
+            "device.name" = "alsa_card.usb-Schiit_Audio_USB_Modi_Device-00";
+          }
+        ];
+        actions = {
+          "update-props" = {
+            "device.description" = "Modi 2";
+            "device.profile-set" = "${./profile-sets/modi.conf}";
+            "api.acp.disable-pro-audio" = true;
+          };
+        };
+      }
+      {
+        matches = [
+          {
+            "device.name" = "~alsa_card.usb-Generic_Blue_Microphones.*";
+          }
+        ];
+        actions = {
+          "update-props" = {
+            "device.profile-set" = "${./profile-sets/blue.conf}";
+            "api.acp.disable-pro-audio" = true;
+          };
+        };
+      }
+      # Default input whenever it is plugged in: ALSA gives USB inputs equal
+      # priority, so without this the BRIO webcam ties with it.
+      {
+        matches = [
+          {
+            "node.name" = "~alsa_input.usb-Generic_Blue_Microphones.*";
+          }
+        ];
+        actions = {
+          "update-props" = {
+            "priority.session" = 3000;
+          };
+        };
+      }
+      # GPU HDMI/DP audio: the dGPU (Navi 21) and the iGPU.
+      {
+        matches = [
+          { "device.name" = "alsa_card.pci-0000_07_00.1"; }
+          { "device.name" = "alsa_card.pci-0000_0a_00.1"; }
+        ];
+        actions = {
+          "update-props" = {
+            "device.disabled" = true;
           };
         };
       }
