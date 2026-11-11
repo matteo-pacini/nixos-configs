@@ -69,6 +69,14 @@ in
           # `hex settings apply` rejects the whole file over one such key.
           settings = settings // {
             enable_on_launch = true;
+            # A named microphone is opened as a raw ALSA device, which locks
+            # PipeWire out of it whenever Hex grabs it first (e.g. after a
+            # USB re-plug). System default records through PipeWire instead.
+            microphone = "system-default";
+            # A held PipeWire stream dies silently when the default source
+            # is unplugged and Hex never reopens it; opening the microphone
+            # per dictation picks up whatever the default is at the time.
+            release_microphone_while_idle = true;
           };
         };
       })
