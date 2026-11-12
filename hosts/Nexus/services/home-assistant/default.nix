@@ -232,21 +232,21 @@ in
           python-dateutil
         ];
       })
-      # Fork & Scale: food diary and weight tracking, with its own cards, which
-      # it loads itself. Set up in the UI on Postgres:
+      # Metron: food diary and weight tracking, with its own cards, which it
+      # loads itself. Set up in the UI on Postgres:
       # postgresql://@/zp_my_fitness, the database made in ../postgresql.nix.
       # The database keeps its name from when the integration was called
       # ZPMyFitnessCards; a new name would start from an empty database.
       (pkgs.buildHomeAssistantComponent rec {
         owner = "matteo-pacini";
-        domain = "fork_and_scale";
-        version = "0.4.1";
+        domain = "metron";
+        version = "0.5.0";
 
         src = pkgs.fetchFromGitHub {
           inherit owner;
-          repo = "fork-and-scale";
+          repo = "metron";
           tag = "v${version}";
-          hash = "sha256-BU5JSSy3TTxu5eG/1la0HNMeLbSyBXXXnWQUVDX/hDQ=";
+          hash = "sha256-uzv1xZ6ocXM4Pr6ZCq9YwrHj7fF5QyQTtyWzU5/TsF4=";
         };
       })
       scheduler

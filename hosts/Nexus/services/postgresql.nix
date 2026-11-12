@@ -37,8 +37,8 @@ in
       "sonarr-log"
       "grafana"
       "n8n"
-      # Fork & Scale (named after its old name, ZPMyFitnessCards), owned by
-      # hass below.
+      # Metron (named after its old name, ZPMyFitnessCards), owned by hass
+      # below.
       "zp_my_fitness"
     ];
     ensureUsers = [
