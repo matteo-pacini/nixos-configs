@@ -30,5 +30,7 @@ in
   supportedFeatures = [
     "big-parallel"
     "benchmark"
+    # vmTools builds (legion-kvm's guest userspace) boot a VM.
+    "kvm"
   ];
 }
