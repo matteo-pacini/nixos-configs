@@ -52,6 +52,8 @@
   };
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.timeout = 30;
+  # /tmp is on the root disk, not tmpfs; tmpfiles' 10d age rule alone lets it grow to 20G+.
+  boot.tmp.cleanOnBoot = true;
 
   # System Packages
 
