@@ -42,6 +42,11 @@ in
   custom.legion-kvm = {
     enable = true;
     users = [ "matteo" ];
+    # DP-1, the primary monitor (monitors.xml).
+    resolution = {
+      width = 2560;
+      height = 1440;
+    };
   };
 
   services.ananicy = lib.mkIf (config.programs.steam.enable) {
