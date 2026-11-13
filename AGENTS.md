@@ -103,3 +103,4 @@ The short version:
 | Home Assistant topic docs: Zigbee watchdog, blueprints, heating, dashboards, metrics, working on the live half | `hosts/Nexus/services/home-assistant/docs/` (indexed in the `AGENTS.md` above) |
 | Home Assistant custom cards (house floorplan: where its layout lives, how to add sensors) | `hosts/Nexus/services/home-assistant/cards/README.md` |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |
+| legion-kvm (Proton in a KVM guest on BrightFalls: build decisions, bumping upstream and Proton) | `packages/legion-kvm/AGENTS.md`; module: `modules/nixos/legion-kvm.nix` |
