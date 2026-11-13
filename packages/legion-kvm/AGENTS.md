@@ -44,15 +44,40 @@ into derivations:
   `proton.nix` installs real files instead of store symlinks, because legion
   shares Proton into the guest over virtiofs.
 - **vmTools gets stock QEMU.** The overlay entry passes it in, because
-  BrightFalls' znver4 QEMU can't run on Nexus.
+  BrightFalls' znver4 QEMU can't run on Nexus. The guest build VM is sized
+  (8 GiB, 4 vCPUs) to fit the GitHub runner that builds BrightFalls in CI.
+- **The Cargo lock files are copied in** (`Cargo.lock`, `nvidia-Cargo.lock`),
+  so evaluating BrightFalls doesn't need to fetch the upstream source first.
 - **The final package uses `dontFixup`**, so Nix's fixup can't rewrite the
   Debian tree in `guest/usr`.
+- **The launcher makes its session copies writable**
+  (`launcher-writable-copies.patch`). Each launch copies `guest/usr` with
+  `cp -a`, which keeps the store's 0555 modes, then writes the repaired
+  `ntdll.dll` into it. `cp --no-preserve=mode` would drop execute bits.
+  `legion doctor` and `cpu-check` don't copy, so only a real launch shows
+  this.
+- **Launcher-only changes live in `rust.nix` `static`**: the patch above and
+  the `game.rs` substitutions (resolution, default memory, default
+  fullscreen). Changing them rebuilds only the launcher and the final
+  package, not the guest.
 - **Game resolution is patched in.** Upstream hardcodes the AMD path's guest
   display at 1920x1080. `src/game.rs` writes it to `kms.json`, which becomes
-  QEMU's virtio-gpu `xres`/`yres`, and `LEGION_FULLSCREEN=1` only scales
-  that mode up. `rust.nix` substitutes the module's `resolution` (default
-  1920x1080; BrightFalls sets 2560x1440) into the static launcher only, so
-  changing it doesn't rebuild the guest. Upstream caps it at 3840x2160.
+  QEMU's virtio-gpu `xres`/`yres`. `rust.nix` substitutes the module's
+  `resolution` (default 1920x1080; BrightFalls sets 2560x1440). Upstream caps
+  it at 3840x2160. The NVIDIA path keeps 1920x1080. The QEMU window is
+  resizable, and QEMU passes its size to the guest as the new preferred mode.
+  A windowed 2560x1440 gets shrunk to the desktop's work area, so a
+  desktop-sized resolution needs `fullscreen` (BrightFalls sets it).
+- **vCPUs can be pinned to the host topology** (`pinVcpus`; BrightFalls on).
+  Upstream mirrors the host's socket/core/SMT shape in `-smp` but leaves
+  vCPU threads floating. `launcher-vcpu-affinity.patch` makes the AMD
+  path's launcher set `LEGION_VCPU_AFFINITY`: the host CPU for each vCPU, in
+  QEMU's cpu_index order. `qemu-vcpu-affinity.patch` makes each vCPU thread
+  pin itself to its entry. QEMU always carries its patch, which does nothing
+  without the variable, so toggling the option rebuilds only the launcher.
+- **The default guest memory is patched** to the module's `memoryMiB`
+  (upstream 12288; BrightFalls 16384). The launcher refuses to start unless
+  MemAvailable covers it plus 2048 MiB.
 - **The refresh rate is patched in too.** No vblank paces the guest: virtio-gpu
   page flips complete when the host takes the frame, and QEMU's SDL window
   swaps with interval 0. But the guest display's EDID advertises QEMU's
@@ -64,6 +89,30 @@ into derivations:
   DisplayID block once the pixel clock reaches 655.36 MHz (2560x1440 from
   about 128 Hz).
 
+## Our changes to upstream
+
+| Where | Change | Applied |
+|---|---|---|
+| `launcher-writable-copies.patch` | `chmod -R u+w` the launcher's session copies | always |
+| `launcher-vcpu-affinity.patch` | launcher sets `LEGION_VCPU_AFFINITY` | `pinVcpus` |
+| `qemu-vcpu-affinity.patch` | vCPU threads pin themselves from `LEGION_VCPU_AFFINITY` | always (inert without it) |
+| `rust.nix` substitution, `src/game.rs` | game display size | always (`resolution`) |
+| `rust.nix` substitution, `src/game.rs`, `src/main.rs` | default `LEGION_MEMORY_MIB` | always (`memoryMiB`) |
+| `rust.nix` substitution, `src/game.rs` | fullscreen unless `LEGION_FULLSCREEN` is set to something other than 1 | `fullscreen` |
+| `qemu.nix` substitution, `hw/display/edid-generate.c` | EDID fallback refresh rate | always (`refreshRate`) |
+
+Environment variables read at launch:
+
+| Variable | Effect |
+|---|---|
+| `LEGION_FULLSCREEN` | `1` fullscreen; anything else windowed (default from `fullscreen`) |
+| `LEGION_MEMORY_MIB` | guest memory, 4096–65536 (default from `memoryMiB`) |
+| `LEGION_RENDER_NODE` | DRM render node, for hosts with several GPUs |
+| `LEGION_STARTUP_UI` | `auto`, `window`, `log` or `off` startup feedback |
+| `LEGION_DISPLAY_BACKEND` | NVIDIA only: `auto`, `wayland` or `xwayland` |
+| `MANGOHUD` | `1` turns on MangoHud in the guest |
+| `LEGION_VCPU_AFFINITY` | ours, internal: set by the launcher for QEMU, not by hand |
+
 ## Building
 
 Prefer building on Nexus: `--max-jobs 0 --builders @/etc/nix/machines`. The
@@ -72,7 +121,9 @@ advertises.
 
 ## Bumping upstream
 
-1. Update `rev`, `version` and `hash` in `source.nix`.
+1. Update `rev`, `version` and `hash` in `source.nix`, and copy upstream's
+   `Cargo.lock` and `backends/nvidia/Cargo.lock` over `Cargo.lock` and
+   `nvidia-Cargo.lock`.
 2. Diff upstream between the old and new rev, and mirror any changes:
 
    | Upstream file | Update here |
@@ -82,7 +133,7 @@ advertises.
    | `build-support/Containerfile` | `debian-packages.nix`, then regenerate the closures |
    | `tools/build_runtime.py` | the matching derivation from the Layout table |
    | `src/runtime.rs` (`Manifest`) | the `runtime.json` fields in `default.nix` |
-   | `src/game.rs` (`kms.json` size) | the resolution substitution in `rust.nix`. `--replace-fail` breaks the build if the line changes; drop it if upstream adds a setting |
+   | `src/game.rs`, `src/runtime.rs`, `src/main.rs` | `launcher-writable-copies.patch` and the `rust.nix` substitutions. A failed patch or `--replace-fail` breaks the build; drop a substitution if upstream adds a setting for it |
 
 QEMU and virglrenderer come from nixpkgs, at the versions upstream pins.
 `qemu.nix` asserts the QEMU version. virglrenderer has no assert, and it must
