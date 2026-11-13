@@ -147,8 +147,37 @@ nix build --impure -f packages/legion-kvm/debs-update.nix -o debs
 cp debs/debs-*.nix packages/legion-kvm/
 ```
 
+## Known gaps
+
+- **No keyboard or mouse on the AMD path** (upstream `0c0dee7`). QEMU gets no
+  input device the guest can use (the guest kernel has `VIRTIO_INPUT` and
+  `EVDEV`, but no PS/2), and the guest compositor's KMS mode
+  (`crates/guest-compositor/src/kms.rs`) never reads input. Upstream's
+  input forwarding exists only on the NVIDIA path. A fullscreen window still
+  grabs the host keyboard, which then reaches nothing; Ctrl+Alt+G releases
+  it. BrightFalls keeps `fullscreen` on anyway, because windowed, a
+  desktop-sized `resolution` gets shrunk to the work area (see Decisions).
+- **No controllers** on either path: no gamepad events in the display
+  channel, and no USB, HID or joystick support in the guest kernel.
+
 ## Verifying
 
 On the host: `legion doctor`, then `legion cpu-check`, which boots the
 guest. In the `guest` output, `usr-manifest.json`'s
 `optional_tool_dependencies_absent_in_full_baseline` should be empty.
+
+`legion graphics-benchmark --seconds 5` runs vkcube through the same QEMU
+display path as games. It renders uncapped, so the cube appears to spin
+erratically on screen. That's expected.
+
+Tested end to end with The Darkness Recomp (non-Steam) on 2026-11-13: display
+at 2560x1440 and audio work, input doesn't (above). Its launch command:
+
+```bash
+legion run --proton <GE-Proton11-11 compat tool> --prefix <new dir> \
+  --game-root <game> -- <game>/build_native/Release/DarkRecomp.exe \
+  --game-dir 'Z:\<game path>\Darkness'
+```
+
+Legion starts the app in the exe's folder, not the game root. The guest
+mirrors host paths, so `Z:\` plus the host path reaches the game's files.
