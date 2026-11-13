@@ -47,6 +47,12 @@ into derivations:
   BrightFalls' znver4 QEMU can't run on Nexus.
 - **The final package uses `dontFixup`**, so Nix's fixup can't rewrite the
   Debian tree in `guest/usr`.
+- **Game resolution is patched in.** Upstream hardcodes the AMD path's guest
+  display at 1920x1080. `src/game.rs` writes it to `kms.json`, which becomes
+  QEMU's virtio-gpu `xres`/`yres`, and `LEGION_FULLSCREEN=1` only scales
+  that mode up. `rust.nix` substitutes the module's `resolution` (default
+  1920x1080; BrightFalls sets 2560x1440) into the static launcher only, so
+  changing it doesn't rebuild the guest. Upstream caps it at 3840x2160.
 
 ## Building
 
@@ -66,6 +72,7 @@ advertises.
    | `build-support/Containerfile` | `debian-packages.nix`, then regenerate the closures |
    | `tools/build_runtime.py` | the matching derivation from the Layout table |
    | `src/runtime.rs` (`Manifest`) | the `runtime.json` fields in `default.nix` |
+   | `src/game.rs` (`kms.json` size) | the resolution substitution in `rust.nix`. `--replace-fail` breaks the build if the line changes; drop it if upstream adds a setting |
 
 QEMU and virglrenderer come from nixpkgs, at the versions upstream pins.
 `qemu.nix` asserts the QEMU version. virglrenderer has no assert, and it must

@@ -12,11 +12,19 @@
   vmTools,
   glibc,
   virtiofsd,
+  # Guest display mode for games on the AMD path. Upstream accepts up to
+  # 3840x2160.
+  resolution ? {
+    width = 1920;
+    height = 1080;
+  },
 }:
+assert resolution.width >= 64 && resolution.width <= 3840;
+assert resolution.height >= 64 && resolution.height <= 2160;
 let
   legionSource = callPackage ./source.nix { };
   proton = callPackage ./proton.nix { };
-  rust = callPackage ./rust.nix { inherit legionSource; };
+  rust = callPackage ./rust.nix { inherit legionSource resolution; };
   kernel = callPackage ./kernel.nix { inherit legionSource; };
   qemu = callPackage ./qemu.nix { inherit legionSource; };
   wine = callPackage ./wine.nix { inherit legionSource proton; };
