@@ -169,6 +169,8 @@ in
       }
 
       (lib.mkIf cfg.workbench.enable {
+        # pane-menu's "Copy herdr context" runs wl-copy from the app's PATH.
+        home.packages = lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.wl-clipboard;
 
         # Copied, not linked: the app writes its typings (gpui-kit.d.ts,
         # jsconfig.json) into each mod folder, and a copy can be edited live, the
