@@ -100,6 +100,7 @@ into derivations:
 | `rust.nix` substitution, `src/game.rs`, `src/main.rs` | default `LEGION_MEMORY_MIB` | always (`memoryMiB`) |
 | `rust.nix` substitution, `src/game.rs` | fullscreen unless `LEGION_FULLSCREEN` is set to something other than 1 | `fullscreen` |
 | `qemu.nix` substitution, `hw/display/edid-generate.c` | EDID fallback refresh rate | always (`refreshRate`) |
+| `rust.nix` substitution, `src/native_context.rs` | QEMU `-display sdl,gl=es` instead of `gl=on`: the desktop scanout path imports frames as `GL_TEXTURE_EXTERNAL_OES`, which Mesa only supports in GLES, so `gl=on` showed a black window | always |
 
 Environment variables read at launch:
 

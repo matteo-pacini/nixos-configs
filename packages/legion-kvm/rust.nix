@@ -85,6 +85,14 @@
           '.unwrap_or_else(|_| "${toString memoryMiB}".into())'
       substituteInPlace src/main.rs --replace-fail \
         'the default is 12288.' 'the default is ${toString memoryMiB}.'
+      # The desktop scanout path (games, graphics-benchmark) imports guest
+      # frames as GL_TEXTURE_EXTERNAL_OES, which Mesa supports only in GLES
+      # contexts; with gl=on QEMU's window context is desktop GL and the window
+      # stays black ("Bad t->Target in _mesa_test_texobj_completeness").
+      # QEMU's own blit shaders are GLSL ES 3.00 either way.
+      substituteInPlace src/native_context.rs \
+        --replace-fail '"sdl,gl=on,full-screen=on"' '"sdl,gl=es,full-screen=on"' \
+        --replace-fail '"sdl,gl=on".to_owned()' '"sdl,gl=es".to_owned()'
     ''
     + lib.optionalString fullscreen ''
       substituteInPlace src/game.rs --replace-fail \
