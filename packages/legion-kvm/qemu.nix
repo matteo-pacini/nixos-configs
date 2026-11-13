@@ -20,12 +20,20 @@
   virglrenderer,
   zlib,
   legionSource,
+  refreshRate,
 }:
 assert qemu.version == "11.1.2";
 stdenv.mkDerivation {
   pname = "legion-kvm-qemu";
   inherit (qemu) version src;
   patches = [ "${legionSource.src}/patches/qemu-runtime.patch" ];
+  # The guest display's EDID takes its refresh rate from the UI frontend, and
+  # SDL never supplies one, so QEMU always falls back to 75 Hz.
+  postPatch = ''
+    substituteInPlace hw/display/edid-generate.c --replace-fail \
+      'info->refresh_rate ? info->refresh_rate : 75000' \
+      'info->refresh_rate ? info->refresh_rate : ${toString (refreshRate * 1000)}'
+  '';
   nativeBuildInputs = [
     python3Packages.python
     python3Packages.distlib

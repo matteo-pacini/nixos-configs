@@ -53,6 +53,16 @@ into derivations:
   that mode up. `rust.nix` substitutes the module's `resolution` (default
   1920x1080; BrightFalls sets 2560x1440) into the static launcher only, so
   changing it doesn't rebuild the guest. Upstream caps it at 3840x2160.
+- **The refresh rate is patched in too.** No vblank paces the guest: virtio-gpu
+  page flips complete when the host takes the frame, and QEMU's SDL window
+  swaps with interval 0. But the guest display's EDID advertises QEMU's
+  fallback of 75 Hz, because SDL never passes a refresh rate. That caps any
+  game or limiter that follows the display's refresh rate. `qemu.nix`
+  substitutes the module's `refreshRate` for that fallback (default 75;
+  BrightFalls sets 144). The mode is the EDID's preferred timing either way,
+  so the guest kernel lists it first. That's a base-EDID timing, or a
+  DisplayID block once the pixel clock reaches 655.36 MHz (2560x1440 from
+  about 128 Hz).
 
 ## Building
 
