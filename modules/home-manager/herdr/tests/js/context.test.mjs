@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { contextPrompt, others } from "../../lib/context.js";
+import { mock, calls } from "herdr";
+import { contextPrompt, copy, others } from "../../lib/context.js";
 
 // agents() and spaces() entries, trimmed to the fields the prompt reads.
 const agent = (address, app, space, tab, status) => ({
@@ -84,4 +85,16 @@ test("alone: says so, and still ends in the task", () => {
 test("an opencode agent gets an, not a", () => {
   const oc = agents.find((a) => a.address === "t4b");
   assert.match(prompt("tab", agents, oc), /^You are an opencode agent/);
+});
+
+test("copy: the text is an argument, never part of the script", async () => {
+  const text = "a `b` $(c)\nYour task: ";
+  mock({ exec: () => ({ code: 0, stdout: "", stderr: "" }) });
+  assert.equal(await copy(text), true);
+  const [, cmd, args] = calls[0];
+  assert.equal(cmd, "sh");
+  assert.equal(args.at(-1), text);
+  assert.ok(!args[1].includes(text));
+  mock({ exec: () => ({ code: 1, stdout: "", stderr: "" }) });
+  assert.equal(await copy(text), false);
 });

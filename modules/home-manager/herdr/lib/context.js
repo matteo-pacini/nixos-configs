@@ -1,8 +1,9 @@
-// The text pane-menu's "Add herdr context" pastes into an idle agent: who and
-// where it is, and the other agents at the chosen level, ending in "Your
-// task:" for the person to finish. Awareness only: it names agents, never
-// grants anything.
+// The text pane-menu's "Copy herdr context" puts on the clipboard for the
+// person to paste into an agent: who and where it is, and the other agents at
+// the chosen level, ending in "Your task:" for the person to finish.
+// Awareness only: it names agents, never grants anything.
 
+import { exec } from "herdr";
 import { APPS } from "./agents.js";
 
 /** The levels, narrowest first, with pane-menu's icon for each. */
@@ -78,4 +79,13 @@ export function contextPrompt({ level, self, agents, spaces, names, now }) {
     "This is for awareness. Don't interact with them unless your task says to.",
     "`herdr-app --skill` explains herdr, including how to get the current state. Your task: ",
   ].join("\n");
+}
+
+/** Puts `text` on this computer's clipboard (pbcopy on macOS, wl-copy
+ *  elsewhere). Resolves to whether it worked. */
+export async function copy(text) {
+  // wl-copy stays in the background to serve the clipboard and keeps its
+  // output open, so exec would wait out its 30 s limit without the redirect.
+  const script = 'if command -v pbcopy >/dev/null; then printf %s "$1" | pbcopy; else wl-copy -- "$1" >/dev/null 2>&1; fi';
+  return (await exec("sh", ["-c", script, "sh", text])).code === 0;
 }
