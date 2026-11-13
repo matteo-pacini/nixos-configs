@@ -16,7 +16,9 @@
 }:
 let
   # Debian's glibc. Guest programs built against Nix's newer glibc must not
-  # need a symbol version beyond it.
+  # need a symbol version beyond it. Only GLIBC_* versions are checked, not
+  # GCC_* ones (libgcc_s, used by Rust's unwinder); the slim step catches
+  # missing sonames but not missing symbol versions.
   debianGlibc = "2.41";
 
   image = vmTools.fillDiskWithDebs {
@@ -66,8 +68,10 @@ vmTools.runInLinuxImage (
   stdenv.mkDerivation {
     name = "legion-kvm-guest-userspace";
     diskImage = image;
-    memSize = 16384;
-    QEMU_OPTS = "-smp 8";
+    # Sized to fit a GitHub ubuntu-24.04 runner (4 vCPUs, 16 GB), which builds
+    # BrightFalls in CI.
+    memSize = 8192;
+    QEMU_OPTS = "-smp 4";
     buildCommand = ''
       set -euo pipefail
       for deb in ${toString i386Debs}; do
@@ -98,7 +102,7 @@ vmTools.runInLinuxImage (
       br.ROOT = Path('${legionSource.src}')
       br.OUT = Path('/tmp/legion')
       br.TARGET = Path('${programs}')
-      br.JOBS = 8
+      br.JOBS = 4
       br.radv(br.OUT/'sources/mesa')
       br.guest_userspace()
       PY
