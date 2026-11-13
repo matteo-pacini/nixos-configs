@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.custom.legion-kvm;
-  package = cfg.package.override { inherit (cfg) resolution; };
+  package = cfg.package.override { inherit (cfg) resolution refreshRate; };
 in
 {
   options.custom.legion-kvm = {
@@ -29,6 +29,15 @@ in
         default = 1080;
         description = "Height of the guest display that games render to.";
       };
+    };
+    refreshRate = lib.mkOption {
+      type = lib.types.ints.between 30 240;
+      default = 75;
+      description = ''
+        Refresh rate, in Hz, that the guest display advertises to games.
+        Nothing paces frames to it; it matters to games and limiters that
+        cap at the display's refresh rate.
+      '';
     };
     users = lib.mkOption {
       type = lib.types.listOf lib.types.str;

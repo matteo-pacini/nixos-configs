@@ -18,15 +18,19 @@
     width = 1920;
     height = 1080;
   },
+  # Refresh rate in Hz that the guest display's EDID advertises; 75 is QEMU's
+  # own value.
+  refreshRate ? 75,
 }:
 assert resolution.width >= 64 && resolution.width <= 3840;
 assert resolution.height >= 64 && resolution.height <= 2160;
+assert refreshRate >= 30 && refreshRate <= 240;
 let
   legionSource = callPackage ./source.nix { };
   proton = callPackage ./proton.nix { };
   rust = callPackage ./rust.nix { inherit legionSource resolution; };
   kernel = callPackage ./kernel.nix { inherit legionSource; };
-  qemu = callPackage ./qemu.nix { inherit legionSource; };
+  qemu = callPackage ./qemu.nix { inherit legionSource refreshRate; };
   wine = callPackage ./wine.nix { inherit legionSource proton; };
   guest = callPackage ./guest.nix {
     inherit

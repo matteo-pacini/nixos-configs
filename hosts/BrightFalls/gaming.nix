@@ -47,6 +47,7 @@ in
       width = 2560;
       height = 1440;
     };
+    refreshRate = 144;
   };
 
   services.ananicy = lib.mkIf (config.programs.steam.enable) {
