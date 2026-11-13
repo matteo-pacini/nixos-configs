@@ -136,19 +136,6 @@
     # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
     opencode = masterPkgs.opencode;
 
-    # cargoSetupHook now makes aws-lc-sys, zstd-sys, libsqlite3-sys and onig
-    # link system libraries (NixOS/nixpkgs#537108), which codex does not list.
-    # Same inputs as the upstream fix.
-    # WAIT-FOR unstable: NixOS/nixpkgs#584667
-    codex = super.codex.overrideAttrs (old: {
-      buildInputs = old.buildInputs ++ [
-        super.aws-lc
-        super.oniguruma
-        super.sqlite
-        super.zstd
-      ];
-    });
-
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but
     # pipewire-pulse can transiently report a card with zero profiles during
