@@ -103,6 +103,16 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
+      # legion-kvm's guest userspace builds inside a vmTools VM, which needs
+      # the kvm system feature. Nix only advertises it when /dev/kvm is
+      # accessible at startup, and the runner's node is root-only.
+      - name: Expose /dev/kvm to Nix
+        if: runner.os == 'Linux'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v35
         with:
