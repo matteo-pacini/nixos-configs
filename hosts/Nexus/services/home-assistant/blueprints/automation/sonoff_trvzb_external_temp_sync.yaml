@@ -2,9 +2,13 @@ blueprint:
   name: Sonoff TRVZB External Temperature Sensor Sync
   description: >
     Forwards a temperature sensor's value to a Sonoff TRZVB via Zigbee2MQTT.
-    On each sensor update, publishes:
+    On each sensor change, and every 30 minutes, publishes:
       {"external_temperature_input": <number>}
     to zigbee2mqtt/<TRV friendly name>/set (derived from the selected device).
+    The TRV falls back to its own sensor 2 hours after the last value, so a
+    steady room temperature needs the periodic resend. The resend stops once
+    the sensor has not reported for 2 hours, which lets that fallback happen
+    when the sensor is dead.
   domain: automation
   input:
     temp_sensor:
@@ -61,6 +65,12 @@ variables:
   _mqtt_topic: >-
     {{ _base_topic ~ '/' ~ _friendly_name ~ '/set' }}
 
+  # The TRV's own "temperature sensor select" entity
+  _select_entity: >-
+    {{ device_entities(_trv_device)
+       | select('match', '^select\..*_temperature_sensor_select$')
+       | first | default('', true) }}
+
 trigger:
   - platform: state
     entity_id: !input temp_sensor
@@ -68,25 +78,40 @@ trigger:
     not_from:
       - "unknown"
       - "unavailable"
+  # Well inside the TRV's 2 hour fallback, so a few lost resends are harmless.
+  - platform: time_pattern
+    minutes: "/30"
 
-# Only publish when we have a number and a non-empty friendly name
+# Only publish a number from a live sensor, to a non-empty friendly name
 condition:
   - condition: template
     value_template: >-
       {{ states(_temp_sensor) | float(default=None) is not none }}
+  # last_reported moves on every sensor report, including unchanged values.
+  - condition: template
+    value_template: >-
+      {{ now() - states[_temp_sensor].last_reported < timedelta(hours=2) }}
   - condition: template
     value_template: >-
       {{ _friendly_name | length > 0 }}
 
 action:
-  # Set temperature source to external (if not already set)
-  - service: mqtt.publish
-    data:
-      topic: "{{ _mqtt_topic }}"
-      qos: !input qos
-      retain: !input retain
-      payload: >-
-        {{ {'temperature_sensor_select': 'external'} | tojson }}
+  # Select the remote source only when the TRV is on its own sensor. From
+  # remote_source_offline it returns to remote_temperature by itself on the
+  # next value, and each write here costs the TRV battery.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ states(_select_entity) not in
+             ['remote_temperature', 'remote_source_offline'] }}
+    then:
+      - service: mqtt.publish
+        data:
+          topic: "{{ _mqtt_topic }}"
+          qos: !input qos
+          retain: !input retain
+          payload: >-
+            {{ {'temperature_sensor_select': 'remote_temperature'} | tojson }}
 
   # Publish the external temperature value
   - service: mqtt.publish
