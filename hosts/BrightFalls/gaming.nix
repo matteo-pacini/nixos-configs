@@ -39,6 +39,11 @@ in
     ];
   };
 
+  custom.legion-kvm = {
+    enable = true;
+    users = [ "matteo" ];
+  };
+
   services.ananicy = lib.mkIf (config.programs.steam.enable) {
     enable = true;
     package = pkgs.ananicy-cpp;
