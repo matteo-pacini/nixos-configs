@@ -9,6 +9,7 @@
   libxkbcommon,
   alsa-lib,
   legionSource,
+  resolution,
 }:
 {
   workspace = rustPlatform.buildRustPackage {
@@ -45,8 +46,8 @@
     doCheck = false;
   };
 
-  # The launcher and the guest init are static: the launcher re-execs itself
-  # under the private loader, and the guest init runs before any userspace.
+  # Static musl builds, as upstream makes them: the guest init runs before any
+  # guest userspace exists.
   static = pkgsStatic.rustPlatform.buildRustPackage {
     pname = "legion-kvm-static";
     inherit (legionSource) version src;
@@ -58,5 +59,12 @@
       "legion-guest-probe"
     ];
     doCheck = false;
+    # Upstream hardcodes the AMD path's guest display mode (virtio-gpu xres and
+    # yres) for games at 1920x1080, with no setting for it.
+    postPatch = ''
+      substituteInPlace src/game.rs --replace-fail \
+        '"client":"external","application":true,"width":1920,"height":1080,' \
+        '"client":"external","application":true,"width":${toString resolution.width},"height":${toString resolution.height},'
+    '';
   };
 }
