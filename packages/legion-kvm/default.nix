@@ -12,8 +12,8 @@
   vmTools,
   glibc,
   virtiofsd,
-  # Guest display mode for games on the AMD path. Upstream accepts up to
-  # 3840x2160.
+  # Guest display mode for games on the AMD path; the NVIDIA path stays at
+  # upstream's 1920x1080. Upstream accepts up to 3840x2160.
   resolution ? {
     width = 1920;
     height = 1080;
@@ -21,14 +21,32 @@
   # Refresh rate in Hz that the guest display's EDID advertises; 75 is QEMU's
   # own value.
   refreshRate ? 75,
+  # Default guest memory in MiB (upstream: 12288); LEGION_MEMORY_MIB overrides.
+  memoryMiB ? 12288,
+  # Open the AMD path's game window fullscreen unless LEGION_FULLSCREEN is set
+  # to something other than 1 (upstream: windowed unless it is 1).
+  fullscreen ? false,
+  # Pin each vCPU to the host CPU at the same position in the topology the
+  # guest is given, so guest SMT siblings are host siblings.
+  pinVcpus ? false,
 }:
 assert resolution.width >= 64 && resolution.width <= 3840;
 assert resolution.height >= 64 && resolution.height <= 2160;
 assert refreshRate >= 30 && refreshRate <= 240;
+# The launcher's own accepted range for LEGION_MEMORY_MIB.
+assert memoryMiB >= 4096 && memoryMiB <= 65536;
 let
   legionSource = callPackage ./source.nix { };
   proton = callPackage ./proton.nix { };
-  rust = callPackage ./rust.nix { inherit legionSource resolution; };
+  rust = callPackage ./rust.nix {
+    inherit
+      legionSource
+      resolution
+      memoryMiB
+      fullscreen
+      pinVcpus
+      ;
+  };
   kernel = callPackage ./kernel.nix { inherit legionSource; };
   qemu = callPackage ./qemu.nix { inherit legionSource refreshRate; };
   wine = callPackage ./wine.nix { inherit legionSource proton; };

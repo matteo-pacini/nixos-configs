@@ -26,7 +26,12 @@ assert qemu.version == "11.1.2";
 stdenv.mkDerivation {
   pname = "legion-kvm-qemu";
   inherit (qemu) version src;
-  patches = [ "${legionSource.src}/patches/qemu-runtime.patch" ];
+  patches = [
+    "${legionSource.src}/patches/qemu-runtime.patch"
+    # vCPU threads pin themselves from LEGION_VCPU_AFFINITY, which the launcher
+    # sets only when built with pinVcpus; unset, nothing changes.
+    ./qemu-vcpu-affinity.patch
+  ];
   # The guest display's EDID takes its refresh rate from the UI frontend, and
   # SDL never supplies one, so QEMU always falls back to 75 Hz.
   postPatch = ''
