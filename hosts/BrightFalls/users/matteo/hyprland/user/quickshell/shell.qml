@@ -20,4 +20,5 @@ ShellRoot {
     Cheatsheet {}
     SessionMenu {}
     Polkit {}
+    Network {}
 }

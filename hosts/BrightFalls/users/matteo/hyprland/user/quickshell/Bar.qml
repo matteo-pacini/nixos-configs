@@ -8,6 +8,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import Quickshell.Widgets
+import qs.network
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -357,10 +358,47 @@ Scope {
                         color: root.bluetoothOn ? Theme.foreground : Theme.comment
                     }
 
-                    Glyph {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.wired ? root.glyph.ethernet : root.wireless ? root.glyph.wifi : root.glyph.noNetwork
-                        color: root.offline ? Theme.red : Theme.foreground
+                    Item {
+                        id: network
+
+                        readonly property bool panelOpen: Panel.screen === bar.modelData.name
+
+                        width: networkGlyph.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Panel.register(bar.modelData.name, network, bar)
+
+                        Hover {
+                            hovered: networkArea.containsMouse
+                        }
+
+                        Glyph {
+                            id: networkGlyph
+
+                            anchors.centerIn: parent
+                            text: root.wired ? root.glyph.ethernet : root.wireless ? root.glyph.wifi : root.glyph.noNetwork
+                            color: root.offline ? Theme.red : network.panelOpen ? Theme.purple : Theme.foreground
+                        }
+
+                        // Marks the icon whose panel is open.
+                        Rectangle {
+                            visible: network.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        MouseArea {
+                            id: networkArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: Panel.toggleRequested(bar.modelData.name)
+                        }
                     }
 
                     Item {
