@@ -37,9 +37,8 @@
       height = 1440;
     };
     refreshRate = 144;
-    # Keeps the window, and so the guest display, at the full 2560x1440. Until
-    # upstream's AMD path forwards input, it grabs the host keyboard and the
-    # guest never receives it; Ctrl+Alt+G releases the grab.
+    # Keeps the window, and so the guest display, at the full 2560x1440. It
+    # grabs the keyboard; Ctrl+Alt+G releases keyboard and mouse.
     fullscreen = true;
     memoryMiB = 16384;
     pinVcpus = true;

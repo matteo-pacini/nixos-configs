@@ -56,10 +56,18 @@ into derivations:
   `ntdll.dll` into it. `cp --no-preserve=mode` would drop execute bits.
   `legion doctor` and `cpu-check` don't copy, so only a real launch shows
   this.
-- **Launcher-only changes live in `rust.nix` `static`**: the `legion-*` patches
-  and the `game.rs` substitutions (resolution, default memory, default
-  fullscreen). Changing them rebuilds only the launcher and the final
-  package, not the guest.
+- **Launcher-only changes live in `rust.nix` `static`**: the launcher's
+  `legion-*` patches and the `game.rs` substitutions (resolution, default
+  memory, default fullscreen). Changing them rebuilds only the launcher and
+  the final package, not the guest. Guest-side patches go on `workspace`,
+  which rebuilds the guest.
+- **Keyboard and mouse on the AMD path are ours** (upstream forwards input
+  only on the NVIDIA path). QEMU gets a virtio keyboard and a relative
+  virtio mouse; in the guest, the KMS compositor reads their evdev nodes and
+  feeds the seat code the NVIDIA path already uses. Relative, not a tablet,
+  so mouselook works: games can lock the pointer through the
+  pointer-constraints protocol. The KMS path scans out the game's buffer
+  directly, so no cursor is drawn unless the game draws its own.
 - **Game resolution is patched in.** Upstream hardcodes the AMD path's guest
   display at 1920x1080. `src/game.rs` writes it to `kms.json`, which becomes
   QEMU's virtio-gpu `xres`/`yres`. `rust.nix` substitutes the module's
@@ -101,7 +109,12 @@ substitutions in the `.nix` files.
 | `patches/legion-001-writable-session-copies.patch` | `chmod -R u+w` the launcher's session copies | always |
 | `patches/legion-002-sdl-gles-display.patch` | QEMU `-display sdl,gl=es` instead of `gl=on`: the desktop scanout path imports frames as `GL_TEXTURE_EXTERNAL_OES`, which Mesa only supports in GLES, so `gl=on` showed a black window | always |
 | `patches/legion-003-vcpu-affinity-env.patch` | launcher sets `LEGION_VCPU_AFFINITY` | `pinVcpus` |
+| `patches/legion-004-virtio-input-devices.patch` | AMD QEMU gets `virtio-keyboard-pci` and `virtio-mouse-pci` when it has a window | always |
+| `patches/legion-005-guest-input-permissions.patch` (guest) | bootstrap chowns `/dev/input/event*` to the launch user in KMS mode | always |
+| `patches/legion-006-kms-evdev-input.patch` (guest) | KMS compositor reads the evdev nodes (`evdev.rs`) and delivers them through the seat (`State::local_input`) | always |
+| `patches/legion-007-qemu-parent-death-signal.patch` | QEMU gets SIGKILL if the launcher dies, so its window and grab can't outlive it | always |
 | `patches/qemu-001-vcpu-affinity.patch` | vCPU threads pin themselves from `LEGION_VCPU_AFFINITY` | always (inert without it) |
+| `patches/qemu-002-fullscreen-ungrab.patch` | Ctrl+Alt+G releases the grab in fullscreen too | always |
 | `rust.nix` substitution, `src/game.rs` | game display size | always (`resolution`) |
 | `rust.nix` substitution, `src/game.rs`, `src/main.rs` | default `LEGION_MEMORY_MIB` | always (`memoryMiB`) |
 | `rust.nix` substitution, `src/game.rs` | fullscreen unless `LEGION_FULLSCREEN` is set to something other than 1 | `fullscreen` |
@@ -139,7 +152,7 @@ advertises.
    | `build-support/Containerfile` | `debian-packages.nix`, then regenerate the closures |
    | `tools/build_runtime.py` | the matching derivation from the Layout table |
    | `src/runtime.rs` (`Manifest`) | the `runtime.json` fields in `default.nix` |
-   | `src/game.rs`, `src/runtime.rs`, `src/main.rs`, `src/native_context.rs` | the `patches/legion-*` patches and the `rust.nix` substitutions. A failed patch or `--replace-fail` breaks the build; drop a substitution if upstream adds a setting for it |
+   | `src/`, `crates/guest-compositor/`, `crates/proton-workload/src/bootstrap.rs` | the `patches/legion-*` patches and the `rust.nix` substitutions. If upstream adds AMD input, drop 004–006. A failed patch or `--replace-fail` breaks the build; drop a substitution if upstream adds a setting for it |
 
 QEMU and virglrenderer come from nixpkgs, at the versions upstream pins.
 `qemu.nix` asserts the QEMU version. virglrenderer has no assert, and it must
@@ -154,14 +167,11 @@ cp debs/debs-*.nix packages/legion-kvm/
 
 ## Known gaps
 
-- **No keyboard or mouse on the AMD path** (upstream `0c0dee7`). QEMU gets no
-  input device the guest can use (the guest kernel has `VIRTIO_INPUT` and
-  `EVDEV`, but no PS/2), and the guest compositor's KMS mode
-  (`crates/guest-compositor/src/kms.rs`) never reads input. Upstream's
-  input forwarding exists only on the NVIDIA path. A fullscreen window still
-  grabs the host keyboard, which then reaches nothing; Ctrl+Alt+G releases
-  it. BrightFalls keeps `fullscreen` on anyway, because windowed, a
-  desktop-sized `resolution` gets shrunk to the work area (see Decisions).
+- **No cursor on the AMD path** unless the game draws one (see Decisions).
+- **Grabs on the AMD path:** a click in the window grabs the mouse, and in
+  fullscreen the keyboard is grabbed from the start. Ctrl+Alt+G releases
+  both; QEMU exiting releases them too. On GNOME Wayland, Super+Esc restores
+  the shortcuts a grab inhibits, if QEMU hangs.
 - **No controllers** on either path: no gamepad events in the display
   channel, and no USB, HID or joystick support in the guest kernel.
 
@@ -176,7 +186,7 @@ display path as games. It renders uncapped, so the cube appears to spin
 erratically on screen. That's expected.
 
 Tested end to end with The Darkness Recomp (non-Steam) on 2026-11-13: display
-at 2560x1440 and audio work, input doesn't (above). Its launch command:
+at 2560x1440 and audio work, input wasn't wired yet (it predates `legion-004`–`006`). Its launch command:
 
 ```bash
 legion run --proton <GE-Proton11-11 compat tool> --prefix <new dir> \
