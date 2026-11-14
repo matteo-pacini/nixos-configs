@@ -63,27 +63,11 @@ in
   services.hyprpolkitagent.enable = true;
   systemd.user.services.hyprpolkitagent.Service.ExecCondition = onlyInHyprland;
 
-  # Not services.mako: it installs mako's D-Bus activation file, and a
-  # notification sent before GNOME Shell owns the name would start mako there.
-  systemd.user.services.mako = {
-    Unit = {
-      Description = "Mako notification daemon";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "dbus";
-      BusName = "org.freedesktop.Notifications";
-      ExecCondition = onlyInHyprland;
-      ExecStart = "${pkgs.mako}/bin/mako";
-      ExecReload = "${pkgs.mako}/bin/makoctl reload";
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
   # The desktop shell, from user/quickshell/ (installed at
   # ~/.config/quickshell, the default config `qs` runs and `qs ipc` talks to).
-  # It reloads on its own when a file there changes.
+  # It reloads on its own when a file there changes. It is also the
+  # notification daemon; there is no D-Bus activation file for that name, so
+  # a notification sent before GNOME Shell owns it cannot start one there.
   systemd.user.services.quickshell = {
     Unit = {
       Description = "Quickshell desktop shell";

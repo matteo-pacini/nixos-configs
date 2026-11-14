@@ -27,11 +27,33 @@ a missing key.
 `user/quickshell/` is the desktop shell, run as the `quickshell` user service
 (Hyprland session only) with `qs`, which loads `~/.config/quickshell/shell.qml`.
 `shell.qml` lists the components, one line each; a new component is a new file
-beside it and a line there. So far there is one, `Launcher.qml` (Super+Space,
-`qs ipc call launcher toggle`), with `Apps.qml` (the applications it lists and
-its search) and `Theme.qml`.
+beside it and a line there, and a component's own parts go in a directory
+named after it (`import qs.<dir>`). `Theme.qml` is the palette and fonts
+they share. Every surface is drawn the same way: `Theme.background` at 0.96
+alpha, a 1 px `Theme.purple` border, 10 px corners.
 
-Apps launch as `uwsm app -- <id>.desktop`, each in its own systemd scope.
+- `Launcher.qml` (Super+Space, `qs ipc call launcher toggle`), with
+  `Apps.qml` (the applications it lists and its search). Apps launch as
+  `uwsm app -- <id>.desktop`, each in its own systemd scope.
+- `Bar.qml`: a floating rounded strip on every monitor, 6 px
+  from the top, left and right edges and 30 px tall including its border.
+  Whatever sits under it starts 44 px from the top of the monitor.
+- `Notifications.qml` (parts in `notifications/`): the notification daemon,
+  in place of mako. Popups sit under the bar at the top right of the
+  monitor focused when the first one appears, 380 px wide, with a red
+  border when critical. Notifications from one app stack into a deck that
+  opens into a list while hovered. Low urgency goes after 5 s, normal after
+  8 s, critical stays; a timeout from the sender counts, up to 30 s, and
+  the countdown stops while the pointer is over the deck. Left click runs
+  the default action, else dismisses; right or middle click dismisses.
+  There is no history: a dismissed or expired notification is gone.
+  Super+comma dismisses the newest, Super+Shift+comma all of them,
+  Super+Ctrl+comma toggles do not disturb, under which only critical ones
+  show and the rest are dropped (`qs ipc call notifications dismissNewest`,
+  `dismissAll`, `toggleDnd`). Do not disturb survives a Quickshell reload,
+  not a restart.
+- `Osd.qml`: the on-screen display, a pill under the bar on the focused
+  monitor.
 
 ## Activation
 
@@ -73,7 +95,7 @@ the one activation installed.
 ## Editing live (agents)
 
 1. Edit the file under `~/.config` (for example `~/.config/hypr/bindings.lua`).
-2. `hyprctl reload` (mako: `makoctl reload`). Hyprland does not reload on its
+2. `hyprctl reload`. Hyprland does not reload on its
    own: `disable_autoreload` is set. Quickshell does: saving a file under
    `~/.config/quickshell` reloads it, and a "reloaded" or "failed" popup says
    which. Edits to `~/.config/desk/theme.json` reach Quickshell without a

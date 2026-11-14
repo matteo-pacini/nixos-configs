@@ -6,6 +6,9 @@
 --   Super+Shift+Escape        exit the session                [rescue.lua]
 --
 --   Super+Space               app launcher (Quickshell)
+--   Super+comma               dismiss the newest notification
+--   Super+Shift+comma         dismiss all notifications
+--   Super+Ctrl+comma          toggle do not disturb (critical ones still show)
 --   Super+Ctrl+Return         Herdr desktop app
 --   Super+Shift+B             Firefox
 --   Super+Shift+S             Steam
@@ -32,6 +35,9 @@ local function launch(cmd)
 end
 
 hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
+hl.bind("SUPER + COMMA", hl.dsp.exec_cmd("qs ipc call notifications dismissNewest"))
+hl.bind("SUPER + SHIFT + COMMA", hl.dsp.exec_cmd("qs ipc call notifications dismissAll"))
+hl.bind("SUPER + CTRL + COMMA", hl.dsp.exec_cmd("qs ipc call notifications toggleDnd"))
 hl.bind("SUPER + CTRL + RETURN", launch("herdr-app"))
 hl.bind("SUPER + SHIFT + B", launch("firefox"))
 hl.bind("SUPER + SHIFT + S", launch("steam"))

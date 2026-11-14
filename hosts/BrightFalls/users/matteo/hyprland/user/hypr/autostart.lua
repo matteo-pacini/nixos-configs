@@ -1,4 +1,5 @@
--- Nothing is started from here. The notification daemon (mako) and the
--- polkit agent are systemd user services in graphical-session.target, which
--- UWSM starts with this session, and XDG autostart entries run through UWSM
--- too (hosts/BrightFalls/users/matteo/hyprland/default.nix).
+-- Nothing is started from here. The desktop shell (Quickshell, also the
+-- notification daemon) and the polkit agent are systemd user services in
+-- graphical-session.target, which UWSM starts with this session, and XDG
+-- autostart entries run through UWSM too
+-- (hosts/BrightFalls/users/matteo/hyprland/default.nix).

@@ -43,9 +43,9 @@ manifest() { # dir, then path=content pairs
 sha() { sha256sum <"$1" | cut -d' ' -f1; }
 
 manifest gen1 hypr/a.lua=a1 hypr/b.lua=b1 hypr/c.lua=c1 hypr/d.lua=d1 \
-  hypr/gone.lua=g1 mako/config=m1
+  hypr/gone.lua=g1 quickshell/shell.qml=q1
 manifest gen2 hypr/a.lua=a2 hypr/b.lua=b2 hypr/c.lua=c1 hypr/d.lua=d2 \
-  mako/config=m2 hypr/new.lua=n2
+  quickshell/shell.qml=q2 hypr/new.lua=n2
 
 # ---- activate ----
 # d.lua starts life as a phase-1 Home Manager link into the store; c.lua
@@ -59,7 +59,7 @@ check "activate gen1 output" "desk-sync: hypr/a.lua: installed
 desk-sync: hypr/b.lua: installed
 desk-sync: hypr/d.lua: replaced the store link with a writable copy
 desk-sync: hypr/gone.lua: installed
-desk-sync: mako/config: installed" "$out"
+desk-sync: quickshell/shell.qml: installed" "$out"
 check "absent: installed as a regular 0644 file" "regular file 644 a1" \
   "$(stat -c '%F %a' "$cfg/hypr/a.lua") $(cat "$cfg/hypr/a.lua")"
 check "absent: hash recorded" "$(sha "$work/gen1/hypr/a.lua")" "$(cat "$state/hashes/hypr/a.lua")"
@@ -78,16 +78,16 @@ ds "$work/gen1" activate
 check "edited, store unchanged: nothing incoming" "0  absent" \
   "$rc $out $([ -e "$state/incoming/hypr/b.lua" ] && echo present || echo absent)"
 
-# mako/ unwritable: that one file fails, the others still go through.
-chmod a-w "$cfg/mako"
+# quickshell/ unwritable: that one file fails, the others still go through.
+chmod a-w "$cfg/quickshell"
 ds "$work/gen2" activate
-chmod u+w "$cfg/mako"
+chmod u+w "$cfg/quickshell"
 check "activate gen2 exits 1 (one file failed)" 1 "$rc"
 check "activate gen2 output" "desk-sync: hypr/a.lua: updated
 desk-sync: hypr/b.lua: kept the live edit; the new version is in $state/incoming/hypr/b.lua
 desk-sync: hypr/d.lua: kept the live edit; the new version is in $state/incoming/hypr/d.lua
 desk-sync: hypr/new.lua: installed
-desk-sync: mako/config: failed, left as it was
+desk-sync: quickshell/shell.qml: failed, left as it was
 desk-sync: hypr/gone.lua: no longer in the manifest; left $cfg/hypr/gone.lua alone" \
   "$(grep -v '^install:\|^mv:' <<<"$out")"
 check "unedited: replaced" a2 "$(cat "$cfg/hypr/a.lua")"
@@ -98,10 +98,10 @@ check "edited: hash not recorded" "$(sha "$work/gen1/hypr/b.lua")" "$(cat "$stat
 check "removed from manifest: live left alone" "g1 edited" "$(cat "$cfg/hypr/gone.lua")"
 check "removed from manifest: record dropped" absent \
   "$([ -e "$state/hashes/hypr/gone.lua" ] && echo present || echo absent)"
-check "failed file: untouched" m1 "$(cat "$cfg/mako/config")"
+check "failed file: untouched" q1 "$(cat "$cfg/quickshell/shell.qml")"
 
 ds "$work/gen2" activate
-check "retry: failed file now updated" "0 desk-sync: mako/config: updated" "$rc $out"
+check "retry: failed file now updated" "0 desk-sync: quickshell/shell.qml: updated" "$rc $out"
 
 # ---- status ----
 rm "$cfg/hypr/new.lua"
@@ -112,7 +112,7 @@ incoming-pending hypr/b.lua
 clean            hypr/c.lua
 incoming-pending hypr/d.lua
 missing          hypr/new.lua
-clean            mako/config" "$out"
+clean            quickshell/shell.qml" "$out"
 ds "$work/gen2" status -v
 check "status -v diffs edited files" "edited           hypr/a.lua
 --- store/hypr/a.lua
@@ -155,17 +155,17 @@ check "pull refuses a non-checkout" 1 "$rc"
 
 printf 'c1\n-- launcher\napi_key = "abc"\n' >"$cfg/hypr/c.lua"
 printf -- '-----BEGIN OPENSSH PRIVATE KEY-----\n' >"$cfg/hypr/b.lua"
-printf 'k = "%s"\n' "AbCdEf0123456789AbCdEf0123456789AbCdEf0123" >"$cfg/mako/config"
+printf 'k = "%s"\n' "AbCdEf0123456789AbCdEf0123456789AbCdEf0123" >"$cfg/quickshell/shell.qml"
 ds "$work/gen2" pull "$repo"
 check "pull refuses secrets, copies the rest" "1 desk-sync: not copying hypr/b.lua: line 1 of $cfg/hypr/b.lua looks like a secret
 desk-sync: not copying hypr/c.lua: line 3 of $cfg/hypr/c.lua looks like a secret
 copied hypr/d.lua
-desk-sync: not copying mako/config: line 1 of $cfg/mako/config looks like a secret
+desk-sync: not copying quickshell/shell.qml: line 1 of $cfg/quickshell/shell.qml looks like a secret
  M $sub/hypr/d.lua" "$rc $out"
 check "pull: copied content" "d1 edited" "$(cat "$repo/$sub/hypr/d.lua")"
 
 printf 'bearer abcdefghijklmnopqrstuvwxyz\n' >"$cfg/hypr/c.lua"
-printf 'm2\n' >"$cfg/mako/config"
+printf 'q2\n' >"$cfg/quickshell/shell.qml"
 ds "$work/gen2" reset hypr/b.lua
 ds "$work/gen2" pull "$repo"
 check "pull refuses a bearer string" "1 desk-sync: not copying hypr/c.lua: line 1 of $cfg/hypr/c.lua looks like a secret
