@@ -31,12 +31,13 @@
     ];
     cargoBuildFlags = [ "--workspace" ];
     doCheck = false;
-    # Guest-side keyboard and mouse for the AMD path. The launcher built here
-    # is unused (static's is installed), so the launcher patches stay there and
-    # changing them doesn't rebuild the guest.
+    # Guest-side keyboard, mouse and cursor for the AMD path. The launcher
+    # built here is unused (static's is installed), so the launcher patches stay
+    # there and changing them doesn't rebuild the guest.
     patches = [
       ./patches/legion-005-guest-input-permissions.patch
       ./patches/legion-006-kms-evdev-input.patch
+      ./patches/legion-008-kms-cursor-plane.patch
     ];
     # cpu-adapter is a cdylib; buildRustPackage only installs binaries.
     postInstall = ''

@@ -1,0 +1,321 @@
+diff --git a/crates/guest-compositor/src/cursor.rs b/crates/guest-compositor/src/cursor.rs
+new file mode 100644
+index 0000000..d67b0bb
+--- /dev/null
++++ b/crates/guest-compositor/src/cursor.rs
+@@ -0,0 +1,124 @@
++//! Client cursor images for the KMS path, shown on virtio-gpu's cursor plane:
++//! the game's buffer is scanned out directly, so nothing else would draw them.
++use crate::state::State;
++use smithay::{
++    input::pointer::{CursorImageStatus, CursorImageSurfaceData},
++    reexports::wayland_server::{
++        Resource,
++        protocol::{wl_buffer::WlBuffer, wl_shm, wl_surface::WlSurface},
++    },
++    wayland::{compositor::with_states, shm::with_buffer_contents},
++};
++
++/// virtio-gpu's cursor plane is always 64x64 ARGB8888.
++pub(crate) const SIZE: usize = 64;
++
++/// What the cursor plane should show.
++pub(crate) struct Image {
++    /// ARGB8888 as wl_shm lays it out, `SIZE` x `SIZE`.
++    pub pixels: Vec<u8>,
++    pub hotspot: (i32, i32),
++}
++
++#[derive(Default)]
++pub(crate) struct CursorState {
++    surface: Option<WlSurface>,
++    // A client may commit its cursor surface before naming it in
++    // wl_pointer.set_cursor, so the latest small shm image of every
++    // non-presented surface is kept.
++    images: Vec<(WlSurface, Vec<u8>)>,
++    changed: bool,
++}
++
++impl State {
++    pub(crate) fn cursor_status(&mut self, status: &CursorImageStatus) {
++        self.cursor.surface = match status {
++            CursorImageStatus::Surface(surface) => Some(surface.clone()),
++            CursorImageStatus::Hidden | CursorImageStatus::Named(_) => None,
++        };
++        self.cursor.changed = true;
++    }
++
++    /// Records `buffer` if it could be a cursor image; call before the buffer
++    /// is released.
++    pub(crate) fn remember_cursor_buffer(&mut self, surface: &WlSurface, buffer: &WlBuffer) {
++        let Ok(Some(pixels)) = with_buffer_contents(buffer, |ptr, len, data| {
++            // SAFETY: smithay keeps the pool mapping alive, `len` bytes long,
++            // for the duration of this callback.
++            let pool = unsafe { std::slice::from_raw_parts(ptr, len) };
++            convert(pool, data.offset, data.width, data.height, data.stride, data.format)
++        }) else {
++            return;
++        };
++        self.cursor.images.retain(|(known, _)| known.is_alive() && known != surface);
++        self.cursor.images.push((surface.clone(), pixels));
++        if self.cursor.surface.as_ref() == Some(surface) {
++            self.cursor.changed = true;
++        }
++    }
++
++    /// The cursor plane's new contents since the last call: `Some(None)` hides it.
++    pub(crate) fn take_cursor_change(&mut self) -> Option<Option<Image>> {
++        if !std::mem::take(&mut self.cursor.changed) {
++            return None;
++        }
++        let Some(surface) = self.cursor.surface.as_ref() else {
++            return Some(None);
++        };
++        let Some((_, pixels)) = self.cursor.images.iter().find(|(known, _)| known == surface)
++        else {
++            return Some(None);
++        };
++        let hotspot = with_states(surface, |states| {
++            states
++                .data_map
++                .get::<CursorImageSurfaceData>()
++                .and_then(|data| data.lock().ok().map(|attributes| attributes.hotspot))
++        })
++        .map_or((0, 0), |hotspot| (hotspot.x, hotspot.y));
++        Some(Some(Image {
++            pixels: pixels.clone(),
++            hotspot,
++        }))
++    }
++}
++
++/// Crops an ARGB8888 or XRGB8888 shm image to the cursor plane, or `None` for
++/// anything else (other formats, or larger than a cursor gets).
++fn convert(
++    pool: &[u8],
++    offset: i32,
++    width: i32,
++    height: i32,
++    stride: i32,
++    format: wl_shm::Format,
++) -> Option<Vec<u8>> {
++    let opaque = match format {
++        wl_shm::Format::Argb8888 => false,
++        wl_shm::Format::Xrgb8888 => true,
++        _ => return None,
++    };
++    let (offset, width, height, stride) = (
++        usize::try_from(offset).ok()?,
++        usize::try_from(width).ok()?,
++        usize::try_from(height).ok()?,
++        usize::try_from(stride).ok()?,
++    );
++    if width == 0 || height == 0 || width > 4 * SIZE || height > 4 * SIZE {
++        return None;
++    }
++    let mut pixels = vec![0u8; SIZE * SIZE * 4];
++    for row in 0..height.min(SIZE) {
++        let start = offset.checked_add(row.checked_mul(stride)?)?;
++        let columns = width.min(SIZE) * 4;
++        let source = pool.get(start..start.checked_add(columns)?)?;
++        let target = &mut pixels[row * SIZE * 4..row * SIZE * 4 + columns];
++        target.copy_from_slice(source);
++        if opaque {
++            for alpha in target.iter_mut().skip(3).step_by(4) {
++                *alpha = 0xff;
++            }
++        }
++    }
++    Some(pixels)
++}
+diff --git a/crates/guest-compositor/src/input_events.rs b/crates/guest-compositor/src/input_events.rs
+index 7d0d8c3..fef6745 100644
+--- a/crates/guest-compositor/src/input_events.rs
++++ b/crates/guest-compositor/src/input_events.rs
+@@ -402,6 +402,9 @@ impl State {
+         self.ordered_input.position = (f64::from(width) / 2.0, f64::from(height) / 2.0);
+         self.ordered_input.pointer_inside = true;
+     }
++    pub(crate) fn pointer_location(&self) -> (f64, f64) {
++        self.ordered_input.position
++    }
+     /// Delivers events from the guest's own devices. With no host sending
+     /// absolute positions, relative motion also moves the pointer, except
+     /// while a client has it locked.
+diff --git a/crates/guest-compositor/src/kms.rs b/crates/guest-compositor/src/kms.rs
+index 5a88839..ed3c8da 100644
+--- a/crates/guest-compositor/src/kms.rs
++++ b/crates/guest-compositor/src/kms.rs
+@@ -6,7 +6,7 @@ use anyhow::{Context, Result, ensure};
+ use drm::{
+     Device,
+     buffer::{self, DrmFourcc, DrmModifier, PlanarBuffer},
+-    control::{self, Device as ControlDevice, connector, crtc, framebuffer},
++    control::{self, Device as ControlDevice, connector, crtc, dumbbuffer::DumbBuffer, framebuffer},
+ };
+ use serde_json::json;
+ use smithay::{
+@@ -77,11 +77,22 @@ struct Scanout {
+     current: Option<WlBuffer>,
+     queued: Option<WlBuffer>,
+     frames: u64,
++    cursor: Option<DumbBuffer>,
++    cursor_shown: bool,
++    cursor_at: Option<(i32, i32)>,
+ }
+ impl Drop for Scanout {
++    // The legacy cursor ioctls; see Scanout::set_cursor.
++    #[allow(deprecated)]
+     fn drop(&mut self) {
+         // Detach scanout before releasing client storage and destroying FBs.
+         let _ = self.card.set_crtc(self.crtc, None, (0, 0), &[], None);
++        if let Some(cursor) = self.cursor.take() {
++            let _ = self
++                .card
++                .set_cursor2(self.crtc, Option::<&DumbBuffer>::None, (0, 0));
++            let _ = self.card.destroy_dumb_buffer(cursor);
++        }
+         for buffer in self.queued.take().into_iter().chain(self.current.take()) {
+             buffer.release();
+         }
+@@ -145,6 +156,9 @@ impl Scanout {
+                     current: None,
+                     queued: None,
+                     frames: 0,
++                    cursor: None,
++                    cursor_shown: false,
++                    cursor_at: None,
+                 });
+             }
+         }
+@@ -240,6 +254,59 @@ impl Scanout {
+         }
+         Ok(completed)
+     }
++
++    /// Shows `image` on the cursor plane, or hides it. QEMU's SDL window
++    /// then shows it as the host cursor.
++    // Legacy SET_CURSOR2 rather than an atomic cursor plane: it sets the
++    // hotspot virtio-gpu needs without atomic modesetting.
++    #[allow(deprecated)]
++    fn set_cursor(&mut self, image: Option<crate::cursor::Image>) -> Result<()> {
++        use crate::cursor::SIZE;
++        let Some(image) = image else {
++            self.card
++                .set_cursor2(self.crtc, Option::<&DumbBuffer>::None, (0, 0))?;
++            self.cursor_shown = false;
++            return Ok(());
++        };
++        let side = u32::try_from(SIZE)?;
++        let mut buffer = match self.cursor.take() {
++            Some(buffer) => buffer,
++            None => self
++                .card
++                .create_dumb_buffer((side, side), DrmFourcc::Argb8888, 32)?,
++        };
++        let pitch = usize::try_from(drm::buffer::Buffer::pitch(&buffer))?;
++        let written = self.card.map_dumb_buffer(&mut buffer).map(|mut map| {
++            for row in 0..SIZE {
++                map[row * pitch..row * pitch + SIZE * 4]
++                    .copy_from_slice(&image.pixels[row * SIZE * 4..(row + 1) * SIZE * 4]);
++            }
++        });
++        // Each SET_CURSOR2 makes a new framebuffer, so the kernel re-uploads
++        // the reused buffer.
++        let shown = written.and_then(|()| self.card.set_cursor2(self.crtc, Some(&buffer), image.hotspot));
++        self.cursor = Some(buffer);
++        shown?;
++        self.cursor_shown = true;
++        self.cursor_at = None;
++        Ok(())
++    }
++
++    /// Moves the cursor to `location`, in display pixels. The plane is not
++    /// offset by the hotspot: only QEMU's SDL cursor is ever seen, and QEMU
++    /// puts that cursor's hotspot at the plane position as given.
++    #[allow(deprecated)]
++    fn move_cursor(&mut self, location: (f64, f64)) -> Result<()> {
++        if !self.cursor_shown {
++            return Ok(());
++        }
++        let at = (location.0 as i32, location.1 as i32);
++        if self.cursor_at != Some(at) {
++            self.card.move_cursor(self.crtc, at)?;
++            self.cursor_at = Some(at);
++        }
++        Ok(())
++    }
+ }
+ 
+ pub(crate) fn run() -> Result<()> {
+@@ -350,6 +417,18 @@ pub(crate) fn run() -> Result<()> {
+                 state.local_input(events, u64::try_from(start.elapsed().as_micros())?);
+             }
+         }
++        // The cursor plane needs an active CRTC, which the first frame sets.
++        // Its failures cost only the cursor, so they don't end the session.
++        if application && scanout.frames > 0 {
++            if let Some(image) = state.take_cursor_change()
++                && let Err(error) = scanout.set_cursor(image)
++            {
++                eprintln!("legion: guest cursor plane: {error:#}");
++            }
++            if let Err(error) = scanout.move_cursor(state.pointer_location()) {
++                eprintln!("legion: guest cursor move: {error:#}");
++            }
++        }
+         for (dma, notifier) in std::mem::take(&mut state.pending_imports) {
+             match scanout.import(&dma) {
+                 Ok(_) => {
+diff --git a/crates/guest-compositor/src/main.rs b/crates/guest-compositor/src/main.rs
+index 7dc5a9a..cdae8a0 100644
+--- a/crates/guest-compositor/src/main.rs
++++ b/crates/guest-compositor/src/main.rs
+@@ -1,6 +1,7 @@
+ mod acquire;
+ mod acquire_gpu;
+ mod animation;
++mod cursor;
+ mod evdev;
+ mod exit_marker;
+ mod forward;
+diff --git a/crates/guest-compositor/src/state.rs b/crates/guest-compositor/src/state.rs
+index 88b413d..8c682eb 100644
+--- a/crates/guest-compositor/src/state.rs
++++ b/crates/guest-compositor/src/state.rs
+@@ -60,6 +60,7 @@ pub struct State {
+     data: DataDeviceState,
+     pub(crate) seat: Seat<Self>,
+     pub(crate) ordered_input: crate::input_events::InputState,
++    pub(crate) cursor: crate::cursor::CursorState,
+     pub(crate) _output: Output,
+     _output_manager: OutputManagerState,
+     _viewporter: ViewporterState,
+@@ -234,6 +235,7 @@ impl State {
+             data: DataDeviceState::new::<Self>(dh),
+             seat,
+             ordered_input: crate::input_events::InputState::default(),
++            cursor: crate::cursor::CursorState::default(),
+             _output: output,
+             _output_manager: output_manager,
+             _viewporter: ViewporterState::new::<Self>(dh),
+@@ -555,7 +557,10 @@ impl CompositorHandler for State {
+             for (buffer, surface, sync) in buffers {
+                 match sync {
+                     Ok(sync) if selected => self.accept_buffer(buffer, surface, sync),
+-                    Ok(sync) => self.discard_inactive(buffer, sync),
++                    Ok(sync) => {
++                        self.remember_cursor_buffer(&root, &buffer);
++                        self.discard_inactive(buffer, sync)
++                    }
+                     Err(error) => self.error = Some(error.to_string()),
+                 }
+             }
+@@ -667,6 +672,7 @@ impl SeatHandler for State {
+         &mut self.seats
+     }
+     fn cursor_image(&mut self, _: &Seat<Self>, image: smithay::input::pointer::CursorImageStatus) {
++        self.cursor_status(&image);
+         self.ordered_input.cursor_visible = Some(!matches!(
+             image,
+             smithay::input::pointer::CursorImageStatus::Hidden
