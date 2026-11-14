@@ -33,4 +33,16 @@
     "rd.udev.log_level=3"
     "udev.log_priority=3"
   ];
+
+  # Sunshine probes KMS capture once, at startup, and never retries. If that
+  # is while Plymouth is still handing the display to GDM, no plane has a
+  # framebuffer and capture stays dead until the service is restarted. Start
+  # it once the handoff is done.
+  # WAIT-FOR merged: https://github.com/SunshineStream/Sunshine/pull/6052
+  systemd.user.services.sunshine.serviceConfig.ExecStartPre =
+    pkgs.writeShellScript "wait-for-plymouth-quit" ''
+      while [ "$(${pkgs.systemd}/bin/systemctl show --property=ActiveState --value plymouth-quit-wait.service)" = activating ]; do
+        sleep 0.5
+      done
+    '';
 }
