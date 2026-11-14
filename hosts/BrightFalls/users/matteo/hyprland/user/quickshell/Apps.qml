@@ -36,14 +36,17 @@ Singleton {
         return entry.categories.find(c => mainCategories.includes(c)) ?? "";
     }
 
-    // Case-insensitive on the name: prefix matches, then substring matches
-    // (earlier first), then subsequence matches; alphabetical within each.
     function search(query) {
+        return query.trim() === "" ? entries : rank(entries, query);
+    }
+
+    // The items whose `name` matches `query`, case-insensitively: prefix
+    // matches, then substring matches (earlier first), then subsequence
+    // matches; alphabetical within each. A blank query matches every item.
+    function rank(items, query) {
         const q = query.trim().toLowerCase();
-        if (q === "")
-            return entries;
         const ranked = [];
-        for (const entry of entries) {
+        for (const entry of items) {
             const name = entry.name.toLowerCase();
             const at = name.indexOf(q);
             let rank = at;

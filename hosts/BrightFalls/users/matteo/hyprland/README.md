@@ -34,7 +34,15 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
 
 - `Launcher.qml` (Super+Space, `qs ipc call launcher toggle`), with
   `Apps.qml` (the applications it lists and its search). Apps launch as
-  `uwsm app -- <id>.desktop`, each in its own systemd scope.
+  `uwsm app -- <id>.desktop`, each in its own systemd scope. A query
+  starting with `=` is a calculator (arithmetic, `^`, `%`, `sqrt abs round
+  floor ceil`, `pi e`; its own parser, no interpreter) and one starting with
+  `:` searches emoji by name; the prefix shows as a chip, Backspace on an
+  empty query goes back to apps, and Enter copies the result or emoji with
+  `wl-copy`. Their parts are in `launcher/`: `Calc.qml`, `Emoji.qml` and
+  `emoji.txt`, the emoji list, read on first use. `emoji.txt` is generated
+  from the pinned `unicode-emoji` package by `gen-emoji.py` (beside this
+  README, not installed), whose header has the command.
 - `Bar.qml`: a floating rounded strip on every monitor, 6 px
   from the top, left and right edges and 30 px tall including its border.
   Whatever sits under it starts 44 px from the top of the monitor.

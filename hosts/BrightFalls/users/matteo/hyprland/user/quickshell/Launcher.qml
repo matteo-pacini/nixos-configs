@@ -5,14 +5,23 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
+import qs.launcher
 
 // The app launcher, on the focused monitor. Toggled over IPC:
 //   qs ipc call launcher toggle
+// A query starting with "=" is a calculation and one starting with ":" an
+// emoji search; the prefix turns into a chip, and Backspace on an empty
+// query goes back to apps.
 Scope {
     id: root
 
     property bool open: false
-    property var results: Apps.search(input.text)
+    // "apps", "calc" or "emoji".
+    property string mode: "apps"
+    property var results: mode === "calc" ? [Calc.evaluate(input.text)] : mode === "emoji" ? Emoji.search(input.text) : Apps.search(input.text)
+
+    onModeChanged: if (mode === "emoji")
+        Emoji.load()
 
     readonly property int rowHeight: 42
     readonly property int rowSpacing: 2
@@ -34,6 +43,20 @@ Scope {
         open = false;
     }
 
+    function copy(text) {
+        Quickshell.execDetached(["wl-copy", "--", text]);
+        open = false;
+    }
+
+    function activate(result) {
+        if (mode === "apps")
+            launch(result);
+        else if (mode === "emoji")
+            copy(result.char);
+        else if (result.ok)
+            copy(result.text);
+    }
+
     IpcHandler {
         target: "launcher"
 
@@ -44,6 +67,7 @@ Scope {
                 const name = Hyprland.focusedMonitor?.name;
                 window.screen = Array.from(Quickshell.screens).find(s => s.name === name) ?? Quickshell.screens[0];
                 input.text = "";
+                root.mode = "apps";
                 root.select(0);
                 root.pointer = Qt.point(-1, -1);
             }
@@ -124,10 +148,34 @@ Scope {
                         font.weight: Font.Medium
                     }
 
+                    Rectangle {
+                        id: chip
+
+                        visible: root.mode !== "apps"
+                        anchors.left: prompt.right
+                        anchors.leftMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: chipText.implicitWidth + 14
+                        height: chipText.implicitHeight + 2
+                        radius: 4
+                        color: Theme.cyan
+
+                        Text {
+                            id: chipText
+
+                            anchors.centerIn: parent
+                            text: root.mode
+                            color: Theme.background
+                            font.family: Theme.fontMono
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                        }
+                    }
+
                     TextInput {
                         id: input
 
-                        anchors.left: prompt.right
+                        anchors.left: chip.visible ? chip.right : prompt.right
                         anchors.leftMargin: 10
                         anchors.right: parent.right
                         anchors.rightMargin: 14
@@ -144,16 +192,26 @@ Scope {
                             color: Theme.pink
                         }
 
-                        onTextChanged: root.select(0)
+                        onTextChanged: {
+                            const prefixed = { "=": "calc", ":": "emoji" }[text[0]];
+                            if (root.mode === "apps" && prefixed) {
+                                root.mode = prefixed;
+                                text = text.slice(1);
+                            }
+                            root.select(0);
+                        }
 
                         Keys.onPressed: event => {
                             const ctrl = event.modifiers & Qt.ControlModifier;
                             const count = root.results.length;
                             if (event.key === Qt.Key_Escape) {
                                 root.open = false;
+                            } else if (event.key === Qt.Key_Backspace && text === "" && root.mode !== "apps") {
+                                root.mode = "apps";
+                                root.select(0);
                             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                                 if (count > 0)
-                                    root.launch(root.results[list.currentIndex]);
+                                    root.activate(root.results[list.currentIndex]);
                             } else if (event.key === Qt.Key_Down || (ctrl && event.key === Qt.Key_N)) {
                                 if (count > 0)
                                     root.select((list.currentIndex + 1) % count);
@@ -168,7 +226,7 @@ Scope {
 
                         Text {
                             visible: input.text === ""
-                            text: "Search apps"
+                            text: ({ apps: "Search apps", calc: "Type an expression", emoji: "Search emoji by name" })[root.mode]
                             color: Theme.comment
                             font: input.font
                         }
@@ -193,7 +251,7 @@ Scope {
                         y: 6
                         topPadding: 8
                         bottomPadding: 8
-                        text: "No app matches"
+                        text: root.mode === "emoji" ? "No emoji matches" : "No app matches"
                         color: Theme.comment
                         font.family: Theme.fontMono
                         font.pixelSize: 13
@@ -216,34 +274,69 @@ Scope {
 
                             required property var modelData
                             required property int index
-                            readonly property bool selected: ListView.isCurrentItem
+                            // From the row's own data, not root.mode: the mode
+                            // changes a moment before the model does.
+                            readonly property string mode: modelData.char !== undefined ? "emoji" : modelData.ok !== undefined ? "calc" : "apps"
+                            readonly property bool hint: mode === "calc" && !modelData.ok
+                            readonly property bool selected: ListView.isCurrentItem && !hint
 
                             width: ListView.view.width
                             height: root.rowHeight
                             radius: 6
                             color: selected ? Theme.currentLine : "transparent"
 
-                            IconImage {
+                            Item {
                                 id: icon
 
                                 x: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                implicitSize: 28
-                                source: Quickshell.iconPath(row.modelData.icon, "application-x-executable")
+                                width: 28
+                                height: 28
+
+                                IconImage {
+                                    visible: row.mode === "apps"
+                                    implicitSize: 28
+                                    source: row.mode === "apps" ? Quickshell.iconPath(row.modelData.icon, "application-x-executable") : ""
+                                }
+
+                                Text {
+                                    visible: row.mode === "emoji"
+                                    anchors.centerIn: parent
+                                    text: row.mode === "emoji" ? row.modelData.char : ""
+                                    font.pixelSize: 22
+                                }
+
+                                Rectangle {
+                                    visible: row.mode === "calc"
+                                    anchors.fill: parent
+                                    radius: 7
+                                    color: row.hint ? Theme.currentLine : Theme.green
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "="
+                                        color: row.hint ? Theme.comment : Theme.background
+                                        font.family: Theme.fontUi
+                                        font.pixelSize: 14
+                                        font.weight: Font.DemiBold
+                                    }
+                                }
                             }
 
                             Text {
+                                readonly property bool result: row.mode === "calc" && !row.hint
+
                                 anchors.left: icon.right
                                 anchors.leftMargin: 12
                                 anchors.right: meta.left
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: row.modelData.name
+                                text: row.mode !== "calc" ? row.modelData.name : row.hint ? row.modelData.hint : row.modelData.text
                                 elide: Text.ElideRight
-                                color: Theme.foreground
-                                font.family: Theme.fontUi
-                                font.pixelSize: 15
-                                font.weight: row.selected ? Font.Medium : Font.Normal
+                                color: row.hint ? Theme.comment : Theme.foreground
+                                font.family: result ? Theme.fontMono : Theme.fontUi
+                                font.pixelSize: result ? 20 : row.hint ? 14 : 15
+                                font.weight: result ? Font.DemiBold : row.selected ? Font.Medium : Font.Normal
                             }
 
                             Text {
@@ -252,7 +345,7 @@ Scope {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: Apps.mainCategory(row.modelData)
+                                text: row.mode === "apps" ? Apps.mainCategory(row.modelData) : row.selected ? "Enter copies" : ""
                                 color: row.selected ? Theme.purple : Theme.comment
                                 font.family: Theme.fontMono
                                 font.pixelSize: 12
@@ -261,7 +354,7 @@ Scope {
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                onClicked: root.launch(row.modelData)
+                                onClicked: root.activate(row.modelData)
                                 // Hover selects only when the pointer itself
                                 // moves: Qt also sends hover events when rows
                                 // open, filter or scroll under a still pointer.
@@ -289,7 +382,11 @@ Scope {
                     spacing: 14
 
                     Repeater {
-                        model: [["Enter", "launch"], ["↑ ↓", "move"], ["Esc", "close"]]
+                        model: ({
+                                apps: [["Enter", "launch"], ["↑ ↓", "move"], ["Esc", "close"]],
+                                calc: [["Enter", "copy result"], ["Esc", "close"]],
+                                emoji: [["Enter", "copy"], ["↑ ↓", "move"], ["Esc", "close"]]
+                            })[root.mode]
 
                         Row {
                             required property var modelData
