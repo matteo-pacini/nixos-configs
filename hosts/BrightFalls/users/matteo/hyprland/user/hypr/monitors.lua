@@ -11,3 +11,12 @@ hl.monitor({ output = "HDMI-A-1", disabled = true })
 
 -- Anything else goes to the right at its preferred mode.
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+
+-- Five workspaces per display. Must match the `workspaceMonitors` mapping in
+-- quickshell/Bar.qml. While a monitor is off (game mode turns DP-2 off) its
+-- workspaces move to, and are created on, the remaining one; when it comes
+-- back, Hyprland moves every bound workspace back to its monitor.
+for i = 1, 10 do
+    local output = i <= 5 and "DP-1" or "DP-2"
+    hl.workspace_rule({ workspace = tostring(i), monitor = output, default = i == 1 or i == 6 })
+end

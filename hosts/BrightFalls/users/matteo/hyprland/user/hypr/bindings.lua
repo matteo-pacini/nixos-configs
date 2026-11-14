@@ -18,8 +18,8 @@
 --   Super+T                   toggle floating
 --   Super+Left/Right/Up/Down  move focus
 --   Super+Shift+arrows        swap window in that direction
---   Super+1..9                go to workspace
---   Super+Shift+1..9          move window to workspace
+--   Super+1..9, Super+0       go to workspace 1..10 (1-5 DP-1, 6-10 DP-2)
+--   Super+Shift+1..9, 0       move window to workspace 1..10
 --   Super+drag left/right     move / resize window
 --
 --   Super+Shift+O             cycle audio output
@@ -51,9 +51,10 @@ for _, dir in ipairs({ "left", "right", "up", "down" }) do
     hl.bind("SUPER + SHIFT + " .. dir, hl.dsp.window.swap({ direction = dir }))
 end
 
-for i = 1, 9 do
-    hl.bind("SUPER + " .. i, hl.dsp.focus({ workspace = i }))
-    hl.bind("SUPER + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
+for i = 1, 10 do
+    local key = i % 10
+    hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = i }))
+    hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
 
 hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })

@@ -32,6 +32,12 @@ Scope {
     readonly property int fontSize: 12
     readonly property int iconSize: 14
     readonly property int gap: 12
+    // Each monitor's own workspaces. Must match the workspace rules in
+    // hypr/monitors.lua.
+    readonly property var workspaceMonitors: ({
+            "DP-1": [1, 2, 3, 4, 5],
+            "DP-2": [6, 7, 8, 9, 10]
+        })
     // The mockup's "soft" text colour, between foreground and comment.
     readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
 
@@ -120,12 +126,12 @@ Scope {
             readonly property HyprlandToplevel shownWindow: lastWindow && lastWindow.workspace === activeWorkspace ? lastWindow : activeWorkspace?.toplevels.values.find(t => "0x" + t.address === activeWorkspace.lastIpcObject.lastwindow) ?? null
             readonly property string title: shownWindow?.title ?? ""
 
-            // 1 to 5, and any other existing normal workspace (named and
-            // special ones have ids below 1).
+            // This monitor's own workspaces, and any other existing normal
+            // workspace on it (named and special ones have ids below 1).
             readonly property var workspaceIds: {
-                const ids = new Set([1, 2, 3, 4, 5]);
+                const ids = new Set(root.workspaceMonitors[modelData.name] ?? []);
                 for (const w of Hyprland.workspaces.values)
-                    if (w.id > 0)
+                    if (w.id > 0 && w.monitor === monitor)
                         ids.add(w.id);
                 return Array.from(ids).sort((a, b) => a - b);
             }
