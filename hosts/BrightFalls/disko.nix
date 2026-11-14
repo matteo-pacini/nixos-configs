@@ -60,6 +60,9 @@
                 passwordFile = "/tmp/luks.password";
                 settings = {
                   allowDiscards = true;
+                  # Default is 3 attempts, after which nothing re-prompts and
+                  # the root device wait below never ends.
+                  crypttabExtraOpts = [ "tries=0" ];
                 };
                 extraFormatArgs = [
                   "--type"
@@ -108,6 +111,10 @@
               mountOptions = [
                 "defaults"
                 "noatime"
+                # The volume only appears once the LUKS passphrase is typed.
+                # With the default 90 s device timeout, a slow unlock drops
+                # stage 1 into emergency mode and kills the Plymouth prompt.
+                "x-systemd.device-timeout=infinity"
               ];
             };
           };

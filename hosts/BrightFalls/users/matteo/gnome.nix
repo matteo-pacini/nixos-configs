@@ -8,7 +8,11 @@ let
   audioOutputCycle = pkgs.callPackage ./audio-output-cycle.nix { };
 in
 {
-  xdg.configFile."monitors.xml".source = ../../monitors.xml;
+  xdg.configFile."monitors.xml" = {
+    source = ../../monitors.xml;
+    # GNOME Settings replaces the link with a regular file on "Keep changes".
+    force = true;
+  };
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
