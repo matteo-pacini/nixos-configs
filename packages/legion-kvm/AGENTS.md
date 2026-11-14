@@ -191,8 +191,8 @@ display path as games. It renders uncapped, so the cube appears to spin
 erratically on screen. That's expected.
 
 Tested end to end with The Darkness Recomp (non-Steam) on 2026-11-14: display
-at 2560x1440, audio, keyboard, mouse and the Ctrl+Alt+G release work. Before
-`legion-008`, no cursor showed in menus. Its launch command:
+at 2560x1440, audio, keyboard, mouse and the Ctrl+Alt+G release work, and
+with `legion-008` the game's cursor shows in menus. Its launch command:
 
 ```bash
 legion run --proton <GE-Proton11-11 compat tool> --prefix <new dir> \
