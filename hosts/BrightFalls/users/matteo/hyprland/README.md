@@ -105,8 +105,10 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   panel. S runs a speed test with `cfspeedtest` (speed.cloudflare.com; the
   tool is named only in `network/SpeedTest.qml`) over the connection
   carrying the default route: latency, then download, then upload on two
-  gauges whose shared scale is the smallest of 100 Mb/s to 10 Gb/s that holds
-  the readings and that connection's best stored result. Esc during a run
+  gauges with one shared scale: the interface's negotiated link speed, or,
+  when that is unknown, the smallest of 100 Mb/s to 10 Gb/s that holds that
+  connection's best stored result; a reading above it grows the scale to the
+  next of those that holds it. Esc during a run
   kills it and stores nothing; a failure shows under empty gauges, Enter
   retries. Each completed run is appended as one JSON line (`at`,
   `connection`, `interface`, `download_mbps`, `upload_mbps`, `ping_ms`,
