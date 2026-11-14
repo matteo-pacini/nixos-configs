@@ -9,7 +9,7 @@ hl.window_rule({
     fullscreen = true,
     monitor    = "DP-1",
     -- immediate allows tearing; the game content type turns on direct
-    -- scanout (looknfeel.lua) and VRR on DP-1 (monitors.lua).
+    -- scanout (looknfeel.lua).
     immediate  = true,
     content    = "game",
     -- The pointer otherwise escapes to DP-2 in fullscreen.
