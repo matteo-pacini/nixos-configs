@@ -29,8 +29,8 @@ Scope {
             volumeLow: "\u{f057f}",
             volumeMuted: "\u{f0581}"
         })
-    readonly property int fontSize: 12
-    readonly property int iconSize: 14
+    readonly property int fontSize: 16
+    readonly property int iconSize: 18
     readonly property int gap: 12
     // Each monitor's own workspaces. Must match the workspace rules in
     // hypr/monitors.lua.
@@ -95,7 +95,7 @@ Scope {
 
         anchors.centerIn: parent
         width: parent.width + 8
-        height: 22
+        height: 26
         radius: 5
         color: Theme.currentLine
         visible: hovered
@@ -153,7 +153,7 @@ Scope {
                 left: 6
                 right: 6
             }
-            implicitHeight: 30
+            implicitHeight: 34
             WlrLayershell.namespace: "desk-bar"
 
             Connections {
@@ -222,8 +222,8 @@ Scope {
                                 readonly property bool active: workspace !== null && workspace === bar.activeWorkspace
                                 readonly property bool occupied: (workspace?.toplevels.values.length ?? 0) > 0
 
-                                width: 20
-                                height: 20
+                                width: 24
+                                height: 24
                                 radius: 5
                                 color: active ? Theme.purple : buttonArea.containsMouse ? Theme.currentLine : "transparent"
 
@@ -397,7 +397,7 @@ Scope {
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: Math.min(implicitWidth, 140)
+                                width: Math.min(implicitWidth, 180)
                                 text: audio.name
                                 elide: Text.ElideRight
                                 color: Theme.foreground
