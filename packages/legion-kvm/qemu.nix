@@ -31,6 +31,9 @@ stdenv.mkDerivation {
     # vCPU threads pin themselves from LEGION_VCPU_AFFINITY, which the launcher
     # sets only when built with pinVcpus; unset, nothing changes.
     ./patches/qemu-001-vcpu-affinity.patch
+    # Ctrl+Alt+G also releases the grab in fullscreen, where upstream QEMU
+    # only lets Ctrl+Alt+F leave fullscreen first.
+    ./patches/qemu-002-fullscreen-ungrab.patch
   ];
   # The guest display's EDID takes its refresh rate from the UI frontend, and
   # SDL never supplies one, so QEMU always falls back to 75 Hz.

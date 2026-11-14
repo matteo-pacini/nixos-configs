@@ -1,0 +1,15 @@
+diff --git a/src/qemu_policy.rs b/src/qemu_policy.rs
+index 6530207..b7218ea 100644
+--- a/src/qemu_policy.rs
++++ b/src/qemu_policy.rs
+@@ -47,6 +47,10 @@ pub fn exec(args: &[OsString]) -> Result<()> {
+             .context("verify QEMU child memory policy")?,
+         "QEMU child did not retain its hugepage policy"
+     );
++    // Survives the exec: if the launcher dies without stopping QEMU, its
++    // window (and any keyboard or pointer grab) must not outlive it.
++    rustix::process::set_parent_process_death_signal(Some(rustix::process::Signal::KILL))
++        .context("tie QEMU to the launcher's lifetime")?;
+     eprintln!("LEGION_QEMU_POLICY hugepages=off scope=qemu-process");
+     let error = Command::new(program).args(arguments).exec();
+     Err(error).with_context(|| format!("exec QEMU command {program:?}"))
