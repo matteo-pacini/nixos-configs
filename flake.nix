@@ -480,6 +480,11 @@
       checks = inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (
         system:
         import ./modules/home-manager/herdr/tests { pkgs = inputs.nixpkgs.legacyPackages.${system}; }
+        // inputs.nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
+          import ./hosts/BrightFalls/users/matteo/hyprland/tests {
+            pkgs = inputs.nixpkgs.legacyPackages.${system};
+          }
+        )
       );
 
       formatter = {

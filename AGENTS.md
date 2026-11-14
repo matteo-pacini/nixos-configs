@@ -102,4 +102,5 @@ The short version:
 | Home Assistant (what is in the repo vs only in HA, gotchas) | `hosts/Nexus/services/home-assistant/AGENTS.md` |
 | Home Assistant topic docs: Zigbee watchdog, blueprints, heating, dashboards, metrics, working on the live half | `hosts/Nexus/services/home-assistant/docs/` (indexed in the `AGENTS.md` above) |
 | Home Assistant custom cards (house floorplan: where its layout lives, how to add sensors) | `hosts/Nexus/services/home-assistant/cards/README.md` |
+| BrightFalls Hyprland desktop config (writable `~/.config` files, `desk-sync`, live edit loop) | `hosts/BrightFalls/users/matteo/hyprland/README.md` |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |

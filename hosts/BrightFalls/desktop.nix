@@ -46,4 +46,12 @@
   );
 
   programs.dconf.enable = true;
+
+  # With no monitors.xml, mutter makes the highest-resolution output primary:
+  # the 4K HDMI capture card, so the login box lands there and DP-1/DP-2 stay
+  # grey. GDM points the greeter's XDG_CONFIG_HOME at this per-seat dir (not
+  # its home under /run/gdm/home), and lchowns its contents on every start.
+  systemd.tmpfiles.rules = [
+    "L+ /var/lib/gdm/seat0/config/monitors.xml - - - - ${./monitors.xml}"
+  ];
 }

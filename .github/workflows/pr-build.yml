@@ -64,12 +64,13 @@ jobs:
             sandbox = true
             sandbox-fallback = false
 
-      - name: Run herdr tests
+      - name: Run herdr and desk-sync tests
         run: |
           nix build -L \
             .#checks.x86_64-linux.herdr-layout \
             .#checks.x86_64-linux.herdr-js \
-            .#checks.x86_64-linux.herdr-scripts
+            .#checks.x86_64-linux.herdr-scripts \
+            .#checks.x86_64-linux.desk-sync
 
   pr-build:
     needs: [eval]

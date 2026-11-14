@@ -13,6 +13,7 @@
     ./browser.nix
     ./services.nix
     ./gaming.nix
+    ./hyprland
   ];
 
   home.username = "matteo";

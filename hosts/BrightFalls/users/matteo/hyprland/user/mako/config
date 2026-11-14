@@ -1,0 +1,12 @@
+# Dracula.
+# Kept in step with ~/.config/desk/theme.json by hand: mako cannot read it.
+background-color=#282a36
+text-color=#f8f8f2
+border-color=#bd93f9
+progress-color=over #44475a
+border-radius=8
+default-timeout=5000
+
+[urgency=high]
+border-color=#ff5555
+default-timeout=0

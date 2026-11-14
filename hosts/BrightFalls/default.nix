@@ -8,6 +8,7 @@
     ./networking.nix
     ./users.nix
     ./desktop.nix
+    ./desktop-hyprland.nix
     ./audio
     ./services.nix
     ./graphics.nix
