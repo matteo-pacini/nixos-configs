@@ -158,6 +158,7 @@ reset() {
     case $rel in
     hypr/*) hints+=("hyprctl reload") ;;
     mako/*) hints+=("makoctl reload") ;;
+    quickshell/*) hints+=("nothing for quickshell (it reloads on file change)") ;;
     esac
   done
   if [ ${#hints[@]} -gt 0 ]; then

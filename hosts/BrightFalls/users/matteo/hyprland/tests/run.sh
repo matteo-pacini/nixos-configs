@@ -131,6 +131,10 @@ check "reset: incoming cleared" absent \
   "$([ -e "$state/incoming/hypr/b.lua" ] && echo present || echo absent)"
 ds "$work/gen2" reset "$cfg/hypr/a.lua"
 check "reset by live path" "0 a2" "$rc $(cat "$cfg/hypr/a.lua")"
+manifest shell quickshell/shell.qml=q1
+ds "$work/shell" reset quickshell/shell.qml
+check "reset: quickshell needs no reload" "0 reset quickshell/shell.qml
+To apply: nothing for quickshell (it reloads on file change)" "$rc $out"
 ds "$work/gen2" reset hypr/nope.lua
 check "reset outside the manifest" "1 desk-sync: hypr/nope.lua: not in the manifest (see desk-sync status)" "$rc $out"
 

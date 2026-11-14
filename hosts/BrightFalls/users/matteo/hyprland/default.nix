@@ -56,6 +56,7 @@ in
     satty
     wl-clipboard
     playerctl
+    quickshell
     (callPackage ../audio-output-cycle.nix { })
   ];
 
@@ -76,6 +77,23 @@ in
       ExecCondition = onlyInHyprland;
       ExecStart = "${pkgs.mako}/bin/mako";
       ExecReload = "${pkgs.mako}/bin/makoctl reload";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  # The desktop shell, from user/quickshell/ (installed at
+  # ~/.config/quickshell, the default config `qs` runs and `qs ipc` talks to).
+  # It reloads on its own when a file there changes.
+  systemd.user.services.quickshell = {
+    Unit = {
+      Description = "Quickshell desktop shell";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecCondition = onlyInHyprland;
+      ExecStart = lib.getExe' pkgs.quickshell "qs";
+      Restart = "on-failure";
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };

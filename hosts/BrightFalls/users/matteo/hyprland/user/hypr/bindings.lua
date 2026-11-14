@@ -1,10 +1,11 @@
--- Keybindings, after Omarchy's default/hypr/bindings. There is no launcher or
--- help overlay yet, so this is the list:
+-- Keybindings, after Omarchy's default/hypr/bindings. There is no help
+-- overlay yet, so this is the list:
 --
 --   Super+Return              terminal (ghostty)              [rescue.lua]
 --   Super+Shift+R             reload config                   [rescue.lua]
 --   Super+Shift+Escape        exit the session                [rescue.lua]
 --
+--   Super+Space               app launcher (Quickshell)
 --   Super+Ctrl+Return         Herdr desktop app
 --   Super+Shift+B             Firefox
 --   Super+Shift+S             Steam
@@ -30,6 +31,7 @@ local function launch(cmd)
     return hl.dsp.exec_cmd("uwsm app -- " .. cmd)
 end
 
+hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 hl.bind("SUPER + CTRL + RETURN", launch("herdr-app"))
 hl.bind("SUPER + SHIFT + B", launch("firefox"))
 hl.bind("SUPER + SHIFT + S", launch("steam"))
