@@ -89,6 +89,30 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   the one showing. Quickshell tries to register the agent once per process,
   when `Polkit.qml` first loads, and reloads keep that registration; if
   another agent held the session then, it takes a Quickshell restart.
+- `Network.qml` (Super+N, a click on the bar's network icon, `qs ipc call
+  network toggle`; parts in `network/`): a 380 px panel under the bar's
+  network icon on that monitor, with the icon marked while it is open. Wired
+  devices first: a connected one shows link speed, IPv4 address and its last
+  speed test, and Enter opens its details (address, gateway, DNS, MAC, link
+  speed and duplex); Enter never disconnects. Addresses come from `nmcli`, the
+  default route from `ip`, duplex from sysfs, all read when the panel opens;
+  the rest from `Quickshell.Networking`. Then "Set in Nix": greyed rows read
+  from `~/.local/share/desk/network/locked.json`, which
+  `desktop-hyprland.nix` generates from the system configuration (Tailscale
+  on, IPv6 off, Wake-on-LAN interfaces, hostname, firewall on; a row only
+  while the setting has that value), each naming the repo file that sets it,
+  which Enter shows in the footer. Up/Down move, Esc closes details, then the
+  panel. S runs a speed test with `cfspeedtest` (speed.cloudflare.com; the
+  tool is named only in `network/SpeedTest.qml`) over the connection
+  carrying the default route: latency, then download, then upload on two
+  gauges whose shared scale is the smallest of 100 Mb/s to 10 Gb/s that holds
+  the readings and that connection's best stored result. Esc during a run
+  kills it and stores nothing; a failure shows under empty gauges, Enter
+  retries. Each completed run is appended as one JSON line (`at`,
+  `connection`, `interface`, `download_mbps`, `upload_mbps`, `ping_ms`,
+  `tool`) to `~/.local/state/desk/speedtests.jsonl`, never trimmed; the panel
+  shows the newest per NetworkManager connection. fast.com's `fast-cli` is
+  not used: it rounds rates of 1 Gb/s and over to whole Gb/s.
 
 ## Activation
 

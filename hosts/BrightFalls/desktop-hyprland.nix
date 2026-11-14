@@ -1,7 +1,55 @@
 # Hyprland as a second GDM session beside GNOME. GNOME stays the default
 # and the autologin session.
-{ lib, pkgs, ... }:
 {
+  config,
+  options,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  repo = toString ../..;
+  # The repo files that define an option, relative to the repo root.
+  setIn =
+    option:
+    lib.concatStringsSep ", " (
+      map (lib.removePrefix "${repo}/") (lib.filter (lib.hasPrefix "${repo}/") (map toString option.files))
+    );
+  net = config.networking;
+  wolInterfaces = lib.attrNames (lib.filterAttrs (_: i: i.wakeOnLan.enable) net.interfaces);
+
+  # The network panel's "Set in Nix" rows (user/quickshell/Network.qml). A
+  # row is present only while its setting has the value it states.
+  lockedRows =
+    lib.optional config.services.tailscale.enable {
+      id = "tailscale";
+      label = "Tailscale enabled";
+      file = setIn options.services.tailscale.enable;
+    }
+    ++ lib.optional (!net.enableIPv6) {
+      id = "ipv6";
+      label = "IPv6 off";
+      file = setIn options.networking.enableIPv6;
+    }
+    ++ lib.optional (wolInterfaces != [ ]) {
+      id = "wol";
+      label = "Wake-on-LAN on ${lib.concatStringsSep ", " wolInterfaces}";
+      file = setIn options.networking.interfaces;
+    }
+    ++ lib.optional (net.hostName != "") {
+      id = "hostname";
+      label = "Hostname ${net.hostName}";
+      file = setIn options.networking.hostName;
+    }
+    ++ lib.optional net.firewall.enable {
+      id = "firewall";
+      label = "Firewall on";
+      file = setIn options.networking.firewall.enable;
+    };
+in
+{
+  home-manager.users.matteo.xdg.dataFile."desk/network/locked.json".text = builtins.toJSON lockedRows;
+
   programs.hyprland = {
     enable = true;
     withUWSM = true;
