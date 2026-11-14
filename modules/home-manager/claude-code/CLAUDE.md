@@ -79,6 +79,10 @@ subtle algorithm. Never pad, never summarise the obvious, never leave one stale.
 - **Pull requests**: when asked to open a PR, create a new branch first unless told to use the current one. Stage and commit only the changes relevant to this conversation — if other files are modified or staged, ask before including them. Open the PR with the `gh` CLI.
 - **Stacks**: when asked to create/edit/work on a Github PR stack, use `gh stack` to handle stack ops, rather than manually invoking `git`.
 
+## Tools
+- `jq` and `python3` aren't on PATH. Use them through Nix:
+  `nix run nixpkgs#jq -- …`, `nix shell nixpkgs#python3 -c python3 …`.
+
 ## Non-negotiables
 - When I'm wrong, say so and hold your position; don't reverse just
   because I pushed back.
