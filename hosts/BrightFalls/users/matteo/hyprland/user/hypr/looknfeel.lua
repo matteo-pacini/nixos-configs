@@ -1,8 +1,30 @@
--- Dracula palette.
-local purple     = "rgb(bd93f9)"
-local pink       = "rgb(ff79c6)"
-local selection  = "rgb(44475a)"
-local background = "rgb(282a36)"
+-- Colours and fonts come from ~/.config/desk/theme.json through the
+-- read-only theme.lua beside rescue.lua, by absolute path for the same reason
+-- (see hyprland.lua). pcall: the file is missing if that directory is. Any
+-- key it does not supply falls back to the Dracula value here.
+local data = os.getenv("XDG_DATA_HOME") or (os.getenv("HOME") .. "/.local/share")
+local ok, theme = pcall(require, data .. "/desk/hypr/theme.lua")
+if not ok or type(theme) ~= "table" then
+    theme = {}
+end
+local fallback = {
+    background   = "#282a36",
+    current_line = "#44475a",
+    pink         = "#ff79c6",
+    purple       = "#bd93f9",
+    font_ui      = "Fira Sans",
+}
+local function pick(key)
+    return theme[key] or fallback[key]
+end
+local function rgb(key)
+    return "rgb(" .. pick(key):sub(2) .. ")"
+end
+
+local purple       = rgb("purple")
+local pink         = rgb("pink")
+local current_line = rgb("current_line")
+local background   = rgb("background")
 
 hl.config({
     general = {
@@ -12,7 +34,7 @@ hl.config({
         border_size = 2,
         col = {
             active_border   = { colors = { purple, pink }, angle = 45 },
-            inactive_border = selection,
+            inactive_border = current_line,
         },
         -- Lets windows with the immediate rule (rules.lua) tear.
         allow_tearing = true,
@@ -55,6 +77,8 @@ hl.config({
         disable_hyprland_logo   = true,
         force_default_wallpaper = 0,
         background_color        = background,
+        -- Hyprland's own text: config errors and hyprctl notify.
+        font_family             = pick("font_ui"),
     },
 })
 

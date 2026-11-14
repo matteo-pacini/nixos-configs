@@ -45,6 +45,9 @@
   # it makes GDM reset every user's saved session to GNOME each time it starts.
   services.displayManager.defaultSession = "gnome";
 
+  # font_ui in the desktop palette (users/matteo/hyprland/user/desk/theme.json).
+  custom.fonts.extraPackages = [ pkgs.fira-sans ];
+
   # Stable card-node names for AQ_DRM_DEVICES, which is colon-separated and so
   # cannot take /dev/dri/by-path names. Card numbers are not stable across boots.
   services.udev.extraRules = ''
