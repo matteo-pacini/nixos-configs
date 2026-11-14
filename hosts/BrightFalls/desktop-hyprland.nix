@@ -55,12 +55,17 @@
     SUBSYSTEM=="drm", KERNEL=="card*", ENV{DEVTYPE}=="drm_minor", KERNELS=="0000:0a:00.0", SYMLINK+="dri/igpu"
   '';
 
-  # The eGPU never comes back from sleep. Under GNOME, gsd-media-keys holds the
-  # handle-suspend-key inhibitor and these settings are not consulted; without
-  # it (Hyprland), logind would suspend on KEY_SLEEP, which the keyboards and
-  # mouse advertise, and hibernate on a long press of it.
+  # Under GNOME, gsd-media-keys holds the handle-suspend-key and
+  # handle-power-key inhibitors and these settings are not consulted. Without
+  # them (Hyprland), logind would act on the keys itself. The eGPU never comes
+  # back from sleep, so it must not suspend on KEY_SLEEP, which the keyboards
+  # and mouse advertise, or hibernate on a long press of it. A short press of
+  # the power key opens the session menu (Quickshell) instead of powering off;
+  # a long press still powers off.
   services.logind.settings.Login = {
     HandleSuspendKey = "ignore";
     HandleSuspendKeyLongPress = "ignore";
+    HandlePowerKey = "ignore";
+    HandlePowerKeyLongPress = "poweroff";
   };
 }

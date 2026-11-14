@@ -65,6 +65,22 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   bind, binds with the same description share a row (the digit row and the
   four arrows collapse to one keycap), and a description with no group goes
   under "Other". `rescue.lua` has its own copy of the helper.
+- `SessionMenu.qml` (Super+Escape or the power key, `qs ipc call session
+  toggle`): a modal on the focused monitor with Lock (disabled until there is
+  a lock screen), Log out (`uwsm stop`), Switch to GNOME (sets the user's
+  saved session in AccountsService to `gnome`, which GDM's greeter
+  preselects, then logs out), Reboot and Shut down. Up/Down and Enter, or the
+  row's letter; Reboot and Shut down act on a second press. logind ignores a
+  short press of the power key (`desktop-hyprland.nix`) so the menu can take
+  it; a long press still powers off.
+- `Polkit.qml`: the session's polkit authentication agent, in place of
+  hyprpolkitagent. Each request is a modal on the focused monitor with the
+  message, the identity, a password field and the action id; Enter
+  authenticates, Esc cancels, a wrong password clears the field and says so.
+  Requests queue and show one at a time. `qs ipc call polkit cancel` cancels
+  the one showing. Quickshell tries to register the agent once per process,
+  when `Polkit.qml` first loads, and reloads keep that registration; if
+  another agent held the session then, it takes a Quickshell restart.
 
 ## Activation
 

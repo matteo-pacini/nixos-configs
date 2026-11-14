@@ -60,9 +60,6 @@ in
     (callPackage ../audio-output-cycle.nix { })
   ];
 
-  services.hyprpolkitagent.enable = true;
-  systemd.user.services.hyprpolkitagent.Service.ExecCondition = onlyInHyprland;
-
   # The desktop shell, from user/quickshell/ (installed at
   # ~/.config/quickshell, the default config `qs` runs and `qs ipc` talks to).
   # It reloads on its own when a file there changes. It is also the
