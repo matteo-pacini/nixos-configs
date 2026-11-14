@@ -66,8 +66,13 @@ into derivations:
   virtio mouse; in the guest, the KMS compositor reads their evdev nodes and
   feeds the seat code the NVIDIA path already uses. Relative, not a tablet,
   so mouselook works: games can lock the pointer through the
-  pointer-constraints protocol. The KMS path scans out the game's buffer
-  directly, so no cursor is drawn unless the game draws its own.
+  pointer-constraints protocol.
+- **The client's cursor goes on virtio-gpu's cursor plane** (`legion-008`).
+  The KMS path scans out the game's buffer directly, so nothing composites a
+  cursor. QEMU's SDL window shows a guest cursor as the host cursor while
+  grabbed, and switches to relative mode when the guest hides it, which is
+  what games do for mouselook. ARGB or XRGB shm cursors up to 256x256 are
+  used, cropped to the plane's 64x64.
 - **Game resolution is patched in.** Upstream hardcodes the AMD path's guest
   display at 1920x1080. `src/game.rs` writes it to `kms.json`, which becomes
   QEMU's virtio-gpu `xres`/`yres`. `rust.nix` substitutes the module's
@@ -113,6 +118,7 @@ substitutions in the `.nix` files.
 | `patches/legion-005-guest-input-permissions.patch` (guest) | bootstrap chowns `/dev/input/event*` to the launch user in KMS mode | always |
 | `patches/legion-006-kms-evdev-input.patch` (guest) | KMS compositor reads the evdev nodes (`evdev.rs`) and delivers them through the seat (`State::local_input`) | always |
 | `patches/legion-007-qemu-parent-death-signal.patch` | QEMU gets SIGKILL if the launcher dies, so its window and grab can't outlive it | always |
+| `patches/legion-008-kms-cursor-plane.patch` (guest) | KMS compositor shows the client's `wl_pointer.set_cursor` image on the cursor plane (`cursor.rs`) | always |
 | `patches/qemu-001-vcpu-affinity.patch` | vCPU threads pin themselves from `LEGION_VCPU_AFFINITY` | always (inert without it) |
 | `patches/qemu-002-fullscreen-ungrab.patch` | Ctrl+Alt+G releases the grab in fullscreen too | always |
 | `rust.nix` substitution, `src/game.rs` | game display size | always (`resolution`) |
@@ -167,9 +173,6 @@ cp debs/debs-*.nix packages/legion-kvm/
 
 ## Known gaps
 
-- **No cursor on the AMD path** unless the game draws one (see Decisions).
-  Wine on Wayland sets its cursor with `wl_pointer.set_cursor`, which the KMS
-  compositor ignores. A fix would copy it to virtio-gpu's cursor plane.
 - **Grabs on the AMD path:** a click in the window grabs the mouse, and in
   fullscreen the keyboard is grabbed from the start. Ctrl+Alt+G releases
   both; QEMU exiting releases them too. On GNOME Wayland, Super+Esc restores
@@ -188,8 +191,8 @@ display path as games. It renders uncapped, so the cube appears to spin
 erratically on screen. That's expected.
 
 Tested end to end with The Darkness Recomp (non-Steam) on 2026-11-14: display
-at 2560x1440, audio, keyboard, mouse and the Ctrl+Alt+G release work; no
-cursor shows in menus (Known gaps). Its launch command:
+at 2560x1440, audio, keyboard, mouse and the Ctrl+Alt+G release work. Before
+`legion-008`, no cursor showed in menus. Its launch command:
 
 ```bash
 legion run --proton <GE-Proton11-11 compat tool> --prefix <new dir> \
