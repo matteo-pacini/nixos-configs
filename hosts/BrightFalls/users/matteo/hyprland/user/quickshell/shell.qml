@@ -17,4 +17,5 @@ ShellRoot {
     Bar {}
     Notifications {}
     Osd {}
+    Cheatsheet {}
 }

@@ -54,6 +54,17 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   not a restart.
 - `Osd.qml`: the on-screen display, a pill under the bar on the focused
   monitor.
+- `Cheatsheet.qml` (Super+K, `qs ipc call cheatsheet toggle`): the
+  keybinding cheat sheet, a modal on the focused monitor with the binds in
+  groups over three columns and a filter. It lists what the running Hyprland
+  has bound (`hyprctl -j binds`, read when it opens and after each config
+  reload), so a live edit shows after `hyprctl reload`. A bind is on it when
+  it has a description, `"<Group>: <Description>"`: in `hypr/bindings.lua`
+  write it with the local `bind(group, keys, description, dispatcher, opts)`
+  helper, not bare `hl.bind`. Groups appear in the order of their first
+  bind, binds with the same description share a row (the digit row and the
+  four arrows collapse to one keycap), and a description with no group goes
+  under "Other". `rescue.lua` has its own copy of the helper.
 
 ## Activation
 
