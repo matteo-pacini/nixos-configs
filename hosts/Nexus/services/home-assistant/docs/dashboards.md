@@ -31,6 +31,7 @@ These are the owner's stated preferences.
 - **Check that an icon exists** in `/static/mdi/iconList.json` before using an `mdi:` name.
 - **Card visibility by template.** A card with a `condition: template` visibility rule was hidden unconditionally. Use `state` or `numeric_state` conditions, or a template binary sensor with a state condition. Seen on HA 2026.8.3; not re-tested on later versions.
 - **Scheduler card.** It needs the Scheduler integration's config entry, which is added in the UI; without it the card reports that it cannot reach the component. It only lists schedules for the entity domains its config includes, so a schedule for a new kind of entity is invisible until that domain is added. Its "on workdays" option needs a workday sensor, which this HA does not have, so tick the days.
+- **Bubble Card pop-ups are standalone.** Since Bubble Card 3.2.0 a pop-up is one `custom:bubble-card` card with `card_type: pop-up`, a `hash`, and its content under `cards:`. The legacy form, where a pop-up card at the top of a section swallows the section's other cards, still renders but shows a "needs to be migrated" banner. A standalone pop-up takes no space where it sits, so it can go at the end of any section; open it with a `navigate` tap action to its hash. First used on the Climate dashboard's Inside and Outside chips, 2026-11-14, on Bubble Card 3.4.2.
 - **Camera cards.** Where a camera's live stream fails in HA but its snapshots load, show a refreshing snapshot. The cause was not investigated.
 
 ## Charts

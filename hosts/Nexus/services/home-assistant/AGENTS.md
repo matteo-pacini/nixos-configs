@@ -38,7 +38,8 @@ These describe parts of the system whose live half is not in git.
 |-----|--------|
 | [docs/zigbee-watchdog.md](docs/zigbee-watchdog.md) | The Zigbee network and the Zigbee Coordinator Watchdog automation (only in HA): what it detects, how it recovers, its guards, and what is still untested. |
 | [docs/blueprints.md](docs/blueprints.md) | The blueprints in `blueprints/automation/`, the UI automations built from them, and the device behaviour they rely on. |
-| [docs/heating.md](docs/heating.md) | Boiler, radiator valves, scenes and schedules: which piece lives where and what each entity really means. |
+| [docs/heating.md](docs/heating.md) | Boiler, radiator valves, scenes and schedules: which piece lives where and what each entity really means. Also the venting advice sensors and their notifications. |
+| [docs/heating-plan.md](docs/heating-plan.md) | The heating plan (only in HA) that drives the valves: period timeline, temperature levels, presence, why it is built that way, and how to roll it back. |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard conventions, and card, chart and theme behaviour that cost time to find. |
 | [docs/metrics.md](docs/metrics.md) | How HA history reaches VictoriaMetrics, what the recorder keeps, and energy and cost data. |
 | [docs/live-config.md](docs/live-config.md) | Reading and changing the live half: which API does what, browser tool limits, and how to do it safely. |
@@ -55,6 +56,7 @@ These describe parts of the system whose live half is not in git.
 - **Public repo.** Keep house-specific data in HA, not here. This covers the floorplan layout, room names and setpoints, budget figures, health and medication data, meter identifiers, people's names and addresses of any kind. It applies to commit messages and PR descriptions as much as to files. When a service in this repo needs such a value, put it in an agenix secret.
 - **Frontend changes and the cache.** After a deploy, a change to a theme, card or module only shows after a hard refresh (Ctrl+Shift+R). The service worker serves the old index until then. The modules built from this directory are versioned by content hash, so their URLs change with each edit; packaged ones use their release version.
 - **Card styling uses UIX.** card-mod is gone from nixpkgs. Theme styling only applies while UIX has a config entry (added in the UI) and the theme sets `uix-theme`.
+- **The heating plan owns the radiator valves.** `automation.heating_plan` rewrites every valve on each period, presence or level change, so a setpoint written directly to a valve only lasts until then. To change a temperature, change an `input_number.heating_level_*` helper; to change a time, edit the Heating plan timeline in the Scheduler card. Read [docs/heating-plan.md](docs/heating-plan.md) first.
 - **Live config goes through the user's browser.** Read or change it with Claude in Chrome on the HA site. Start with [docs/live-config.md](docs/live-config.md).
   - `document.querySelector("home-assistant").hass`
   - `hass.connection.sendMessagePromise({ type: "lovelace/config", ... })`
