@@ -1,6 +1,8 @@
 # A bare Hyprland session (UWSM), picked in GDM beside GNOME. Everything
 # here must stay inert in the GNOME session.
 {
+  config,
+  lib,
   pkgs,
   ...
 }:
@@ -8,13 +10,37 @@ let
   # graphical-session.target is reached by GNOME as well; this skips a unit
   # unless XDG_CURRENT_DESKTOP, which UWSM exports, contains Hyprland.
   onlyInHyprland = ''${pkgs.systemd}/lib/systemd/systemd-xdg-autostart-condition "Hyprland" ""'';
+
+  deskSync = pkgs.writeShellApplication {
+    name = "desk-sync";
+    runtimeInputs = with pkgs; [
+      coreutils
+      diffutils
+      findutils
+      gnugrep
+      gnused
+      git
+    ];
+    text = ''
+      manifest="${./user}"
+      config_home="${config.xdg.configHome}"
+      state="${config.xdg.stateHome}/desk"
+    ''
+    + builtins.readFile ./desk-sync.sh;
+  };
 in
 {
-  # The Lua config, installed read-only from the store.
-  xdg.configFile."hypr" = {
-    source = ./user/hypr;
+  # The two layers of the desktop's config; see README.md. defaults/ is
+  # linked read-only from the store; every file under user/ is copied to the
+  # same path under ~/.config as a writable file, keeping live edits.
+  xdg.dataFile."desk" = {
+    source = ./defaults;
     recursive = true;
   };
+  home.activation.deskSync = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    run ${lib.getExe deskSync} activate ||
+      echo "desk-sync: some files under ${config.xdg.configHome} were not installed, see above" >&2
+  '';
 
   # Sourced by UWSM only when it starts Hyprland. The links come from udev,
   # because card numbers change between boots.
@@ -24,6 +50,7 @@ in
 
   # Commands the binds in user/hypr/bindings.lua run.
   home.packages = with pkgs; [
+    deskSync
     grim
     slurp
     satty
@@ -52,18 +79,4 @@ in
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
-
-  # Dracula.
-  xdg.configFile."mako/config".text = ''
-    background-color=#282a36
-    text-color=#f8f8f2
-    border-color=#bd93f9
-    progress-color=over #44475a
-    border-radius=8
-    default-timeout=5000
-
-    [urgency=high]
-    border-color=#ff5555
-    default-timeout=0
-  '';
 }
