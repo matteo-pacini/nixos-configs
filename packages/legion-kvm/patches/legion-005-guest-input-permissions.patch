@@ -1,0 +1,22 @@
+diff --git a/crates/proton-workload/src/bootstrap.rs b/crates/proton-workload/src/bootstrap.rs
+index 8821f4d..a78f682 100644
+--- a/crates/proton-workload/src/bootstrap.rs
++++ b/crates/proton-workload/src/bootstrap.rs
+@@ -873,6 +873,17 @@ mod linux {
+                     fs::set_permissions(node.path(), fs::Permissions::from_mode(0o666))?;
+                 }
+             }
++            // The KMS compositor reads QEMU's virtio keyboard and mouse.
++            if Path::new("/frames/kms-presentation.json").is_file()
++                && let Ok(nodes) = fs::read_dir("/dev/input")
++            {
++                for node in nodes {
++                    let node = node?;
++                    if node.file_name().to_string_lossy().starts_with("event") {
++                        chown(&node.path(), launch.uid, launch.gid)?;
++                    }
++                }
++            }
+         }
+         for directory in ["home", "compatdata", "steam", "cache"] {
+             let path = Path::new("/frames").join(directory);

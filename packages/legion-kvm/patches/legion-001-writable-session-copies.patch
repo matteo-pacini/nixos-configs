@@ -1,0 +1,44 @@
+diff --git a/src/game.rs b/src/game.rs
+index fb98772..c75ccf6 100644
+--- a/src/game.rs
++++ b/src/game.rs
+@@ -182,6 +182,20 @@ fn copy(source: &Path, target: &Path) -> Result<()> {
+             .success(),
+         "copy guest session runtime failed"
+     );
++    writable(target)
++}
++
++// The runtime may live on a read-only filesystem (the Nix store, mode 0555),
++// and `cp -a` carries those modes into the session copy, which is written to.
++fn writable(target: &Path) -> Result<()> {
++    ensure!(
++        std::process::Command::new("chmod")
++            .args(["-R", "u+w", "--"])
++            .arg(target)
++            .status()?
++            .success(),
++        "make guest session runtime writable failed"
++    );
+     Ok(())
+ }
+ 
+diff --git a/src/runtime.rs b/src/runtime.rs
+index b61a3a9..57fb1e4 100644
+--- a/src/runtime.rs
++++ b/src/runtime.rs
+@@ -353,6 +353,14 @@ fn copy_tree(source: &Path, target: &Path) -> Result<()> {
+         .status()
+         .context("copy private runtime files (coreutils cp required)")?;
+     ensure!(status.success(), "private copy failed");
++    // The runtime may live on a read-only filesystem (the Nix store, mode 0555),
++    // and `cp -a` carries those modes into the private copy, which is written to.
++    let status = Command::new("chmod")
++        .args(["-R", "u+w", "--"])
++        .arg(target)
++        .status()
++        .context("make private runtime files writable")?;
++    ensure!(status.success(), "chmod of private copy failed");
+     Ok(())
+ }
+ 

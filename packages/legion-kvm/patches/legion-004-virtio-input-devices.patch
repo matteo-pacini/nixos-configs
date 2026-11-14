@@ -1,0 +1,17 @@
+diff --git a/src/native_context.rs b/src/native_context.rs
+index 2ba3fe9..c7d6e2e 100644
+--- a/src/native_context.rs
++++ b/src/native_context.rs
+@@ -358,6 +358,12 @@ pub(crate) fn run(args: &[OsString]) -> Result<()> {
+         .stdin(Stdio::null()).stdout(File::create(output.join("console.log"))?)
+         .stderr(File::create(output.join("qemu.log"))?);
+     crate::audio::configure(&mut command, config.desktop_audio);
++    if config.window {
++        // -nodefaults leaves only q35's PS/2 controller, which the guest
++        // kernel cannot drive; the guest has VIRTIO_INPUT and EVDEV. The mouse
++        // is relative, so the SDL window grabs it on click.
++        command.args(["-device", "virtio-keyboard-pci", "-device", "virtio-mouse-pci"]);
++    }
+     if config.window && !config.desktop_renderer {
+         let pci = fs::canonicalize(
+             Path::new("/sys/class/drm")

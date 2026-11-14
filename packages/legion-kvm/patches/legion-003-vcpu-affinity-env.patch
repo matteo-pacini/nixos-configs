@@ -1,0 +1,28 @@
+--- a/src/native_context.rs
++++ b/src/native_context.rs
+@@ -347,6 +347,7 @@
+     let mut command = qemu_policy::command(&config.qemu, qemu_policy::HugePages::Off)?;
+     command.args(["-machine","q35,accel=kvm,smm=off,memory-backend=ram","-cpu",&model,"-m",&memory_mib.to_string()])
+         .args(topology.qemu_args(&model)?)
++        .env("LEGION_VCPU_AFFINITY", vcpu_affinity(&topology))
+         .args(["-object",&ram.argument,"-nodefaults","-no-reboot","-monitor","none","-serial","stdio","-nic","none"])
+         .args(["-display",&if config.window { if fullscreen { "sdl,gl=es,full-screen=on".to_owned() } else { "sdl,gl=es".to_owned() } } else { format!("egl-headless,rendernode={}",qemu_path(&node)?) },
+             "-device",&format!("virtio-gpu-gl-pci,hostmem=1G,blob=on,drm_native_context=on,venus=off,xres={},yres={}{}",dimensions.0,dimensions.1,
+@@ -521,3 +522,17 @@
+ #[cfg(test)]
+ #[path = "../tests/unit/native_context.rs"]
+ mod tests;
++
++/// Host CPU for each vCPU, in QEMU cpu_index order: socket, then core by
++/// (die, core), then thread, as `Topology::qemu_args` lays them out. QEMU's
++/// vCPU threads pin themselves from this list, so the guest's SMT siblings
++/// are host siblings too.
++fn vcpu_affinity(topology: &legion_cpu_topology::Topology) -> String {
++    let mut cores: Vec<_> = topology.cores.iter().collect();
++    cores.sort_by_key(|core| (core.package, core.die, core.core));
++    cores
++        .iter()
++        .flat_map(|core| core.cpu_ids.iter().map(u32::to_string))
++        .collect::<Vec<_>>()
++        .join(",")
++}
