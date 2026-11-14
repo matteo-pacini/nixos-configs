@@ -1,0 +1,11 @@
+--- a/src/native_context.rs
++++ b/src/native_context.rs
+@@ -348,7 +348,7 @@
+     command.args(["-machine","q35,accel=kvm,smm=off,memory-backend=ram","-cpu",&model,"-m",&memory_mib.to_string()])
+         .args(topology.qemu_args(&model)?)
+         .args(["-object",&ram.argument,"-nodefaults","-no-reboot","-monitor","none","-serial","stdio","-nic","none"])
+-        .args(["-display",&if config.window { if fullscreen { "sdl,gl=on,full-screen=on".to_owned() } else { "sdl,gl=on".to_owned() } } else { format!("egl-headless,rendernode={}",qemu_path(&node)?) },
++        .args(["-display",&if config.window { if fullscreen { "sdl,gl=es,full-screen=on".to_owned() } else { "sdl,gl=es".to_owned() } } else { format!("egl-headless,rendernode={}",qemu_path(&node)?) },
+             "-device",&format!("virtio-gpu-gl-pci,hostmem=1G,blob=on,drm_native_context=on,venus=off,xres={},yres={}{}",dimensions.0,dimensions.1,
+                 if config.desktop_renderer { format!(",drm-rendernode={}",qemu_path(&node)?) } else { String::new() })])
+         .arg("-kernel").arg(kernel).arg("-initrd").arg(initrd)
