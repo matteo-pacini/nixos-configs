@@ -168,6 +168,8 @@ cp debs/debs-*.nix packages/legion-kvm/
 ## Known gaps
 
 - **No cursor on the AMD path** unless the game draws one (see Decisions).
+  Wine on Wayland sets its cursor with `wl_pointer.set_cursor`, which the KMS
+  compositor ignores. A fix would copy it to virtio-gpu's cursor plane.
 - **Grabs on the AMD path:** a click in the window grabs the mouse, and in
   fullscreen the keyboard is grabbed from the start. Ctrl+Alt+G releases
   both; QEMU exiting releases them too. On GNOME Wayland, Super+Esc restores
@@ -185,8 +187,9 @@ guest. In the `guest` output, `usr-manifest.json`'s
 display path as games. It renders uncapped, so the cube appears to spin
 erratically on screen. That's expected.
 
-Tested end to end with The Darkness Recomp (non-Steam) on 2026-11-13: display
-at 2560x1440 and audio work, input wasn't wired yet (it predates `legion-004`–`006`). Its launch command:
+Tested end to end with The Darkness Recomp (non-Steam) on 2026-11-14: display
+at 2560x1440, audio, keyboard, mouse and the Ctrl+Alt+G release work; no
+cursor shows in menus (Known gaps). Its launch command:
 
 ```bash
 legion run --proton <GE-Proton11-11 compat tool> --prefix <new dir> \
