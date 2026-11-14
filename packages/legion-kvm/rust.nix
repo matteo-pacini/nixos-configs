@@ -31,6 +31,13 @@
     ];
     cargoBuildFlags = [ "--workspace" ];
     doCheck = false;
+    # Guest-side keyboard and mouse for the AMD path. The launcher built here
+    # is unused (static's is installed), so the launcher patches stay there and
+    # changing them doesn't rebuild the guest.
+    patches = [
+      ./patches/legion-005-guest-input-permissions.patch
+      ./patches/legion-006-kms-evdev-input.patch
+    ];
     # cpu-adapter is a cdylib; buildRustPackage only installs binaries.
     postInstall = ''
       install -Dm0755 target/*/release/liblegion_cpu_adapter.so $out/lib/liblegion_cpu_adapter.so
@@ -76,7 +83,11 @@
       # QEMU's own blit shaders are GLSL ES 3.00 either way.
       ./patches/legion-002-sdl-gles-display.patch
     ]
-    ++ lib.optional pinVcpus ./patches/legion-003-vcpu-affinity-env.patch;
+    ++ lib.optional pinVcpus ./patches/legion-003-vcpu-affinity-env.patch
+    ++ [
+      ./patches/legion-004-virtio-input-devices.patch
+      ./patches/legion-007-qemu-parent-death-signal.patch
+    ];
     # Upstream hardcodes the AMD path's guest display mode (virtio-gpu xres and
     # yres) for games at 1920x1080, with no setting for it. The memory and
     # fullscreen substitutions only change defaults: LEGION_MEMORY_MIB and
