@@ -86,3 +86,7 @@ bind("Session", "SUPER + CTRL + G", "Game mode", function()
     hl.config({ animations = { enabled = false }, decoration = { blur = { enabled = false } } })
 end)
 bind("Session", "SUPER + K", "Keybindings", hl.dsp.exec_cmd("qs ipc call cheatsheet toggle"))
+bind("Session", "SUPER + ESCAPE", "Session menu", hl.dsp.exec_cmd("qs ipc call session toggle"))
+-- logind must ignore a short press (HandlePowerKey in desktop-hyprland.nix),
+-- or it powers off before the menu shows.
+bind("Session", "XF86PowerOff", "Session menu", hl.dsp.exec_cmd("qs ipc call session toggle"))

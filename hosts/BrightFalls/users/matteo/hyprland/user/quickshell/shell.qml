@@ -18,4 +18,6 @@ ShellRoot {
     Notifications {}
     Osd {}
     Cheatsheet {}
+    SessionMenu {}
+    Polkit {}
 }
