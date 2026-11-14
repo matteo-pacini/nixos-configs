@@ -51,13 +51,13 @@ into derivations:
 - **The final package uses `dontFixup`**, so Nix's fixup can't rewrite the
   Debian tree in `guest/usr`.
 - **The launcher makes its session copies writable**
-  (`launcher-writable-copies.patch`). Each launch copies `guest/usr` with
+  (`patches/legion-001-writable-session-copies.patch`). Each launch copies `guest/usr` with
   `cp -a`, which keeps the store's 0555 modes, then writes the repaired
   `ntdll.dll` into it. `cp --no-preserve=mode` would drop execute bits.
   `legion doctor` and `cpu-check` don't copy, so only a real launch shows
   this.
-- **Launcher-only changes live in `rust.nix` `static`**: the patch above and
-  the `game.rs` substitutions (resolution, default memory, default
+- **Launcher-only changes live in `rust.nix` `static`**: the `legion-*` patches
+  and the `game.rs` substitutions (resolution, default memory, default
   fullscreen). Changing them rebuilds only the launcher and the final
   package, not the guest.
 - **Game resolution is patched in.** Upstream hardcodes the AMD path's guest
@@ -70,9 +70,9 @@ into derivations:
   desktop-sized resolution needs `fullscreen` (BrightFalls sets it).
 - **vCPUs can be pinned to the host topology** (`pinVcpus`; BrightFalls on).
   Upstream mirrors the host's socket/core/SMT shape in `-smp` but leaves
-  vCPU threads floating. `launcher-vcpu-affinity.patch` makes the AMD
-  path's launcher set `LEGION_VCPU_AFFINITY`: the host CPU for each vCPU, in
-  QEMU's cpu_index order. `qemu-vcpu-affinity.patch` makes each vCPU thread
+  vCPU threads floating. `legion-003-vcpu-affinity-env.patch` makes the
+  AMD path's launcher set `LEGION_VCPU_AFFINITY`: the host CPU for each vCPU,
+  in QEMU's cpu_index order. `qemu-001-vcpu-affinity.patch` makes each vCPU thread
   pin itself to its entry. QEMU always carries its patch, which does nothing
   without the variable, so toggling the option rebuilds only the launcher.
 - **The default guest memory is patched** to the module's `memoryMiB`
@@ -91,16 +91,21 @@ into derivations:
 
 ## Our changes to upstream
 
+Patch files live in `patches/` as `<target>-<NNN>-<what>.patch`: `target` is
+the tree they patch (`legion` for upstream's source, `qemu`), and `NNN` is
+the order they apply in. Changes that insert module option values stay as
+substitutions in the `.nix` files.
+
 | Where | Change | Applied |
 |---|---|---|
-| `launcher-writable-copies.patch` | `chmod -R u+w` the launcher's session copies | always |
-| `launcher-vcpu-affinity.patch` | launcher sets `LEGION_VCPU_AFFINITY` | `pinVcpus` |
-| `qemu-vcpu-affinity.patch` | vCPU threads pin themselves from `LEGION_VCPU_AFFINITY` | always (inert without it) |
+| `patches/legion-001-writable-session-copies.patch` | `chmod -R u+w` the launcher's session copies | always |
+| `patches/legion-002-sdl-gles-display.patch` | QEMU `-display sdl,gl=es` instead of `gl=on`: the desktop scanout path imports frames as `GL_TEXTURE_EXTERNAL_OES`, which Mesa only supports in GLES, so `gl=on` showed a black window | always |
+| `patches/legion-003-vcpu-affinity-env.patch` | launcher sets `LEGION_VCPU_AFFINITY` | `pinVcpus` |
+| `patches/qemu-001-vcpu-affinity.patch` | vCPU threads pin themselves from `LEGION_VCPU_AFFINITY` | always (inert without it) |
 | `rust.nix` substitution, `src/game.rs` | game display size | always (`resolution`) |
 | `rust.nix` substitution, `src/game.rs`, `src/main.rs` | default `LEGION_MEMORY_MIB` | always (`memoryMiB`) |
 | `rust.nix` substitution, `src/game.rs` | fullscreen unless `LEGION_FULLSCREEN` is set to something other than 1 | `fullscreen` |
 | `qemu.nix` substitution, `hw/display/edid-generate.c` | EDID fallback refresh rate | always (`refreshRate`) |
-| `rust.nix` substitution, `src/native_context.rs` | QEMU `-display sdl,gl=es` instead of `gl=on`: the desktop scanout path imports frames as `GL_TEXTURE_EXTERNAL_OES`, which Mesa only supports in GLES, so `gl=on` showed a black window | always |
 
 Environment variables read at launch:
 
@@ -134,7 +139,7 @@ advertises.
    | `build-support/Containerfile` | `debian-packages.nix`, then regenerate the closures |
    | `tools/build_runtime.py` | the matching derivation from the Layout table |
    | `src/runtime.rs` (`Manifest`) | the `runtime.json` fields in `default.nix` |
-   | `src/game.rs`, `src/runtime.rs`, `src/main.rs` | `launcher-writable-copies.patch` and the `rust.nix` substitutions. A failed patch or `--replace-fail` breaks the build; drop a substitution if upstream adds a setting for it |
+   | `src/game.rs`, `src/runtime.rs`, `src/main.rs`, `src/native_context.rs` | the `patches/legion-*` patches and the `rust.nix` substitutions. A failed patch or `--replace-fail` breaks the build; drop a substitution if upstream adds a setting for it |
 
 QEMU and virglrenderer come from nixpkgs, at the versions upstream pins.
 `qemu.nix` asserts the QEMU version. virglrenderer has no assert, and it must
