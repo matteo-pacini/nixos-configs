@@ -48,8 +48,7 @@ in
       height = 1440;
     };
     refreshRate = 144;
-    # Keeps the window, and so the guest display, at the full 2560x1440. It
-    # grabs the keyboard; Ctrl+Alt+G releases keyboard and mouse.
+    # Keeps the window, and so the guest display, at the full 2560x1440.
     fullscreen = true;
     memoryMiB = 16384;
     pinVcpus = true;

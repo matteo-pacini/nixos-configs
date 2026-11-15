@@ -1,9 +1,9 @@
-# glibc-linked workspace binaries. The guest programs among them run against
-# the Debian guest userspace (guest.nix), not this glibc, so guest.nix rejects
-# any that reference a symbol version newer than Debian's glibc.
+# glibc-linked guest programs. They run against the Debian guest userspace
+# (guest.nix), not this glibc, so guest.nix rejects any that reference a
+# symbol version newer than Debian's glibc.
 #
-# The lock files are copies of upstream's (Cargo.lock and
-# backends/nvidia/Cargo.lock) so evaluation doesn't need the fetched source.
+# The lock file is a copy of upstream's Cargo.lock so evaluation doesn't need
+# the fetched source.
 {
   lib,
   rustPlatform,
@@ -19,6 +19,8 @@
   pinVcpus,
 }:
 {
+  # The programs build_runtime.py rust() builds for the guest; the cpu-adapter
+  # ones only ship with the optional Wine repair, which this package leaves out.
   workspace = rustPlatform.buildRustPackage {
     pname = "legion-kvm-workspace";
     inherit (legionSource) version src;
@@ -29,34 +31,17 @@
       libxkbcommon
       alsa-lib
     ];
-    cargoBuildFlags = [ "--workspace" ];
-    doCheck = false;
-    # Guest-side keyboard, mouse and cursor for the AMD path. The launcher
-    # built here is unused (static's is installed), so the launcher patches stay
-    # there and changing them doesn't rebuild the guest.
-    patches = [
-      ./patches/legion-005-guest-input-permissions.patch
-      ./patches/legion-006-kms-evdev-input.patch
-      ./patches/legion-008-kms-cursor-plane.patch
-    ];
-    # cpu-adapter is a cdylib; buildRustPackage only installs binaries.
-    postInstall = ''
-      install -Dm0755 target/*/release/liblegion_cpu_adapter.so $out/lib/liblegion_cpu_adapter.so
-    '';
-  };
-
-  vhost-user-nvgpu = rustPlatform.buildRustPackage {
-    pname = "legion-kvm-vhost-user-nvgpu";
-    inherit (legionSource) version src;
-    sourceRoot = "source/backends/nvidia";
-    cargoLock.lockFile = ./nvidia-Cargo.lock;
     cargoBuildFlags = [
       "-p"
-      "device"
-      "--features"
-      "vhost-user"
+      "legion-proton-workload"
       "--bin"
-      "vhost-user-nvgpu"
+      "legion-proton-bootstrap"
+      "--bin"
+      "legion-audio-runtime"
+      "-p"
+      "legion-guest-compositor"
+      "--bin"
+      "legion-guest-compositor"
     ];
     doCheck = false;
   };
@@ -75,23 +60,22 @@
       "legion-guest-probe"
     ];
     doCheck = false;
+    # Shown by `legion --version` and recorded in each session's build.json.
+    env.LEGION_BUILD_ID = legionSource.src.rev;
     patches = [
       ./patches/legion-001-writable-session-copies.patch
-      # The desktop scanout path (games, graphics-benchmark) imports guest
-      # frames as GL_TEXTURE_EXTERNAL_OES, which Mesa supports only in GLES
-      # contexts; with gl=on QEMU's window context is desktop GL and the window
-      # stays black ("Bad t->Target in _mesa_test_texobj_completeness").
-      # QEMU's own blit shaders are GLSL ES 3.00 either way.
+      # The desktop window imports guest frames as GL_TEXTURE_EXTERNAL_OES,
+      # which Mesa supports only in GLES contexts; with gl=on QEMU's window
+      # context is desktop GL and the window stays black ("Bad t->Target in
+      # _mesa_test_texobj_completeness"). QEMU's own blit shaders are GLSL ES
+      # 3.00 either way.
       ./patches/legion-002-sdl-gles-display.patch
     ]
     ++ lib.optional pinVcpus ./patches/legion-003-vcpu-affinity-env.patch
-    ++ [
-      ./patches/legion-004-virtio-input-devices.patch
-      ./patches/legion-007-qemu-parent-death-signal.patch
-    ];
-    # Upstream hardcodes the AMD path's guest display mode (virtio-gpu xres and
-    # yres) for games at 1920x1080, with no setting for it. The memory and
-    # fullscreen substitutions only change defaults: LEGION_MEMORY_MIB and
+    ++ [ ./patches/legion-007-qemu-parent-death-signal.patch ];
+    # Upstream hardcodes the guest display mode (virtio-gpu xres and yres) for
+    # games at 1920x1080, with no setting for it. The memory and fullscreen
+    # substitutions only change defaults: LEGION_MEMORY_MIB and
     # LEGION_FULLSCREEN still override them.
     postPatch = ''
       substituteInPlace src/game.rs \
@@ -106,8 +90,8 @@
     ''
     + lib.optionalString fullscreen ''
       substituteInPlace src/game.rs --replace-fail \
-        'std::env::var("LEGION_FULLSCREEN").is_ok_and(|value|value=="1")' \
-        'std::env::var("LEGION_FULLSCREEN").map_or(true, |value| value == "1")'
+        'std::env::var("LEGION_FULLSCREEN").is_ok_and(|v|v=="1")' \
+        'std::env::var("LEGION_FULLSCREEN").map_or(true, |v| v == "1")'
     '';
   };
 }

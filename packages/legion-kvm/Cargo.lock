@@ -401,28 +401,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-display-probe"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ash",
- "legion-display-channel",
- "sdl2",
- "serde_json",
-]
-
-[[package]]
-name = "legion-gpu-presenter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "legion-display-channel",
- "rustix 1.1.5",
- "wayland-client",
- "wayland-protocols",
-]
-
-[[package]]
 name = "legion-guest-compositor"
 version = "0.1.0"
 dependencies = [

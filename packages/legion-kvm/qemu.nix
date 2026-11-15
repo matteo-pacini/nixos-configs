@@ -1,5 +1,6 @@
-# QEMU with upstream's runtime patch and configure flags (build_runtime.py
-# qemu()). nixpkgs' qemu.src is the same 11.1.2 release upstream pins.
+# QEMU with upstream's display and input patches and configure flags
+# (build_runtime.py qemu()). nixpkgs' qemu.src is the same 11.1.2 release
+# upstream pins.
 {
   stdenv,
   qemu,
@@ -27,13 +28,11 @@ stdenv.mkDerivation {
   pname = "legion-kvm-qemu";
   inherit (qemu) version src;
   patches = [
-    "${legionSource.src}/patches/qemu-runtime.patch"
+    "${legionSource.src}/patches/qemu-display.patch"
+    "${legionSource.src}/patches/qemu-desktop-input.patch"
     # vCPU threads pin themselves from LEGION_VCPU_AFFINITY, which the launcher
     # sets only when built with pinVcpus; unset, nothing changes.
     ./patches/qemu-001-vcpu-affinity.patch
-    # Ctrl+Alt+G also releases the grab in fullscreen, where upstream QEMU
-    # only lets Ctrl+Alt+F leave fullscreen first.
-    ./patches/qemu-002-fullscreen-ungrab.patch
   ];
   # The guest display's EDID takes its refresh rate from the UI frontend, and
   # SDL never supplies one, so QEMU always falls back to 75 Hz.
