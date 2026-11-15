@@ -87,6 +87,11 @@ bind("Session", "SUPER + CTRL + G", "Game mode", function()
 end)
 bind("Session", "SUPER + K", "Keybindings", hl.dsp.exec_cmd("qs ipc call cheatsheet toggle"))
 bind("Session", "SUPER + ESCAPE", "Session menu", hl.dsp.exec_cmd("qs ipc call session toggle"))
+-- The command in quickshell/LockState.qml, run here directly so the key locks
+-- even while the shell is down.
+local config = os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")
+bind("Session", "SUPER + L", "Lock", hl.dsp.exec_cmd("systemd-run --user --unit=desk-lock --collect --quiet qs -n -p "
+    .. config .. "/quickshell/lock.qml"))
 bind("Session", "SUPER + N", "Network", hl.dsp.exec_cmd("qs ipc call network toggle"))
 bind("Session", "SUPER + A", "Audio", hl.dsp.exec_cmd("qs ipc call audio toggle"))
 bind("Session", "SUPER + C", "Calendar", hl.dsp.exec_cmd("qs ipc call calendar toggle"))

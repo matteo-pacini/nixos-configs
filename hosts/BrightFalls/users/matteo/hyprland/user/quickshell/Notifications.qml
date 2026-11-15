@@ -126,12 +126,28 @@ Scope {
         }
     }
 
+    // While the lock screen holds the session nothing is shown and nothing
+    // times out; the cards appear on unlock with their full time left.
+    Binding {
+        target: LockState
+        property: "waiting"
+        value: root.entries.filter(e => !e.closing).length
+    }
+
+    Connections {
+        target: LockState
+
+        function onHeldChanged() {
+            root.now = Date.now();
+        }
+    }
+
     // Counts timeouts down, except in the hovered deck, and moves the
     // relative times on.
     Timer {
         interval: 250
         repeat: true
-        running: root.entries.length > 0
+        running: root.entries.length > 0 && !LockState.held
         onTriggered: {
             const t = Date.now();
             const elapsed = t - root.now;
@@ -154,7 +170,7 @@ Scope {
         id: criticalWindow
 
         screen: window.screen
-        visible: root.critical.length > 0
+        visible: root.critical.length > 0 && !LockState.held
         color: "transparent"
         anchors {
             top: true
@@ -223,7 +239,7 @@ Scope {
     PanelWindow {
         id: window
 
-        visible: root.normal.length > 0
+        visible: root.normal.length > 0 && !LockState.held
         color: "transparent"
         anchors {
             top: true

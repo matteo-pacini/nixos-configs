@@ -27,7 +27,8 @@ Scope {
             label: "Lock",
             glyph: "",
             key: "L",
-            enabled: false
+            enabled: true,
+            command: LockState.command
         },
         {
             label: "Log out",

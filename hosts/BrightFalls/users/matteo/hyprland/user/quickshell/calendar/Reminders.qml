@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import qs
 import "queries.js" as Q
 
 // Calendar reminders and the morning digest, as desktop notifications.
@@ -26,7 +27,8 @@ Scope {
     // toplevel's mode tells the two apart.
     readonly property var fullscreenWorkspaces: Hyprland.monitors.values.map(m => m.activeWorkspace).filter(w => w !== null && w.hasFullscreen)
     readonly property bool hyprFullscreen: Hyprland.toplevels.values.some(t => fullscreenWorkspaces.includes(t.workspace) && t.lastIpcObject.fullscreen === 2)
-    readonly property bool fullscreen: fullscreenOverride === "auto" ? hyprFullscreen : fullscreenOverride === "on"
+    // The lock screen holds them the same way, until the session is unlocked.
+    readonly property bool fullscreen: (fullscreenOverride === "auto" ? hyprFullscreen : fullscreenOverride === "on") || LockState.held
 
     // Notifications not yet sent, in order; one gdbus call at a time.
     property var queue: []

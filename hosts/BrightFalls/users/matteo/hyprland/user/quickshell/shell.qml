@@ -27,4 +27,5 @@ ShellRoot {
     System {}
     BluetoothPanel {}
     Reminders {}
+    Lockscreen {}
 }
