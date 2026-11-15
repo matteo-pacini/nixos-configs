@@ -169,7 +169,7 @@ nix build .#checks.x86_64-linux.display-layout   # display-layout.sh against a f
 nix build .#checks.x86_64-linux.hypr-config      # user/hypr through Hyprland --verify-config
 nix build .#checks.x86_64-linux.desk-unlock      # desk-unlock.sh against fake hyprctl, systemctl, pkill
 nix build .#checks.x86_64-linux.bluetooth-agent  # desk-bt-agent against private D-Bus daemons
-nix build .#checks.x86_64-linux.audio-output-cycle# audio-output-cycle against fake PipeWire tools
+nix build .#checks.x86_64-linux.audio-output-cycle  # audio-output-cycle against fake PipeWire tools
 ```
 
 The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
@@ -184,10 +184,8 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
   .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-panel \
   .#checks.x86_64-linux.office-helper .#checks.x86_64-linux.system-panel \
-  .#checks.x86_64-linux.display-layout \
-  .#checks.x86_64-linux.hypr-config \
-  .#checks.x86_64-linux.desk-unlock \
-  .#checks.x86_64-linux.bluetooth-agent \
+  .#checks.x86_64-linux.display-layout .#checks.x86_64-linux.hypr-config \
+  .#checks.x86_64-linux.desk-unlock .#checks.x86_64-linux.bluetooth-agent \
   .#checks.x86_64-linux.audio-output-cycle \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
@@ -330,7 +328,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -431,7 +429,8 @@ was written; check the reports of any newer work for its own.
 
 **Never tested:**
 - The final lock build (self-release removed) locked for real; the lock
-  before sleep; `desk-unlock`'s fallback for a hung lock process.
+  before sleep; `desk-unlock`'s fallback for a hung lock process (simulated
+  only, in the `desk-unlock` check).
 - A game under Hyprland (Proton fullscreen on the RX 6800 XT with two
   monitors has open upstream freeze reports); locking over a game;
   critical notifications over a real fullscreen window.
@@ -506,6 +505,19 @@ the automatic login and unlocked by the first lock-screen unlock; the SSH
 agent; file dialogs, screen sharing and dark GTK apps through the portals;
 the default apps; printing; the CPU's energy preference without
 power-profiles-daemon (it was `balance_performance`); no failed units.
+
+**Known bugs, pinned by the checks and not fixed** (each check says what
+to change once the bug is fixed):
+- An event edited on the server never reaches the calendar export:
+  `calendar-export.py`'s `mirror()` rewrites the copy in place, khal
+  rescans a calendar only when its directory's mtime changes, and khal.db
+  is kept between runs (`calendar-export` check).
+- A malformed `bridge/devices` message ends `desk-mqtt`'s network thread:
+  the process lives on, never says the broker is down, and reports nothing
+  more (`office-helper` check).
+- Latent, unreachable with the shipped data: `office.js` throws for a
+  device list with no sockets (`office-panel`); `queries.js` `parse`
+  throws on a broken day line instead of returning null (`calendar-panel`).
 
 **Known quirks:**
 - The Blue microphone (`046d:0ab7`) can stop delivering samples until its
