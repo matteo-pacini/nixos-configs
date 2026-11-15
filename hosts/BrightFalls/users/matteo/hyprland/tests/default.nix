@@ -1,6 +1,6 @@
 # desk-sync's, calendar-export's, the calendar panel's, the Bluetooth
-# panel's, the tray menu's, the office panel's and the office helper's tests,
-# as flake checks:
+# panel's, the tray menu's, the office panel's, the office helper's and the
+# system panel's tests, as flake checks:
 #   nix build .#checks.<system>.desk-sync
 #   nix build .#checks.<system>.calendar-export
 #   nix build .#checks.<system>.calendar-panel
@@ -8,6 +8,7 @@
 #   nix build .#checks.<system>.tray-panel
 #   nix build .#checks.<system>.office-panel
 #   nix build .#checks.<system>.office-helper
+#   nix build .#checks.<system>.system-panel
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -71,6 +72,13 @@ in
   # helper events, inline and from office-panel/fixtures/.
   office-panel = pkgs.runCommand "office-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${./office-panel}/test-office-panel.js ${../user/quickshell/office}
+    touch $out
+  '';
+
+  # The system panel's library (quickshell/system/decode.js) against invented
+  # gpu_metrics blobs and /proc, sysfs, df and LACT texts.
+  system-panel = pkgs.runCommand "system-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./system/test-system.js} ${../user/quickshell/system}
     touch $out
   '';
 

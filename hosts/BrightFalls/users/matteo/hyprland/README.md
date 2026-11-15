@@ -1135,3 +1135,9 @@ required check for merging into `master`:
   refused with nothing published, the broker dropping and coming back, the
   broker unreachable at start, a missing and an invalid config, read-only,
   and a config that names a socket as the light. About 40 s.
+- `nix build .#checks.x86_64-linux.system-panel`: runs
+  `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
+  against invented gpu_metrics blobs (both layouts, unfilled fields, the
+  throttle word) and `/proc`, sysfs, `df` and LACT texts: CPU busy time,
+  memory, the uplink and its bytes, disk counters and volumes, the PCIe link
+  state, AER counts, the LACT fan line, heat levels and the figures' format.

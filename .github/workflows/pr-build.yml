@@ -98,7 +98,8 @@ jobs:
             .#checks.x86_64-linux.bluetooth-panel \
             .#checks.x86_64-linux.tray-panel \
             .#checks.x86_64-linux.office-helper \
-            .#checks.x86_64-linux.office-panel
+            .#checks.x86_64-linux.office-panel \
+            .#checks.x86_64-linux.system-panel
 
   pr-build:
     needs: [eval]

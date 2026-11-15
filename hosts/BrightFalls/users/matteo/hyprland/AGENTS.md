@@ -164,12 +164,13 @@ nix build .#checks.x86_64-linux.bluetooth-panel  # bluetooth/services.js, device
 nix build .#checks.x86_64-linux.tray-panel       # tray/menu.js under node
 nix build .#checks.x86_64-linux.office-panel     # office/office.js under node
 nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback Mosquitto
+nix build .#checks.x86_64-linux.system-panel     # system/decode.js under node
 ```
 
-The calendar-panel, bluetooth-panel, tray-panel and office-panel checks read the repository's `.js`
-files, so they fail until a live change to those files is pulled. All seven run on every pull
-request in the `brightfalls-tests` job (`pr-build.yml`), a required check for merging into
-`master`. For a new test, break the code once and watch it fail.
+The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
+repository's `.js` files, so they fail until a live change to those files is pulled. All of them
+run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a required check for
+merging into `master`. For a new test, break the code once and watch it fail.
 
 **Builds.** Before every push, on the merged branch, the coordinator runs:
 
@@ -177,7 +178,7 @@ request in the `brightfalls-tests` job (`pr-build.yml`), a required check for me
 nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export \
   .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
   .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-panel \
-  .#checks.x86_64-linux.office-helper \
+  .#checks.x86_64-linux.office-helper .#checks.x86_64-linux.system-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -317,7 +318,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -355,7 +356,7 @@ Directories (`import qs.<dir>`):
 | `network/` | `NetworkPanel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml` |
 | `audio/` | `AudioPanel.qml` (shared singleton), `Stack.qml` (the DAC drawing), `Modi.qml` (`/proc/asound` reads), `Graph.qml` (`pw-dump`), `Level.qml` (level bar), `NoSignal.qml` (singleton, runs always) |
 | `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions; node-tested) |
-| `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-run), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
+| `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-tested), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
@@ -443,9 +444,6 @@ was written; check the reports of any newer work for its own.
   removed.
 - Friendly launcher category names, scrolling for panels taller than the screen (the audio panel runs
   off the bottom with many programs).
-- The system panel's node tests live only in the build's scratch
-  directory; they belong under `tests/` as a flake check, as Bluetooth's
-  are (`bluetooth-panel`).
 
 **Code follow-ups** from the modularity review (estimates for one agent
 working live; the ones that change what the user sees need the user's
