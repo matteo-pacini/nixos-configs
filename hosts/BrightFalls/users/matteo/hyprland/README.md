@@ -1171,3 +1171,13 @@ required check for merging into `master`:
   `lock.qml`), one nothing frees, and no Hyprland. The fakes' wording is
   invented; the real `hl.clear_crashed_lockscreen()` refusal has not been
   seen. Under 1 s.
+- `nix build .#checks.x86_64-linux.bluetooth-agent`: runs `desk-bt-agent`
+  against two private `dbus-daemon`s, with `tests/bluetooth/test-bt-agent.py`
+  playing BlueZ on one and PipeWire's telephony service on the other under
+  invented addresses: registration as the default KeyboardDisplay agent,
+  each request (confirmation accepted and refused, passkey, PIN, service,
+  the two display requests), a cancel while a request is open, stale and
+  malformed answers, the links at start and as transports, media control,
+  PAN and RSSI change, hands-free links and call audio, the telephony
+  service leaving and coming back, Release, and stdin closing (unregister,
+  `exit`). Under 1 s.

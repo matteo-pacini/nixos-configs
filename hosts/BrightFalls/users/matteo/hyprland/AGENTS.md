@@ -168,6 +168,7 @@ nix build .#checks.x86_64-linux.system-panel     # system/decode.js under node
 nix build .#checks.x86_64-linux.display-layout   # display-layout.sh against a fake hyprctl
 nix build .#checks.x86_64-linux.hypr-config      # user/hypr through Hyprland --verify-config
 nix build .#checks.x86_64-linux.desk-unlock      # desk-unlock.sh against fake hyprctl, systemctl, pkill
+nix build .#checks.x86_64-linux.bluetooth-agent  # desk-bt-agent against private D-Bus daemons
 ```
 
 The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
@@ -185,6 +186,7 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.display-layout \
   .#checks.x86_64-linux.hypr-config \
   .#checks.x86_64-linux.desk-unlock \
+  .#checks.x86_64-linux.bluetooth-agent \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 

@@ -11,6 +11,7 @@
 #   nix build .#checks.<system>.display-layout
 #   nix build .#checks.<system>.hypr-config
 #   nix build .#checks.<system>.desk-unlock
+#   nix build .#checks.<system>.bluetooth-agent
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -60,6 +61,21 @@ in
     pkgs.runCommand "bluetooth-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; }
       ''
         node ${./bluetooth/test-bluetooth.js} ${../user/quickshell/bluetooth}
+        touch $out
+      '';
+
+  # desk-bt-agent (the pairing agent) against private D-Bus daemons, with the
+  # test playing BlueZ and PipeWire's telephony service.
+  bluetooth-agent =
+    pkgs.runCommand "bluetooth-agent-tests"
+      {
+        nativeBuildInputs = [ (pkgs.python3.withPackages (p: [ p.dbus-fast ])) ];
+      }
+      ''
+        mkdir work
+        python3 -I ${./bluetooth/test-bt-agent.py} \
+          ${pkgs.lib.getExe (pkgs.callPackage ../bt-agent.nix { })} \
+          ${pkgs.lib.getExe' pkgs.dbus "dbus-daemon"} "$PWD/work"
         touch $out
       '';
 
