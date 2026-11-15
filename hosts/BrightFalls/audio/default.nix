@@ -146,4 +146,22 @@ _: {
       }
     ];
   };
+
+  # Bluetooth A2DP codecs offered: SBC, SBC XQ and AAC only. A phone streaming
+  # to this machine that negotiated LDAC never settled with BlueZ 5.87: BlueZ
+  # could not parse the phone's stream reject ("Too small packet for
+  # stream_rej"), the transport was recreated about once a second, and no
+  # sound played. With LDAC and aptX not offered, the phone negotiates AAC and
+  # plays. This list is global, since this WirePlumber version has no
+  # per-device codec list, so Bluetooth headphones lose LDAC and aptX too:
+  # revisit it if such headphones are paired.
+  services.pipewire.wireplumber.extraConfig."51-bluez-codecs" = {
+    "monitor.bluez.properties" = {
+      "bluez5.codecs" = [
+        "sbc"
+        "sbc_xq"
+        "aac"
+      ];
+    };
+  };
 }
