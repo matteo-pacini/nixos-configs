@@ -17,7 +17,7 @@ QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
 session menu, polkit dialog, network, audio, calendar, system and Bluetooth
 panels, and a lock screen.
 
-- **Nix** (`desktop-hyprland.nix` one level up for the system,
+- **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
   secrets, PAM, and generates read-only data the shell shows.
 - **The config files** are ordinary writable files under `~/.config`, copied
@@ -282,7 +282,8 @@ Each was learned the hard way or is one mistake away.
   is free in `hyprctl binds` first.
 - **Surfaces** share one look: `Theme.background` at 0.96 alpha, a 1 px
   `Theme.purple` border, 10 px corners; colours and fonts only from
-  `Theme.qml`.
+  `Theme.qml`, shared measures and derived colours (`surface`, `soft`,
+  `panelTop`) from `common/Style.qml`.
 - **Temporary hooks** are fine while developing and gone before the report.
 - **Comments** follow the root rules: true, only what the code cannot say,
   never about the task or the history.
@@ -345,6 +346,21 @@ Directories (`import qs.<dir>`):
 | `bluetooth/` | `Bt.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
+Imports: each panel imports its own directory and `qs.common`; `Bar.qml`
+imports every feature directory; `Osd.qml` imports `qs.bluetooth` (it shows
+`Bt.announce`); `Notifications.qml` and `calendar/Reminders.qml` read the
+root `LockState`. No cycles: keep it that way, and don't make one panel
+import another to talk to it (use `Dropdowns`, or D-Bus as Reminders does).
+The lock (`lock.qml`, `lock/`) imports only `Theme.qml`, so a change to
+`Theme.qml` can break the next lock: test it in the lock preview.
+
+Names to know: the singleton each panel shares with the bar is
+`network/Panel.qml`, `audio/AudioPanel.qml`, `calendar/CalendarPanel.qml`,
+`system/SystemPanel.qml` and `bluetooth/Bt.qml`. "Panel" does not mean
+placement only: `CalendarPanel` holds the export and the minute clock, `Bt`
+the adapter, batteries and remembered answers, because the bar and the
+reminders need them while the panel is closed.
+
 To add a drop-down panel: a root file and its line in `shell.qml`; a
 singleton in its directory with `screen` and `toggleRequested(screen)`;
 `Dropdowns.add(name, singleton)` on completion and
@@ -370,11 +386,13 @@ Bluetooth panel with pairing agent, lock screen with a recovery command.
   deploy declaring `desk-lock` is live, not before (a missing PAM service
   means no password can unlock). Remove the old `~/desk-unlock` from the
   home directory; the `desk-unlock` command replaces it.
-- Remove the stand-ins the reports list (hand-made `locked.json` files,
-  `~/.local/state/nix/profile` and `~/.local/state/desk/speedtest-tools`,
-  the Bluetooth `TEMP-AGENT` command line, the WirePlumber test drop-in), and
-  `~/.config/mako` left from before.
+- `~/.config/mako/` is left over from before the shell was the notification
+  daemon (`desk-sync` leaves dropped files alone); delete it.
 - `systemctl --user restart quickshell` if `shell.qml`'s pragmas changed.
+
+The earlier stand-ins (hand-made `locked.json` files, speed-test tools on a
+profile link, the Bluetooth agent's temporary command) were gone when this
+was written; check the reports of any newer work for its own.
 
 **Never tested:**
 - The final lock build (self-release removed) locked for real; the lock
@@ -400,6 +418,61 @@ Bluetooth panel with pairing agent, lock screen with a recovery command.
   off the bottom with many programs).
 - The Bluetooth and system node tests live only in the build's scratch
   directory; they belong under `tests/` as flake checks.
+
+**Code follow-ups** from the modularity review (estimates for one agent
+working live; the ones that change what the user sees need the user's
+look first):
+1. **Footers and flash messages** (about 1 h). Two footer styles exist:
+   drop-downs (cyan key, `common/KeyHints.qml`, plus hand-built copies in
+   Network's list footer, Calendar, Bluetooth and `PairModal.qml`) and modals
+   (Launcher, Cheatsheet, SessionMenu); one or two is the user's call. The
+   flash message is handled four ways, with a `say()` timer copied in four
+   panels (2.5 s, Calendar 3.5 s). **Bug:** Audio overlays its flash on the
+   hints without growing the footer, so a flash longer than one line (the
+   no-signal explanation) is cut off by the card's clip.
+2. **Pure logic out of QML into node-tested `.js`** (2 to 3 h a panel):
+   Network (nmcli/route/duplex parsing, the `speedtests.jsonl` reduction,
+   done twice, `age()`), Audio (`facts()`, `details()`, path text),
+   Cheatsheet (grouping and column balancing), Bluetooth (`rowSub()`,
+   `details()`, codec names), `SpeedTest.qml`'s parsers.
+3. **One height animation** (minutes, plus the user's pick): 260 ms in
+   Network and Calendar, 200 ms elsewhere (`DropCard.growDuration`). Then
+   move it to `Style`.
+4. **Shared drop-down window, row selection, bar open mark** (about 2 h):
+   the `PanelWindow` shell (layer, focus, click-off, key forwarding) is
+   copied in five panels; Audio and Bluetooth have identical selection code;
+   `Bar.qml` draws the 14×2 open mark five times. The "pick the screen by
+   name" line is repeated in 11 places.
+5. **One notification sender** (about 30 min plus a device test): `gdbus …
+   Notify` argument lists are built by hand in `bluetooth/Bt.qml`,
+   `audio/NoSignal.qml` and `calendar/Reminders.qml`. The first two pass
+   unquoted strings, so a device name that parses as GVariant text would be
+   altered; Reminders quotes them (`gv()`).
+6. **Naming** (about 30 min, update this file with it): `Panel` and `Bt`
+   against `AudioPanel`, `CalendarPanel`, `SystemPanel`; the root
+   `BluetoothPanel.qml` against `Network.qml`, `Audio.qml` and the rest.
+   `Osd.qml` picks its glyph by matching the literal text `"Bluetooth on"`
+   from `BluetoothPanel.qml`.
+7. **Leftovers** (15 min): `bluetooth/Agent.qml`'s unused `answered` signal
+   and `command` property and a stale comment about IPC;
+   `CalendarPanel.exportPath` (a fixture override nothing sets);
+   `Reminders.fullscreenOverride` (a test input); `NoSignal.statusRoot`
+   (kept as the way to simulate a hang: decide); a brace slip in
+   `BluetoothPanel.qml`'s power toggle. Live only, not in the repository:
+   `~/.config/hypr/dms/`, unused DankMaterialShell output (the user's call).
+8. **Remaining colour copies** (15 min): the "soft" and "track" formulas in
+   `notifications/Card.qml`, `audio/Stack.qml`, `audio/Level.qml`,
+   `system/Machine.qml`, `system/Ring.qml` and `Osd.qml` could use `Style`;
+   `#191a21` (text on purple) is hard-coded in `Polkit.qml` and
+   `BluetoothPanel.qml`. Leave `lock/LockFace.qml` until the lock can be
+   re-tested.
+
+Also noted, no action planned: rings and level bars are separate drawings
+per panel (they differ in size and behaviour); Polkit and the pairing modal
+are hand-built modals sharing a look by copy; `system/Sensors.qml` reads
+`system/locked.json` through its own batched reads rather than
+`LockedList`; Notifications and the OSD sit at 44 px from the top, the
+drop-downs at `Style.panelTop` (48).
 
 **Removing GNOME.** Blockers: the login manager (GDM), an explicit keyring
 and SSH agent, the `gdctl` users above, the game test. Then audit every
