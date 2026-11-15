@@ -249,4 +249,9 @@ in
     HandlePowerKey = "ignore";
     HandlePowerKeyLongPress = "poweroff";
   };
+
+  # The lock screen's password check (users/matteo/hyprland/user/quickshell/lock.qml):
+  # the user's password through pam_unix, with no delay or lockout beyond
+  # pam_unix's own.
+  security.pam.services.desk-lock = { };
 }

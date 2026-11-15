@@ -76,8 +76,8 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   four arrows collapse to one keycap), and a description with no group goes
   under "Other". `rescue.lua` has its own copy of the helper.
 - `SessionMenu.qml` (Super+Escape or the power key, `qs ipc call session
-  toggle`): a modal on the focused monitor with Lock (disabled until there is
-  a lock screen), Log out (`uwsm stop`), Switch to GNOME (sets the user's
+  toggle`): a modal on the focused monitor with Lock (the lock screen, below),
+  Log out (`uwsm stop`), Switch to GNOME (sets the user's
   saved session in AccountsService to `gnome`, which GDM's greeter
   preselects, then logs out), Reboot and Shut down. Up/Down and Enter, or the
   row's letter; Reboot and Shut down act on a second press. logind ignores a
@@ -362,6 +362,10 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   - Low battery: one critical notification per device each time it drops
     under 15% (`bluetooth/Bt.qml`); remembered across reloads, not restarts.
 
+- `lock.qml`, `lock/`, `Lockscreen.qml`, `LockState.qml`: the lock screen
+  (Super+L, the session menu's Lock row, and before sleep). "Lock screen"
+  below.
+
 ### Critical notifications
 
 Cards with critical urgency (hint `urgency` 2, from any application) are drawn
@@ -372,6 +376,72 @@ fade (`no_anim` in `hypr/rules.lua`): any Overlay surface on a game's monitor
 costs the game direct scanout and tearing for as long as it exists. Critical
 cards never time out, so dismiss them (Super+comma) to give that back. All
 other cards stay on the Top layer, hidden under fullscreen.
+
+## Lock screen
+
+Super+L, the session menu's Lock row, or `qs ipc call lockscreen lock`. There
+is no idle lock and no lock at boot.
+
+- **Look.** Both monitors go dark with the clock, the week dots and the date.
+  The password field is only on the main monitor: the one at the layout's
+  origin (DP-1 at 0x0 in `hypr/monitors.lua`), else the first one Quickshell
+  lists, picked when the lock starts, so a monitor plugged in while locked
+  shows only the clock. The main monitor also shows "N notifications" at the
+  bottom right while any are waiting, never their content. Keys work on
+  whichever monitor the pointer is on: typing shows dots, Backspace removes
+  one, Esc clears, Enter checks. Caps Lock is announced under the field (read
+  from Hyprland's main keyboard). A wrong password shakes the field, turns it
+  red and counts the failures. If PAM holds further attempts off, the field
+  shows PAM's own message. The correct password unlocks at once; nothing
+  animates on the way out.
+- **Separate process.** `lock.qml` is its own Quickshell configuration in the
+  shell's directory (sharing `Theme.qml` and `lock/`), started as
+  `systemd-run --user --unit=desk-lock --collect qs -n -p
+  ~/.config/quickshell/lock.qml` (`LockState.qml` and the bind in
+  `hypr/bindings.lua`). Its own unit keeps it out of the shell's cgroup, so
+  reloading, crashing or restarting the shell cannot unlock or kill it, and
+  the fixed unit name refuses a second lock while one runs. It does not reload
+  on file changes. It exits after unlocking.
+- **Locking.** `WlSessionLock` (ext-session-lock-v1): once Hyprland confirms
+  the lock it draws nothing but the lock surfaces, on every monitor,
+  including ones plugged in later. Each surface is opaque from its first
+  frame, starting black like the frame Hyprland paints before it, so the
+  fade-in never shows the desktop.
+- **Password.** PAM service `desk-lock` (`security.pam.services.desk-lock`
+  in `desktop-hyprland.nix`): `pam_unix` only, no lockout; a wrong password
+  costs pam_unix's delay of about 2 s. The lock screen keeps what is typed
+  only until it hands it to PAM.
+- **What is held while locked.** The lock tells the shell once Hyprland holds
+  the lock (`qs ipc call lockscreen hold <pid>`); `Lockscreen.qml` then keeps
+  every notification card, critical ones included, off screen with its
+  timeout stopped, holds calendar reminders and the digest as during
+  fullscreen, and sends the lock the count. All of it arrives when the lock
+  process exits, however it exits. If it dies while Hyprland stays locked,
+  the cards are released behind the dead lock.
+- **Before sleep.** The shell holds a logind delay inhibitor ("Desktop shell",
+  `systemd-inhibit --list`). When logind announces sleep it starts the lock
+  and releases the inhibitor once the lock is up, so the machine wakes
+  locked, whatever started the suspend. logind waits at most
+  `InhibitDelayMaxSec` (5 s) for that. Untested on this machine, whose eGPU
+  does not come back from sleep.
+
+### If the lock screen dies
+
+Hyprland keeps the session locked when the lock process exits without
+unlocking, and shows its own "lock screen died" picture. Recover from a text
+console:
+
+1. Ctrl+Alt+F4 and log in as matteo.
+2. Run `desk-unlock`. It prints whether Hyprland is locked, stops what is
+   left of the lock (`systemctl --user stop desk-lock`), and asks Hyprland to
+   drop the dead lock (`hyprctl --instance 0 eval
+   'hl.clear_crashed_lockscreen()'`, which Hyprland refuses while a lock
+   process still holds the lock; the script then kills it and tries again).
+3. When it prints `Hyprland says locked: false`, type `exit` and press
+   Ctrl+Alt+F3 (Hyprland is on VT 3).
+
+Any logged-in text console bypasses the lock: Hyprland switches VTs even while
+locked. Log out of consoles when done.
 
 ## Calendar events
 

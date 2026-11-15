@@ -28,6 +28,18 @@ let
     ''
     + builtins.readFile ./desk-sync.sh;
   };
+
+  # Recovery from a text console when the lock screen dies (README.md, "Lock
+  # screen").
+  deskUnlock = pkgs.writeShellApplication {
+    name = "desk-unlock";
+    runtimeInputs = with pkgs; [
+      hyprland
+      procps
+      systemd
+    ];
+    text = builtins.readFile ./desk-unlock.sh;
+  };
 in
 {
   imports = [ (import ./calendar.nix { inherit onlyInHyprland; }) ];
@@ -53,6 +65,7 @@ in
   # Commands the binds in user/hypr/bindings.lua run.
   home.packages = with pkgs; [
     deskSync
+    deskUnlock
     grim
     slurp
     satty
