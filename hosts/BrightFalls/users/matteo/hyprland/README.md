@@ -20,6 +20,7 @@ work) is in [AGENTS.md](AGENTS.md).
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel)
 - [Lock screen](#lock-screen)
+- [Streaming](#streaming)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Tests](#tests)
 
@@ -663,6 +664,67 @@ console:
 
 Any logged-in text console bypasses the lock: Hyprland switches VTs even while
 locked. Log out of consoles when done.
+
+## Streaming
+
+Sunshine (`hosts/BrightFalls/gaming.nix`) streams from a 4K dummy plug on the
+eGPU's HDMI port, `HDMI-A-1`, which `hypr/monitors.lua` keeps disabled.
+`display-layout` (`hosts/BrightFalls/display-layout.sh`) switches the
+monitors: here through `hyprctl --instance 0`, under GNOME through mutter's
+`gdctl` (that half exists only while GNOME is enabled in Nix).
+
+- **Stream start**, Sunshine's prepare command (`display-layout stream-on`):
+  saves each monitor's workspace to `$XDG_RUNTIME_DIR/display-layout/stream.json`,
+  starts the watchdog, turns the dummy on at 3840x2160@60, and only once
+  Hyprland reports it on turns DP-1 and DP-2 off. The dummy must be the only
+  lit output: with no `output_name`, Sunshine's KMS capture takes the first
+  lit plane it finds. Every workspace moves onto it, and games, whose rule asks
+  for DP-1, open there. If a step fails it puts the monitors back and exits
+  non-zero, and Sunshine refuses the stream (Sunshine itself runs no undo for
+  a prepare that failed).
+- **Stream end**, the undo (`display-layout restore`): DP-1 and DP-2 on with
+  their modes from `monitors.lua` (repeated in the script), then `hyprctl
+  reload`, which drops every rule the prepare set and applies `monitors.lua`,
+  dummy off. Hyprland moves workspaces 1 to 5 and 6 to 10 back to their
+  monitors, then each monitor gets back the workspace it showed before. The
+  reload also ends game mode.
+- Sunshine runs the undo only when the client quits the app, the app is
+  closed in its web UI, or Sunshine shuts down cleanly. A client that
+  disconnects, or a network drop, leaves the app running and the undo unrun.
+
+**When the undo never runs.** Each layer, and what it does not cover:
+
+1. **Watchdog**, the `display-layout-watch` user unit that the prepare starts
+   before it changes anything, stopped with the session. It restores within
+   5 s once Sunshine is not running, and after 60 s with no stream (Sunshine
+   binds its video port, 47998, only while a stream runs; a client that
+   vanished counts once Sunshine's own ping timeout drops it). It covers a
+   Sunshine crash or stop, a client that disappears, a network drop, and a
+   prepare killed half-way. It does not cover a Sunshine that stays up with a
+   dead stream it never drops, or the watchdog itself being killed.
+2. **The undo is safe at any time.** With nothing to undo it changes nothing.
+   If the reload cannot load `monitors.lua`, it sets the layout directly.
+3. **Super+Shift+D** runs `display-layout restore`. It is in `rescue.lua`, out
+   of reach of live edits, and works while locked; keys work with every
+   monitor dark.
+4. **Super+Shift+R** (reload) applies `monitors.lua`, as long as the config
+   parses: nothing here uses wlr-output-management, whose settings would
+   outlive a reload.
+5. **A new session** always starts with `monitors.lua`'s layout: everything
+   the prepare sets is runtime state of the running Hyprland.
+6. **By hand**, from a text console (Ctrl+Alt+F4, log in as matteo) or over
+   SSH: `display-layout restore`, or `hyprctl --instance 0 reload`. Then
+   `exit` and Ctrl+Alt+F3.
+
+After a watchdog restore Sunshine still counts the app as running: quit it in
+Moonlight before streaming again, or a resumed stream captures a real monitor.
+
+`single-monitor <command>`, for a Steam launch option (`single-monitor
+%command%`): DP-2 off while the command runs, `display-layout restore` when it
+exits, however it exits. During a stream it only runs the command.
+
+Logs: `journalctl --user -u sunshine` (its `Executing Do Cmd` and `Executing
+Undo Cmd` lines) and `journalctl --user -u display-layout-watch`.
 
 ## Calendar events
 

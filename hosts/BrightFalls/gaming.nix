@@ -4,6 +4,25 @@
   config,
   ...
 }:
+let
+  # Sunshine's base port; the video stream is on port + 9.
+  sunshinePort = 47989;
+  displayLayout = pkgs.writeShellApplication {
+    name = "display-layout";
+    runtimeInputs = with pkgs; [
+      coreutils
+      hyprland
+      iproute2
+      jq
+      systemd
+    ];
+    text = ''
+      gdctl=${lib.optionalString config.services.desktopManager.gnome.enable "${pkgs.mutter}/bin/gdctl"}
+      video_port=${toString (sunshinePort + 9)}
+    ''
+    + builtins.readFile ./display-layout.sh;
+  };
+in
 {
   boot.kernel.sysctl = {
     "vm.max_map_count" = "1048576";
@@ -58,21 +77,11 @@
     ppfeaturemask = "0xffffffff";
   };
 
-  # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
   environment.systemPackages = [
+    displayLayout
+    # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
     (pkgs.writeShellScriptBin "single-monitor" ''
-      gdctl=${pkgs.mutter}/bin/gdctl
-
-      restore() {
-        "$gdctl" set \
-          --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 \
-          --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951
-      }
-      trap restore EXIT
-
-      "$gdctl" set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998
-
-      "$@"
+      exec ${lib.getExe displayLayout} single "$@"
     '')
   ];
 
@@ -91,15 +100,17 @@
     };
     settings = {
       sunshine_name = "BrightFalls Sunshine";
+      port = sunshinePort;
       # With no capture method set, Sunshine also probes the XDG portal at
       # every start, which raises GNOME's remote-control dialog at each login.
       capture = "kms";
+      # Stream from the 4K dummy plug on HDMI alone, then restore the dual DP
+      # monitors; display-layout.sh has the layers that restore them when
+      # the undo never runs.
       global_prep_cmd = builtins.toJSON [
         {
-          # Switch to HDMI for streaming (e.g., TV via capture card)
-          do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor HDMI-1 --mode 3840x2160@59.940";
-          # Restore dual DP monitors when streaming ends
-          undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951";
+          do = "${lib.getExe displayLayout} stream-on";
+          undo = "${lib.getExe displayLayout} restore";
         }
       ];
       audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
