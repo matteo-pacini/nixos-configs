@@ -15,8 +15,8 @@ A Hyprland 0.57 session under UWSM, the only desktop on the machine, started
 by greetd (automatic login once per boot, tuigreet after a logout), with a
 desktop shell written in
 QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
-session menu, polkit dialog, network, audio, calendar, system and Bluetooth
-panels, tray menus, and a lock screen.
+session menu, polkit dialog, network, audio, calendar, system, Bluetooth and
+office panels, tray menus, and a lock screen.
 
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
@@ -162,10 +162,11 @@ nix build .#checks.x86_64-linux.calendar-export  # fixtures through the export
 nix build .#checks.x86_64-linux.calendar-panel   # calendar/queries.js under node
 nix build .#checks.x86_64-linux.bluetooth-panel  # bluetooth/services.js, devices.js under node
 nix build .#checks.x86_64-linux.tray-panel       # tray/menu.js under node
+nix build .#checks.x86_64-linux.office-panel     # office/office.js under node
 nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback Mosquitto
 ```
 
-The calendar-panel, bluetooth-panel and tray-panel checks read the repository's `.js`
+The calendar-panel, bluetooth-panel, tray-panel and office-panel checks read the repository's `.js`
 files, so they fail until a live change to those files is pulled. Only `desk-sync` runs in PR CI
 (`pr-build.yml`). For a new test, break the code once and watch it fail.
 
@@ -174,7 +175,8 @@ files, so they fail until a live change to those files is pulled. Only `desk-syn
 ```bash
 nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export \
   .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
-  .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-helper \
+  .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-panel \
+  .#checks.x86_64-linux.office-helper \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -278,7 +280,7 @@ Each was learned the hard way or is one mistake away.
 - **No truncation of information.** Only a name may elide; everything else
   wraps.
 - **Anatomy of a drop-down panel** (network, audio, calendar, system,
-  Bluetooth): a root component, one line in `shell.qml`; a small singleton
+  Bluetooth, office): a root component, one line in `shell.qml`; a small singleton
   shared with the bar for placement and open state; an IPC target with
   `toggle`; a bind through `bind()`; footer key hints; Overlay layer,
   exclusive keyboard, namespace `desk-<name>`, card under its bar item
@@ -314,7 +316,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office/` (desk-mqtt against a loopback Mosquitto) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -338,7 +340,7 @@ component. Root components, one per file:
 | `Osd.qml` | The pill |
 | `Cheatsheet.qml` | Keybinding sheet from `hyprctl -j binds` |
 | `SessionMenu.qml`, `Polkit.qml` | Centred modals |
-| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml` | The five drop-down panels (each the biggest file of its feature) |
+| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml` | The six drop-down panels (each the biggest file of its feature) |
 | `Lockscreen.qml`, `LockState.qml` | The shell's side of the lock: IPC `lockscreen`, hold, sleep inhibitor; the launch command and `held` state |
 | `lock.qml` | The lock process itself (a separate Quickshell config) |
 
@@ -354,6 +356,7 @@ Directories (`import qs.<dir>`):
 | `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions; node-tested) |
 | `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-run), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
+| `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -367,8 +370,10 @@ The lock (`lock.qml`, `lock/`) imports only `Theme.qml`, so a change to
 
 Names to know: the singleton each panel shares with the bar is
 `network/NetworkPanel.qml`, `audio/AudioPanel.qml`,
-`calendar/CalendarPanel.qml`, `system/SystemPanel.qml` and
-`bluetooth/BluetoothShared.qml`. "Panel" does not mean placement only:
+`calendar/CalendarPanel.qml`, `system/SystemPanel.qml`,
+`bluetooth/BluetoothShared.qml` and `office/OfficeShared.qml` (which also
+runs the helper, so the bar has the light and the watts while the panel is
+closed). "Panel" does not mean placement only:
 `CalendarPanel` holds the export and the minute clock, and
 `BluetoothShared` the adapter, batteries and remembered answers, because the
 bar, the OSD and the reminders need them while the panel is closed.
@@ -394,7 +399,8 @@ menu, polkit dialog, network panel with speed test (two providers), audio
 panel (the DAC stack, per-program rows and levels, inputs, no-signal flag),
 clock and calendar (sync, export, reminders, digest), system panel,
 Bluetooth panel with pairing agent, lock screen with a recovery command,
-tray right-click menus drawn by the shell (`tray/`).
+tray right-click menus drawn by the shell (`tray/`), office panel (light,
+blind, sockets' power through `desk-mqtt`; live, not read-only).
 
 **To do at the next deploy:**
 - `~/.config/mako/` is left over from before the shell was the notification
@@ -422,15 +428,15 @@ was written; check the reports of any newer work for its own.
 - Tray menus: running a real entry, real pointer hover, a real application's
   submenu, check or radio entries (none of the tray apps here has them; a
   fixture showed them), and a menu changing while open.
+- Office panel: the user verified, with the real light and blind, the light
+  on and off, brightness by keys and by mouse, the blind up, stop, down and
+  to a position, and that the sockets are not clickable. Never seen for real
+  (simulated with recorded helper lines, and node-tested): the broker lost,
+  Zigbee2MQTT offline, a device offline, a command not confirmed.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 
 **Not built:**
-- The office panel (light, blind, sockets' power). Its helper, `desk-mqtt`,
-  is built and tested (`office-helper` check; read-only against the real
-  broker); the panel has a chosen design and nothing in QML yet. No command
-  has been sent to the real light or blind; the first ones are to be made
-  with the user watching.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.
@@ -451,8 +457,8 @@ are done; what is left:
    `details()`, codec names), `SpeedTest.qml`'s parsers.
 2. **Shared drop-down window, row selection, bar open mark** (about 2 h):
    the `PanelWindow` shell (layer, focus, click-off, key forwarding) is
-   copied in five panels; Audio and Bluetooth have identical selection code;
-   `Bar.qml` draws the 14×2 open mark five times. The "pick the screen by
+   copied in six panels; Audio and Bluetooth have identical selection code;
+   `Bar.qml` draws the 14×2 open mark six times. The "pick the screen by
    name" line is repeated in 11 places.
 3. **One notification sender** (about 30 min plus a device test): `gdbus …
    Notify` argument lists are built by hand in
@@ -461,8 +467,8 @@ are done; what is left:
    device name that parses as GVariant text would be altered; Reminders
    quotes them (`gv()`).
 4. **Small ones** (minutes each): the flash timer (`say()` and a `Timer`,
-   2.5 s, Calendar 3.5 s) is still copied in Network, Audio, Calendar and
-   Bluetooth; `Osd.qml` picks its glyph by matching the literal text
+   2.5 s, Calendar 3.5 s, Office 5 s) is still copied in Network, Audio,
+   Calendar, Bluetooth and Office; `Osd.qml` picks its glyph by matching the literal text
    `"Bluetooth on"` from `BluetoothPanel.qml`; the root `BluetoothPanel.qml`
    is named unlike `Network.qml`, `Audio.qml` and the rest; `#191a21` (text
    on purple) is hard-coded in `Polkit.qml` and `BluetoothPanel.qml`;

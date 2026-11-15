@@ -12,8 +12,10 @@ import qs.bluetooth
 import qs.calendar
 import qs.common
 import qs.network
+import qs.office
 import qs.system
 import qs.tray
+import "office/office.js" as OfficeView
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -28,6 +30,8 @@ Scope {
             bluetooth: "\u{f00af}",
             bluetoothConnected: "\u{f00b1}",
             bluetoothOff: "\u{f00b2}",
+            lightbulb: "\u{f0335}",
+            lightbulbOutline: "\u{f0336}",
             ethernet: "\u{f0200}",
             wifi: "\u{f05a9}",
             noNetwork: "\u{f0319}",
@@ -465,6 +469,66 @@ Scope {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Item {
+                        id: office
+
+                        readonly property bool panelOpen: OfficeShared.screen === bar.modelData.name
+                        readonly property var shown: OfficeView.barView(OfficeShared.office, Date.now())
+
+                        width: officeRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Dropdowns.anchor("office", bar.modelData.name, office, bar)
+
+                        Hover {
+                            hovered: officeArea.containsMouse
+                        }
+
+                        // Marks the item whose panel is open.
+                        Rectangle {
+                            visible: office.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        Row {
+                            id: officeRow
+
+                            height: parent.height
+                            spacing: 5
+
+                            // Lit while the light is on; hollow while
+                            // nothing is known.
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: office.shown.glyph === "on" ? root.glyph.lightbulb : root.glyph.lightbulbOutline
+                                color: office.shown.glyph === "on" ? Theme.yellow : office.shown.glyph === "none" || office.shown.dim ? Theme.comment : office.panelOpen ? Theme.purple : Theme.foreground
+                            }
+
+                            // The sockets' total now.
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: office.shown.watts
+                                color: office.shown.dim ? Theme.comment : Theme.foreground
+                                font.family: Theme.fontMono
+                                font.pixelSize: root.fontSize
+                            }
+                        }
+
+                        MouseArea {
+                            id: officeArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: OfficeShared.toggleRequested(bar.modelData.name)
                         }
                     }
 

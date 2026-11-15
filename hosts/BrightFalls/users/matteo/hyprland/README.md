@@ -19,7 +19,7 @@ work) is in [AGENTS.md](AGENTS.md).
   [Network panel](#network-panel), [Audio panel](#audio-panel),
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
-  [Tray menu](#tray-menu)
+  [Office panel](#office-panel), [Tray menu](#tray-menu)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
@@ -165,8 +165,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The five drop-down panels (network, audio, calendar, system, Bluetooth)
-behave alike: each opens under its bar item on that bar's monitor (or the
+The six drop-down panels (network, audio, calendar, system, Bluetooth,
+office) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -183,6 +183,7 @@ others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
 | Calendar | Super+C, bar clock | `calendar` |
 | System | Super+Y, bar temperature chip | `system` |
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
+| Office | Super+O, bar light bulb and watts | `office` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
@@ -221,7 +222,8 @@ workspaces (its five, plus any other that exists there; click or scroll to
 switch); the focused window's title on that monitor; the clock (see
 [Calendar panel](#calendar-panel)); then a gamepad while game mode is on
 (read from Hyprland's `animations:enabled`), the tray (left click activates,
-right click opens the item's menu, see [Tray menu](#tray-menu)), the system chip (two temperatures, see
+right click opens the item's menu, see [Tray menu](#tray-menu)), the office
+item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, network, and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
@@ -639,6 +641,78 @@ device reports under 15%.
 - **Low battery**: one critical notification per device each time it drops
   under 15% (`bluetooth/BluetoothShared.qml`); remembered across reloads, not restarts.
 
+### Office panel
+
+`Office.qml`, with `office/OfficeShared.qml` (shared with the bar: placement,
+the helper process, the state) and `office/office.js` (every decision: how
+the helper's events change the state, ages, percent and raw brightness,
+steps, locks, row texts, banners, the bar item; node-tested). A 360 px panel
+under the bar's office item for one light, one blind and five sockets, all
+through [`desk-mqtt`](#office-desk-mqtt), which the shell runs for as long
+as it runs and starts again if it exits (after 2 s, doubling to a minute
+while it keeps failing).
+
+- **Bar item**: a bulb, yellow and lit while the light is on, hollow
+  otherwise, and the sockets' total power now (`— W` while nothing is
+  known). Greyed while the values are stale (broker or Zigbee2MQTT down).
+  A click opens the panel.
+- **Header tag**: `read only` in orange whenever the helper runs with
+  `--read-only`; `live` only when it does not and the broker is up,
+  Zigbee2MQTT online and the retained state read; otherwise nothing.
+- **Light**: on or off, brightness as a slider in percent (Zigbee2MQTT's
+  1..254 underneath). The fill is the confirmed value, the handle the one
+  asked for. An off light keeps its last brightness, greyed; moving the
+  slider then turns it on at that level. No slider until a brightness has
+  been reported.
+- **Blind**: ▲ ■ ▼ (open, stop, close) and a position slider (0 closed, 100
+  open). ▲ is off at 100 and ▼ at 0; ■ is lit while the motor runs, and the
+  handle shows the target until it gets there. The state line reads
+  Opening…, Closing…, Blocked, Closed or Open N%. A blind that does not list
+  `position` gets the buttons only and Open / Closed / Stopped.
+- **Sockets**: watched only; nothing in the panel can address one, by key or
+  click, and the helper has no socket command. Sorted on, then off, then
+  offline or silent, each by watts, with a share bar. The total counts the
+  sockets that are online and reported ("4 of 5 sockets" when one is left
+  out); while values are stale it says how long ago they were current.
+- **Every row** shows its age on the right (orange from an hour). Offline
+  devices are greyed and red ("Offline · was on"); a device with nothing
+  retained says "No report yet".
+- **Sending**: a slider is sent once, when the key or the mouse button is
+  released (auto-repeat is ignored), and not at all if it ends where it
+  started. A command shows "Sending…" until the device's next state confirms
+  it. Not confirmed within 5 s: the handle goes back, the row says what was
+  asked and when ("Not confirmed: asked 70 % at 18:43:05", "Did not start
+  opening …") until the device's next report or command, and the footer
+  says it for 5 s. Nothing is retried. Refused by the helper: "Not sent:
+  " and the reason in words.
+- **Locks**: controls are off while the broker is down, Zigbee2MQTT is not
+  online (also while that is unknown), the device is offline, or
+  Zigbee2MQTT has not confirmed the device as a light or a cover; pressing
+  one then says which in the footer. Read-only does not lock: the controls
+  move, the helper refuses, the row says so.
+- **Banners**: red "Can't reach the MQTT broker" (or the broker's refusal)
+  when it was never up; orange "Broker lost N min ago" or "Zigbee2MQTT is
+  offline" with the values kept from before.
+- **One line instead of the panel** when the helper's config is missing or
+  invalid (the key at fault, never a value) or the helper is not running.
+- **Keys**: ↑↓ select the light or the blind; ←→ step the selected slider
+  10 % (sent on release); Enter switches the light; U, S, D open, stop and
+  close the blind wherever the selection is; Esc closes. Mouse: drag a
+  slider and release, click ▲ ■ ▼, click outside to close.
+- **Log**: each command sent and its outcome go to the shell's log
+  (`journalctl --user -u quickshell`, "office helper: …"), by the generic
+  device ids from `desk-mqtt.nix`.
+- **Read-only for development**: `readonly property bool readOnly` in
+  `office/OfficeShared.qml`. `true` starts the helper as `desk-mqtt
+  --read-only`, which refuses every command and publishes nothing; the save
+  restarts the helper. It is `false`: the panel is live.
+
+**Verified by the user, with the real light and blind:** the light on and
+off; brightness by keys and by mouse; the blind up, stop, down and to a
+position; the sockets not clickable. **Never seen for real** (simulated with
+recorded helper lines, and node-tested): the broker lost, Zigbee2MQTT
+offline, a device offline, a command not confirmed.
+
 ### Tray menu
 
 `tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
@@ -950,8 +1024,8 @@ so the header's calendar order falls back to directory names.
 
 ## Office: desk-mqtt
 
-`desk-mqtt` (`desk-mqtt.py`, `desk-mqtt.nix`) is the helper behind the office
-panel (the panel itself is not built yet): one long-running process the
+`desk-mqtt` (`desk-mqtt.py`, `desk-mqtt.nix`) is the helper behind the
+[office panel](#office-panel): one long-running process the
 shell starts, as it starts `desk-bt-agent`, speaking JSON lines on stdin and
 stdout. It watches one light, one blind and five sockets on Zigbee2MQTT
 through the MQTT broker on Nexus, and sends commands to the light and the
@@ -1043,6 +1117,14 @@ Flake checks, defined in `tests/default.nix`:
 - `nix build .#checks.x86_64-linux.tray-panel`: runs
   `user/quickshell/tray/menu.js` under node (`tests/tray/test-tray.js`): the
   header's name and the entries' check and radio marks.
+- `nix build .#checks.x86_64-linux.office-panel`: runs
+  `user/quickshell/office/office.js` under node
+  (`tests/office-panel/test-office-panel.js`) against invented helper events,
+  inline and as recorded lines in `tests/office-panel/fixtures/` (one file per
+  panel state; `"@-N"` in a time means N s before the test's fixed now):
+  ages, brightness percent and raw values, steps, the row and header texts,
+  locks, banners, the sockets' total, the bar item, and the pending,
+  confirmed, not-confirmed and refused paths.
 - `nix build .#checks.x86_64-linux.office-helper`: runs `desk-mqtt` against
   a Mosquitto on loopback, with `tests/office/test-desk-mqtt.py` playing
   Zigbee2MQTT under invented names and a spy on `#`: retained state at

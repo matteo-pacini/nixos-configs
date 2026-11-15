@@ -1,10 +1,12 @@
 # desk-sync's, calendar-export's, the calendar panel's, the Bluetooth
-# panel's, the tray menu's and the office helper's tests, as flake checks:
+# panel's, the tray menu's, the office panel's and the office helper's tests,
+# as flake checks:
 #   nix build .#checks.<system>.desk-sync
 #   nix build .#checks.<system>.calendar-export
 #   nix build .#checks.<system>.calendar-panel
 #   nix build .#checks.<system>.bluetooth-panel
 #   nix build .#checks.<system>.tray-panel
+#   nix build .#checks.<system>.office-panel
 #   nix build .#checks.<system>.office-helper
 { pkgs }:
 let
@@ -62,6 +64,13 @@ in
   # the entries' marks.
   tray-panel = pkgs.runCommand "tray-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${./tray/test-tray.js} ${../user/quickshell/tray}
+    touch $out
+  '';
+
+  # The office panel's library (quickshell/office/office.js) against invented
+  # helper events, inline and from office-panel/fixtures/.
+  office-panel = pkgs.runCommand "office-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./office-panel}/test-office-panel.js ${../user/quickshell/office}
     touch $out
   '';
 

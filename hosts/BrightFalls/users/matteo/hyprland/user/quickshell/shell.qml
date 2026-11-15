@@ -25,6 +25,7 @@ ShellRoot {
     Calendar {}
     System {}
     BluetoothPanel {}
+    Office {}
     TrayMenu {}
     Reminders {}
     Lockscreen {}
