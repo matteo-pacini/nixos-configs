@@ -46,6 +46,8 @@ t("checkbox marks", () => {
 t("radio marks", () => {
     assert.deepEqual(M.mark(2, 2), { text: "●", on: true });
     assert.deepEqual(M.mark(2, 0), { text: "○", on: false });
+    // A radio has no partial state; it reads as not chosen.
+    assert.deepEqual(M.mark(2, 1), { text: "○", on: false });
 });
 
 t("plain entries have no mark, whatever their check state", () => {
