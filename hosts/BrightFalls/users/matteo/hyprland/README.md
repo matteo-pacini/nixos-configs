@@ -44,7 +44,7 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   from the pinned `unicode-emoji` package by `gen-emoji.py` (beside this
   README, not installed), whose header has the command.
 - `Bar.qml`: a floating rounded strip on every monitor, 6 px
-  from the top, left and right edges and 30 px tall including its border.
+  from the top, left and right edges and 34 px tall including its border.
   Whatever sits under it starts 44 px from the top of the monitor.
 - `Notifications.qml` (parts in `notifications/`): the notification daemon,
   in place of mako. Popups sit under the bar at the top right of the
