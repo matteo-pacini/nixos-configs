@@ -59,6 +59,7 @@ A freeze is detected 3 to 8 minutes after it starts. A full recovery takes about
 
 ## Known gaps
 
+- **Retained device states defeat the silence check.** `zigbee2mqtt.nix` sets `device_options.retain = true`. Each `wait_for_trigger` on `zigbee2mqtt/+` is a new subscription, and HA's MQTT client replays retained messages to every new subscription. The MQTT trigger neither filters retained messages nor exposes the retain flag. So steps 1 and 5 see a message at once, and a frozen radio is never detected. A fix is to judge freshness from the payload instead: since `advanced.last_seen = "ISO_8601"` puts the time of the last Zigbee message in every state payload, give the trigger `value_template: "{{ (now() - as_datetime(value_json.last_seen)).total_seconds() < 60 }}"` and `payload: "True"`. Not applied or tested live yet (2026-11-15).
 - **Blind during the cooldown.** Guard 3 blocks the whole run, detection included. A second freeze within an hour of a recovery gives no notification.
 - **Failure branches are untested.** Only the success path has run live. The two "manual intervention" notifications have never fired.
 - **Which step fixes it is unknown.** The PoE power cycle and the service restart both ran in the one live recovery, so whether either is enough alone is not known.
@@ -110,3 +111,4 @@ journalctl -u zigbee2mqtt --since "-1h" | grep -E "BUFFER_FULL|Failed to ping"
 | 2026-11-13 | Coordinator froze at 13:47 UTC in the middle of a run and the watchdog did not fire. It triggered on `zigbee2mqtt/bridge/health` and tested for an empty `devices` map, but that map holds counters since Zigbee2MQTT start and never empties after a mid-run freeze. |
 | 2026-11-13 | Rewritten to detect radio silence on `zigbee2mqtt/+`, polled every 5 minutes. Added the bridge-online guard. Recovery actions disabled for the first test; detection confirmed against the frozen coordinator. |
 | 2026-11-13 | Recovery completed: PoE power cycle, wait for ping, Zigbee2MQTT restart, traffic check, phone notifications at each step, one attempt per hour. First live run recovered the mesh (15:47 to 15:52 UTC, 56 of 56 devices back). |
+| 2026-11-15 | Zigbee2MQTT set to retain device states and add `last_seen` (repo change). This breaks the silence check until the automation filters on `last_seen`; see Known gaps. |

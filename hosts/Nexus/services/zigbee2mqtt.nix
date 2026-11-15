@@ -46,6 +46,13 @@
 
       advanced = {
         transmit_power = 20;
+        last_seen = "ISO_8601";
+      };
+
+      # Retained so a subscriber that connects later gets every device's last
+      # state at once, with last_seen giving its age.
+      device_options = {
+        retain = true;
       };
 
       # Without this, entities keep serving their last reported value forever,
