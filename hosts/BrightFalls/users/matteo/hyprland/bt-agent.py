@@ -12,6 +12,12 @@ stdout: {"event": "ready", "capability": ...}
         {"event": "cancel", "ids": [...]}   BlueZ withdrew the open request(s).
         {"event": "rssi", "device": ..., "rssi": n}   signal strength in dBm,
             as BlueZ reports it while it scans.
+        {"event": "links", "device": ..., "transports": [{"uuid", "state"}],
+            "control": bool, "network": bool}   what BlueZ has set up with
+            the device: its media transports (A2DP, LE Audio; state idle,
+            pending or active), whether media control (AVRCP) and network
+            (PAN) are connected. Sent for every device at start and again
+            whenever one of these changes.
         {"event": "released"}, {"event": "exit"}
         {"event": "stale-answer", "id": N}, {"event": "bad-input", "line": ...}
 stdin:  {"id": N, "accept": true|false, "passkey": int?, "pin": str?}
@@ -111,17 +117,82 @@ def rssi_of(props):
     return None if value is None else value.value
 
 
+class Links:
+    """Per device: media transports, and whether AVRCP and PAN are up."""
+
+    TRANSPORT = "org.bluez.MediaTransport1"
+    CONTROL = "org.bluez.MediaControl1"
+    NETWORK = "org.bluez.Network1"
+
+    def __init__(self):
+        self.transports = {}  # transport path -> {"device", "uuid", "state"}
+        self.control = {}     # device path -> bool
+        self.network = {}
+
+    def emit(self, device):
+        transports = [{"uuid": t["uuid"], "state": t["state"]}
+                      for t in self.transports.values() if t["device"] == device]
+        emit(event="links", device=device, transports=transports,
+             control=self.control.get(device, False), network=self.network.get(device, False))
+
+    def added(self, path, interfaces):
+        """Takes one object's interfaces; returns the device it changed, or None."""
+        if self.TRANSPORT in interfaces:
+            props = interfaces[self.TRANSPORT]
+            device = props["Device"].value
+            self.transports[path] = {"device": device, "uuid": props["UUID"].value,
+                                     "state": props["State"].value}
+            return device
+        changed = None
+        for name, table in ((self.CONTROL, self.control), (self.NETWORK, self.network)):
+            if name in interfaces and "Connected" in interfaces[name]:
+                table[path] = interfaces[name]["Connected"].value
+                changed = path
+        return changed
+
+    def removed(self, path, interfaces):
+        if self.TRANSPORT in interfaces and path in self.transports:
+            return self.transports.pop(path)["device"]
+        changed = None
+        for name, table in ((self.CONTROL, self.control), (self.NETWORK, self.network)):
+            if name in interfaces and table.pop(path, None) is not None:
+                changed = path
+        return changed
+
+    def changed(self, path, interface, props):
+        if interface == self.TRANSPORT and path in self.transports and "State" in props:
+            self.transports[path]["state"] = props["State"].value
+            return self.transports[path]["device"]
+        if interface in (self.CONTROL, self.NETWORK) and "Connected" in props:
+            (self.control if interface == self.CONTROL else self.network)[path] = props["Connected"].value
+            return path
+        return None
+
+
+LINKS = Links()
+
+
 def on_signal(msg):
     if msg.message_type != MessageType.SIGNAL:
         return
-    if msg.member == "PropertiesChanged" and msg.body[0] == "org.bluez.Device1":
-        rssi = rssi_of(msg.body[1])
-        if rssi is not None:
-            emit(event="rssi", device=msg.path, rssi=rssi)
+    device = None
+    if msg.member == "PropertiesChanged":
+        interface, props = msg.body[0], msg.body[1]
+        if interface == "org.bluez.Device1":
+            rssi = rssi_of(props)
+            if rssi is not None:
+                emit(event="rssi", device=msg.path, rssi=rssi)
+        else:
+            device = LINKS.changed(msg.path, interface, props)
     elif msg.member == "InterfacesAdded":
         rssi = rssi_of(msg.body[1].get("org.bluez.Device1", {}))
         if rssi is not None:
             emit(event="rssi", device=msg.body[0], rssi=rssi)
+        device = LINKS.added(msg.body[0], msg.body[1])
+    elif msg.member == "InterfacesRemoved":
+        device = LINKS.removed(msg.body[0], msg.body[1])
+    if device is not None:
+        LINKS.emit(device)
 
 
 async def main():
@@ -135,13 +206,25 @@ async def main():
     await manager.call_request_default_agent(PATH)
 
     bus.add_message_handler(on_signal)
-    for rule in ("type='signal',sender='org.bluez',interface='org.freedesktop.DBus.Properties',"
-                 "member='PropertiesChanged',arg0='org.bluez.Device1'",
-                 "type='signal',sender='org.bluez',interface='org.freedesktop.DBus.ObjectManager',"
-                 "member='InterfacesAdded'"):
+    rules = ["type='signal',sender='org.bluez',interface='org.freedesktop.DBus.ObjectManager'"]
+    for interface in ("org.bluez.Device1", Links.TRANSPORT, Links.CONTROL, Links.NETWORK):
+        rules.append("type='signal',sender='org.bluez',interface='org.freedesktop.DBus.Properties',"
+                     f"member='PropertiesChanged',arg0='{interface}'")
+    for rule in rules:
         await bus.call(Message(destination="org.freedesktop.DBus", path="/org/freedesktop/DBus",
                                interface="org.freedesktop.DBus", member="AddMatch",
                                signature="s", body=[rule]))
+    # After the match rules, so a change between the two is not lost.
+    reply = await bus.call(Message(destination="org.bluez", path="/",
+                                   interface="org.freedesktop.DBus.ObjectManager",
+                                   member="GetManagedObjects"))
+    devices = []
+    for path, interfaces in reply.body[0].items():
+        if "org.bluez.Device1" in interfaces:
+            devices.append(path)
+        LINKS.added(path, interfaces)
+    for device in devices:
+        LINKS.emit(device)
     emit(event="ready", capability=CAPABILITY)
 
     loop = asyncio.get_running_loop()

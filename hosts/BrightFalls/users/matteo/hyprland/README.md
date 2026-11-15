@@ -325,9 +325,18 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
     plain mark. Then "Set in Nix": `~/.local/share/desk/bluetooth/locked.json`
     from `desktop-hyprland.nix`, one row while `hardware.bluetooth.powerOnBoot`
     is on; turning Bluetooth off here lasts until the next boot.
-  - Keys: ↑↓ select; Enter opens details (address, trust, the audio codec
-    PipeWire negotiated for a connected audio device, battery) or pairs a
-    nearby device; C connects or disconnects; T switches trust (details);
+  - What a connected device does here shows as glyphs at the right of its
+    row: a handset for calls, a music note for audio, play/pause for media
+    controls, a network plug for network sharing; green in use now, white
+    connected, grey allowed but not in use. Details list the same in words
+    under "uses", only from evidence: the media transports, media control
+    and network links BlueZ has set up (reported by the agent helper), the
+    device's PipeWire nodes (audio is "playing here" only while its node is
+    linked to an output; calls have a node only during a call) and the
+    service questions answered in this session (kept across reloads, not
+    restarts; a trusted device is not asked).
+  - Keys: ↑↓ select; Enter opens details (address, trust, battery, the codec
+    PipeWire negotiated, uses) or pairs a nearby device; C connects or disconnects; T switches trust (details);
     F forgets, after a second F; S scans for 30 s and lists named, unpaired
     devices under "Nearby", strongest signal first (RSSI from the agent;
     sorted by name, and it says so, when none is reported); V makes this
