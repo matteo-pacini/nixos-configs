@@ -165,6 +165,7 @@ nix build .#checks.x86_64-linux.tray-panel       # tray/menu.js under node
 nix build .#checks.x86_64-linux.office-panel     # office/office.js under node
 nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback Mosquitto
 nix build .#checks.x86_64-linux.system-panel     # system/decode.js under node
+nix build .#checks.x86_64-linux.display-layout   # display-layout.sh against a fake hyprctl
 ```
 
 The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
@@ -179,6 +180,7 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
   .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-panel \
   .#checks.x86_64-linux.office-helper .#checks.x86_64-linux.system-panel \
+  .#checks.x86_64-linux.display-layout \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -318,7 +320,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |

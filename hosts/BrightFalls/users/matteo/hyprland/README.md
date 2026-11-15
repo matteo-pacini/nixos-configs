@@ -1141,3 +1141,13 @@ required check for merging into `master`:
   throttle word) and `/proc`, sysfs, `df` and LACT texts: CPU busy time,
   memory, the uplink and its bytes, disk counters and volumes, the PCIe link
   state, AER counts, the LACT fan line, heat levels and the figures' format.
+- `nix build .#checks.x86_64-linux.display-layout`: runs
+  `hosts/BrightFalls/display-layout.sh` against a fake `hyprctl`
+  (`tests/display-layout/run.sh`): usage, the DP-1 and DP-2 rules matching
+  `monitors.lua`, restore with nothing to do, after a lost monitor, with the
+  capture card on, after a reload that does not parse (direct rules) and
+  when nothing comes back (exit 1, layout kept), an eval error, and
+  `single`: the command's arguments and status, DP-2 off while it runs, the
+  restore and the workspaces put back when it ends, is killed or
+  single-monitor itself is terminated, a nested call, and no Hyprland.
+  About 1 s.

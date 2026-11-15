@@ -1,6 +1,5 @@
-# desk-sync's, calendar-export's, the calendar panel's, the Bluetooth
-# panel's, the tray menu's, the office panel's, the office helper's and the
-# system panel's tests, as flake checks:
+# The BrightFalls desktop's tests, as flake checks (each says below what it
+# covers):
 #   nix build .#checks.<system>.desk-sync
 #   nix build .#checks.<system>.calendar-export
 #   nix build .#checks.<system>.calendar-panel
@@ -9,6 +8,7 @@
 #   nix build .#checks.<system>.office-panel
 #   nix build .#checks.<system>.office-helper
 #   nix build .#checks.<system>.system-panel
+#   nix build .#checks.<system>.display-layout
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -81,6 +81,23 @@ in
     node ${./system/test-system.js} ${../user/quickshell/system}
     touch $out
   '';
+
+  # display-layout (single-monitor and the restore bind) against a fake
+  # hyprctl.
+  display-layout =
+    pkgs.runCommand "display-layout-tests"
+      {
+        nativeBuildInputs = with pkgs; [
+          gnugrep
+          gnused
+          jq
+        ];
+      }
+      ''
+        bash ${./display-layout/run.sh} ${../../../../display-layout.sh} \
+          ${../user/hypr/monitors.lua}
+        touch $out
+      '';
 
   # desk-mqtt (the office panel's helper) against a Mosquitto on loopback,
   # with the test playing Zigbee2MQTT under invented device names. Takes
