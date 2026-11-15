@@ -628,9 +628,9 @@ side in the shell).
   The repository declares `desk-lock` for it
   (`security.pam.services.desk-lock` in `desktop-hyprland.nix`): `pam_unix`
   only, no lockout; a wrong password costs pam_unix's delay of about 2 s.
-  Until that is deployed `lock.qml` uses nixpkgs' `swaylock` service, the
-  same stack. The lock screen keeps what is typed only until it hands it to
-  PAM.
+  A service that does not exist means no password can unlock, so a renamed
+  service has to be deployed before `pamService` names it. The lock screen
+  keeps what is typed only until it hands it to PAM.
 - **What is held while locked.** The lock tells the shell once Hyprland holds
   the lock (`qs ipc call lockscreen hold <pid>`); `Lockscreen.qml` then keeps
   every notification card, critical ones included, off screen with its

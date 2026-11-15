@@ -29,7 +29,7 @@ ShellRoot {
 
     readonly property bool preview: Quickshell.env("DESK_LOCK_PREVIEW") === "1"
     // The PAM service in /etc/pam.d.
-    readonly property string pamService: "swaylock"
+    readonly property string pamService: "desk-lock"
 
     readonly property date now: clock.date
 

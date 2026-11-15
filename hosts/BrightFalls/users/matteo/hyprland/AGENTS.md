@@ -388,10 +388,6 @@ clock and calendar (sync, export, reminders, digest), system panel,
 Bluetooth panel with pairing agent, lock screen with a recovery command.
 
 **To do at the next deploy:**
-- Switch `lock.qml`'s `pamService` from `swaylock` to `desk-lock` once the
-  deploy declaring `desk-lock` is live, not before (a missing PAM service
-  means no password can unlock). Remove the old `~/desk-unlock` from the
-  home directory; the `desk-unlock` command replaces it.
 - `~/.config/mako/` is left over from before the shell was the notification
   daemon (`desk-sync` leaves dropped files alone); delete it.
 - `systemctl --user restart quickshell` if `shell.qml`'s pragmas changed.
