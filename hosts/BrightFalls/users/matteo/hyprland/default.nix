@@ -57,8 +57,9 @@ in
     wl-clipboard
     playerctl
     quickshell
-    # The network panel's speed test (quickshell/network/SpeedTest.qml).
+    # The network panel's speed-test providers (quickshell/network/SpeedTest.qml).
     cfspeedtest
+    ookla-speedtest
     (callPackage ../audio-output-cycle.nix { })
   ];
 

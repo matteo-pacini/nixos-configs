@@ -102,19 +102,33 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   on, IPv6 off, Wake-on-LAN interfaces, hostname, firewall on; a row only
   while the setting has that value), each naming the repo file that sets it,
   which Enter shows in the footer. Up/Down move, Esc closes details, then the
-  panel. S runs a speed test with `cfspeedtest` (speed.cloudflare.com; the
-  tool is named only in `network/SpeedTest.qml`) over the connection
-  carrying the default route: latency, then download, then upload on two
-  gauges with one shared scale: the interface's negotiated link speed, or,
-  when that is unknown, the smallest of 100 Mb/s to 10 Gb/s that holds that
-  connection's best stored result; a reading above it grows the scale to the
-  next of those that holds it. Esc during a run
-  kills it and stores nothing; a failure shows under empty gauges, Enter
-  retries. Each completed run is appended as one JSON line (`at`,
+  panel. S opens a chooser in place of the list: 1 Cloudflare
+  (`cfspeedtest`, speed.cloudflare.com), 2 Speedtest.net (the Ookla CLI,
+  `speedtest`, nearest server; unfree, its licence and GDPR notice accepted
+  on its command line), 3 All in turn. Each provider row shows its own last
+  result. The provider used last is preselected (Cloudflare with no history),
+  so S then Enter repeats the previous test; Up/Down and Enter, or the
+  number, run a row; Esc returns to the list. Providers (tool, command line,
+  how live figures and the result are read) are described only in
+  `network/SpeedTest.qml`. A test runs over the connection carrying the
+  default route: latency, then download, then upload on two gauges with one
+  shared scale: the interface's negotiated link speed, or, when that is
+  unknown, the smallest of 100 Mb/s to 10 Gb/s that holds that connection's
+  best stored result; a reading above it grows the scale to the next of
+  those that holds it. The line under the gauges names the provider. Esc
+  during a run kills it, stores nothing and returns to the list; a failure
+  shows under empty gauges, Enter retries. All in turn adds provider chips
+  above the gauges (current lit, finished green) and a table under them
+  (down, up, ping per provider; a failed one says "failed" and the next
+  still runs); when all are done the gauges show the fastest result and the
+  screen stays until Esc. Esc during it stops the current run and keeps
+  the finished ones. Each completed run is appended as one JSON line (`at`,
   `connection`, `interface`, `download_mbps`, `upload_mbps`, `ping_ms`,
-  `tool`) to `~/.local/state/desk/speedtests.jsonl`, never trimmed; the panel
-  shows the newest per NetworkManager connection. fast.com's `fast-cli` is
-  not used: it rounds rates of 1 Gb/s and over to whole Gb/s.
+  `provider` (`cloudflare` or `speedtest`; older lines without it count as
+  Cloudflare), `tool`) to `~/.local/state/desk/speedtests.jsonl`, never
+  trimmed. The row shows the newest run per NetworkManager connection and
+  its provider; details list the last run of each provider. fast.com's
+  `fast-cli` is not used: it rounds rates of 1 Gb/s and over to whole Gb/s.
 
 ## Activation
 
