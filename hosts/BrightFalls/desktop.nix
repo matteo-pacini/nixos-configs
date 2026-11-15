@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   services.xserver = {
     enable = true;
@@ -6,15 +11,25 @@
 
   services.desktopManager.gnome.enable = true;
 
-  services.displayManager = {
-    # Makes sense to me as the whole system is encrypted
-    autoLogin = {
-      enable = true;
-      user = "matteo";
-    };
-    gdm = {
-      enable = true;
-    };
+  # Hyprland on VT 1. The first login of each boot needs no password (the
+  # whole system is encrypted), so the login keyring stays locked until the
+  # lock screen unlocks it (desk-lock) or an app asks for it. After a logout,
+  # tuigreet asks for the password.
+  services.greetd = {
+    enable = true;
+    useTextGreeter = true;
+    settings =
+      let
+        # The Exec line of hyprland-uwsm.desktop.
+        session = "${lib.getExe config.programs.uwsm.package} start -e -D Hyprland hyprland.desktop";
+      in
+      {
+        initial_session = {
+          user = "matteo";
+          command = session;
+        };
+        default_session.command = "${lib.getExe pkgs.tuigreet} --time --remember --cmd '${session}'";
+      };
   };
 
   services.udev.packages = with pkgs; [ gnome-settings-daemon ];
@@ -84,13 +99,5 @@
     # Nautilus thumbnails: images, and audio and video.
     glycin-thumbnailer
     gst-thumbnailers
-  ];
-
-  # With no monitors.xml, mutter makes the highest-resolution output primary:
-  # the 4K HDMI capture card, so the login box lands there and DP-1/DP-2 stay
-  # grey. GDM points the greeter's XDG_CONFIG_HOME at this per-seat dir (not
-  # its home under /run/gdm/home), and lchowns its contents on every start.
-  systemd.tmpfiles.rules = [
-    "L+ /var/lib/gdm/seat0/config/monitors.xml - - - - ${./monitors.xml}"
   ];
 }

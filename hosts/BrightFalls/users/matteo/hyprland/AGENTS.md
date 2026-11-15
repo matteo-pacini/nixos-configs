@@ -300,7 +300,7 @@ not.
 
 | Path | What |
 |------|------|
-| `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, GDM default session, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
+| `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
 | `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` user service, imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |

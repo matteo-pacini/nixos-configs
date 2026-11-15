@@ -1,5 +1,5 @@
-# Hyprland as a second GDM session beside GNOME. GNOME stays the default
-# and the autologin session.
+# The Hyprland session (UWSM), which greetd starts (desktop.nix), and what its
+# desktop shell needs from the system.
 {
   config,
   options,
@@ -186,8 +186,8 @@ in
   programs.hyprland = {
     enable = true;
     withUWSM = true;
-    # Everything here assumes the UWSM session, so GDM must not offer the plain
-    # hyprland.desktop. It stays installed, with NoDisplay (GDM skips it), not
+    # Everything here assumes the UWSM session, so a session chooser must not
+    # offer the plain hyprland.desktop. It stays installed, with NoDisplay, not
     # Hidden or removed: hyprland-uwsm.desktop execs `uwsm start …
     # hyprland.desktop`, which looks the entry up under
     # $XDG_DATA_DIRS/wayland-sessions and rejects Hidden entries.
@@ -221,11 +221,6 @@ in
     ) { };
   };
 
-  # With no default, GDM autologs into the session the user last picked, so one
-  # Hyprland login would make every later boot autologin into Hyprland. Setting
-  # it makes GDM reset every user's saved session to GNOME each time it starts.
-  services.displayManager.defaultSession = "gnome";
-
   # font_ui in the desktop palette (users/matteo/hyprland/user/desk/theme.json).
   custom.fonts.extraPackages = [ pkgs.fira-sans ];
 
@@ -252,6 +247,7 @@ in
 
   # The lock screen's password check (users/matteo/hyprland/user/quickshell/lock.qml):
   # the user's password through pam_unix, with no delay or lockout beyond
-  # pam_unix's own.
-  security.pam.services.desk-lock = { };
+  # pam_unix's own. pam_gnome_keyring then unlocks the running keyring daemon's
+  # login keyring with the same password; greetd's autologin leaves it locked.
+  security.pam.services.desk-lock.enableGnomeKeyring = true;
 }

@@ -40,16 +40,6 @@ Scope {
             command: ["uwsm", "stop"]
         },
         {
-            label: "Switch to GNOME",
-            glyph: "",
-            key: "G",
-            enabled: true,
-            // The saved session is what GDM's greeter preselects. `&&`: if
-            // setting it fails, stay here rather than log out to a greeter
-            // that still offers Hyprland.
-            command: ["sh", "-c", "busctl call --system org.freedesktop.Accounts /org/freedesktop/Accounts/User$(id -u) org.freedesktop.Accounts.User SetSession s gnome && uwsm stop"]
-        },
-        {
             label: "Reboot",
             glyph: "",
             key: "R",

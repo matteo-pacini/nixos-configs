@@ -26,10 +26,15 @@ work) is in [AGENTS.md](AGENTS.md).
 
 ## The session
 
-GDM offers "Hyprland (uwsm-managed)" beside GNOME, which stays the default
-and the autologin session (`desktop-hyprland.nix`; the plain
-`hyprland.desktop` stays installed for `uwsm start` but is hidden from GDM
-with `NoDisplay`). `~/.config/uwsm/env-hyprland` is a read-only Nix-managed
+greetd starts the session on VT 1 with `uwsm start -e -D Hyprland
+hyprland.desktop`, the command of `hyprland-uwsm.desktop` (`desktop.nix`).
+The first login of each boot is automatic, with no password: the login
+keyring stays locked until the first unlock at the lock screen, or until an
+app asks for it and a prompt takes the password. After a logout, or if the
+session ends, tuigreet asks for the password on VT 1 and starts the same
+session. The plain `hyprland.desktop` stays installed for `uwsm start`,
+with `NoDisplay` so no session chooser offers it
+(`desktop-hyprland.nix`). `~/.config/uwsm/env-hyprland` is a read-only Nix-managed
 file that points `AQ_DRM_DEVICES` at the udev links `/dev/dri/dgpu` and
 `/dev/dri/igpu`.
 
@@ -271,9 +276,7 @@ focused monitor with the binds in groups over three columns and a filter.
 
 `SessionMenu.qml` (Super+Escape or the power key, `qs ipc call session
 toggle`): a modal on the focused monitor with Lock (the lock screen), Log out
-(`uwsm stop`), Switch to GNOME (sets the user's saved session in
-AccountsService to `gnome`, which GDM's greeter preselects, then logs out),
-Reboot and Shut down. Up/Down and Enter, or the row's letter; Reboot and
+(`uwsm stop`, back to tuigreet), Reboot and Shut down. Up/Down and Enter, or the row's letter; Reboot and
 Shut down act on a second press. There is no suspend: the eGPU does not come
 back from it.
 
@@ -569,7 +572,7 @@ device reports under 15%.
   this: its `audio-gateway` profile looks the same with or without
   hands-free.
 - **Known behaviour: a switch to a text console drops calls.** Leaving the
-  graphical seat (Ctrl+Alt+F*, or a GDM user switch) makes WirePlumber stop
+  graphical seat (Ctrl+Alt+F*) makes WirePlumber stop
   its Bluetooth monitor, which frees PipeWire's Bluetooth side: call audio in
   progress here stops (the phone falls back to its earpiece), the hands-free
   link and the phone's music drop. Back on the seat the profiles are
@@ -658,8 +661,11 @@ side in the shell).
   fade-in never shows the desktop.
 - **Password.** PAM, with the service named by `pamService` in `lock.qml`.
   The repository declares `desk-lock` for it
-  (`security.pam.services.desk-lock` in `desktop-hyprland.nix`): `pam_unix`
-  only, no lockout; a wrong password costs pam_unix's delay of about 2 s.
+  (`security.pam.services.desk-lock` in `desktop-hyprland.nix`): `pam_unix`,
+  no lockout; a wrong password costs pam_unix's delay of about 2 s. Then
+  `pam_gnome_keyring` hands the same password to the running keyring daemon,
+  which unlocks the login keyring if it is locked (it is after the automatic
+  login).
   A service that does not exist means no password can unlock, so a renamed
   service has to be deployed before `pamService` names it. The lock screen
   keeps what is typed only until it hands it to PAM.
@@ -693,7 +699,7 @@ console:
    'hl.clear_crashed_lockscreen()'`, which Hyprland refuses while a lock
    process still holds the lock; the script then kills it and tries again).
 3. When it prints `Hyprland says locked: false`, type `exit` and press
-   Ctrl+Alt+F3 (Hyprland is on VT 3).
+   Ctrl+Alt+F1 (Hyprland is on VT 1).
 
 Any logged-in text console bypasses the lock: Hyprland switches VTs even while
 locked. Log out of consoles when done.
@@ -731,7 +737,7 @@ enabled in Nix).
 - A new session always starts with `monitors.lua`'s layout.
 - From a text console (Ctrl+Alt+F4, log in as matteo) or over SSH:
   `display-layout restore` or `hyprctl --instance 0 reload`, then `exit` and
-  Ctrl+Alt+F3.
+  Ctrl+Alt+F1.
 
 `HDMI-A-1` in `monitors.lua` is a 4K dummy plug on the eGPU, declared disabled
 so it never takes part in the layout.

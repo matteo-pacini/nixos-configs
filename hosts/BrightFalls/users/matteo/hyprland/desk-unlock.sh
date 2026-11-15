@@ -1,6 +1,6 @@
 # Unlocks a Hyprland session whose lock screen died or no longer takes the
 # password. Run it from a text console: Ctrl+Alt+F4, log in, `desk-unlock`,
-# then `exit` and Ctrl+Alt+F3. README.md, "Lock screen", has the background.
+# then `exit` and Ctrl+Alt+F1. README.md, "Lock screen", has the background.
 
 echo "Hyprland says locked: $(hyprctl --instance 0 locked 2>&1)"
 
@@ -23,4 +23,4 @@ case "$out" in
 esac
 
 echo "Hyprland says locked: $(hyprctl --instance 0 locked 2>&1)"
-echo "If that says false: type exit, then press Ctrl+Alt+F3."
+echo "If that says false: type exit, then press Ctrl+Alt+F1."
