@@ -166,11 +166,22 @@ let
       label = "LACT daemon enabled";
       file = setIn options.services.lact.enable;
     };
+
+  # The Bluetooth panel's "Set in Nix" rows (user/quickshell/BluetoothPanel.qml).
+  bluetoothRows =
+    lib.optional (config.hardware.bluetooth.enable && config.hardware.bluetooth.powerOnBoot)
+      {
+        id = "power";
+        label = "Bluetooth on at boot";
+        file = setIn options.hardware.bluetooth.powerOnBoot;
+      };
 in
 {
   home-manager.users.matteo.xdg.dataFile."desk/network/locked.json".text = builtins.toJSON lockedRows;
   home-manager.users.matteo.xdg.dataFile."desk/audio/locked.json".text = builtins.toJSON audioRows;
   home-manager.users.matteo.xdg.dataFile."desk/system/locked.json".text = builtins.toJSON systemRows;
+  home-manager.users.matteo.xdg.dataFile."desk/bluetooth/locked.json".text =
+    builtins.toJSON bluetoothRows;
 
   programs.hyprland = {
     enable = true;

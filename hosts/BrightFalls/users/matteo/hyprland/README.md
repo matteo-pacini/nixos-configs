@@ -49,7 +49,9 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
 - `Notifications.qml` (parts in `notifications/`): the notification daemon,
   in place of mako. Popups sit under the bar at the top right of the
   monitor focused when the first one appears, 380 px wide, with a red
-  border when critical. Notifications from one app stack into a deck that
+  border when critical; critical ones sit above the rest and above
+  fullscreen windows ("Critical notifications" below). Notifications from
+  one app stack into a deck that
   opens into a list while hovered. Low urgency goes after 5 s, normal after
   8 s, critical stays; a timeout from the sender counts, up to 30 s, and
   the countdown stops while the pointer is over the deck. Left click runs
@@ -308,6 +310,59 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   frame rate and frame time**, which are MangoHud's job inside a game;
   **history**, which is not kept. Nothing of this panel is meant to be shown
   over a fullscreen game.
+
+- `BluetoothPanel.qml` and `bluetooth/`: the Bluetooth panel. Super+B, a click
+  on the bar's Bluetooth glyph, or `qs ipc call bluetooth toggle`; opening it
+  closes the other drop-downs. Super+Ctrl+B (`qs ipc call bluetooth power`)
+  turns the adapter on or off without the panel and the OSD pill says which
+  (Super+Shift+B is Firefox). The bar adds the level in red beside the glyph
+  while a connected device reports under 15%.
+  - The list: paired devices, connected first, then by name, each with its
+    kind and state, and a battery gauge when the device reports one (orange
+    under 35%, red under 15%). The kind and glyph come from the icon BlueZ
+    derives from the device's class (`bluetooth/devices.js`); BlueZ has no
+    kind for watches or earbuds, and a device that reports none shows the
+    plain mark. Then "Set in Nix": `~/.local/share/desk/bluetooth/locked.json`
+    from `desktop-hyprland.nix`, one row while `hardware.bluetooth.powerOnBoot`
+    is on; turning Bluetooth off here lasts until the next boot.
+  - Keys: ↑↓ select; Enter opens details (address, trust, the audio codec
+    PipeWire negotiated for a connected audio device, battery) or pairs a
+    nearby device; C connects or disconnects; T switches trust (details);
+    F forgets, after a second F; S scans for 30 s and lists named, unpaired
+    devices under "Nearby", strongest signal first (RSSI from the agent;
+    sorted by name, and it says so, when none is reported); V makes this
+    computer visible for 2 minutes so a phone can find and pair with it;
+    B turns the adapter on or off; Esc steps back, then closes.
+  - Pairing: `desk-bt-agent` (`bt-agent.py`, `bt-agent.nix`), a small Python
+    helper the shell starts once and restarts if it exits, is BlueZ's default
+    agent. Codes, PINs, "pair without a code" and service requests from
+    untrusted devices open a centred modal (`bluetooth/PairModal.qml`) on the
+    panel's monitor, or on the focused one when the panel is closed. Nothing
+    is ever answered without a key. Services are named in plain words with
+    the question they mean (`bluetooth/services.js`); T there allows and
+    trusts. A device paired after the user's yes is trusted, which stops
+    those questions. The result of a pairing is read from BlueZ's `Paired`
+    and the agent's requests, not from the reply to `Pair()`, which QtDBus
+    abandons after its call timeout.
+  - Pairable: the adapter accepts pairing only while this computer pairs a
+    device or while V runs. BlueZ turns it on whenever an agent registers,
+    and the shell turns it off again. It stays on for pairings started here
+    too: with it off, the kernel still pairs as initiator but without
+    bonding, so nothing would be stored (`net/bluetooth/hci_event.c`,
+    `smp.c`).
+  - Low battery: one critical notification per device each time it drops
+    under 15% (`bluetooth/Bt.qml`); remembered across reloads, not restarts.
+
+### Critical notifications
+
+Cards with critical urgency (hint `urgency` 2, from any application) are drawn
+on their own surface on the Overlay layer (`desk-notifications-critical`),
+which Hyprland draws above fullscreen windows. It takes no keyboard and no
+input outside the cards, exists only while a critical card is up, and has no
+fade (`no_anim` in `hypr/rules.lua`): any Overlay surface on a game's monitor
+costs the game direct scanout and tearing for as long as it exists. Critical
+cards never time out, so dismiss them (Super+comma) to give that back. All
+other cards stay on the Top layer, hidden under fullscreen.
 
 ## Calendar events
 

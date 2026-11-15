@@ -63,6 +63,7 @@ in
     cfspeedtest
     ookla-speedtest
     (callPackage ../audio-output-cycle.nix { })
+    (callPackage ./bt-agent.nix { })
   ];
 
   # The desktop shell, from user/quickshell/ (installed at
