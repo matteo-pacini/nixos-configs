@@ -210,6 +210,19 @@
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it
             };
+            # Read by the calendar-sync user service and the Quickshell panel.
+            age.secrets."brightfalls/caldav-url" = {
+              file = ./secrets/brightfalls/caldav-url.age;
+              owner = "matteo";
+            };
+            age.secrets."brightfalls/caldav-user" = {
+              file = ./secrets/brightfalls/caldav-user.age;
+              owner = "matteo";
+            };
+            age.secrets."brightfalls/caldav-password" = {
+              file = ./secrets/brightfalls/caldav-password.age;
+              owner = "matteo";
+            };
           }
         ];
       };

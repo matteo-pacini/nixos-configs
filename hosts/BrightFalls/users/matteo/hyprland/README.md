@@ -202,6 +202,155 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
     session priority); the file comes from the definition that sets each
     value. Enter shows it in the footer. No file, no section.
 
+## Calendar events
+
+The calendar panel reads one file that a user service refreshes from the
+CalDAV account. Defined in `calendar.nix`; the export step is
+`calendar-export.py`, built by `calendar-export.nix`.
+
+```
+CalDAV server ──pimsync, one way──▶ ~/.local/share/calendars/       (vdir, never edited here)
+                                    │ calendar-export: copy + time-zone fix
+                                    ▼
+                                    ~/.cache/calendar-sync/vdir/    (derived copy; khal.db beside it)
+                                    │ khal list, once per sync
+                                    ▼
+                                    ~/.cache/desk/calendar/events.jsonl ──▶ panel
+```
+
+- `calendar-sync.service` (oneshot): `pimsync sync` with
+  `~/.config/pimsync/pimsync.conf`, then, only if that succeeded,
+  `calendar-export` as `ExecStartPost`. A failed or offline sync leaves the
+  last export in place. pimsync's state is in `~/.local/state/pimsync/`.
+- `calendar-sync.timer`: 1 minute after the graphical session starts, then at
+  every tenth minute of the clock, catching up after suspend (`Persistent`).
+  The service has the same `ExecCondition` as `quickshell`, so in the GNOME
+  session it is skipped.
+- Force a sync: `systemctl --user start calendar-sync.service` (the panel's
+  refresh does the same). It blocks until done; `systemctl --user status
+  calendar-sync` and `journalctl --user -u calendar-sync` show the outcome.
+
+### Read-only, and where each guarantee is set
+
+- `read_only` on the remote storage (`pimsync.conf`, from `calendar.nix`):
+  pimsync refuses any write to the server.
+- `one_way` on the pair: pimsync plans writes to the local side only; a local
+  edit, deletion or new file is reverted on the next run. `pimsync sync -n`
+  does not take `read_only` into account, so this is also what keeps a dry
+  run's plan local.
+- `on_empty sync` on the pair: a calendar emptied on the server is emptied
+  locally too (the default would keep stale events). Under `one_way` it can
+  only touch the local side.
+- `collections from a`: every calendar on the account, found by
+  `discovery principal`; nothing local is ever offered to the server.
+- The export never writes the vdir. It reads it and keeps its own copy under
+  `~/.cache/calendar-sync/`, where the time-zone fix is applied (editing the
+  vdir would be reverted by pimsync and would count as a local change).
+- Creating or changing events stays in the web calendar.
+
+### Secrets
+
+Three agenix files, encrypted to the BrightFalls host key only
+(`secrets/secrets.nix`) and decrypted at activation to
+`/run/agenix/brightfalls/caldav-{url,user,password}`, owner `matteo`, mode
+0400 (`age.secrets` in `flake.nix`):
+
+| File | Holds |
+|------|-------|
+| `caldav-url.age` | the CalDAV base, `https://<host>/remote.php/dav/` |
+| `caldav-user.age` | the account's user name |
+| `caldav-password.age` | an app password made for this sync |
+
+pimsync reads each with `cmd cat <path>`; a trailing newline is tolerated.
+`~/.local/share/desk/calendar/source.json` (`{"url_file": …}`) tells the
+panel where the URL file is, for opening the web calendar; the address
+itself is in no file of this repository. Any program running as `matteo` can
+read all three.
+
+To recreate one (a new file needs only the public key, so no identity):
+
+```bash
+cd secrets
+rm brightfalls/caldav-password.age
+printf '%s' '<value>' > /tmp/v   # then:
+EDITOR="cp /tmp/v" nix run --inputs-from .. agenix -- -e brightfalls/caldav-password.age
+rm /tmp/v
+```
+
+Commit the `.age` file and deploy; the next sync uses it.
+
+### The export file
+
+`~/.cache/desk/calendar/events.jsonl`, replaced atomically (temporary file in
+the same directory, then rename) after every successful sync; absent until
+the first.
+
+- Line 1, the header: `{"version": 1, "window_start": "YYYY-MM-DD", "days":
+  N, "generated": "<ISO 8601 with offset>", "calendars": [{"name", "color"},
+  …]}`. `calendars` lists only calendars with at least one entry in the
+  window, in the server's order (pimsync's `order` file per calendar).
+  `generated` is the time of the export, so of the last good sync.
+- Lines 2 to N+1: one JSON array per day, line i+2 being day
+  `window_start + i`, `[]` for an empty day. Each element has the string
+  fields khal 0.14.1 prints with ISO formats: `start`, `end` (`YYYY-MM-DD
+  HH:MM` local time, or `YYYY-MM-DD` all-day with an inclusive end),
+  `all-day` (`"True"`/`"False"`), `title`, `calendar`, `calendar-color`,
+  `uid`, `cancelled` (`""` or `"CANCELLED"`), `location`, and
+  `tz-unresolved` (`"True"`/`"False"`, below). A multi-day event appears on
+  every day it touches with its original start and end. Cancelled events and
+  occurrences are included.
+- Window: the first day of the month three months back to the last day of
+  the month twelve months ahead.
+
+### Time zones
+
+khal reads a time whose `TZID` it cannot resolve in the local zone. Two
+kinds occur in the synced data, neither with a `VTIMEZONE`:
+
+- `GMT+hhmm` / `GMT-hhmm`: a fixed offset east (`+`) or west of UTC. The data
+  shows the sign's meaning: Central European events say `GMT+0100` in winter
+  and `GMT+0200` in summer. In the derived copy, `calendar-export` adds a
+  fixed-offset `VTIMEZONE` for each such ID that a file uses, and changes no
+  other byte, so khal converts them correctly.
+- Anything else that is not an IANA or Windows name and has no `VTIMEZONE`
+  (IDs a booking system made up): unresolvable. khal's fallback stays,
+  and every entry of such an event gets `"tz-unresolved": "True"`. The test
+  is khal's own (icalendar in pytz mode, same versions), applied to
+  `DTSTART` and `DTEND`, per UID.
+
+The derived copy is rewritten per file only when the vdir file's mtime
+changes, and keeps that mtime, so khal re-indexes only what pimsync changed.
+After a change to the rewrite, bump `COPY_FORMAT` in `calendar-export.py` to
+rebuild the copy.
+
+### Tests
+
+`nix build .#checks.x86_64-linux.calendar-export` exports
+`tests/calendar/fixtures/` (four calendars: a weekly series with an EXDATE,
+a moved and a cancelled occurrence; New York; all-day, multi-day and
+midnight-crossing events; a cancelled event; an empty calendar; `GMT±hhmm`
+and custom zones; a daily all-day series with a cancelled occurrence) as of
+2026-11-15 and compares with `tests/calendar/expected.jsonl`. No network, no
+secrets. To regenerate the expected file after an intended change, run the
+built `calendar-export` with `CALENDAR_NOW=2026-11-15T10:00:00+00:00`, a khal
+config from `calendar-export.nix` and that file as the output, and review the
+diff.
+
+### Switching to vdirsyncer
+
+If pimsync is dropped, only the sync half changes: vdirsyncer writes the same
+vdir layout, and khal and the export read it as before. Replace the
+`pimsync.conf` and `ExecStart` with a vdirsyncer config holding the same
+guarantees: a `caldav` storage with `read_only = true` and `url.fetch`,
+`username.fetch` and `password.fetch` each `["command", "cat", "<path>"]`; a
+`filesystem` storage at `~/.local/share/calendars/` with `fileext =
+".ics"`; a pair with `collections = ["from a"]` and `metadata = ["color",
+"displayname"]`. Under `read_only`, vdirsyncer reverts local changes by
+default (`partial_sync = "revert"`). Run `vdirsyncer discover` once, then
+`ExecStart = vdirsyncer sync` followed by `vdirsyncer metasync` (colours and
+names are a separate step there). vdirsyncer does not write the `order` file,
+so the header's calendar order falls back to directory names.
+
 ## Activation
 
 Home Manager runs `desk-sync activate` after linking the generation, at boot

@@ -1,7 +1,34 @@
-# desk-sync's tests, as a flake check:
+# desk-sync's and calendar-export's tests, as flake checks:
 #   nix build .#checks.<system>.desk-sync
+#   nix build .#checks.<system>.calendar-export
 { pkgs }:
+let
+  calendarExport = import ../calendar-export.nix { inherit pkgs; };
+  # The work directory is only known at build time; substituted below.
+  khalConfig = calendarExport.khalConfig {
+    workDir = "@workDir@";
+    timeZone = "Europe/London";
+  };
+in
 {
+  # The export of calendar/fixtures/ as of CALENDAR_NOW must equal
+  # calendar/expected.jsonl. Regenerating it: README.md, "Calendar events".
+  calendar-export =
+    pkgs.runCommand "calendar-export-tests"
+      {
+        nativeBuildInputs = [ pkgs.diffutils ];
+        LANG = "C.UTF-8";
+        CALENDAR_NOW = "2026-11-15T10:00:00+00:00";
+      }
+      ''
+        export HOME=$PWD
+        substitute ${khalConfig} khal.conf --replace-fail @workDir@ "$PWD/work"
+        ${pkgs.lib.getExe calendarExport.package} \
+          ${./calendar/fixtures} "$PWD/work" khal.conf "$PWD/events.jsonl"
+        diff -u ${./calendar/expected.jsonl} events.jsonl
+        touch $out
+      '';
+
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
       {

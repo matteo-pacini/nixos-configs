@@ -30,6 +30,8 @@ let
   };
 in
 {
+  imports = [ (import ./calendar.nix { inherit onlyInHyprland; }) ];
+
   # The two layers of the desktop's config; see README.md. defaults/ is
   # linked read-only from the store; every file under user/ is copied to the
   # same path under ~/.config as a writable file, keeping live edits.
