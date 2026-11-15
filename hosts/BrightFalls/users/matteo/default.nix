@@ -8,6 +8,7 @@
 {
   imports = [
     ./gnome.nix
+    ./desktop.nix
     ./git.nix
     ./zsh.nix
     ./browser.nix

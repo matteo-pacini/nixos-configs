@@ -15,9 +15,6 @@ in
   };
 
   dconf.settings = {
-    "org/gnome/desktop/interface" = {
-      color-scheme = "prefer-dark";
-    };
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
@@ -65,31 +62,5 @@ in
       # Explicit true, not removed: Home Manager never resets dropped dconf keys.
       show-banners = true;
     };
-  };
-
-  gtk = {
-    enable = true;
-    cursorTheme = {
-      name = "Adwaita";
-      package = pkgs.gnome-themes-extra;
-    };
-    # GTK 2/3 theme
-    theme = {
-      name = "Adwaita-dark";
-      package = pkgs.gnome-themes-extra;
-    };
-    gtk3.extraConfig = {
-      gtk-application-prefer-dark-theme = 1;
-    };
-    # GTK 4: Disable theme to prevent broken gtk.css import workaround
-    # Dark mode is handled via dconf color-scheme = "prefer-dark" above
-    # See: https://github.com/nix-community/home-manager/issues/8232
-    gtk4.theme = null;
-  };
-
-  qt = {
-    enable = true;
-    platformTheme.name = "adwaita";
-    style.name = "adwaita-dark";
   };
 }
