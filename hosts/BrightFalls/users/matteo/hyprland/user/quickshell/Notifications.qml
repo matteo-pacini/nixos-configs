@@ -8,7 +8,9 @@ import Quickshell.Wayland
 import qs.notifications
 
 // The notification daemon (org.freedesktop.Notifications). Popups sit at the
-// top right of the focused monitor, under the bar, one deck per app. Over IPC:
+// top right of the focused monitor, under the bar, one deck per app; critical
+// ones (urgency 2) sit above them, one card each, and also above fullscreen
+// windows. Over IPC:
 //   qs ipc call notifications dismissNewest
 //   qs ipc call notifications dismissAll
 //   qs ipc call notifications toggleDnd
@@ -23,10 +25,17 @@ Scope {
     // null. Not "": that is the name of an app that sends none.
     property var hoveredDeck: null
 
+    // Critical ones get their own surface above fullscreen windows; the rest
+    // are decked under the bar, hidden while a fullscreen window is up.
+    readonly property var normal: entries.filter(e => e.notification.urgency !== NotificationUrgency.Critical)
+    // Newest first. A closing card leaves at once: the surface it is on costs
+    // a game direct scanout for as long as it exists.
+    readonly property var critical: entries.filter(e => e.notification.urgency === NotificationUrgency.Critical && !e.closing).sort((a, b) => b.time - a.time)
+
     // App names, the deck with the newest notification first.
     readonly property var decks: {
         const newest = {};
-        for (const e of entries)
+        for (const e of normal)
             newest[e.app] = Math.max(newest[e.app] ?? 0, e.time);
         return Object.keys(newest).sort((a, b) => newest[b] - newest[a]);
     }
@@ -137,18 +146,93 @@ Scope {
         }
     }
 
+    // Critical cards: Overlay, which Hyprland draws above fullscreen windows,
+    // with no keyboard focus and input only on the cards. It exists only
+    // while one is up, and appears and goes without a fade (layer rule in
+    // hypr/rules.lua).
     PanelWindow {
-        id: window
+        id: criticalWindow
 
-        visible: root.entries.length > 0
+        screen: window.screen
+        visible: root.critical.length > 0
         color: "transparent"
         anchors {
             top: true
             right: true
         }
-        // The cards start 44 px down, under the bar; the window starts
-        // higher so the top card's shadow is not cut off.
         margins.top: 44 - 16
+        implicitWidth: root.shadowPad + root.cardWidth + 6
+        implicitHeight: 16 + criticalColumn.height + root.shadowPad
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        WlrLayershell.namespace: "desk-notifications-critical"
+        mask: Region {
+            item: criticalColumn
+        }
+
+        Column {
+            id: criticalColumn
+
+            x: root.shadowPad
+            y: 16
+            width: root.cardWidth
+            spacing: 8
+
+            Repeater {
+                model: ScriptModel {
+                    values: root.critical
+                    comparisonMode: ObjectComparison.Identity
+                }
+
+                Item {
+                    id: criticalSlot
+
+                    required property Entry modelData
+
+                    width: root.cardWidth
+                    height: criticalCard.implicitHeight
+
+                    RectangularShadow {
+                        anchors.fill: criticalCard
+                        radius: criticalCard.radius
+                        offset.y: 12
+                        blur: 34
+                        color: Qt.rgba(0, 0, 0, 0.5)
+                    }
+
+                    Card {
+                        id: criticalCard
+
+                        width: parent.width
+                        height: implicitHeight
+                        entry: criticalSlot.modelData
+                        now: root.now
+                    }
+
+                    Binding {
+                        target: criticalSlot.modelData
+                        property: "cardHeight"
+                        value: criticalCard.implicitHeight
+                    }
+                }
+            }
+        }
+    }
+
+    PanelWindow {
+        id: window
+
+        visible: root.normal.length > 0
+        color: "transparent"
+        anchors {
+            top: true
+            right: true
+        }
+        // The cards start 44 px down, under the bar, and under any critical
+        // cards; the window starts higher so the top card's shadow is not
+        // cut off.
+        margins.top: 44 - 16 + (criticalWindow.visible ? criticalColumn.height + 8 : 0)
         implicitWidth: root.shadowPad + root.cardWidth + 6
         implicitHeight: 16 + column.height + root.shadowPad
         exclusionMode: ExclusionMode.Ignore
@@ -187,7 +271,7 @@ Scope {
                     id: deck
 
                     required property string modelData
-                    readonly property var cards: root.entries.filter(e => e.app === modelData).sort((a, b) => b.time - a.time)
+                    readonly property var cards: root.normal.filter(e => e.app === modelData).sort((a, b) => b.time - a.time)
                     readonly property bool open: hover.hovered && cards.length > 1
                     readonly property real frontHeight: cards.length > 0 ? cards[0].cardHeight : 0
 

@@ -25,5 +25,6 @@ ShellRoot {
     Audio {}
     Calendar {}
     System {}
+    BluetoothPanel {}
     Reminders {}
 }

@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Bluetooth
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Networking
@@ -9,6 +8,7 @@ import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import Quickshell.Widgets
 import qs.audio
+import qs.bluetooth
 import qs.calendar
 import qs.network
 import qs.system
@@ -90,9 +90,8 @@ Scope {
     // the host is offline.
     readonly property bool offline: !(wired || wireless) || [NetworkConnectivity.None, NetworkConnectivity.Portal, NetworkConnectivity.Limited].includes(Networking.connectivity)
 
-    readonly property BluetoothAdapter adapter: Bluetooth.defaultAdapter
-    readonly property bool bluetoothOn: adapter !== null && adapter.enabled
-    readonly property bool bluetoothConnected: bluetoothOn && adapter.devices.values.some(d => d.connected)
+    readonly property bool bluetoothOn: Bt.on
+    readonly property bool bluetoothConnected: bluetoothOn && Bt.devices.some(d => d.connected)
 
     // A hover highlight behind a clickable item.
     component Hover: Rectangle {
@@ -546,10 +545,63 @@ Scope {
                         }
                     }
 
-                    Glyph {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.bluetoothConnected ? root.glyph.bluetoothConnected : root.bluetoothOn ? root.glyph.bluetooth : root.glyph.bluetoothOff
-                        color: root.bluetoothOn ? Theme.foreground : Theme.comment
+                    Item {
+                        id: bluetooth
+
+                        readonly property bool panelOpen: Bt.screen === bar.modelData.name
+
+                        width: bluetoothRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Bt.register(bar.modelData.name, bluetooth, bar)
+
+                        Hover {
+                            hovered: bluetoothArea.containsMouse
+                        }
+
+                        // Marks the item whose panel is open.
+                        Rectangle {
+                            visible: bluetooth.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        Row {
+                            id: bluetoothRow
+
+                            height: parent.height
+                            spacing: 5
+
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.bluetoothConnected ? root.glyph.bluetoothConnected : root.bluetoothOn ? root.glyph.bluetooth : root.glyph.bluetoothOff
+                                color: !root.bluetoothOn ? Theme.comment : bluetooth.panelOpen ? Theme.purple : Theme.foreground
+                            }
+
+                            // A connected device's battery under 15%, the
+                            // lowest if several.
+                            Text {
+                                visible: Bt.lowest >= 0
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: `${Bt.lowest}%`
+                                color: Theme.red
+                                font.family: Theme.fontMono
+                                font.pixelSize: root.fontSize
+                            }
+                        }
+
+                        MouseArea {
+                            id: bluetoothArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: Bt.toggleRequested(bar.modelData.name)
+                        }
                     }
 
                     Item {

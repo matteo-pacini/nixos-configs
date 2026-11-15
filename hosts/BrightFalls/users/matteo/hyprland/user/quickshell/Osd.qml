@@ -4,10 +4,12 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import Quickshell.Wayland
+import qs.bluetooth
 
 // The volume OSD: a pill under the bar on the focused monitor. Shows on a
-// change to the default output's volume, mute or device, or to the default
-// input's mute, and hides 1.2 s after the last change. Clicks pass through.
+// change to the default output's volume, mute or device, to the default
+// input's mute, or to Bluetooth power from its bind, and hides 1.2 s after
+// the last change. Clicks pass through.
 Scope {
     id: root
 
@@ -115,6 +117,17 @@ Scope {
         function onMutedChanged() {
             if (root.sink === root.armedSink)
                 root.showVolume(root.sink, true);
+        }
+    }
+
+    // Bluetooth on or off from its bind (BluetoothPanel.qml).
+    Connections {
+        target: Bt
+
+        function onAnnounce(text) {
+            root.glyph = text === "Bluetooth on" ? "\u{f00af}" : "\u{f00b2}";
+            root.device = text;
+            root.show();
         }
     }
 

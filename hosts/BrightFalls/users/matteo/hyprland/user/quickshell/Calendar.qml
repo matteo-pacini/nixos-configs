@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.audio
+import qs.bluetooth
 import qs.calendar
 import qs.network
 import qs.system
@@ -60,6 +61,8 @@ Scope {
             AudioPanel.toggleRequested(AudioPanel.screen);
         if (SystemPanel.screen !== "")
             SystemPanel.toggleRequested(SystemPanel.screen);
+        if (Bt.screen !== "")
+            Bt.toggleRequested(Bt.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         selected = Q.addDays(now, 0);
         flash = "";

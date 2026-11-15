@@ -91,6 +91,9 @@ bind("Session", "SUPER + N", "Network", hl.dsp.exec_cmd("qs ipc call network tog
 bind("Session", "SUPER + A", "Audio", hl.dsp.exec_cmd("qs ipc call audio toggle"))
 bind("Session", "SUPER + C", "Calendar", hl.dsp.exec_cmd("qs ipc call calendar toggle"))
 bind("Session", "SUPER + Y", "System", hl.dsp.exec_cmd("qs ipc call system toggle"))
+bind("Session", "SUPER + B", "Bluetooth", hl.dsp.exec_cmd("qs ipc call bluetooth toggle"))
+-- Super+Shift+B is Firefox.
+bind("Session", "SUPER + CTRL + B", "Bluetooth on/off", hl.dsp.exec_cmd("qs ipc call bluetooth power"))
 -- logind must ignore a short press (HandlePowerKey in desktop-hyprland.nix),
 -- or it powers off before the menu shows.
 bind("Session", "XF86PowerOff", "Session menu", hl.dsp.exec_cmd("qs ipc call session toggle"))

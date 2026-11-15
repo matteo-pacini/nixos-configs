@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Wayland
 import qs.audio
+import qs.bluetooth
 import qs.calendar
 import qs.network
 import qs.system
@@ -101,6 +102,8 @@ Scope {
             CalendarPanel.toggleRequested(CalendarPanel.screen);
         if (SystemPanel.screen !== "")
             SystemPanel.toggleRequested(SystemPanel.screen);
+        if (Bt.screen !== "")
+            Bt.toggleRequested(Bt.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         expanded = "";
         flash = "";

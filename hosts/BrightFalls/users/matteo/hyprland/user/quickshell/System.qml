@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.audio
+import qs.bluetooth
 import qs.calendar
 import qs.network
 import qs.system
@@ -44,6 +45,8 @@ Scope {
             AudioPanel.toggleRequested(AudioPanel.screen);
         if (CalendarPanel.screen !== "")
             CalendarPanel.toggleRequested(CalendarPanel.screen);
+        if (Bt.screen !== "")
+            Bt.toggleRequested(Bt.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         current = 0;
         details = false;

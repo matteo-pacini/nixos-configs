@@ -16,3 +16,12 @@ hl.window_rule({
     -- WAIT-FOR closed: https://github.com/hyprwm/Hyprland/discussions/16249
     confine_pointer = true,
 })
+
+-- Critical notifications (quickshell/Notifications.qml) on the Overlay layer,
+-- above fullscreen. Any Overlay surface on a game's monitor stops direct
+-- scanout and tearing until it is gone, a fade-out included, so it comes and
+-- goes at once.
+hl.layer_rule({
+    match  = { namespace = "^desk-notifications-critical$" },
+    no_anim = true,
+})
