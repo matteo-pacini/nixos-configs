@@ -22,4 +22,5 @@ ShellRoot {
     Polkit {}
     Network {}
     Audio {}
+    Calendar {}
 }

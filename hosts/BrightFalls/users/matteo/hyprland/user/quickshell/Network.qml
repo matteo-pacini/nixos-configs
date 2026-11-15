@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Networking
 import Quickshell.Wayland
 import qs.audio
+import qs.calendar
 import qs.network
 
 // The network panel, hanging under the bar's network icon on one monitor.
@@ -127,6 +128,8 @@ Scope {
         }
         if (AudioPanel.screen !== "")
             AudioPanel.toggleRequested(AudioPanel.screen);
+        if (CalendarPanel.screen !== "")
+            CalendarPanel.toggleRequested(CalendarPanel.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         current = Math.max(0, rows.findIndex(r => r.kind === "wired" && r.device.connected));
         expanded = "";

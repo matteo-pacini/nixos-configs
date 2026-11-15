@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Wayland
 import qs.audio
+import qs.calendar
 import qs.network
 
 // The audio panel, hanging under the bar's audio item on one monitor.
@@ -95,6 +96,8 @@ Scope {
         }
         if (Panel.screen !== "")
             Panel.toggleRequested(Panel.screen);
+        if (CalendarPanel.screen !== "")
+            CalendarPanel.toggleRequested(CalendarPanel.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         expanded = "";
         flash = "";

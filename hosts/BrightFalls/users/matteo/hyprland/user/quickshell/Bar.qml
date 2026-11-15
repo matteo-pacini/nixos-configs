@@ -9,6 +9,7 @@ import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import Quickshell.Widgets
 import qs.audio
+import qs.calendar
 import qs.network
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
@@ -274,19 +275,131 @@ Scope {
                     }
                 }
 
-                Text {
+                // Week dots (Monday first: gone filled, today large, to come
+                // hollow), short date, the day ring filling clockwise from
+                // midnight, the time, and the next-event hint.
+                Item {
                     id: clock
 
+                    readonly property date now: CalendarPanel.now
+                    readonly property int weekday: (now.getDay() + 6) % 7
+                    readonly property real dayFraction: (now.getHours() * 60 + now.getMinutes()) / 1440
+                    readonly property bool panelOpen: CalendarPanel.screen === bar.modelData.name
+
                     anchors.centerIn: parent
-                    text: Qt.formatDateTime(systemClock.date, "dddd HH:mm")
-                    color: Theme.foreground
-                    font.family: Theme.fontMono
-                    font.pixelSize: root.fontSize
+                    width: clockRow.implicitWidth
+                    height: parent.height
 
-                    SystemClock {
-                        id: systemClock
+                    Component.onCompleted: CalendarPanel.register(bar.modelData.name, clock, bar)
 
-                        precision: SystemClock.Minutes
+                    Hover {
+                        hovered: clockArea.containsMouse
+                    }
+
+                    // Marks the item whose panel is open.
+                    Rectangle {
+                        visible: clock.panelOpen
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 3
+                        width: 14
+                        height: 2
+                        radius: 1
+                        color: Theme.purple
+                    }
+
+                    Row {
+                        id: clockRow
+
+                        height: parent.height
+                        spacing: 10
+
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 4
+
+                            Repeater {
+                                model: 7
+
+                                Rectangle {
+                                    required property int index
+                                    readonly property bool today: index === clock.weekday
+
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: today ? 8 : 6
+                                    height: width
+                                    radius: width / 2
+                                    color: today ? Theme.purple : index < clock.weekday ? Theme.comment : "transparent"
+                                    border.width: 1
+                                    border.color: today ? Theme.purple : Theme.comment
+                                }
+                            }
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Qt.formatDateTime(clock.now, "ddd d")
+                            color: root.soft
+                            font.family: Theme.fontMono
+                            font.pixelSize: root.fontSize
+                        }
+
+                        Canvas {
+                            id: ring
+
+                            readonly property real fraction: clock.dayFraction
+                            readonly property color track: Qt.darker(Theme.background, 1.5)
+                            readonly property color fill: Theme.pink
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 24
+                            height: 24
+                            onFractionChanged: requestPaint()
+                            onTrackChanged: requestPaint()
+                            onFillChanged: requestPaint()
+                            onPaint: {
+                                const ctx = getContext("2d");
+                                ctx.reset();
+                                ctx.lineWidth = 3.5;
+                                ctx.strokeStyle = track;
+                                ctx.beginPath();
+                                ctx.arc(12, 12, 9, 0, 2 * Math.PI);
+                                ctx.stroke();
+                                if (fraction <= 0)
+                                    return;
+                                ctx.strokeStyle = fill;
+                                ctx.lineCap = "round";
+                                ctx.beginPath();
+                                ctx.arc(12, 12, 9, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * fraction);
+                                ctx.stroke();
+                            }
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Qt.formatDateTime(clock.now, "HH:mm")
+                            color: clock.panelOpen ? Theme.purple : Theme.foreground
+                            font.family: Theme.fontMono
+                            font.pixelSize: root.fontSize
+                            font.weight: Font.DemiBold
+                        }
+
+                        Text {
+                            visible: CalendarPanel.hint !== ""
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: CalendarPanel.hint
+                            color: Theme.cyan
+                            font.family: Theme.fontMono
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    MouseArea {
+                        id: clockArea
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: CalendarPanel.toggleRequested(bar.modelData.name)
                     }
                 }
 
