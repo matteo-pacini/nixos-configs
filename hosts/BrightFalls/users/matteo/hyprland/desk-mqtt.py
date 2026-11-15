@@ -20,9 +20,10 @@ stdout:
       "ever_up": bool, "last_attempt": t?, "error": str?}
       "since" is when this process saw the state begin. "down" is sent
       again after each failed attempt (every 10 s) with its "last_attempt".
-  {"event": "bridge", "state": "online" | "offline" | "unknown", "since": t?}
-      Zigbee2MQTT's bridge/state. "since" is null when the state came from a
-      retained message (its start is not known).
+  {"event": "bridge", "state": "online" | "offline", "since": t?}
+      Zigbee2MQTT's bridge/state, first sent when it is received (unknown
+      until then). "since" is null when the state came from a retained
+      message (its start is not known).
   {"event": "synced"}
       Retained messages for this connection have arrived (1 s after the
       subscription was acknowledged); a device still with "values": null
