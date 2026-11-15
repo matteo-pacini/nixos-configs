@@ -101,7 +101,8 @@ jobs:
             .#checks.x86_64-linux.office-panel \
             .#checks.x86_64-linux.system-panel \
             .#checks.x86_64-linux.display-layout \
-            .#checks.x86_64-linux.hypr-config
+            .#checks.x86_64-linux.hypr-config \
+            .#checks.x86_64-linux.desk-unlock
 
   pr-build:
     needs: [eval]

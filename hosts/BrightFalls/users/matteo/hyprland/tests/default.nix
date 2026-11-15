@@ -10,6 +10,7 @@
 #   nix build .#checks.<system>.system-panel
 #   nix build .#checks.<system>.display-layout
 #   nix build .#checks.<system>.hypr-config
+#   nix build .#checks.<system>.desk-unlock
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -113,6 +114,13 @@ in
           ${pkgs.lib.getExe pkgs.lua5_5} ${../user} ${../defaults}
         touch $out
       '';
+
+  # desk-unlock (the recovery when the lock screen dies) against fake
+  # hyprctl, systemctl and pkill.
+  desk-unlock = pkgs.runCommand "desk-unlock-tests" { } ''
+    bash ${./desk-unlock/run.sh} ${../desk-unlock.sh}
+    touch $out
+  '';
 
   # desk-mqtt (the office panel's helper) against a Mosquitto on loopback,
   # with the test playing Zigbee2MQTT under invented device names. Takes

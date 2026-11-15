@@ -1162,3 +1162,12 @@ required check for merging into `master`:
   `XDG_CONFIG_HOME`) (`tests/hypr/run.sh`). A misspelt key name in a bind
   fails it (`Unknown key`); a mouse button code out of range does not.
   About 1 s once Hyprland is in the store.
+- `nix build .#checks.x86_64-linux.desk-unlock`: runs `desk-unlock.sh`
+  against fake `hyprctl`, `systemctl` and `pkill`
+  (`tests/desk-unlock/run.sh`): a crashed lock cleared at once, a stuck one
+  stopped, a hung one refused, killed through its unit and cleared on the
+  second try, one outside its unit killed by command line (the pattern
+  matching the lock process alone, not the shell or an editor on
+  `lock.qml`), one nothing frees, and no Hyprland. The fakes' wording is
+  invented; the real `hl.clear_crashed_lockscreen()` refusal has not been
+  seen. Under 1 s.
