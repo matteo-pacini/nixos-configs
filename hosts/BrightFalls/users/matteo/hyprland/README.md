@@ -129,6 +129,57 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   trimmed. The row shows the newest run per NetworkManager connection and
   its provider; details list the last run of each provider. fast.com's
   `fast-cli` is not used: it rounds rates of 1 Gb/s and over to whole Gb/s.
+- `Audio.qml` (Super+A, a middle click on the bar's audio item, `qs ipc
+  call audio toggle`; parts in `audio/`): a 400 px panel under the bar's
+  audio item on that monitor, with the item marked while it is open; opening
+  it closes the network panel and the other way round. The output switcher
+  stays on the bar (left click cycles, right click mutes, wheel sets the
+  volume). Nothing runs while it is closed.
+  - The stack (`audio/Stack.qml`): Magni 2 on Modi 2. The Magni is analog
+    and never has a state. The Modi's light is cyan while its ALSA device is
+    open, white while closed (idle), and the Modi is dashed and dim with no
+    Modi sink in PipeWire ("missing"). Beside it the format it is open with
+    and chips of what it can take, the current ones lit. Capabilities come
+    from `/proc/asound/card<N>/stream0`, the open format from
+    `pcm0p/sub0/hw_params` ("closed" when idle); N is the Modi sink's
+    `alsa.card` property (`audio/Modi.qml`).
+  - The path: how many programs are playing, "mixed at" the graph rate when
+    there are several, the surround filter when it is the default output,
+    then the Modi with bits/kHz, or the fallback output in orange.
+  - Playing: one row per playback stream (filter-chain halves left out),
+    including paused ones. The tag is the layer it came through: `pulse`
+    (`client.api` = `pipewire-pulse` on the node), `alsa` (`client.api` =
+    `alsa` on its client, node named `alsa_playback.*`), `jack`
+    (`client.api` = `jack`, from the pipewire-jack source; JACK is not
+    installed, so never seen here), otherwise `native`. Then its own rate and
+    channels and a verdict: `paused` (no active link), `through <filter>`
+    (cyan), `resampled to X` (its rate differs from the graph's), `downmixed
+    to stereo`, `volume scaled` (its volume is not 100%; orange) or `direct`
+    (green). Left/Right change the selected stream's volume in 5% steps, M
+    mutes it, Enter opens details: layer, what it sends (rate, sample format,
+    channels), what it becomes (with the stream's own `resample.quality`),
+    where it goes, volume, and the graph period from `pw-top`. Formats,
+    drivers, client APIs and resampler quality come from one `pw-dump` run
+    when the panel opens and whenever streams, links or the default output
+    change, plus once 6 s later to see the device suspend
+    (`audio/Graph.qml`). Volume, mute, links and link state are Quickshell's
+    (`Quickshell.Services.Pipewire`). A volume set here is a stream volume,
+    which WirePlumber remembers for that program.
+  - Inputs: every capture device with its gain, a level bar (Quickshell's
+    `PwNodePeakMonitor`, cube-root scale, one capture stream per input while
+    the panel is open, none after) with a yellow mark for the peak of the
+    last 1.5 s, `default`, its rate, "heard by <program>" for each capture
+    stream linked to it, and `clipping` (red) at 0.99 on that scale, kept for
+    2 s. Selection runs on from the programs; Left/Right set the gain, M
+    mutes, Enter makes it the default input, which WirePlumber keeps until
+    another is chosen, over the Nix priority.
+  - Set in Nix: greyed rows from `~/.local/share/desk/audio/locked.json`,
+    which `desktop-hyprland.nix` generates the same way as the network
+    panel's, from `services.pipewire.extraConfig` and the WirePlumber ALSA
+    rules (allowed rates with no fixed rate, the Modi's S24LE format,
+    min-quantum and the daemon's `resample.quality`, the Blue microphone's
+    session priority); the file comes from the definition that sets each
+    value. Enter shows it in the footer. No file, no section.
 
 ## Activation
 

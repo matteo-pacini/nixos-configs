@@ -13,7 +13,9 @@ let
   setIn =
     option:
     lib.concatStringsSep ", " (
-      map (lib.removePrefix "${repo}/") (lib.filter (lib.hasPrefix "${repo}/") (map toString option.files))
+      map (lib.removePrefix "${repo}/") (
+        lib.filter (lib.hasPrefix "${repo}/") (map toString option.files)
+      )
     );
   net = config.networking;
   wolInterfaces = lib.attrNames (lib.filterAttrs (_: i: i.wakeOnLan.enable) net.interfaces);
@@ -46,9 +48,110 @@ let
       label = "Firewall on";
       file = setIn options.networking.firewall.enable;
     };
+
+  pw = config.services.pipewire;
+  # Repo files whose definition of `option` satisfies `pred`, for options
+  # such as extraConfig that several files add to. A module imported as a
+  # directory is reported as the directory.
+  definedIn =
+    option: pred:
+    let
+      file =
+        d: toString d.file + lib.optionalString (lib.pathIsDirectory (toString d.file)) "/default.nix";
+    in
+    lib.concatStringsSep ", " (
+      map (d: lib.removePrefix "${repo}/" (file d)) (
+        lib.filter (
+          d: lib.hasPrefix "${repo}/" (toString d.file) && lib.isAttrs d.value && pred d.value
+        ) option.definitionsWithLocations
+      )
+    );
+  dropIns = lib.filter lib.isAttrs (lib.attrValues pw.extraConfig.pipewire);
+  # A context property from the pipewire.conf drop-ins, or null.
+  pwProperty =
+    key: lib.findFirst (v: v != null) null (map (c: c."context.properties".${key} or null) dropIns);
+  pwFile =
+    key:
+    definedIn options.services.pipewire.extraConfig.pipewire (
+      v: lib.any (c: lib.isAttrs c && c ? "context.properties".${key}) (lib.attrValues v)
+    );
+  alsaRules = lib.concatMap (c: c."monitor.alsa.rules" or [ ]) (
+    lib.filter lib.isAttrs (lib.attrValues pw.wireplumber.extraConfig)
+  );
+  # A WirePlumber node.name match: "~" starts a regex.
+  matchesName =
+    name: pattern:
+    if lib.hasPrefix "~" pattern then
+      builtins.match (lib.removePrefix "~" pattern) name != null
+    else
+      pattern == name;
+  # The update-props WirePlumber gives the node called `name`.
+  propsFor =
+    name:
+    lib.foldl' (acc: r: acc // (r.actions."update-props" or { })) { } (
+      lib.filter (r: lib.any (m: m ? "node.name" && matchesName name m."node.name") r.matches) alsaRules
+    );
+  wpFile =
+    key:
+    definedIn options.services.pipewire.wireplumber.extraConfig (
+      v:
+      lib.any (
+        c:
+        lib.isAttrs c
+        && lib.any (r: r.actions."update-props" or { } ? ${key}) (c."monitor.alsa.rules" or [ ])
+      ) (lib.attrValues v)
+    );
+  # 44100 -> "44.1", 96000 -> "96".
+  khz =
+    rate:
+    let
+      tenths = rate / 100 - rate / 1000 * 10;
+    in
+    toString (rate / 1000) + lib.optionalString (tenths != 0) ".${toString tenths}";
+  rates =
+    let
+      allowed = pwProperty "default.clock.allowed-rates";
+    in
+    if allowed == null then [ ] else lib.sort lib.lessThan allowed;
+  minQuantum = pwProperty "default.clock.min-quantum";
+  quality = pwProperty "resample.quality";
+  # Node names as ALSA gives them, to find the rules that apply.
+  modi = propsFor "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.analog-stereo";
+  blue = propsFor "alsa_input.usb-Generic_Blue_Microphones-00.analog-stereo";
+
+  # The audio panel's "Set in Nix" rows (user/quickshell/Audio.qml), on the
+  # same terms as the network panel's.
+  audioRows =
+    # With no default.clock.rate the graph takes the first stream's rate.
+    lib.optional (lib.length rates > 1 && pwProperty "default.clock.rate" == null) {
+      id = "rates";
+      label = "Rates ${khz (lib.head rates)} to ${khz (lib.last rates)} kHz, following the program";
+      file = pwFile "default.clock.allowed-rates";
+    }
+    ++ lib.optional (lib.hasPrefix "S24" (modi."audio.format" or "")) {
+      id = "format";
+      label = "Modi opened as 24 bit";
+      file = wpFile "audio.format";
+    }
+    # resample.quality in pipewire.conf reaches the daemon's own nodes, not
+    # the streams of clients, which resample with their client.conf's.
+    ++ lib.optional (minQuantum != null) {
+      id = "buffer";
+      label =
+        "Buffer ${toString minQuantum} frames"
+        + lib.optionalString (quality != null) " · daemon resampler quality ${toString quality}";
+      file = pwFile "default.clock.min-quantum";
+    }
+    # ALSA inputs get 2000 plus their profile's priority (2009 and 2109 here).
+    ++ lib.optional ((blue."priority.session" or 0) >= 3000) {
+      id = "input";
+      label = "Blue Microphones ranked first among inputs";
+      file = wpFile "priority.session";
+    };
 in
 {
   home-manager.users.matteo.xdg.dataFile."desk/network/locked.json".text = builtins.toJSON lockedRows;
+  home-manager.users.matteo.xdg.dataFile."desk/audio/locked.json".text = builtins.toJSON audioRows;
 
   programs.hyprland = {
     enable = true;
