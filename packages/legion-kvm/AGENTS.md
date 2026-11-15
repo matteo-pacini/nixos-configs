@@ -182,9 +182,7 @@ guest. In the `guest` output, `usr-manifest.json`'s
 that the guest enumerates the host GPU through Venus. It doesn't render a
 game.
 
-On Venus, The Darkness Recomp (non-Steam) ran end to end on 2026-11-15:
-first frame about 11 s after launch, display at 2560x1440, audio, keyboard,
-mouse and cursor, with `legion-002` in place. Its launch command:
+A non-Steam game, The Darkness Recomp for example, launches with:
 
 ```bash
 legion run --proton <GE-Proton11-11 compat tool> --prefix <new dir> \
