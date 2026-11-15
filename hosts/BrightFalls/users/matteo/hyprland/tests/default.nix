@@ -1,10 +1,11 @@
 # desk-sync's, calendar-export's, the calendar panel's, the Bluetooth
-# panel's and the tray menu's tests, as flake checks:
+# panel's, the tray menu's and the office helper's tests, as flake checks:
 #   nix build .#checks.<system>.desk-sync
 #   nix build .#checks.<system>.calendar-export
 #   nix build .#checks.<system>.calendar-panel
 #   nix build .#checks.<system>.bluetooth-panel
 #   nix build .#checks.<system>.tray-panel
+#   nix build .#checks.<system>.office-helper
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -63,6 +64,22 @@ in
     node ${./tray/test-tray.js} ${../user/quickshell/tray}
     touch $out
   '';
+
+  # desk-mqtt (the office panel's helper) against a Mosquitto on loopback,
+  # with the test playing Zigbee2MQTT under invented device names. Takes
+  # about 40 s: it waits out the 5 s confirmation and two 10 s reconnects.
+  office-helper =
+    pkgs.runCommand "office-helper-tests"
+      {
+        nativeBuildInputs = [ (pkgs.python3.withPackages (p: [ p.paho-mqtt ])) ];
+      }
+      ''
+        mkdir work
+        python3 -I ${./office/test-desk-mqtt.py} \
+          ${pkgs.lib.getExe (pkgs.callPackage ../desk-mqtt.nix { })} \
+          ${pkgs.lib.getExe' pkgs.mosquitto "mosquitto"} "$PWD/work"
+        touch $out
+      '';
 
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
