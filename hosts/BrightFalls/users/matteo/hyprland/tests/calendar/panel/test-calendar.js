@@ -128,4 +128,138 @@ assert.strictEqual(q.webUrl("https://cloud.example.org/remote.php/dav/\n", D("20
 assert.strictEqual(q.webUrl("https://example.org/nc/remote.php/dav", D("2027-01-05")), "https://example.org/nc/index.php/apps/calendar/timeGridDay/2027-01-05");
 assert.strictEqual(q.webUrl("https://example.org/caldav/", D("2027-01-05")), "");
 
+// Reminders and the digest, against fixture-reminders.jsonl (invented, with
+// Amendment 2's alarms; written by make-reminders-fixture.js). The week of
+// Monday 16 November 2026.
+const rdata = q.parse(fs.readFileSync(path.join(__dirname, "fixture-reminders.jsonl"), "utf8"));
+const ev = (title) => {
+    for (const day in rdata.byDay)
+        for (const e of rdata.byDay[day])
+            if (e.title === title)
+                return e;
+    throw new Error("no fixture event " + title);
+};
+const stamps = (ds) => ds.map((d) => q.ymd(d) + " " + q.hm(d));
+const due = (s, fired) => q.dueReminders(rdata, D(s), fired || {}).map((r) => r.event.title + " @" + q.hm(r.at));
+
+// Reminder times.
+assert.deepStrictEqual(stamps(q.reminderTimes(ev("T one alarm"))), ["2026-11-16 09:30"]);
+assert.deepStrictEqual(stamps(q.reminderTimes(ev("T two alarms"))), ["2026-11-16 11:00", "2026-11-16 11:45"]);
+// The defaults mirror Nextcloud's: an hour before; 09:00 on a full-day
+// event's first day.
+assert.strictEqual(q.DEFAULT_LEAD_MIN, 60);
+assert.strictEqual(q.DEFAULT_ALL_DAY_TIME, "09:00");
+assert.deepStrictEqual(stamps(q.reminderTimes(ev("T default lead"))), ["2026-11-16 13:00"], "no alarms field: the default lead");
+assert.deepStrictEqual(stamps(q.reminderTimes(ev("T empty alarms"))), ["2026-11-16 14:00"], "empty alarms: the default lead");
+assert.deepStrictEqual(stamps(q.reminderTimes(ev("T all-day alarms"))), ["2026-11-15 23:50"], "an all-day event's alarms on its own days are left to the digest");
+assert.deepStrictEqual(q.reminderTimes(ev("T all-day plain")), [], "all-day without alarms: its default 09:00 falls on its own day, so the digest stands in");
+assert.deepStrictEqual(q.reminderTimes(ev("T all-day same day")), [], "an alarm on the all-day event's own day is dropped");
+
+// Firing.
+assert.deepStrictEqual(due("2026-11-16 09:29"), []);
+assert.deepStrictEqual(due("2026-11-16 09:30"), ["T one alarm @09:30"]);
+assert.deepStrictEqual(due("2026-11-16 09:56"), ["T one alarm @09:30"], "late start: a passed reminder fires while the event is ahead");
+assert.deepStrictEqual(due("2026-11-16 09:56", { "t-one 2026-11-16 10:00|2026-11-16 09:30": "x" }), [], "fired once only");
+assert.deepStrictEqual(due("2026-11-16 11:50"), ["T two alarms @11:45"], "several past alarms: once, for the latest");
+assert.deepStrictEqual(due("2026-11-16 12:01"), [], "unfired reminders go when the event starts");
+assert.deepStrictEqual(due("2026-11-16 17:04"), []);
+assert.deepStrictEqual(due("2026-11-16 17:05"), ["T alarm after start @17:05"], "an alarm after the start fires while the event runs");
+assert.deepStrictEqual(due("2026-11-16 17:59"), ["T alarm after start @17:05"]);
+assert.deepStrictEqual(due("2026-11-16 18:00"), ["T zone & <unknown> @18:00"], "not once the event is over; the next event's default lead");
+assert.deepStrictEqual(due("2026-11-15 23:50"), ["T all-day alarms @23:50"], "all-day alarm before its first day");
+assert.deepStrictEqual(due("2026-11-16 09:00"), [], "all-day alarm on its own day: the digest covers it");
+
+// A day minute by minute: what goes out, and each occurrence once.
+function simulate(from, to, fullscreenAt) {
+    let state = {};
+    const out = [];
+    for (let t = D(from); t <= D(to); t = new Date(t.getTime() + 60e3)) {
+        const r = q.plan(rdata, state, t, fullscreenAt ? fullscreenAt(t) : false, t.getTime() === D(from).getTime());
+        state = r.state;
+        r.send.forEach((n) => out.push(q.hm(t) + " " + n.summary));
+    }
+    return { out, state };
+}
+const week = simulate("2026-11-15 20:00", "2026-11-20 23:59").out;
+assert.deepStrictEqual(week.filter((s) => s.includes("T cancelled")), [], "cancelled entries never remind");
+assert.deepStrictEqual(week.filter((s) => s.includes("T multi-day")), ["09:00 T multi-day"], "a multi-day event reminds once");
+assert.deepStrictEqual(week.filter((s) => s.startsWith("09:30 ") || s.includes("T two") || s.includes("T all-day")), [
+    "23:50 T all-day alarms",
+    "09:30 T one alarm",
+    "11:00 T two alarms",
+    "11:45 T two alarms",
+    "09:30 T busy 6",
+], "each alarm at its own time while the shell runs; no card for an all-day event on its own day");
+assert.deepStrictEqual(week.filter((s) => s.includes("Today")), [
+    "06:00 Today · Monday 16 November",
+    "06:00 Today · Tuesday 17 November",
+    "06:00 Today · Wednesday 18 November",
+    "06:00 Today · Thursday 19 November",
+    "06:00 Today · Friday 20 November",
+], "a digest a day at 06:00; the start on an empty Sunday sent none");
+
+// Wording.
+const note = (title, s, late) => q.reminderNote(ev(title), D(s), late);
+assert.strictEqual(note("T one alarm", "2026-11-16 09:50").body, "10:00 – 11:00 · in 10 min · Work");
+assert.strictEqual(note("T one alarm", "2026-11-16 09:56", true).body, "10:00 – 11:00 · starts in 4 min · Work");
+assert.strictEqual(note("T one alarm", "2026-11-16 10:00").body, "10:00 – 11:00 · starts now · Work");
+assert.strictEqual(note("T one alarm", "2026-11-16 08:55").body, "10:00 – 11:00 · in 1 h 5 min · Work");
+assert.strictEqual(note("T one alarm", "2026-11-15 09:00").body, "Mon 16 Nov, 10:00 – 11:00 · tomorrow · Work");
+assert.strictEqual(note("T alarm after start", "2026-11-16 17:25", true).body, "17:00 – 18:00 · started at 17:00, 25 min ago · Home");
+assert.strictEqual(note("T zone & <unknown>", "2026-11-16 18:50").body, "19:00 – 20:00 · in 10 min · Work · time zone unknown");
+assert.strictEqual(note("T zone & <unknown>", "2026-11-16 18:50").summary, "T zone & <unknown>", "summary is plain text");
+assert.strictEqual(note("T all-day alarms", "2026-11-15 23:50").body, "tomorrow, all day · Home");
+assert.strictEqual(note("T multi-day", "2026-11-18 09:50").body, "10:00 – Fri 20 Nov, 16:00 · in 10 min · Family", "the end's day when it is another");
+assert.strictEqual(note("T one alarm", "2026-11-16 09:50").day, "2026-11-16");
+assert.strictEqual(q.hm(note("T one alarm", "2026-11-16 09:50").closeAt), "10:05", "the card goes 5 min after the start");
+assert.strictEqual(q.hm(note("T alarm after start", "2026-11-16 17:25").closeAt), "17:30");
+
+// Digest content and limits.
+const dg = (day, at) => q.digest(rdata, D(day), D(at));
+assert.deepStrictEqual(dg("2026-11-17", "2026-11-17 06:00"), {
+    key: "",
+    day: "2026-11-17",
+    summary: "Today · Tuesday 17 November",
+    body: "all day · T all-day plain\nall day · T all-day same day\n08:00 · T busy 1\n08:30 · T busy 2\n09:00 · T busy 3\n09:30 · T busy 4\nand 3 more",
+    closeAt: null,
+}, "all-day first, six lines, then the rest counted");
+assert.strictEqual(dg("2026-11-17", "2026-11-17 10:15").body, "all day · T all-day plain\nall day · T all-day same day\n08:30 · T busy 2\n09:00 · T busy 3\n09:30 · T busy 4\n10:00 · T busy 5\nand 2 more", "events already over are left out");
+assert.strictEqual(dg("2026-11-19", "2026-11-19 06:00").body, "until 16:00 · T multi-day", "a timed event begun on an earlier day");
+assert.strictEqual(dg("2026-11-21", "2026-11-21 06:00"), null, "no events, no digest");
+assert.strictEqual(dg("2026-11-16", "2026-11-17 00:00"), null, "held past midnight: all over, no digest");
+assert.strictEqual(dg("2026-11-16", "2026-11-16 21:00").body, "all day · T all-day alarms");
+
+// Digest timing.
+const pl = (s, state, fs, start) => q.plan(rdata, state, D(s), fs, start);
+assert.deepStrictEqual(pl("2026-11-17 05:00", {}, false, true).send.map((n) => n.summary), ["Today · Tuesday 17 November"], "at shell start, even before 06:00");
+assert.deepStrictEqual(pl("2026-11-17 05:59", { digest: "2026-11-16" }, false, false).send, []);
+assert.deepStrictEqual(pl("2026-11-17 06:00", { digest: "2026-11-16" }, false, false).send.map((n) => n.summary), ["Today · Tuesday 17 November"]);
+assert.deepStrictEqual(pl("2026-11-17 12:00", { digest: "2026-11-17" }, false, true).send, [], "once per day, restarts included");
+
+// Holding while fullscreen, and what comes out after.
+const held = simulate("2026-11-16 09:00", "2026-11-16 09:56", (t) => t >= D("2026-11-16 09:00"));
+assert.deepStrictEqual(held.out, [], "nothing goes out while fullscreen");
+assert.deepStrictEqual(held.state.held, [{ key: "t-one 2026-11-16 10:00", at: "2026-11-16 09:30" }]);
+assert.strictEqual(held.state.digestPending, "2026-11-16");
+const released = (s, state) => q.plan(rdata, state, D(s), false, false).send.map((n) => n.summary + ": " + n.body);
+assert.deepStrictEqual(released("2026-11-16 09:57", held.state), [
+    "Today · Monday 16 November: all day · T all-day alarms\n10:00 · T one alarm\n12:00 · T two alarms\n14:00 · T default lead\n15:00 · T empty alarms\n17:00 · T alarm after start\nand 1 more",
+    "T one alarm: 10:00 – 11:00 · starts in 3 min · Work",
+], "digest first, then reminders, worded for the moment");
+assert.deepStrictEqual(released("2026-11-16 10:25", held.state).slice(1), ["T one alarm: 10:00 – 11:00 · started at 10:00, 25 min ago · Work"]);
+assert.deepStrictEqual(released("2026-11-16 11:00", held.state).filter((s) => s.startsWith("T one")), [], "an event over by release is dropped");
+const busy = simulate("2026-11-17 07:00", "2026-11-17 08:55", () => true).state;
+assert.strictEqual(busy.held.length, 4);
+assert.deepStrictEqual(released("2026-11-17 08:56", busy).slice(1), [
+    "4 calendar reminders: T busy 1 · started at 08:00, 56 min ago\nT busy 2 · started at 08:30, 26 min ago\nT busy 3 · starts in 4 min\nT busy 4 · starts in 34 min",
+], "more than three held: one summary, earliest first");
+const three = simulate("2026-11-17 07:00", "2026-11-17 08:00", () => true).state;
+assert.deepStrictEqual(released("2026-11-17 08:01", three).slice(1).map((s) => s.split(":")[0]), ["T busy 1", "T busy 2", "T busy 3"], "three or fewer: separate, earliest first");
+const replaced = simulate("2026-11-16 10:55", "2026-11-16 11:50", () => true).state;
+assert.deepStrictEqual(replaced.held, [{ key: "t-two 2026-11-16 12:00", at: "2026-11-16 11:45" }], "a later reminder replaces the held one");
+
+// Pruning: fired entries go 3 days after their event's end.
+const pruned = q.plan(rdata, { fired: { "a|2026-11-10 09:00": "2026-11-13 09:59", "b|2026-11-10 09:00": "2026-11-13 10:00", "c|2026-11-01 09:00": "2026-11-20 10:00" } }, D("2026-11-16 10:00"), true, false).state.fired;
+assert.deepStrictEqual(Object.keys(pruned), ["b|2026-11-10 09:00", "c|2026-11-01 09:00"]);
+
 console.log("calendar queries: all assertions passed");

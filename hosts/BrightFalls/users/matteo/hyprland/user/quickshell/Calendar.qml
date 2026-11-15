@@ -202,6 +202,11 @@ Scope {
         function onToggleRequested(screen) {
             root.toggle(screen);
         }
+        function onShowRequested(screen, day) {
+            if (!root.open)
+                root.toggle(screen);
+            root.select(Q.parseLocal(day));
+        }
     }
 
     IpcHandler {

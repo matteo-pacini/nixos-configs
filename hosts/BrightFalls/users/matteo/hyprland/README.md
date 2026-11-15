@@ -235,6 +235,43 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
     against invented events (`tests/calendar/panel/`, written by
     `make-fixture.js` there).
 
+- `calendar/Reminders.qml` (decisions in `calendar/queries.js`): reminders and
+  the morning digest. The shell turns the calendar export into desktop
+  notifications from the "Calendar" app. Each timed event reminds at its own
+  alarms. An event with none reminds 60 minutes before it starts. All-day
+  events remind only at alarms before their first day, such as "the evening
+  before", worded "tomorrow, all day"; on the days they cover, the morning
+  digest announces them. Without an alarm, a full-day event counts as
+  reminding at 09:00 on its first day, which the digest also covers. The two
+  defaults are `DEFAULT_LEAD_MIN` and `DEFAULT_ALL_DAY_TIME` in `queries.js`.
+  They copy the Nextcloud Calendar settings "Default reminder for part-day
+  events" and "Default reminder for full-day events", which the sync cannot
+  read, so change them together with those.
+
+  A reminder card shows the title, then the time range, how long until the
+  start, and the calendar, for example "11:00 – 12:00 · in 60 min · Work".
+  "time zone unknown" means the event's own time zone could not be read. The
+  card stays until dismissed or until 5 minutes after the start. A later
+  reminder for the same event replaces it. **Open** shows the day in the
+  calendar panel. A reminder whose moment passed while the PC was off still
+  fires if the event has not started ("starts in 4 min"). An alarm set at or
+  after the start fires while the event runs.
+
+  The digest arrives once a day, at the first login, or at 06:00 if the
+  session is already running. Its title is "Today · Sunday 15 November". It
+  lists all-day events, then timed ones with their start, at most six lines
+  then "and N more", and leaves out what is already over. With nothing on,
+  there is no digest.
+
+  While any monitor shows a fullscreen window (a game, or a fullscreen video),
+  reminders and the digest are held. When fullscreen ends they arrive at once,
+  worded for that moment ("starts in 3 min", "started at 11:00, 25 min ago").
+  Events already over are dropped, and more than three come as one summary. A
+  maximised window does not hold. A game in borderless-windowed mode is not
+  fullscreen to Hyprland and does not hold either. Nothing repeats across
+  reloads or reboots: what has fired is kept in `~/.local/state/desk/calendar-
+  reminders.json`.
+
 ## Calendar events
 
 The calendar panel reads one file that a user service refreshes from the

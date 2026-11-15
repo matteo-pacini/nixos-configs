@@ -30,6 +30,9 @@ Singleton {
 
     // Asks Calendar.qml to open the panel on `screen`, or close it.
     signal toggleRequested(string screen)
+    // Asks Calendar.qml to open the panel on `screen`, if closed, with
+    // `day` ("YYYY-MM-DD") selected.
+    signal showRequested(string screen, string day)
 
     function register(screen: string, icon: Item, window: PanelWindow): void {
         icons[screen] = {

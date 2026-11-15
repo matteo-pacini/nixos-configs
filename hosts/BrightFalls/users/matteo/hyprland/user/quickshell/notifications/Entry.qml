@@ -23,9 +23,9 @@ QtObject {
     signal finished
 
     // Low 5 s, normal 8 s, critical never; a timeout from the sender wins
-    // for the first two, up to 30 s.
+    // for the first two, up to 30 s, and 0 means never, as the spec says.
     function timeout() {
-        if (notification.urgency === NotificationUrgency.Critical)
+        if (notification.urgency === NotificationUrgency.Critical || notification.expireTimeout === 0)
             return Infinity;
         // In milliseconds, as sent over D-Bus, though Quickshell documents
         // seconds: Notification::updateProperties stores it unconverted.

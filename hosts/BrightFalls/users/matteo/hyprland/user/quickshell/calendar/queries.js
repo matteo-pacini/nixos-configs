@@ -87,7 +87,10 @@ function parse(text) {
                 location: e.location || "",
                 // Times read in the local zone because the event's own zone
                 // could not be resolved; they may be off.
-                tzUnknown: e["tz-unresolved"] === "True"
+                tzUnknown: e["tz-unresolved"] === "True",
+                // The occurrence's own reminder moments; older exports
+                // have no such field.
+                alarms: (Array.isArray(e.alarms) ? e.alarms : []).map(parseLocal)
             };
         });
         evs.sort(function (a, b) {
@@ -317,8 +320,303 @@ function webUrl(davBase, date) {
     return m ? m[1] + "index.php/apps/calendar/timeGridDay/" + ymd(date) : "";
 }
 
+// Reminders and the morning digest. Reminders.qml calls plan() once a minute
+// and does what it returns; everything below is decided here.
+
+// Reminders for events without alarms of their own. These two copy the
+// Nextcloud Calendar settings "Default reminder for part-day events" and
+// "Default reminder for full-day events", which the sync cannot read; change
+// them together with those.
+// Part-day: minutes before the start.
+var DEFAULT_LEAD_MIN = 60;
+// Full-day: time of day on the event's first day.
+var DEFAULT_ALL_DAY_TIME = "09:00";
+// A reminder card stays this long after its event has started.
+var CARD_AFTER_START_MIN = 5;
+// Held items beyond this many arrive as one summary.
+var MAX_SEPARATE = 3;
+// Event lines in the digest or a summary before "and N more".
+var MAX_LINES = 6;
+// The digest is sent at the first minute at or after this hour, or at shell
+// start when that is earlier.
+var DIGEST_HOUR = 6;
+// Fired entries are kept this long after their event has ended.
+var PRUNE_DAYS = 3;
+
+var SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// "YYYY-MM-DD HH:MM", the export's own form.
+function stamp(d) {
+    return ymd(d) + " " + hm(d);
+}
+
+function shortDay(d) {
+    return SHORT_DAYS[weekday(d)] + " " + d.getDate() + " " + MONTHS[d.getMonth()].slice(0, 3);
+}
+
+// Body text goes out as notification markup.
+function escape(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// The moment the occurrence is over; an all-day end is its last day.
+function endOf(e) {
+    return e.allDay ? addDays(e.end, 1) : e.end;
+}
+
+// One occurrence of one event: the same on every day a multi-day event is
+// listed, different once its start moves.
+function occurrenceKey(e) {
+    return e.uid + " " + stamp(e.start);
+}
+
+// A reminder of one occurrence at one moment; a changed alarm is a new one.
+function fireId(key, at) {
+    return key + "|" + stamp(at);
+}
+
+// Its own alarms when it has any, otherwise the default for its kind. An
+// all-day event reminds only at alarms before its first day: on the days it
+// covers the digest stands in for them. Its default, DEFAULT_ALL_DAY_TIME on
+// its first day, is such an alarm, so an all-day event without alarms of its
+// own is announced by the digest alone.
+function reminderTimes(e) {
+    if (e.allDay) {
+        var own = e.alarms && e.alarms.length ? e.alarms : [parseLocal(ymd(e.start) + " " + DEFAULT_ALL_DAY_TIME)];
+        return own.filter(function (t) {
+            return t < e.start;
+        });
+    }
+    if (e.alarms && e.alarms.length)
+        return e.alarms;
+    return [new Date(e.start.getTime() - DEFAULT_LEAD_MIN * 60e3)];
+}
+
+// Each occurrence listed on `now`'s day or later, once. Running events are
+// on today's list, so nothing that can still remind is missed.
+function occurrences(data, now) {
+    var out = [];
+    if (!data)
+        return out;
+    var seen = {};
+    var from = ymd(now);
+    for (var day in data.byDay) {
+        if (day < from)
+            continue;
+        data.byDay[day].forEach(function (e) {
+            var key = occurrenceKey(e);
+            if (!seen[key]) {
+                seen[key] = true;
+                out.push(e);
+            }
+        });
+    }
+    return out;
+}
+
+function findOccurrence(data, key, now) {
+    var all = occurrences(data, now);
+    for (var i = 0; i < all.length; i++)
+        if (occurrenceKey(all[i]) === key)
+            return all[i];
+    return null;
+}
+
+// Reminders due at `now` that `fired` (fireId -> anything) has not seen:
+// [{ key, at, event }], by start. Per occurrence only the latest past
+// moment counts. A moment before the start counts until the start, one at
+// or after the start until the end.
+function dueReminders(data, now, fired) {
+    var out = [];
+    occurrences(data, now).forEach(function (e) {
+        var end = endOf(e);
+        var at = null;
+        reminderTimes(e).forEach(function (t) {
+            if (t > now)
+                return;
+            var live = t < e.start ? now < e.start : now < end;
+            if (live && (!at || t > at))
+                at = t;
+        });
+        var key = occurrenceKey(e);
+        if (at && !fired[fireId(key, at)])
+            out.push({ key: key, at: at, event: e });
+    });
+    out.sort(function (a, b) {
+        return (a.event.start - b.event.start) || (a.event.title < b.event.title ? -1 : a.event.title > b.event.title ? 1 : 0);
+    });
+    return out;
+}
+
+function span(minutes) {
+    if (minutes < 60)
+        return minutes + " min";
+    var h = Math.floor(minutes / 60);
+    var m = minutes % 60;
+    return h + " h" + (m ? " " + m + " min" : "");
+}
+
+// "11:00 – 12:00", with the day in front when it is not today's.
+function rangeText(e, now) {
+    var sameDay = function (a, b) {
+        return ymd(a) === ymd(b);
+    };
+    var lastMinute = new Date(e.end.getTime() - 1);
+    return (sameDay(e.start, now) ? "" : shortDay(e.start) + ", ") + hm(e.start) + " – " + (sameDay(e.start, lastMinute) ? "" : shortDay(e.end) + ", ") + hm(e.end);
+}
+
+// How far a timed event's start is: "in 10 min" ("starts in 3 min" when
+// `late`), "in 2 h 5 min", "tomorrow", "starts now", or "started at 11:00,
+// 25 min ago".
+function whenText(e, now, late) {
+    if (now < e.start) {
+        var ahead = Math.ceil((e.start - now) / 60e3);
+        if (ahead >= 24 * 60)
+            return distance(e.start, now);
+        return (late ? "starts in " : "in ") + span(ahead);
+    }
+    var ago = Math.floor((now - e.start) / 60e3);
+    return ago === 0 ? "starts now" : "started at " + hm(e.start) + ", " + span(ago) + " ago";
+}
+
+// "tomorrow, all day", "in 3 days, 20 to 22 November", or "all day" once it
+// has begun.
+function allDayText(e, now) {
+    var days = ymd(e.start) === ymd(e.end) ? "all day" : shortRange(e.start, e.end);
+    var dist = distance(e.start, now);
+    return (now < e.start && dist !== "" ? dist + ", " : "") + days;
+}
+
+// A reminder card: { key, day, summary, body, closeAt }. `late` when it goes
+// out a minute or more after its reminder moment.
+function reminderNote(e, now, late) {
+    var parts = e.allDay ? [allDayText(e, now), e.calendar] : [rangeText(e, now), whenText(e, now, late), e.calendar];
+    if (e.tzUnknown)
+        parts.push("time zone unknown");
+    var after = new Date(Math.max(e.start.getTime(), now.getTime()) + CARD_AFTER_START_MIN * 60e3);
+    return {
+        key: occurrenceKey(e),
+        day: ymd(e.start < now ? now : e.start),
+        summary: e.title,
+        body: escape(parts.join(" · ")),
+        closeAt: after
+    };
+}
+
+function capped(lines) {
+    if (lines.length <= MAX_LINES)
+        return lines;
+    return lines.slice(0, MAX_LINES).concat(["and " + (lines.length - MAX_LINES) + " more"]);
+}
+
+// The digest for `day` as sent at `now`, or null when nothing on it is left:
+// all-day events first, then timed ones by start, leaving out what is over.
+function digest(data, day, now) {
+    var evs = dayEvents(data, day).filter(function (e) {
+        return endOf(e) > now;
+    });
+    if (!evs.length)
+        return null;
+    var lines = evs.map(function (e) {
+        var time = e.allDay ? "all day" : e.start < dayStart(day) ? "until " + hm(e.end) : hm(e.start);
+        return escape(time + " · " + e.title);
+    });
+    return {
+        key: "",
+        day: ymd(day),
+        summary: (ymd(day) === ymd(now) ? "Today · " : "") + longDate(day),
+        body: capped(lines).join("\n"),
+        closeAt: null
+    };
+}
+
+// What `held` ([{ key, at }]) becomes at `now`: one card each, earliest
+// start first, or one summary when there are more than MAX_SEPARATE. Events
+// that are over or gone from the export are dropped.
+function heldNotes(data, held, now) {
+    var items = [];
+    held.forEach(function (h) {
+        var e = findOccurrence(data, h.key, now);
+        if (e && now < endOf(e))
+            items.push({ event: e, late: now - parseLocal(h.at) >= 60e3 });
+    });
+    items.sort(function (a, b) {
+        return a.event.start - b.event.start;
+    });
+    if (items.length <= MAX_SEPARATE)
+        return items.map(function (i) {
+            return reminderNote(i.event, now, i.late);
+        });
+    var closeAt = new Date(Math.max.apply(null, items.map(function (i) {
+        return Math.max(i.event.start.getTime(), now.getTime());
+    })) + CARD_AFTER_START_MIN * 60e3);
+    return [{
+        key: "",
+        day: ymd(items[0].event.start < now ? now : items[0].event.start),
+        summary: items.length + " calendar reminders",
+        body: capped(items.map(function (i) {
+            return escape(i.event.title + " · " + (i.event.allDay ? allDayText(i.event, now) : whenText(i.event, now, true)));
+        })).join("\n"),
+        closeAt: closeAt
+    }];
+}
+
+// One minute's work. `state` is what the last call returned (or {}):
+// { fired: { fireId: end stamp }, held: [{ key, at }], digest: day done,
+// digestPending: day waiting }. `fullscreen` holds everything; `startup` is
+// true on the first call after the shell started. Returns { state, send },
+// `send` being cards in the order to send them, the digest first.
+function plan(data, state, now, fullscreen, startup) {
+    var s = {
+        fired: {},
+        held: (state.held || []).slice(),
+        digest: state.digest || "",
+        digestPending: state.digestPending || ""
+    };
+    var horizon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - PRUNE_DAYS, now.getHours(), now.getMinutes());
+    var fired = state.fired || {};
+    for (var id in fired)
+        if (parseLocal(fired[id]) >= horizon)
+            s.fired[id] = fired[id];
+
+    var today = ymd(now);
+    if (s.digest !== today && (startup || now.getHours() >= DIGEST_HOUR)) {
+        s.digest = today;
+        s.digestPending = today;
+    }
+
+    dueReminders(data, now, s.fired).forEach(function (r) {
+        s.fired[fireId(r.key, r.at)] = stamp(endOf(r.event));
+        s.held = s.held.filter(function (h) {
+            return h.key !== r.key;
+        }).concat([{ key: r.key, at: stamp(r.at) }]);
+    });
+
+    var send = [];
+    if (!fullscreen) {
+        if (s.digestPending !== "") {
+            var d = digest(data, parseLocal(s.digestPending), now);
+            if (d)
+                send.push(d);
+            s.digestPending = "";
+        }
+        send = send.concat(heldNotes(data, s.held, now));
+        s.held = [];
+    }
+    return { state: s, send: send };
+}
+
 if (typeof module !== "undefined")
     module.exports = {
+        DEFAULT_LEAD_MIN: DEFAULT_LEAD_MIN,
+        DEFAULT_ALL_DAY_TIME: DEFAULT_ALL_DAY_TIME,
+        reminderTimes: reminderTimes,
+        occurrenceKey: occurrenceKey,
+        dueReminders: dueReminders,
+        reminderNote: reminderNote,
+        digest: digest,
+        heldNotes: heldNotes,
+        plan: plan,
         parse: parse,
         dayEvents: dayEvents,
         dayCalendars: dayCalendars,

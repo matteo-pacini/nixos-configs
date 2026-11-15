@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.Notifications
 import Quickshell.Widgets
@@ -47,12 +48,19 @@ Rectangle {
         return iconUrl(desktop?.icon ?? "");
     }
 
+    // A symbolic icon is a dark one-colour glyph, drawn on the letter tile.
+    readonly property bool symbolic: iconSource.includes("-symbolic")
+
     function iconUrl(icon) {
         if (icon.startsWith("file://"))
             return icon;
         if (icon.startsWith("/"))
             return "file://" + icon;
-        return icon === "" ? "" : Quickshell.iconPath(icon, true);
+        if (icon === "")
+            return "";
+        // Adwaita ships many names, audio-input-microphone and
+        // x-office-calendar among them, only as <name>-symbolic.
+        return Quickshell.iconPath(icon, true) || Quickshell.iconPath(icon + "-symbolic", true);
     }
 
     function ago() {
@@ -113,16 +121,37 @@ Rectangle {
             width: 40
             height: 40
             radius: 9
-            color: image.status === Image.Ready ? "transparent" : card.tile
+            color: image.status === Image.Ready && !card.symbolic ? "transparent" : card.tile
 
             Image {
                 id: image
 
-                anchors.fill: parent
+                anchors.centerIn: parent
+                width: card.symbolic ? 22 : 40
+                height: width
+                visible: !card.symbolic
                 source: card.iconSource
-                sourceSize.width: 40
-                sourceSize.height: 40
+                sourceSize.width: width
+                sourceSize.height: height
                 fillMode: card.notification.image !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+            }
+
+            // The glyph's shape in the background colour.
+            Rectangle {
+                id: glyphFill
+
+                anchors.fill: image
+                visible: false
+                layer.enabled: true
+                color: Theme.background
+            }
+
+            MultiEffect {
+                anchors.fill: image
+                visible: card.symbolic && image.status === Image.Ready
+                source: glyphFill
+                maskEnabled: true
+                maskSource: image
             }
 
             Text {
@@ -201,7 +230,8 @@ Rectangle {
                 text: card.notification.body
                 textFormat: Text.StyledText
                 wrapMode: Text.Wrap
-                maximumLineCount: 2
+                // Two, or as many as the sender broke it into, up to eight.
+                maximumLineCount: Math.min(8, Math.max(2, card.notification.body.split("\n").length))
                 elide: Text.ElideRight
                 color: card.soft
                 font.family: Theme.fontUi

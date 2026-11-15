@@ -11,6 +11,7 @@
 //@ pragma UseQApplication
 
 import Quickshell
+import qs.calendar
 
 ShellRoot {
     Launcher {}
@@ -23,4 +24,5 @@ ShellRoot {
     Network {}
     Audio {}
     Calendar {}
+    Reminders {}
 }
