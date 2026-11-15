@@ -4,7 +4,8 @@ Usage: calendar-export VDIR WORKDIR KHAL_CONFIG OUT
 
 VDIR is pimsync's vdir and is only read. WORKDIR/vdir becomes a derived copy
 of it in which GMT+hhmm-style time zones get a fixed-offset VTIMEZONE; the
-khal config must point its calendars at WORKDIR/vdir/*. OUT is replaced
+khal config must point its calendars at WORKDIR/vdir/* and set
+local_timezone, the zone of every time in the export. OUT is replaced
 atomically with the export described in the Calendar events section of the
 Hyprland README. CALENDAR_NOW (ISO 8601 with offset) overrides the current
 time, for tests.
@@ -156,6 +157,101 @@ def unresolved_uids(root):
     return uids
 
 
+def local_zone(khal_config):
+    """The zone khal prints times in: its config's local_timezone."""
+    m = re.search(r"^\s*local_timezone\s*=\s*(\S+)", khal_config.read_text(), re.M)
+    if not m:
+        sys.exit("calendar-export: the khal config has no local_timezone")
+    return pytz.timezone(m.group(1))
+
+
+def khal_time(prop, tz):
+    """A DTSTART as khal prints it: local wall clock, or the date if all-day.
+    A naive time (floating, or a TZID khal cannot resolve) is printed as is."""
+    v = prop.dt
+    if not isinstance(v, dt.datetime):
+        return v.isoformat()
+    if v.tzinfo is not None:
+        v = v.astimezone(tz)
+    return v.strftime("%Y-%m-%d %H:%M")
+
+
+def alarm_specs(event):
+    """The event's own DISPLAY and AUDIO alarms as (kind, base, interval,
+    repeat): kind "start" or "end" with a timedelta base, or "absolute" with
+    an aware UTC datetime."""
+    specs = []
+    for alarm in event.subcomponents:
+        if alarm.name != "VALARM":
+            continue
+        if str(alarm.get("ACTION", "")).upper() not in ("DISPLAY", "AUDIO"):
+            continue
+        trigger = alarm.get("TRIGGER")
+        if trigger is None:
+            continue
+        repeat, interval = int(alarm.get("REPEAT", 0)), alarm.get("DURATION")
+        interval = interval.dt if interval is not None and repeat else None
+        base = trigger.dt
+        if isinstance(base, dt.datetime):
+            # RFC 5545 requires UTC here; a time without one is read as UTC.
+            if base.tzinfo is None:
+                base = base.replace(tzinfo=dt.timezone.utc)
+            specs.append(("absolute", base, interval, repeat if interval else 0))
+        elif isinstance(base, dt.timedelta):
+            kind = "end" if trigger.params.get("RELATED", "START").upper() == "END" else "start"
+            specs.append((kind, base, interval, repeat if interval else 0))
+    return specs
+
+
+def alarm_index(root, tz):
+    """{(calendar name, UID): (master specs, {override start: specs})}, for
+    files that contain a VALARM. Overrides are keyed by their own DTSTART as
+    khal prints it, which is what identifies them among khal's occurrences."""
+    index = {}
+    for d in root.iterdir():
+        if not d.is_dir():
+            continue
+        name_file = d / "displayname"
+        cal = name_file.read_text().strip() if name_file.exists() else d.name
+        for f in d.glob("*.ics"):
+            text = f.read_bytes().decode("utf-8")
+            if "BEGIN:VALARM" not in text:
+                continue
+            for ev in icalendar.Calendar.from_ical(text).walk("VEVENT"):
+                master, overrides = index.setdefault((cal, str(ev.get("UID"))), ([], {}))
+                if ev.get("RECURRENCE-ID") is None:
+                    master.extend(alarm_specs(ev))
+                elif ev.get("DTSTART") is not None:
+                    overrides[khal_time(ev["DTSTART"], tz)] = alarm_specs(ev)
+    return index
+
+
+def occurrence_alarms(entry, specs, tz):
+    """Firing times, local "YYYY-MM-DD HH:MM", of specs for the occurrence
+    khal printed as entry, sorted and without duplicates.
+
+    Relative triggers are added to the occurrence's local wall-clock start or
+    end, so "1 day before" keeps its hour across a DST change. An all-day
+    occurrence starts at local midnight of its first day and ends at
+    midnight after its last (khal's all-day end is inclusive)."""
+    if entry["all-day"] == "True":
+        start = dt.datetime.fromisoformat(entry["start"])
+        end = dt.datetime.fromisoformat(entry["end"]) + dt.timedelta(days=1)
+    else:
+        start = dt.datetime.strptime(entry["start"], "%Y-%m-%d %H:%M")
+        end = dt.datetime.strptime(entry["end"], "%Y-%m-%d %H:%M")
+    times = set()
+    for kind, base, interval, repeat in specs:
+        for k in range(repeat + 1):
+            step = interval * k if interval else dt.timedelta(0)
+            if kind == "absolute":
+                t = (base + step).astimezone(tz)
+            else:
+                t = (start if kind == "start" else end) + base + step
+            times.add(t.strftime("%Y-%m-%d %H:%M"))
+    return sorted(times)
+
+
 def window(today):
     """First day of the month three months back to the last day of the month
     twelve months ahead."""
@@ -195,6 +291,8 @@ def main():
     derived = workdir / "vdir"
     mirror(vdir, derived)
     bad = unresolved_uids(derived)
+    tz = local_zone(khal_config)
+    alarms = alarm_index(derived, tz)
 
     start, end = window(now.date())
     days = (end - start).days + 1
@@ -213,6 +311,9 @@ def main():
     for events in day_lists:
         for e in events:
             e["tz-unresolved"] = "True" if e["uid"] in bad else "False"
+            master, overrides = alarms.get((e["calendar"], e["uid"]), ([], {}))
+            specs = overrides.get(e["start"], master)
+            e["alarms"] = occurrence_alarms(e, specs, tz)
             colors.setdefault(e["calendar"], e["calendar-color"])
 
     header = {

@@ -328,10 +328,12 @@ the first.
   fields khal 0.14.1 prints with ISO formats: `start`, `end` (`YYYY-MM-DD
   HH:MM` local time, or `YYYY-MM-DD` all-day with an inclusive end),
   `all-day` (`"True"`/`"False"`), `title`, `calendar`, `calendar-color`,
-  `uid`, `cancelled` (`""` or `"CANCELLED"`), `location`, and
-  `tz-unresolved` (`"True"`/`"False"`, below). A multi-day event appears on
-  every day it touches with its original start and end. Cancelled events and
-  occurrences are included.
+  `uid`, `cancelled` (`""` or `"CANCELLED"`), `location`,
+  `tz-unresolved` (`"True"`/`"False"`, below) and `alarms` (a list of
+  `YYYY-MM-DD HH:MM` local times, below). A multi-day event appears on
+  every day it touches with its original start and end, and the same
+  `alarms`. Cancelled events and occurrences are included. A reader that
+  finds no `alarms` treats it as `[]`; the header's `version` stays 1.
 - Window: the first day of the month three months back to the last day of
   the month twelve months ahead.
 
@@ -356,13 +358,43 @@ changes, and keeps that mtime, so khal re-indexes only what pimsync changed.
 After a change to the rewrite, bump `COPY_FORMAT` in `calendar-export.py` to
 rebuild the copy.
 
+### Reminders
+
+`alarms` holds the moments this occurrence's own reminders fire, sorted and
+without duplicates; `[]` when it has none. khal does not print alarms, so
+`calendar-export` reads the `VALARM`s from the derived copy and attaches them
+to khal's entries:
+
+- Only `ACTION:DISPLAY` and `ACTION:AUDIO` count. E-mail alarms and Apple's
+  `ACTION:NONE` placeholders are left out.
+- Which `VEVENT` an entry belongs to: same calendar and `UID`; if an
+  override (`RECURRENCE-ID`) of that UID has a `DTSTART` that, printed the
+  way khal prints it, equals the entry's `start`, the override's alarms are
+  used (none if it has none), otherwise the master's. The script never
+  expands a recurrence itself: khal decides which occurrences exist (RRULE,
+  RDATE, EXDATE, moved and cancelled ones), and the alarms follow its list.
+  An override moved onto the exact start of another, unmodified occurrence
+  of the same series would give both its alarms.
+- A relative trigger is added to the entry's local wall-clock `start`, or
+  `end` with `RELATED=END`, so "1 day before" keeps its hour across a
+  clock change. An all-day entry starts at local midnight of its first day
+  and ends at midnight after its last, so `TRIGGER:PT9H` is 09:00 on the day
+  and `-PT15H` is 09:00 the day before.
+- An absolute trigger (UTC, as RFC 5545 requires) is converted to the local
+  zone; it is the same moment for every occurrence of a series.
+- `REPEAT:n` with `DURATION:d` adds n more firings, d apart.
+- Seconds are dropped. The local zone is khal's `local_timezone`, read from
+  the khal config the script is given.
+
 ### Tests
 
 `nix build .#checks.x86_64-linux.calendar-export` exports
-`tests/calendar/fixtures/` (four calendars: a weekly series with an EXDATE,
+`tests/calendar/fixtures/` (five calendars: a weekly series with an EXDATE,
 a moved and a cancelled occurrence; New York; all-day, multi-day and
 midnight-crossing events; a cancelled event; an empty calendar; `GMT±hhmm`
-and custom zones; a daily all-day series with a cancelled occurrence) as of
+and custom zones; a daily all-day series with a cancelled occurrence; and
+`fixE`, one event per alarm shape above, including a series whose
+overrides have their own alarm and none, an e-mail alarm and Tokyo) as of
 2026-11-15 and compares with `tests/calendar/expected.jsonl`. No network, no
 secrets. To regenerate the expected file after an intended change, run the
 built `calendar-export` with `CALENDAR_NOW=2026-11-15T10:00:00+00:00`, a khal
