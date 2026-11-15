@@ -179,4 +179,52 @@ copied hypr/d.lua
  M $sub/hypr/c.lua
  M $sub/hypr/d.lua" "$rc $out"
 
+# ---- rollback, a hand-merged incoming copy, reset --all, usage ----
+# A second HOME, so the files above do not interfere.
+export HOME="$work/home2"
+mkdir -p "$HOME"
+cfg=$HOME/.config
+state=$HOME/.local/state/desk
+present() { [ -e "$1" ] && echo present || echo absent; }
+manifest r1 hypr/x.lua=x1 quickshell/y.qml=y1
+manifest r2 hypr/x.lua=x2 quickshell/y.qml=y2
+ds "$work/r1" activate
+printf 'x1 edited\n' >"$cfg/hypr/x.lua"
+ds "$work/r2" activate
+check "edited, then a new generation: incoming" present "$(present "$state/incoming/hypr/x.lua")"
+ds "$work/r1" activate
+check "rolled back: incoming dropped, the edit kept, the other file rolled back" \
+  "0 desk-sync: quickshell/y.qml: updated absent x1 edited" \
+  "$rc $out $(present "$state/incoming/hypr/x.lua") $(cat "$cfg/hypr/x.lua")"
+ds "$work/r2" activate
+cp "$state/incoming/hypr/x.lua" "$cfg/hypr/x.lua"
+ds "$work/r2" activate
+check "incoming copied in by hand: cleared, recorded, silent" "0  absent $(sha "$work/r2/hypr/x.lua")" \
+  "$rc $out $(present "$state/incoming/hypr/x.lua") $(cat "$state/hashes/hypr/x.lua")"
+
+printf 'x2 edited\n' >"$cfg/hypr/x.lua"
+printf 'y2 edited\n' >"$cfg/quickshell/y.qml"
+ds "$work/r2" reset --all
+check "reset --all: every file, one hint each kind" "0 reset hypr/x.lua
+reset quickshell/y.qml
+To apply: hyprctl reload; nothing for quickshell (it reloads on file change)" "$rc $out"
+check "reset --all: store copies back" "x2 y2" "$(cat "$cfg/hypr/x.lua") $(cat "$cfg/quickshell/y.qml")"
+
+for args in "" "frobnicate" "status x" "reset" "reset a b" "pull a b"; do
+  # shellcheck disable=SC2086 # split on purpose
+  ds "$work/r2" $args
+  check "usage: '$args' exits 2" "2 usage:" "$rc $(head -1 <<<"$out" | cut -d' ' -f1)"
+done
+
+# ---- pull: more secret shapes, and what is not one ----
+printf 'a = 1\npassword = "x"\nlocal token: 3\n-----BEGIN RSA PRIVATE KEY-----\n' >"$cfg/hypr/x.lua"
+printf 'id: "%s"\nn: %s\n' "$(printf 'A%.0s' {1..46})" "$(printf '7%.0s' {1..45})" >"$cfg/quickshell/y.qml"
+repo2=$work/repo2
+mkdir -p "$repo2/$sub"
+git -C "$repo2" init -q
+ds "$work/r2" pull "$repo2"
+check "pull: every secret line listed; letters-only and digits-only runs pass" "1 desk-sync: not copying hypr/x.lua: line 2, 3, 4 of $cfg/hypr/x.lua looks like a secret
+copied quickshell/y.qml
+?? $sub/" "$rc $out"
+
 exit "$failed"
