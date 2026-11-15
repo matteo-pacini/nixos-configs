@@ -201,6 +201,39 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
     min-quantum and the daemon's `resample.quality`, the Blue microphone's
     session priority); the file comes from the definition that sets each
     value. Enter shows it in the footer. No file, no section.
+- `Calendar.qml` (Super+C, a click on the bar's clock, `qs ipc call calendar
+  toggle`; parts in `calendar/`): the bar's centre is the clock: the week as
+  seven dots, Monday first (gone filled, today large and purple, to come
+  hollow), the short date, a ring that fills clockwise from midnight, and the
+  time. When timed events start within the hour a cyan note follows it:
+  `1 event at 11:00`, `2 events at 11:00`, or `3 events from 10:00` when they
+  start at different times; it goes once the last of them has started. The
+  panel is a 360 px card under the clock on that monitor, with the time
+  marked while it is open; opening it closes the network and audio panels and
+  the other way round.
+  - The month: ISO week numbers on the left, weekends in pink, today filled,
+    the selected day outlined in pink. Dots under a day show which calendars
+    have something that day, one per calendar in its own colour, at most
+    three. A one-line legend under the month names the calendars present in
+    the shown month.
+  - The selected day's events are always listed under the month: all-day
+    first, past events today faded, several-day events as "day N of M".
+    "time zone unknown" in orange means the event's own time zone could not
+    be read, so its time may be off.
+  - Keys: ←→ move by a day and ↑↓ by a week, across months; PgUp/PgDn change
+    month, keeping the day number; T jumps to today; Enter or O opens the
+    selected day in the Nextcloud web calendar; Esc closes; R syncs now. A
+    click on a day selects it.
+  - Read-only. Events come from the export that `calendar-sync` writes (how,
+    and the file's format: "Calendar events" below), and the panel answers
+    from memory. The header says `syncing…` while a sync runs. An orange
+    footer means the last good sync is 30 minutes old or more (the server
+    could not be reached) and says when it was; "No calendar is set up"
+    means no export exists yet.
+  - `calendar/queries.js`, the panel's queries, is plain JavaScript that node
+    runs too: `nix build .#checks.x86_64-linux.calendar-panel` tests it
+    against invented events (`tests/calendar/panel/`, written by
+    `make-fixture.js` there).
 
 ## Calendar events
 

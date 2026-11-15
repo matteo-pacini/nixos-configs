@@ -1,6 +1,7 @@
-# desk-sync's and calendar-export's tests, as flake checks:
+# desk-sync's, calendar-export's and the calendar panel's tests, as flake checks:
 #   nix build .#checks.<system>.desk-sync
 #   nix build .#checks.<system>.calendar-export
+#   nix build .#checks.<system>.calendar-panel
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -26,6 +27,21 @@ in
         ${pkgs.lib.getExe calendarExport.package} \
           ${./calendar/fixtures} "$PWD/work" khal.conf "$PWD/events.jsonl"
         diff -u ${./calendar/expected.jsonl} events.jsonl
+        touch $out
+      '';
+
+  # The panel's query library (quickshell/calendar/queries.js) against
+  # invented events in calendar/panel/; the dates it asserts are London's.
+  calendar-panel =
+    pkgs.runCommand "calendar-panel-tests"
+      {
+        nativeBuildInputs = [ pkgs.nodejs ];
+        TZ = "Europe/London";
+        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
+      }
+      ''
+        node ${./calendar/panel}/test-calendar.js \
+          ${../user/quickshell/calendar/queries.js}
         touch $out
       '';
 
