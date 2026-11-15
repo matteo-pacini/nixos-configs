@@ -179,6 +179,21 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
     2 s. Selection runs on from the programs; Left/Right set the gain, M
     mutes, Enter makes it the default input, which WirePlumber keeps until
     another is chosen, over the Nix priority.
+  - No signal (`audio/NoSignal.qml`, a singleton that runs whether the panel
+    is open or not): an ALSA input whose capture PCM is `RUNNING` while
+    `hw_ptr` stays put between two reads 750 ms apart
+    (`/proc/asound/card<N>/pcm<D>c/sub<S>/status`, from the node's
+    `alsa.card`, `alsa.device` and `alsa.subdevice`) delivers no samples.
+    Silence still moves `hw_ptr`, so a quiet room is not flagged. The Blue
+    microphone falls into this now and then until its cable is replugged.
+    `/proc` is read only while one of the input's links is active (a
+    program or a level monitor records from it), and once when the input
+    appears (shell start, replug), by opening it for about 1.5 s with a level
+    monitor. The row then says `no signal · replug the cable` in red, its
+    level is flat with no monitor, and Enter explains in the footer instead
+    of making it the default. The bar's audio item gets a red dot. One
+    desktop notification (sent over D-Bus to `Notifications.qml`) per input
+    and fault; the flag goes when samples flow or the input goes away.
   - Set in Nix: greyed rows from `~/.local/share/desk/audio/locked.json`,
     which `desktop-hyprland.nix` generates the same way as the network
     panel's, from `services.pipewire.extraConfig` and the WirePlumber ALSA
