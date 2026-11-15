@@ -5,12 +5,6 @@
   ...
 }:
 {
-  services.xserver = {
-    enable = true;
-  };
-
-  services.desktopManager.gnome.enable = true;
-
   # Hyprland on VT 1. The first login of each boot needs no password (the
   # whole system is encrypted), so the login keyring stays locked until the
   # lock screen unlocks it (desk-lock) or an app asks for it. After a logout,
@@ -31,34 +25,6 @@
         default_session.command = "${lib.getExe pkgs.tuigreet} --time --remember --cmd '${session}'";
       };
   };
-
-  services.udev.packages = with pkgs; [ gnome-settings-daemon ];
-
-  services.xserver.excludePackages = [ pkgs.xterm ];
-
-  environment.gnome.excludePackages = (
-    with pkgs;
-    [
-      gnome-tour
-      snapshot
-      gnome-text-editor
-      simple-scan
-      cheese
-      gnome-music
-      epiphany
-      geary
-      gnome-characters
-      tali
-      iagno
-      hitori
-      atomix
-      yelp
-      gnome-contacts
-      gnome-initial-setup
-      gnome-maps
-      gnome-weather
-    ]
-  );
 
   programs.dconf.enable = true;
 

@@ -2,12 +2,10 @@
   pkgs,
   lib,
   config,
-  inputs,
   ...
 }:
 {
   imports = [
-    ./gnome.nix
     ./desktop.nix
     ./git.nix
     ./zsh.nix
@@ -30,10 +28,6 @@
   home.packages =
     with pkgs;
     [
-      #Gnome
-      gnomeExtensions.appindicator
-      gnome-tweaks
-      inputs.magunetto.packages.${stdenv.hostPlatform.system}.default
       # Downloads
       aria2
       # Security

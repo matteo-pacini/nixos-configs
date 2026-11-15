@@ -84,7 +84,7 @@ The short version:
 
 ## Hyprland and Quickshell (BrightFalls)
 
-BrightFalls has a Hyprland session beside GNOME with a desktop shell written for Quickshell, in `hosts/BrightFalls/users/matteo/hyprland/`. It has its own instructions in `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md`. **Read that file before any work on that session or its shell, including work that starts in the live `~/.config/quickshell` or `~/.config/hypr` and touches no file in that directory.**
+BrightFalls runs a Hyprland session (no GNOME) with a desktop shell written for Quickshell, in `hosts/BrightFalls/users/matteo/hyprland/`. It has its own instructions in `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md`. **Read that file before any work on that session or its shell, including work that starts in the live `~/.config/quickshell` or `~/.config/hypr` and touches no file in that directory.**
 
 The short version:
 - The config files are writable copies under `~/.config`, edited live and hot-reloaded, then brought back to the repo with `desk-sync pull`. Nix pins packages and generates the data the shell shows.

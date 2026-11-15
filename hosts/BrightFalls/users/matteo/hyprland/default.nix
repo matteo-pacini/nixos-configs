@@ -1,5 +1,5 @@
-# A bare Hyprland session (UWSM), picked in GDM beside GNOME. Everything
-# here must stay inert in the GNOME session.
+# The user side of the Hyprland session (UWSM): the desktop's config files,
+# its helpers and the Quickshell service.
 {
   config,
   lib,
@@ -7,10 +7,6 @@
   ...
 }:
 let
-  # graphical-session.target is reached by GNOME as well; this skips a unit
-  # unless XDG_CURRENT_DESKTOP, which UWSM exports, contains Hyprland.
-  onlyInHyprland = ''${pkgs.systemd}/lib/systemd/systemd-xdg-autostart-condition "Hyprland" ""'';
-
   deskSync = pkgs.writeShellApplication {
     name = "desk-sync";
     runtimeInputs = with pkgs; [
@@ -42,7 +38,7 @@ let
   };
 in
 {
-  imports = [ (import ./calendar.nix { inherit onlyInHyprland; }) ];
+  imports = [ ./calendar.nix ];
 
   # The two layers of the desktop's config; see README.md. defaults/ is
   # linked read-only from the store; every file under user/ is copied to the
@@ -82,8 +78,8 @@ in
   # The desktop shell, from user/quickshell/ (installed at
   # ~/.config/quickshell, the default config `qs` runs and `qs ipc` talks to).
   # It reloads on its own when a file there changes. It is also the
-  # notification daemon; there is no D-Bus activation file for that name, so
-  # a notification sent before GNOME Shell owns it cannot start one there.
+  # notification daemon, with no D-Bus activation file for that name: a
+  # notification sent before the shell is up is lost.
   systemd.user.services.quickshell = {
     Unit = {
       Description = "Quickshell desktop shell";
@@ -91,7 +87,6 @@ in
       After = [ "graphical-session.target" ];
     };
     Service = {
-      ExecCondition = onlyInHyprland;
       ExecStart = lib.getExe' pkgs.quickshell "qs";
       Restart = "on-failure";
     };

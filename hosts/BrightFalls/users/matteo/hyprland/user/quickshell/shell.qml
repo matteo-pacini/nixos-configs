@@ -5,7 +5,7 @@
 
 // Read at startup only, so a change needs a restart. Sets the icon theme
 // here rather than leaving it to Qt's platform theme, whose answer depends on
-// the environment the service starts with; GNOME uses Adwaita too.
+// the environment the service starts with.
 //@ pragma IconTheme Adwaita
 // Tray item menus (Bar.qml) are Qt platform menus, which need a QApplication.
 //@ pragma UseQApplication

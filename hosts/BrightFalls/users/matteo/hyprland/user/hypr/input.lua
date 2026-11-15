@@ -1,4 +1,4 @@
--- Matches the GNOME session: US layout with no XKB options, 500 ms repeat
+-- US layout with no XKB options, 500 ms repeat
 -- delay at a 30 ms interval, libinput's default pointer acceleration, and
 -- click to focus.
 hl.config({

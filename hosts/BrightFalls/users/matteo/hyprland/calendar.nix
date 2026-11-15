@@ -1,7 +1,6 @@
 # Calendar events for the Quickshell panel. pimsync mirrors the CalDAV
 # account one way and read-only into a vdir; calendar-export then writes the
 # file the panel reads. See "Calendar events" in README.md.
-{ onlyInHyprland }:
 {
   config,
   lib,
@@ -72,7 +71,6 @@ in
     Unit.Description = "Calendar sync (read-only) and export for the panel";
     Service = {
       Type = "oneshot";
-      ExecCondition = onlyInHyprland;
       # pimsync expects the vdir directory to exist (pimsync(1), `check`).
       ExecStartPre = "${lib.getExe' pkgs.coreutils "mkdir"} -p ${vdir}";
       ExecStart = "${lib.getExe pkgs.pimsync} sync";

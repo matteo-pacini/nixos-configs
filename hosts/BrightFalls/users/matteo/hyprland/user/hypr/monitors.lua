@@ -1,5 +1,4 @@
--- Same layout as GNOME's hosts/BrightFalls/monitors.xml. Names are the
--- kernel's connector names (/sys/class/drm), so mutter's HDMI-1 is HDMI-A-1.
+-- Names are the kernel's connector names (/sys/class/drm).
 
 -- No vrr: the PG278QR has a G-Sync module and no adaptive sync, so Hyprland
 -- reports it as not VRR-capable on this AMD GPU.

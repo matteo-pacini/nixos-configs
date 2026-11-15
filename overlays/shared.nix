@@ -140,7 +140,7 @@
     # subproject — update_card() derefs pa_card_info.active_profile->name, but
     # pipewire-pulse can transiently report a card with zero profiles during
     # bring-up ("profiles inconsistent"), making active_profile NULL. Kills the
-    # autologin session on the GNOME hosts (BrightFalls, CauldronLake).
+    # autologin session on CauldronLake.
     # Reported upstream as libgvc issue #47, with the fix in MR !38 (open as of
     # 2026-11-03); the patch header predates both. See it for full context.
     # Drop once gnome-shell vendors a gvc with the guard.

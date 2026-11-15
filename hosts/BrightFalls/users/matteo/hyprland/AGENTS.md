@@ -11,8 +11,9 @@ the bottom says what is unproven; check it before relying on anything.
 
 ## What this is
 
-A Hyprland 0.57 session under UWSM, offered by GDM beside GNOME (GNOME is
-still the default and the autologin session), with a desktop shell written in
+A Hyprland 0.57 session under UWSM, the only desktop on the machine, started
+by greetd (automatic login once per boot, tuigreet after a logout), with a
+desktop shell written in
 QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
 session menu, polkit dialog, network, audio, calendar, system and Bluetooth
 panels, and a lock screen.
@@ -460,15 +461,16 @@ are hand-built modals sharing a look by copy; `system/Sensors.qml` reads
 `LockedList`; Notifications and the OSD sit at 44 px from the top, the
 drop-downs at `Style.panelTop` (48).
 
-**Removing GNOME.** Blockers: the login manager (GDM), an explicit keyring
-and SSH agent, the game test. `single-monitor` already runs on `hyprctl`
-(README, "single-monitor"); its `gdctl` half drops out of the build with
-GNOME. Also delete the `mutter-device-preferred-primary` udev tag in
-`hardware.nix` then. Then audit every
-service GNOME's module enables implicitly (upower, power-profiles-daemon,
-udisks2, accounts-daemon, colord, gvfs, dconf, portals), GTK look settings,
-ibus. Order: make Hyprland the default session with GNOME still installed,
-live with it, audit, replace GDM, remove GNOME.
+**GNOME removed** (2026-11-15). GDM became greetd, and what GNOME's module
+enabled implicitly is either declared (`desktop.nix`, `users/matteo/desktop.nix`,
+`printer.nix`) or gone: GNOME Shell and Settings, ibus, power-profiles-daemon,
+accounts-daemon, colord, EDS and Online Accounts, geoclue, at-spi. Proven
+only by build and eval until the first boot without GNOME, which has to show:
+the automatic login and tuigreet after a logout; the keyring locked after
+the automatic login and unlocked by the first lock-screen unlock; the SSH
+agent; file dialogs, screen sharing and dark GTK apps through the portals;
+the default apps; printing; the CPU's energy preference without
+power-profiles-daemon (it was `balance_performance`); no failed units.
 
 **Known quirks:**
 - The Blue microphone (`046d:0ab7`) can stop delivering samples until its

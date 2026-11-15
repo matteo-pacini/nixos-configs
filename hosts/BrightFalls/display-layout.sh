@@ -1,5 +1,4 @@
-# Monitor layout for single-monitor, in Hyprland or GNOME. gaming.nix
-# prepends gdctl: mutter's gdctl, empty without GNOME.
+# Monitor layout for single-monitor, in Hyprland.
 #
 #   display-layout single CMD...  run CMD with DP-2 off, then restore
 #   display-layout restore        DP-1 and DP-2 as declared; safe at any time
@@ -12,10 +11,6 @@ state="${XDG_RUNTIME_DIR:?}/display-layout/single.json"
 # every rule here states `disabled`.
 dp1='hl.monitor({ output = "DP-1", disabled = false, mode = "2560x1440@144", position = "0x0", scale = 1 })'
 dp2='hl.monitor({ output = "DP-2", disabled = false, mode = "2560x1440@60", position = "2560x0", scale = 1 })'
-gnome_normal=(
-  --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998
-  --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951
-)
 
 usage() {
   echo "usage: display-layout single CMD... | restore" >&2
@@ -28,14 +23,8 @@ hypr() {
   hyprctl --instance 0 "$@"
 }
 
-desktop() {
-  if hypr version >/dev/null 2>&1; then
-    echo hyprland
-  elif [ -n "$gdctl" ]; then
-    echo gnome
-  else
-    echo none
-  fi
+running() {
+  hypr version >/dev/null 2>&1
 }
 
 lua() {
@@ -85,17 +74,10 @@ refocus() {
 }
 
 restore() {
-  case $(desktop) in
-    gnome)
-      "$gdctl" set "${gnome_normal[@]}" || return 1
-      rm -f "$state"
-      return
-      ;;
-    none)
-      echo "display-layout: no Hyprland or GNOME session" >&2
-      return 1
-      ;;
-  esac
+  if ! running; then
+    echo "display-layout: no Hyprland session" >&2
+    return 1
+  fi
 
   # After single-monitor, even when the layout looks right, its rule must go.
   if [ -e "$state" ] || ! normal; then
@@ -125,17 +107,10 @@ single() {
   if [ -e "$state" ]; then
     exec "$@"
   fi
-  case $(desktop) in
-    hyprland)
-      mkdir -p "${state%/*}"
-      hypr -j monitors >"$state" || true
-      set_rules 'hl.monitor({ output = "DP-2", disabled = true })' "single-monitor: DP-2 off" || true
-      ;;
-    gnome)
-      "$gdctl" set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 || true
-      ;;
-    *) exec "$@" ;;
-  esac
+  running || exec "$@"
+  mkdir -p "${state%/*}"
+  hypr -j monitors >"$state" || true
+  set_rules 'hl.monitor({ output = "DP-2", disabled = true })' "single-monitor: DP-2 off" || true
   trap 'restore || true' EXIT
   "$@"
 }

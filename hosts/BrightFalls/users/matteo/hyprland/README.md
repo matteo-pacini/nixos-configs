@@ -38,6 +38,15 @@ with `NoDisplay` so no session chooser offers it
 file that points `AQ_DRM_DEVICES` at the udev links `/dev/dri/dgpu` and
 `/dev/dri/igpu`.
 
+There is no other desktop. The services the session's apps rely on are
+declared in `hosts/BrightFalls/desktop.nix`: gnome-keyring (secret service)
+and gcr-ssh-agent (`SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh`), gvfs, udisks2,
+upower, dconf, the portals (`hyprland` first, `gtk` for the file chooser
+and settings, `gnome-keyring` for secrets), and the apps that stay:
+Nautilus, Loupe, Papers, File Roller, Seahorse. GTK and Qt look, the dark
+colour scheme and the default apps (`mimeapps.list`, a read-only link) are
+in `users/matteo/desktop.nix`.
+
 - Workspaces 1 to 5 belong to DP-1 and 6 to 10 to DP-2 (`hypr/monitors.lua`,
   matched by `workspaceMonitors` in `quickshell/Bar.qml`); Super+1 … Super+0
   focus them, Super+Shift+1 … 0 move a window there. A config reload does not
@@ -52,8 +61,7 @@ file that points `AQ_DRM_DEVICES` at the udev links `/dev/dri/dgpu` and
   (restore the monitors, see [single-monitor](#single-monitor)) bound even
   when `bindings.lua` is broken.
 - logind ignores the sleep key and a short press of the power key, which
-  opens the session menu instead; a long press still powers off. Under GNOME
-  its own inhibitors make these settings irrelevant.
+  opens the session menu instead; a long press still powers off.
 
 ## Two layers
 
@@ -709,9 +717,7 @@ locked. Log out of consoles when done.
 `single-monitor <command>`, for example as a Steam launch option
 (`single-monitor %command%`), runs the command with DP-2 off and puts the
 layout back when it ends, by exit, crash or signal (`display-layout`,
-`hosts/BrightFalls/display-layout.sh`, through `hyprctl --instance 0`; under
-GNOME it runs mutter's `gdctl` instead, a half that exists only while GNOME is
-enabled in Nix).
+`hosts/BrightFalls/display-layout.sh`, through `hyprctl --instance 0`).
 
 - **While it runs** Hyprland moves workspaces 6 to 10 and their windows onto
   DP-1; Super+6 … Super+0 show them there, and one first opened meanwhile is
@@ -764,8 +770,6 @@ CalDAV server ──pimsync, one way──▶ ~/.local/share/calendars/       (v
   last export in place. pimsync's state is in `~/.local/state/pimsync/`.
 - `calendar-sync.timer`: 1 minute after the graphical session starts, then at
   every tenth minute of the clock, catching up after suspend (`Persistent`).
-  The service has the same `ExecCondition` as `quickshell`, so in the GNOME
-  session it is skipped.
 - Force a sync: `systemctl --user start calendar-sync.service` (the panel's
   R does the same). It blocks until done; `systemctl --user status
   calendar-sync` and `journalctl --user -u calendar-sync` show the outcome.

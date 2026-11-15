@@ -12,10 +12,7 @@ let
       hyprland
       jq
     ];
-    text = ''
-      gdctl=${lib.optionalString config.services.desktopManager.gnome.enable "${pkgs.mutter}/bin/gdctl"}
-    ''
-    + builtins.readFile ./display-layout.sh;
+    text = builtins.readFile ./display-layout.sh;
   };
 in
 {
