@@ -196,4 +196,46 @@ t("uses: nothing known", () => {
     assert.deepEqual(S.uses(null, [], {}, "x"), { roles: [], lines: [] });
 });
 
+t("every entry in SERVICES is complete: a name, and a question about the device", () => {
+    for (const [h, [name, question]] of Object.entries(S.SERVICES)) {
+        assert.match(h, /^[0-9a-f]{4}$/, h);
+        assert.ok(name && !/[0-9a-f]{4}-|0x/i.test(name), h);
+        assert.match(question, /^Let \{d\} .*\?$/, h);
+        assert.equal(S.describe(base(h), "Phone").question, question.replace("{d}", "Phone"), h);
+    }
+});
+
+t("questions without a device name", () => {
+    assert.equal(S.describe(base("110b")).question, "Let This device play its audio through this computer?");
+});
+
+t("uses: audio sent to the device (A2DP source here)", () => {
+    const links = { transports: [{ uuid: base("110a"), state: "active" }], control: false, network: false, calls: "none" };
+    assert.deepEqual(S.uses(links, [], {}, "Speaker").lines, [["audio from here to Speaker", "sending, nothing linked to it"]]);
+    const nodes = [{ profile: "a2dp-sink", mediaClass: "Audio/Sink", linked: true }];
+    const u = S.uses(links, nodes, {}, "Speaker");
+    assert.deepEqual(u.lines, [["audio from here to Speaker", "playing on it now"]]);
+    assert.deepEqual(u.roles, [{ id: "audio", state: "active" }]);
+});
+
+t("uses: an LE Audio transport, and audio nodes without transports", () => {
+    const le = { transports: [{ uuid: base("184e"), state: "idle" }], control: false, network: false, calls: "none" };
+    assert.deepEqual(S.uses(le, [], {}, "Buds").lines, [["audio (LE Audio)", "connected, idle"]]);
+    const nodes = [{ profile: "bap-sink", mediaClass: "Audio/Sink", linked: false }];
+    assert.deepEqual(S.uses(null, nodes, {}, "Buds"), { roles: [{ id: "audio", state: "connected" }], lines: [["audio", "connected"]] });
+    nodes[0].linked = true;
+    assert.deepEqual(S.uses(null, nodes, {}, "Buds").lines, [["audio", "playing now"]]);
+});
+
+t("uses: no device name", () => {
+    const links = { transports: [{ uuid: base("110b"), state: "idle" }], control: false, network: false, calls: "none" };
+    assert.deepEqual(S.uses(links, [], {}).lines, [["audio from the device", "connected, idle"]]);
+});
+
+t("uses: two call profiles answered: the first one answered counts, both covered", () => {
+    const u = S.uses({ transports: [], calls: "none" }, [], { [base("111f")]: true, [base("1112")]: false }, "Phone");
+    assert.deepEqual(u.roles, [{ id: "calls", state: "allowed" }]);
+    assert.deepEqual(u.lines, [["calls through this computer", "allowed, not connected"]]);
+});
+
 console.log(`ok, ${n} tests`);
