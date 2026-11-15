@@ -1125,8 +1125,10 @@ required check for merging into `master`:
   inline and as recorded lines in `tests/office-panel/fixtures/` (one file per
   panel state; `"@-N"` in a time means N s before the test's fixed now):
   ages, brightness percent and raw values, steps, the row and header texts,
-  locks, banners, the sockets' total, the bar item, and the pending,
-  confirmed, not-confirmed and refused paths.
+  locks and their footer texts, banners (connecting included), the sockets'
+  total, the bar item, and the pending, confirmed, not-confirmed (each
+  wording) and refused paths. A device list with no sockets throws (a
+  known, unreachable bug; see the test).
 - `nix build .#checks.x86_64-linux.office-helper`: runs `desk-mqtt` against
   a Mosquitto on loopback, with `tests/office/test-desk-mqtt.py` playing
   Zigbee2MQTT under invented names and a spy on `#`: retained state at

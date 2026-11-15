@@ -379,4 +379,108 @@ t("fixture: config missing or invalid", () => {
     assert.equal(O.single(fixture("12-config-invalid")), "The office MQTT config is not valid (topics.desk1).");
 });
 
+t("connecting: a warning until the broker answers", () => {
+    let st = O.initial(true);
+    st = O.apply(st, { event: "config", state: "ok", read_only: false, devices: DEVICES });
+    assert.deepEqual(O.banner(st, NOW), { tone: "warn", text: "Connecting to the MQTT broker…" });
+    st = O.apply(st, { event: "broker", state: "connecting", since: ago(1), ever_up: false });
+    assert.deepEqual(O.banner(st, NOW), { tone: "warn", text: "Connecting to the MQTT broker…" });
+    assert.equal(O.liveText(st), "");
+    assert.equal(O.lockText(st, "light"), "The MQTT broker is not connected.");
+});
+
+t("lock texts for the blind: broker, bridge, offline, type", () => {
+    let st = O.apply(live(), { event: "broker", state: "down", since: ago(5), ever_up: true });
+    assert.equal(O.lockText(st, "blind"), "The MQTT broker is not connected.");
+    st = O.apply(live(), { event: "bridge", state: "offline", since: ago(5) });
+    assert.equal(O.lockText(st, "blind"), "Zigbee2MQTT is offline.");
+    assert.equal(O.lockText(st, "light"), "Zigbee2MQTT is offline.");
+    assert.equal(O.lockText(live({ shade: { availability: "offline" } }), "blind"), "Shade is offline.");
+    assert.equal(O.lockText(live({ shade: { definition: { matches: false, properties: [] } } }), "blind"),
+        "Zigbee2MQTT does not list Shade as a blind yet.");
+    assert.equal(O.lockText(live(), "blind"), "");
+});
+
+t("before the first full report: not live, the rows wait", () => {
+    let st = O.initial(true);
+    for (const ev of [
+        { event: "config", state: "ok", read_only: false, devices: DEVICES },
+        { event: "broker", state: "up", since: ago(1), ever_up: true },
+        { event: "bridge", state: "online", since: null }])
+        st = O.apply(st, ev);
+    assert.equal(O.liveText(st), "");
+    st = O.apply(st, { event: "synced" });
+    assert.equal(O.liveText(st), "live");
+    // A broker drop clears synced: not live again until the next one.
+    st = O.apply(st, { event: "broker", state: "down", since: ago(1), ever_up: true });
+    st = O.apply(st, { event: "broker", state: "up", since: ago(0), ever_up: true });
+    assert.equal(O.liveText(st), "");
+});
+
+t("not confirmed, light: what it still is", () => {
+    const note = (values, action, value) => {
+        let st = live({ lamp: { values } });
+        st = O.sent(st, 7, "lamp", action, value, Date.parse("2026-11-15T18:44:00Z"));
+        st = O.apply(st, { event: "command", id: 7, state: "not-confirmed" });
+        return st.notes.lamp.footer;
+    };
+    assert.equal(note({ state: "OFF", brightness: 140 }, "on", null), "Lamp did not confirm on; still off.");
+    assert.equal(note({ state: "ON" }, "off", null), "Lamp did not confirm off; still on.");
+    assert.equal(note({}, "off", null), "Lamp did not confirm off; still not known.");
+});
+
+t("not confirmed, blind: close, stop, a position", () => {
+    const sub = (action, value) => {
+        let st = live();
+        st = O.sent(st, 8, "shade", action, value, Date.parse("2026-11-15T18:44:00Z"));
+        st = O.apply(st, { event: "command", id: 8, state: "not-confirmed" });
+        return [O.blindView(st, NOW, null, null).sub, st.notes.shade.footer];
+    };
+    assert.deepEqual(sub("close", null), ["Did not start closing (asked 18:44:00)",
+        "Shade did not confirm within 5 s; still Open 60%."]);
+    assert.equal(sub("stop", null)[0], "Did not stop (asked 18:44:00)");
+    assert.equal(sub("position", 40)[0], "Did not move to 40% (asked 18:44:00)");
+    let st = O.sent(live(), 9, "shade", "close", null, NOW);
+    st = O.apply(st, { event: "command", id: 9, state: "refused", reason: "bridge-offline" });
+    assert.equal(st.notes.shade.footer, "Shade: not sent, Zigbee2MQTT is offline.");
+});
+
+t("blind text when stopped without a position", () => {
+    const b = O.blindView(live({ shade: { values: { state: "STOP" }, definition: { matches: true, properties: ["state"] } } }), NOW, null, null);
+    assert.equal(b.sub, "Stopped");
+});
+
+t("two commands to one device: the newer one is shown", () => {
+    let st = O.sent(live(), 10, "lamp", "brightness", O.toRaw(30), NOW);
+    st = O.sent(st, 11, "lamp", "brightness", O.toRaw(90), NOW);
+    assert.equal(O.lightView(st, NOW, null).handle, 90);
+});
+
+t("events the panel does not know change nothing", () => {
+    const st = live();
+    assert.equal(O.apply(st, { event: "rumour", id: "lamp" }), st);
+    assert.equal(O.apply(st, { event: "command", id: 99, state: "confirmed" }), st);
+});
+
+t("bar: broker up, no socket counted yet", () => {
+    const st = live({ s1: { values: null }, s2: { values: null }, s3: { values: null } });
+    assert.equal(O.barView(st, NOW).watts, "— W");
+});
+
+t("KNOWN BUG: a device list with no sockets throws", () => {
+    // socketsView takes Math.min() of no report times (Infinity) and turns
+    // it into a date. The shipped list (desk-mqtt.nix) has five sockets, so
+    // nothing reaches this today. When fixed, expect "0 sockets…" here.
+    let st = O.initial(true);
+    for (const ev of [
+        { event: "config", state: "ok", read_only: false, devices: DEVICES.filter(d => d.kind !== "socket") },
+        { event: "broker", state: "up", since: ago(600), ever_up: true },
+        { event: "bridge", state: "online", since: null },
+        dev("lamp", "light", "Lamp", { state: "ON", brightness: 140 }),
+        { event: "synced" }])
+        st = O.apply(st, ev);
+    assert.throws(() => O.socketsView(st, NOW), RangeError);
+    assert.throws(() => O.barView(st, NOW), RangeError);
+});
+
 console.log(`ok: ${n} tests`);
