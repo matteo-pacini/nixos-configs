@@ -162,6 +162,7 @@ nix build .#checks.x86_64-linux.calendar-export  # fixtures through the export
 nix build .#checks.x86_64-linux.calendar-panel   # calendar/queries.js under node
 nix build .#checks.x86_64-linux.bluetooth-panel  # bluetooth/services.js, devices.js under node
 nix build .#checks.x86_64-linux.tray-panel       # tray/menu.js under node
+nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback Mosquitto
 ```
 
 The calendar-panel, bluetooth-panel and tray-panel checks read the repository's `.js`
@@ -173,7 +174,7 @@ files, so they fail until a live change to those files is pulled. Only `desk-syn
 ```bash
 nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export \
   .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
-  .#checks.x86_64-linux.tray-panel \
+  .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-helper \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -260,7 +261,8 @@ Each was learned the hard way or is one mistake away.
   they have the data (Networking, Pipewire, Bluetooth, Hyprland); `FileView`
   for sysfs and procfs; one `Process` run on open or on change; a
   session-long helper only where a D-Bus object must be exported (the
-  Bluetooth agent: QML cannot export one). Read when shown, never poll while
+  Bluetooth agent: QML cannot export one) or a connection must be held and
+  its loss reported (`desk-mqtt`, the MQTT client). Read when shown, never poll while
   hidden; measure the cost (`/proc/<pid>/stat` of the shell over 60 s), don't
   assume it.
 - **Say only what is true.** No figure without a source (no link
@@ -308,10 +310,11 @@ not.
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
+| `desk-mqtt.nix`, `desk-mqtt.py` | `desk-mqtt`, the office panel's MQTT client (JSON lines on stdin/stdout): watches the light, blind and sockets on Zigbee2MQTT, publishes only the light's and blind's `/set`; the device ids and labels are in the `.nix`, the broker and names in the `office-mqtt` agenix secret (README, "Office: desk-mqtt") |
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office/` (desk-mqtt against a loopback Mosquitto) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -423,6 +426,11 @@ was written; check the reports of any newer work for its own.
   a report lists as expected still is.
 
 **Not built:**
+- The office panel (light, blind, sockets' power). Its helper, `desk-mqtt`,
+  is built and tested (`office-helper` check; read-only against the real
+  broker); the panel has a chosen design and nothing in QML yet. No command
+  has been sent to the real light or blind; the first ones are to be made
+  with the user watching.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.

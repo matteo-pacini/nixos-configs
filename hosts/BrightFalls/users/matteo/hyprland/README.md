@@ -23,6 +23,7 @@ work) is in [AGENTS.md](AGENTS.md).
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
+- [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
 - [Tests](#tests)
 
 ## The session
@@ -947,6 +948,70 @@ default (`partial_sync = "revert"`). Run `vdirsyncer discover` once, then
 names are a separate step there). vdirsyncer does not write the `order` file,
 so the header's calendar order falls back to directory names.
 
+## Office: desk-mqtt
+
+`desk-mqtt` (`desk-mqtt.py`, `desk-mqtt.nix`) is the helper behind the office
+panel (the panel itself is not built yet): one long-running process the
+shell starts, as it starts `desk-bt-agent`, speaking JSON lines on stdin and
+stdout. It watches one light, one blind and five sockets on Zigbee2MQTT
+through the MQTT broker on Nexus, and sends commands to the light and the
+blind only. The full protocol, every event and command with its fields, is
+the docstring at the top of `desk-mqtt.py`.
+
+- **In**: `<base>/bridge/state`, `<base>/bridge/devices`, and per device
+  `<base>/<name>` and `<base>/<name>/availability`. Zigbee2MQTT retains all
+  of them and stamps device state with `last_seen`, so a fresh start shows
+  every device's last value and age at once. `{"event": "synced"}` comes 1 s
+  after the subscription is acknowledged (Mosquitto writes retained messages
+  after the SUBACK); a device with no values by then has nothing retained.
+- **Out**: only `<base>/<light>/set` and `<base>/<blind>/set`, at QoS 0, once
+  per command, never retried. Commands: light `on`, `off`, `brightness`
+  1..254 (also switches it on); blind `open`, `close`, `stop`, `position`
+  0..100. A command is confirmed by the device's next non-retained state
+  showing the result within 5 s, else reported not confirmed. No `/get` is
+  ever sent: retained state makes it unnecessary.
+- **Walls**: sockets have no command at all (`COMMANDS` in `desk-mqtt.py` has
+  no socket entry, and its single `publish` call asserts the kind); anything
+  outside the command language is refused with a reason; a command is also
+  refused while the broker is down, Zigbee2MQTT is offline, the device is
+  offline, or `bridge/devices` does not show the target as a light (or a
+  cover), so a config naming a socket as the light still cannot switch it.
+  `--read-only` refuses every command; it is how the helper is run against
+  the real broker during development.
+- **Broker**: retried every 10 s; `broker` events say whether it was ever up
+  and since when it is down. No ACL on the broker narrows what this machine
+  may publish; the helper's allowlist is the only wall.
+- **Cost**: 0.01 s CPU over 60 s and about 32 MB resident, read-only against
+  the real broker with all seven devices reporting.
+
+### Device list and secret
+
+The repository holds only ids, kinds and labels (`desk-mqtt.nix`: `light`,
+`blind`, and sockets `pc`, `egpu`, `desk1` to `desk3`). The broker and the
+Zigbee2MQTT names are in `secrets/brightfalls/office-mqtt.age`, encrypted to
+the BrightFalls host key and decrypted to `/run/agenix/brightfalls/office-mqtt`
+(owner `matteo`):
+
+```json
+{"host": "<broker>", "port": 1883, "base": "zigbee2mqtt",
+ "topics": {"light": "<name>", "blind": "<name>", "pc": "<name>",
+            "egpu": "<name>", "desk1": "<name>", "desk2": "<name>",
+            "desk3": "<name>"}}
+```
+
+Without the file the helper says `{"event": "config", "state": "missing"}`
+and refuses every command; a malformed one gives `"invalid"` with the key at
+fault (never a value). To recreate it (needs only the public key):
+
+```bash
+cd secrets
+rm brightfalls/office-mqtt.age
+EDITOR="cp /tmp/v" nix run --inputs-from .. agenix -- -e brightfalls/office-mqtt.age
+rm /tmp/v
+```
+
+with the JSON written to `/tmp/v` first.
+
 ## Tests
 
 Flake checks, defined in `tests/default.nix`:
@@ -978,3 +1043,11 @@ Flake checks, defined in `tests/default.nix`:
 - `nix build .#checks.x86_64-linux.tray-panel`: runs
   `user/quickshell/tray/menu.js` under node (`tests/tray/test-tray.js`): the
   header's name and the entries' check and radio marks.
+- `nix build .#checks.x86_64-linux.office-helper`: runs `desk-mqtt` against
+  a Mosquitto on loopback, with `tests/office/test-desk-mqtt.py` playing
+  Zigbee2MQTT under invented names and a spy on `#`: retained state at
+  connect and "nothing retained", availability and Zigbee2MQTT offline, a
+  confirmed and an unconfirmed command, socket and malformed commands
+  refused with nothing published, the broker dropping and coming back, the
+  broker unreachable at start, a missing and an invalid config, read-only,
+  and a config that names a socket as the light. About 40 s.
