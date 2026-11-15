@@ -308,7 +308,8 @@ not.
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
 | `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node) |
-| `defaults/hypr/` | Read-only layer: `rescue.lua`, `theme.lua` |
+| `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
+| `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
 | `../../../audio/` | PipeWire and WirePlumber settings the audio panel reports, Bluetooth codecs |
 
@@ -403,8 +404,8 @@ was written; check the reports of any newer work for its own.
 - The final lock build (self-release removed) locked for real; the lock
   before sleep; `desk-unlock`'s fallback for a hung lock process.
 - A game under Hyprland (Proton fullscreen on the RX 6800 XT with two
-  monitors has open upstream freeze reports); locking over a game or a
-  Sunshine stream; critical notifications over a real fullscreen window.
+  monitors has open upstream freeze reports); locking over a game;
+  critical notifications over a real fullscreen window.
 - Suspend: the eGPU does not come back from it.
 - Bluetooth keyboards (type-a-code pairing), LE devices, a real low-battery
   device.
@@ -416,8 +417,6 @@ was written; check the reports of any newer work for its own.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.
-- `single-monitor` and the Sunshine prepare command on `hyprctl` instead of
-  mutter's `gdctl`.
 - Tray menu styling (they are Qt platform menus), friendly launcher category
   names, scrolling for panels taller than the screen (the audio panel runs
   off the bottom with many programs).
@@ -464,7 +463,10 @@ are hand-built modals sharing a look by copy; `system/Sensors.qml` reads
 drop-downs at `Style.panelTop` (48).
 
 **Removing GNOME.** Blockers: the login manager (GDM), an explicit keyring
-and SSH agent, the `gdctl` users above, the game test. Then audit every
+and SSH agent, the game test. `single-monitor` already runs on `hyprctl`
+(README, "single-monitor"); its `gdctl` half drops out of the build with
+GNOME. Also delete the `mutter-device-preferred-primary` udev tag in
+`hardware.nix` then. Then audit every
 service GNOME's module enables implicitly (upower, power-profiles-daemon,
 udisks2, accounts-daemon, colord, gvfs, dconf, portals), GTK look settings,
 ibus. Order: make Hyprland the default session with GNOME still installed,

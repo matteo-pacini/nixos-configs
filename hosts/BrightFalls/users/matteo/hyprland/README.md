@@ -20,7 +20,7 @@ work) is in [AGENTS.md](AGENTS.md).
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel)
 - [Lock screen](#lock-screen)
-- [Streaming](#streaming)
+- [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Tests](#tests)
 
@@ -43,8 +43,9 @@ file that points `AQ_DRM_DEVICES` at the udev links `/dev/dri/dgpu` and
   fullscreen on DP-1 with tearing allowed, the game content type (direct
   scanout) and the pointer confined.
 - `defaults/hypr/rescue.lua` keeps Super+Return (terminal), Super+Shift+R
-  (reload) and Super+Shift+Escape (exit, `uwsm stop`) bound even when
-  `bindings.lua` is broken.
+  (reload), Super+Shift+Escape (exit, `uwsm stop`) and Super+Shift+D
+  (restore the monitors, see [single-monitor](#single-monitor)) bound even
+  when `bindings.lua` is broken.
 - logind ignores the sleep key and a short press of the power key, which
   opens the session menu instead; a long press still powers off. Under GNOME
   its own inhibitors make these settings irrelevant.
@@ -53,7 +54,7 @@ file that points `AQ_DRM_DEVICES` at the udev links `/dev/dri/dgpu` and
 
 | Directory | Installed at | How |
 |-----------|--------------|-----|
-| `defaults/` | `~/.local/share/desk/` | Read-only links into the store (`xdg.dataFile`). Holds what a live edit must not be able to break: `hypr/rescue.lua` (terminal, reload and exit binds) and `hypr/theme.lua` (reads the palette, with built-in fallbacks). |
+| `defaults/` | `~/.local/share/desk/` | Read-only links into the store (`xdg.dataFile`). Holds what a live edit must not be able to break: `hypr/rescue.lua` (terminal, reload, exit and restore-monitors binds) and `hypr/theme.lua` (reads the palette, with built-in fallbacks). |
 | `user/` | `~/.config/` | Every file is copied, at the same relative path, as a regular 0644 file by `desk-sync activate`. This tree is the manifest: add a file here and it is installed, with no list to update in `default.nix`. |
 
 `user/hypr/hyprland.lua` loads each user file with `require`, which Hyprland
@@ -665,66 +666,43 @@ console:
 Any logged-in text console bypasses the lock: Hyprland switches VTs even while
 locked. Log out of consoles when done.
 
-## Streaming
+## single-monitor
 
-Sunshine (`hosts/BrightFalls/gaming.nix`) streams from a 4K dummy plug on the
-eGPU's HDMI port, `HDMI-A-1`, which `hypr/monitors.lua` keeps disabled.
-`display-layout` (`hosts/BrightFalls/display-layout.sh`) switches the
-monitors: here through `hyprctl --instance 0`, under GNOME through mutter's
-`gdctl` (that half exists only while GNOME is enabled in Nix).
+`single-monitor <command>`, for example as a Steam launch option
+(`single-monitor %command%`), runs the command with DP-2 off and puts the
+layout back when it ends, by exit, crash or signal (`display-layout`,
+`hosts/BrightFalls/display-layout.sh`, through `hyprctl --instance 0`; under
+GNOME it runs mutter's `gdctl` instead, a half that exists only while GNOME is
+enabled in Nix).
 
-- **Stream start**, Sunshine's prepare command (`display-layout stream-on`):
-  saves each monitor's workspace to `$XDG_RUNTIME_DIR/display-layout/stream.json`,
-  starts the watchdog, turns the dummy on at 3840x2160@60, and only once
-  Hyprland reports it on turns DP-1 and DP-2 off. The dummy must be the only
-  lit output: with no `output_name`, Sunshine's KMS capture takes the first
-  lit plane it finds. Every workspace moves onto it, and games, whose rule asks
-  for DP-1, open there. If a step fails it puts the monitors back and exits
-  non-zero, and Sunshine refuses the stream (Sunshine itself runs no undo for
-  a prepare that failed).
-- **Stream end**, the undo (`display-layout restore`): DP-1 and DP-2 on with
-  their modes from `monitors.lua` (repeated in the script), then `hyprctl
-  reload`, which drops every rule the prepare set and applies `monitors.lua`,
-  dummy off. Hyprland moves workspaces 1 to 5 and 6 to 10 back to their
-  monitors, then each monitor gets back the workspace it showed before. The
-  reload also ends game mode.
-- Sunshine runs the undo only when the client quits the app, the app is
-  closed in its web UI, or Sunshine shuts down cleanly. A client that
-  disconnects, or a network drop, leaves the app running and the undo unrun.
+- **While it runs** Hyprland moves workspaces 6 to 10 and their windows onto
+  DP-1; Super+6 … Super+0 show them there, and one first opened meanwhile is
+  created on DP-1. Workspaces 1 to 5 are untouched.
+- **When it ends**, `display-layout restore`: DP-2 back on, which returns
+  workspaces 6 to 10 to it (including any created meanwhile, by their rule in
+  `monitors.lua`); then `hyprctl reload`, which drops the rule
+  `single-monitor` set. Each monitor then shows the workspace it showed
+  before. The reload also ends game mode.
+- A second `single-monitor` started inside the first only runs its command.
+- Every rule the script sets states `disabled`: `hl.monitor` in a running
+  session starts from the output's existing rule and changes only the fields
+  given. Each comes with a short Hyprland notification, because a new monitor
+  rule takes effect only when a monitor next draws a frame.
 
-**When the undo never runs.** Each layer, and what it does not cover:
+**Restoring by hand**, if DP-2 stays off:
 
-1. **Watchdog**, the `display-layout-watch` user unit that the prepare starts
-   before it changes anything, stopped with the session. It restores within
-   5 s once Sunshine is not running, and after 60 s with no stream (Sunshine
-   binds its video port, 47998, only while a stream runs; a client that
-   vanished counts once Sunshine's own ping timeout drops it). It covers a
-   Sunshine crash or stop, a client that disappears, a network drop, and a
-   prepare killed half-way. It does not cover a Sunshine that stays up with a
-   dead stream it never drops, or the watchdog itself being killed.
-2. **The undo is safe at any time.** With nothing to undo it changes nothing.
-   If the reload cannot load `monitors.lua`, it sets the layout directly.
-3. **Super+Shift+D** runs `display-layout restore`. It is in `rescue.lua`, out
-   of reach of live edits, and works while locked; keys work with every
-   monitor dark.
-4. **Super+Shift+R** (reload) applies `monitors.lua`, as long as the config
-   parses: nothing here uses wlr-output-management, whose settings would
-   outlive a reload.
-5. **A new session** always starts with `monitors.lua`'s layout: everything
-   the prepare sets is runtime state of the running Hyprland.
-6. **By hand**, from a text console (Ctrl+Alt+F4, log in as matteo) or over
-   SSH: `display-layout restore`, or `hyprctl --instance 0 reload`. Then
-   `exit` and Ctrl+Alt+F3.
+- **Super+Shift+D** runs `display-layout restore`. It is in `rescue.lua`, out
+  of reach of live edits, and works while locked. With nothing to restore it
+  changes nothing; if the config reload fails, it sets the layout directly.
+- **Super+Shift+R** (reload) applies `monitors.lua`, as long as the config
+  parses.
+- A new session always starts with `monitors.lua`'s layout.
+- From a text console (Ctrl+Alt+F4, log in as matteo) or over SSH:
+  `display-layout restore` or `hyprctl --instance 0 reload`, then `exit` and
+  Ctrl+Alt+F3.
 
-After a watchdog restore Sunshine still counts the app as running: quit it in
-Moonlight before streaming again, or a resumed stream captures a real monitor.
-
-`single-monitor <command>`, for a Steam launch option (`single-monitor
-%command%`): DP-2 off while the command runs, `display-layout restore` when it
-exits, however it exits. During a stream it only runs the command.
-
-Logs: `journalctl --user -u sunshine` (its `Executing Do Cmd` and `Executing
-Undo Cmd` lines) and `journalctl --user -u display-layout-watch`.
+`HDMI-A-1` in `monitors.lua` is a 4K dummy plug on the eGPU, declared disabled
+so it never takes part in the layout.
 
 ## Calendar events
 

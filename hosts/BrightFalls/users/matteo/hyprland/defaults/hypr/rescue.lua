@@ -16,8 +16,8 @@ rescue("Session", "SUPER + SHIFT + R", "Reload config", hl.dsp.reload_config())
 -- UWSM stops the session's units in order; exiting Hyprland directly would
 -- pull the compositor out from under them.
 rescue("Session", "SUPER + SHIFT + ESCAPE", "Exit session", hl.dsp.exec_cmd("uwsm stop"))
--- DP-1 and DP-2 back on after a Sunshine stream or single-monitor left them
--- off (hosts/BrightFalls/display-layout.sh). Works while locked too, since
--- the lock may be on a monitor nobody can see.
+-- DP-1 and DP-2 back as declared if single-monitor left DP-2 off
+-- (hosts/BrightFalls/display-layout.sh). Works while locked too, since the
+-- lock may be on a monitor nobody can see.
 rescue("Session", "SUPER + SHIFT + D", "Restore monitors", hl.dsp.exec_cmd("display-layout restore"),
     { locked = true })

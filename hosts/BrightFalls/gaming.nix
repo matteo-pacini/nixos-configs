@@ -5,20 +5,15 @@
   ...
 }:
 let
-  # Sunshine's base port; the video stream is on port + 9.
-  sunshinePort = 47989;
   displayLayout = pkgs.writeShellApplication {
     name = "display-layout";
     runtimeInputs = with pkgs; [
       coreutils
       hyprland
-      iproute2
       jq
-      systemd
     ];
     text = ''
       gdctl=${lib.optionalString config.services.desktopManager.gnome.enable "${pkgs.mutter}/bin/gdctl"}
-      video_port=${toString (sunshinePort + 9)}
     ''
     + builtins.readFile ./display-layout.sh;
   };
@@ -84,38 +79,4 @@ in
       exec ${lib.getExe displayLayout} single "$@"
     '')
   ];
-
-  services.sunshine = {
-    enable = true;
-    openFirewall = true;
-    autoStart = true;
-    capSysAdmin = true;
-    applications = {
-      apps = [
-        {
-          name = "Desktop";
-          image-path = "desktop.png";
-        }
-      ];
-    };
-    settings = {
-      sunshine_name = "BrightFalls Sunshine";
-      port = sunshinePort;
-      # With no capture method set, Sunshine also probes the XDG portal at
-      # every start, which raises GNOME's remote-control dialog at each login.
-      capture = "kms";
-      # Stream from the 4K dummy plug on HDMI alone, then restore the dual DP
-      # monitors; display-layout.sh has the layers that restore them when
-      # the undo never runs.
-      global_prep_cmd = builtins.toJSON [
-        {
-          do = "${lib.getExe displayLayout} stream-on";
-          undo = "${lib.getExe displayLayout} restore";
-        }
-      ];
-      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
-      fec_percentage = 10;
-      qp = 10;
-    };
-  };
 }
