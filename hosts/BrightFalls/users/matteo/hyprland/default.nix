@@ -71,6 +71,9 @@ in
     # The network panel's speed-test providers (quickshell/network/SpeedTest.qml).
     cfspeedtest
     ookla-speedtest
+    # gdbus: the shell's notifications from Bluetooth, the audio panel and
+    # reminders, and the lock screen's watch for sleep (quickshell/Lockscreen.qml).
+    glib.bin
     (callPackage ../audio-output-cycle.nix { })
     (callPackage ./bt-agent.nix { })
   ];

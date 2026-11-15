@@ -153,6 +153,9 @@ one line each; a new component is a new file beside it and a line there, and
 a component's own parts go in a directory named after it (`import
 qs.<dir>`). Its one pragma sets the icon theme (Adwaita); pragmas are read
 at startup only, so changing one needs `systemctl --user restart quickshell`.
+The service sets no PATH of its own: the commands the shell runs by name
+come from the user's profile (`home.packages` in `default.nix`) or the
+system's, `gdbus` from `glib.bin` among them.
 
 `Theme.qml` is the palette and fonts every surface shares. Every surface is
 drawn the same way: `Theme.background` at 0.96 alpha, a 1 px `Theme.purple`
