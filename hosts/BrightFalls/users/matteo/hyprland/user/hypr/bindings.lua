@@ -56,11 +56,25 @@ bind("Audio and media", "XF86AudioPause", "Play, next, previous", hl.dsp.exec_cm
 bind("Audio and media", "XF86AudioNext", "Play, next, previous", hl.dsp.exec_cmd("playerctl next"), { locked = true })
 bind("Audio and media", "XF86AudioPrev", "Play, next, previous", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
 
-local screenshot = "satty --filename - --output-filename '~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png'"
-    .. " --copy-command wl-copy --early-exit"
-bind("Capture and dictation", "Print", "Screenshot region", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | " .. screenshot))
+local slurped = "g=$(slurp) && "
+local notifySaved = "busctl --user --quiet call org.freedesktop.Notifications /org/freedesktop/Notifications"
+    .. " org.freedesktop.Notifications Notify 'susssasa{sv}i' Screenshot 0 '' Screenshot 'Saved and copied' 0 0 3000"
+local function saveAndCopy(grimArgs)
+    return "f=\"$HOME/Pictures/Screenshots/Screenshot from $(date '+%Y-%m-%d %H-%M-%S').png\" && grim " .. grimArgs
+        .. " \"$f\" && wl-copy --type image/png < \"$f\" && " .. notifySaved
+end
+-- In Satty, Enter, Ctrl+C and the copy button copy, save and close; Ctrl+S
+-- only saves and keeps it open.
+local satty = "satty --filename - --output-filename '~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png'"
+    .. " --copy-command wl-copy --save-after-copy --early-exit copy --actions-on-enter save-to-clipboard"
+bind("Capture and dictation", "Print", "Screenshot region", hl.dsp.exec_cmd(slurped .. saveAndCopy("-g \"$g\"")))
 bind("Capture and dictation", "SHIFT + Print", "Screenshot monitor", function()
-    hl.dispatch(hl.dsp.exec_cmd("grim -o " .. hl.get_active_monitor().name .. " - | " .. screenshot))
+    hl.dispatch(hl.dsp.exec_cmd(saveAndCopy("-o " .. hl.get_active_monitor().name)))
+end)
+bind("Capture and dictation", "SUPER + Print", "Edit region in Satty",
+    hl.dsp.exec_cmd(slurped .. "grim -g \"$g\" - | " .. satty))
+bind("Capture and dictation", "SUPER + SHIFT + Print", "Edit monitor in Satty", function()
+    hl.dispatch(hl.dsp.exec_cmd("grim -o " .. hl.get_active_monitor().name .. " - | " .. satty))
 end)
 -- Hyprland gives the portal shortcuts Hex registers no key, so these run
 -- Hex's commands instead. Toggle matches Hex's shortcut_mode setting.
