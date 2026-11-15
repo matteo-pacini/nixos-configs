@@ -1109,7 +1109,9 @@ required check for merging into `master`:
 - `nix build .#checks.x86_64-linux.calendar-panel`: runs
   `user/quickshell/calendar/queries.js` under node against invented events
   (`tests/calendar/panel/`, written by `make-fixture.js` and
-  `make-reminders-fixture.js` there), dates in London time.
+  `make-reminders-fixture.js` there, plus a small export built inline for
+  markup in titles and calendar names, unlisted calendars and long
+  summaries), dates in London time.
 - `nix build .#checks.x86_64-linux.bluetooth-panel`: runs
   `user/quickshell/bluetooth/services.js` and `devices.js` under node
   against invented devices and links (`tests/bluetooth/test-bluetooth.js`):
