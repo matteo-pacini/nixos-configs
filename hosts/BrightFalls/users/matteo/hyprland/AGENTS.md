@@ -508,9 +508,6 @@ power-profiles-daemon (it was `balance_performance`); no failed units.
 
 **Known bugs, pinned by the checks and not fixed** (each check says what
 to change once the bug is fixed):
-- A malformed `bridge/devices` message ends `desk-mqtt`'s network thread:
-  the process lives on, never says the broker is down, and reports nothing
-  more (`office-helper` check).
 - Latent, unreachable with the shipped data: `office.js` throws for a
   device list with no sockets (`office-panel`); `queries.js` `parse`
   throws on a broken day line instead of returning null (`calendar-panel`).

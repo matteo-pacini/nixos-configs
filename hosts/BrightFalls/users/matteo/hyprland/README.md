@@ -1147,8 +1147,9 @@ required check for merging into `master`:
   confirmed, socket and malformed commands refused with nothing published,
   the broker dropping and coming back, the broker unreachable at start and
   refusing the connection, a missing config and each way a config can be
-  invalid, read-only, a config that names a socket as the light, and
-  malformed device definitions from the broker (a known bug, see the test).
+  invalid, read-only, a config that names a socket as the light, malformed
+  messages of each kind from the broker (ignored, the helper still
+  reports), and the network thread dying (broker down, exit status 1).
   About 45 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)

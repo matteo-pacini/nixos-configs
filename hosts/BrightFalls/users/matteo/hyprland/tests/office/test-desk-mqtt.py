@@ -141,8 +141,10 @@ class Zigbee2MQTT:
         self.client.loop_start()
         assert self.connected.wait(5), "fake Zigbee2MQTT did not connect"
 
-    def publish(self, topic, payload):
-        info = self.client.publish(f"{BASE}/{topic}", json.dumps(payload), qos=1, retain=True)
+    def publish(self, topic, payload, retain=True):
+        """Publishes `payload` as JSON, or as it is if it is a string."""
+        text = payload if isinstance(payload, str) else json.dumps(payload)
+        info = self.client.publish(f"{BASE}/{topic}", text, qos=1, retain=retain)
         info.wait_for_publish(5)
 
     def state(self, device):
@@ -169,8 +171,8 @@ class Zigbee2MQTT:
 
 
 class Helper:
-    def __init__(self, *args):
-        self.proc = subprocess.Popen([HELPER, *args], stdin=subprocess.PIPE,
+    def __init__(self, *args, command=(HELPER,)):
+        self.proc = subprocess.Popen([*command, *args], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, text=True)
         self.events = queue.Queue()
         self.log = []
@@ -447,30 +449,72 @@ def main():
     refusing.terminate()
     refusing.wait()
 
-    # Malformed device definitions from the broker. Zigbee2MQTT does not
-    # publish these; anything with write access to the broker can.
+    # Malformed messages from the broker, of each kind the helper reads: each
+    # is ignored whole, and the next valid message is still reported.
+    # Zigbee2MQTT does not publish these; anything with write access to the
+    # broker can.
+    light = NAMES["light"]
+    deep = "[" * 100000 + "]" * 100000
+    malformed = [
+        ("bridge/devices", "an expose not an object",
+         [{"friendly_name": light, "definition": {"exposes": ["not an object"]}}]),
+        ("bridge/devices", "a friendly name not a string", [{"friendly_name": [light]}]),
+        ("bridge/devices", "a definition not an object",
+         [{"friendly_name": light, "definition": "light"}]),
+        ("bridge/devices", "features not a list",
+         [{"friendly_name": light, "definition": {"exposes": [{"type": "light", "features": 5}]}}]),
+        ("bridge/devices", "nested too deep to parse", deep),
+        ("bridge/state", "state not a string", {"state": ["offline"]}),
+        ("bridge/state", "nested too deep to parse", deep),
+        (light, "brightness an object", {"state": "OFF", "brightness": {"raw": 3}}),
+        (light, "nested too deep to parse", deep),
+        (f"{light}/availability", "state an object", {"state": {"offline": True}}),
+        (f"{light}/availability", "nested too deep to parse", deep),
+    ]
     helper = Helper("--config", CONFIG)
     until_synced(helper)
-    z2m.publish("bridge/devices", [{"friendly_name": NAMES["light"],
-                                    "definition": {"exposes": ["not an object"]}}])
-    time.sleep(1)
-    STATES["light"] = {**STATES["light"], "brightness": 77}
-    z2m.state("light")
-    try:
-        helper.expect(lambda e: (e["values"] or {}).get("brightness") == 77,
-                      timeout=3, event="device", id="light")
-        print("ok malformed definitions: the helper still reports")
-    except AssertionError:
-        # KNOWN BUG, kept green on purpose: on_definitions raises on an
-        # expose that is not an object, paho re-raises it from loop_forever
-        # and the network thread ends. The process lives on, never says the
-        # broker is down, and never reports again. Once fixed, the branch
-        # above passes and this one goes.
-        check("xfail malformed definitions: the helper stops reporting, still \"up\" (known bug)",
-              helper.proc.poll() is None
-              and not any(e["event"] == "broker" and e["state"] == "down" for e in helper.log))
+    for i, (topic, what, payload) in enumerate(malformed):
+        seen = len(helper.log)
+        z2m.publish(topic, payload)
+        STATES["light"] = {**STATES["light"], "state": "ON", "brightness": 100 + i}
+        z2m.state("light")
+        event = helper.expect(None, event="device", id="light")
+        check(f"malformed {topic}, {what}: ignored, the helper still reports",
+              helper.log[seen:] == [event]
+              and event["values"] == {"state": "ON", "brightness": 100 + i}
+              and event["availability"] == "online"
+              and event["definition"] == {"matches": True, "properties": ["state", "brightness"]})
     helper.close()
     z2m.publish("bridge/devices", device_definitions())
+    z2m.bridge("online")
+    z2m.availability("light", "online")
+
+    # The network thread ending for any other reason (here an exception
+    # injected into paho's message callback) ends the process.
+    crash = ("import runpy, sys\n"
+             "import paho.mqtt.client as mqtt\n"
+             "loop_forever = mqtt.Client.loop_forever\n"
+             "def crashing_loop(self, *args, **kwargs):\n"
+             "    on_message = self.on_message\n"
+             "    def crashing(client, userdata, msg):\n"
+             "        if msg.payload == b'crash':\n"
+             "            raise RuntimeError('injected')\n"
+             "        on_message(client, userdata, msg)\n"
+             "    self.on_message = crashing\n"
+             "    return loop_forever(self, *args, **kwargs)\n"
+             "mqtt.Client.loop_forever = crashing_loop\n"
+             "sys.argv = sys.argv[1:]\n"
+             "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+    helper = Helper("--config", CONFIG, command=(sys.executable, "-I", "-c", crash, HELPER))
+    until_synced(helper)
+    z2m.publish("bridge/state", "crash", retain=False)
+    event = helper.expect(None, event="broker", state="down")
+    check("network thread ended: broker down with the reason",
+          "network thread ended" in event.get("error", ""))
+    rest = []
+    while (event := helper.events.get(timeout=5)) is not None:
+        rest.append(event)
+    check("then nothing more, exit status 1", rest == [] and helper.proc.wait(5) == 1)
 
     # Broker unreachable at start: never up, retried every 10 s.
     broker.stop()
