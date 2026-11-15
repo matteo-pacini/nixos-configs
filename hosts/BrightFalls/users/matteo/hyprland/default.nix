@@ -2,6 +2,7 @@
 # its helpers and the Quickshell service.
 {
   config,
+  osConfig,
   lib,
   pkgs,
   ...
@@ -76,6 +77,9 @@ in
     glib.bin
     (callPackage ../audio-output-cycle.nix { })
     (callPackage ./bt-agent.nix { })
+    (callPackage ./desk-mqtt.nix {
+      configFile = osConfig.age.secrets."brightfalls/office-mqtt".path;
+    })
   ];
 
   # The desktop shell, from user/quickshell/ (installed at

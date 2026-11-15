@@ -215,6 +215,11 @@
               file = ./secrets/brightfalls/caldav-password.age;
               owner = "matteo";
             };
+            # Read by desk-mqtt, which the Quickshell office panel runs.
+            age.secrets."brightfalls/office-mqtt" = {
+              file = ./secrets/brightfalls/office-mqtt.age;
+              owner = "matteo";
+            };
           }
         ];
       };

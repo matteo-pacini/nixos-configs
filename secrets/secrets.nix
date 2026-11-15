@@ -59,6 +59,8 @@ in
   "brightfalls/caldav-url.age".publicKeys = [ brightfalls ];
   "brightfalls/caldav-user.age".publicKeys = [ brightfalls ];
   "brightfalls/caldav-password.age".publicKeys = [ brightfalls ];
+  # MQTT broker and Zigbee2MQTT device names for the office panel's desk-mqtt.
+  "brightfalls/office-mqtt.age".publicKeys = [ brightfalls ];
 
   # NightSprings service secrets
   "nightsprings/attic-netrc.age".publicKeys = [ nightsprings ];
