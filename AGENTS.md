@@ -37,7 +37,7 @@ nix run nix-darwin -- switch --flake .#<Host>
 - **Don't use `nix flake check` as a blanket validation.** It tries to build every output and fails on cross-platform configs from your current host. Use the targeted `nix build` (local platform) + `nix eval` (foreign platform) commands above instead.
 - **`InstallerISO` fails pure eval by design.** It bakes the attic netrc token at build time and needs `--impure` + `ATTIC_NETRC_FILE=<decrypted netrc>`. Never add it to CI. See `hosts/InstallerISO/default.nix`.
 - Commit style: semantic with host scope, e.g. `feat(nexus):`, `fix(brightfalls):`, `chore:`.
-- CI builds all 5 configs on push to `master`. PRs run eval + diff against base. See `.github/workflows/`.
+- CI builds all 5 configs on push to `master`. PRs run eval + diff against base, plus the flake checks: `herdr-tests` (herdr module) and `brightfalls-tests` (the BrightFalls desktop checks, a required check for merging into `master`). See `.github/workflows/`.
 - **Nexus disk layout changes require doc updates.** If you add, remove, or renumber data disks in the Nexus pool, update `docs/nexus/diskpool-handbook.md` (inventory, diagram, totals, and append a row to the Changelog at the bottom) and `docs/nexus/disk-failure-handbook.md` (worked-example commands reference specific disk numbers).
 - **Workarounds waiting on upstream carry a tag** in their comment, one per line: `WAIT-FOR <condition>: <ref>`. Conditions: `unstable` (PR or commit is in nixos-unstable), `merged` (PR/MR merged), `closed` (issue closed), `green` (Hydra job passing), `version` (`<attr> >= <ver>` in nixos-unstable), `manual` (`<url or none> (checked <date>)`). `WATCH: <url>` marks an upstream issue with no workaround here. Tag the code that has to change, not patch headers (editing a patch rebuilds its package). List them with `git grep -nE 'WAIT-FOR|WATCH:'`.
 - **No closing keywords before upstream refs** in commit messages or PR bodies. GitHub closes the target when a commit reaches `master`, or a PR whose body has one is merged: `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved` (any case, optional colon) followed by `#N`, `owner/repo#N` or an issue/PR URL. The owner can write to NixOS/nixpkgs, so "the hash fix NixOS/nixpkgs#582675" closed that nixpkgs PR. Write "waits on NixOS/nixpkgs#582675, the hash fix" instead, or put the ref in backticks.
@@ -82,6 +82,16 @@ The short version:
 - Public repo: keep house-specific data in HA, not here.
 - Deploys are the user's. Commit and push when asked, then wait for them to say it is deployed before checking it live.
 
+## Hyprland and Quickshell (BrightFalls)
+
+BrightFalls runs a Hyprland session (no GNOME) with a desktop shell written for Quickshell, in `hosts/BrightFalls/users/matteo/hyprland/`. It has its own instructions in `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md`. **Read that file before any work on that session or its shell, including work that starts in the live `~/.config/quickshell` or `~/.config/hypr` and touches no file in that directory.**
+
+The short version:
+- The config files are writable copies under `~/.config`, edited live and hot-reloaded, then brought back to the repo with `desk-sync pull`. Nix pins packages and generates the data the shell shows.
+- The user works at that desktop while agents test on it: one live writer at a time, and a desktop notification 10 seconds before anything takes keyboard focus, then another when it is free.
+- Never run Hyprland nested in the live session, never engage the lock screen on your own, never type a password or accept a Bluetooth pairing.
+- Reports keep apart what was proven on real hardware, what only with simulated data, and what is only expected.
+
 ## Where to Find Things
 
 | What | Where |
@@ -102,4 +112,6 @@ The short version:
 | Home Assistant (what is in the repo vs only in HA, gotchas) | `hosts/Nexus/services/home-assistant/AGENTS.md` |
 | Home Assistant topic docs: Zigbee watchdog, blueprints, heating, dashboards, metrics, working on the live half | `hosts/Nexus/services/home-assistant/docs/` (indexed in the `AGENTS.md` above) |
 | Home Assistant custom cards (house floorplan: where its layout lives, how to add sensors) | `hosts/Nexus/services/home-assistant/cards/README.md` |
+| BrightFalls Hyprland session and Quickshell shell: how to work on it (process, testing, safety rules, code map, open work) | `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md` |
+| BrightFalls Hyprland session and Quickshell shell: what each piece is (layers, `desk-sync`, every panel, lock screen, calendar sync) | `hosts/BrightFalls/users/matteo/hyprland/README.md` |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |

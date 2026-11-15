@@ -69,6 +69,10 @@ in
           # `hex settings apply` rejects the whole file over one such key.
           settings = settings // {
             enable_on_launch = true;
+            # Terminals such as Herdr and Ghostty paste text on Ctrl+Shift+V;
+            # Herdr's Ctrl+V only forwards the key to the program in the pane.
+            # Hex has a single paste chord for every application.
+            paste_with_shift = true;
             # A named microphone is opened as a raw ALSA device, which locks
             # PipeWire out of it whenever Hex grabs it first (e.g. after a
             # USB re-plug). System default records through PipeWire instead.

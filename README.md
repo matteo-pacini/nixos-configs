@@ -70,11 +70,11 @@ nix fmt
 <details>
 <summary><strong>Software</strong></summary>
 
-- GNOME on Wayland
+- Hyprland (UWSM) with a Quickshell desktop shell, greetd login
 - Linux 7.1
 - Per-host **znver4** overlay tuning the system for Zen 4
 - **Full-disk encryption** (LUKS2 + LVM, remote unlock over SSH)
-- KVM/QEMU virtualization, **Sunshine** for game streaming, **LACT** for GPU control
+- KVM/QEMU virtualization, **LACT** for GPU control
 - Suspend disabled (the eGPU never recovers cleanly)
 
 </details>

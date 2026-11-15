@@ -2,17 +2,17 @@
   pkgs,
   lib,
   config,
-  inputs,
   ...
 }:
 {
   imports = [
-    ./gnome.nix
+    ./desktop.nix
     ./git.nix
     ./zsh.nix
     ./browser.nix
     ./services.nix
     ./gaming.nix
+    ./hyprland
   ];
 
   home.username = "matteo";
@@ -28,10 +28,6 @@
   home.packages =
     with pkgs;
     [
-      #Gnome
-      gnomeExtensions.appindicator
-      gnome-tweaks
-      inputs.magunetto.packages.${stdenv.hostPlatform.system}.default
       # Downloads
       aria2
       # Security

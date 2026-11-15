@@ -8,6 +8,7 @@
     ./networking.nix
     ./users.nix
     ./desktop.nix
+    ./desktop-hyprland.nix
     ./audio
     ./services.nix
     ./graphics.nix
@@ -80,6 +81,21 @@
   };
   # comin's own user service; notifies when a staged deployment needs a reboot.
   services.comin.desktop.enable = true;
+  # `comin desktop` panics unless its first notification is delivered, and
+  # graphical-session.target starts it before the shell owns the
+  # notification name. It also exits 1 whenever comin's event stream drops
+  # (comin restarts itself after deploying its own unit); each restart
+  # notifies once, so the start limit caps that at six in two minutes.
+  systemd.user.services.comin-desktop = {
+    after = [ "quickshell.service" ];
+    startLimitIntervalSec = 120;
+    startLimitBurst = 6;
+    serviceConfig = {
+      ExecStartPre = "${pkgs.glib.bin}/bin/gdbus wait --session --timeout 60 org.freedesktop.Notifications";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
 
   system.stateVersion = "26.05";
 }
