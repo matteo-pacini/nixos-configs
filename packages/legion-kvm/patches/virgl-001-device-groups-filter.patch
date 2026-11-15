@@ -1,0 +1,119 @@
+diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
+--- a/src/venus/vkr_physical_device.c
++++ b/src/venus/vkr_physical_device.c
+@@ -447,48 +447,73 @@ vkr_dispatch_vkEnumeratePhysicalDeviceGroups(
+       return;
+ 
+    VkPhysicalDeviceGroupProperties *orig_props = args->pPhysicalDeviceGroupProperties;
+-   if (orig_props) {
+-      args->pPhysicalDeviceGroupProperties =
+-         calloc(*args->pPhysicalDeviceGroupCount, sizeof(*orig_props));
+-      if (!args->pPhysicalDeviceGroupProperties) {
+-         args->ret = VK_ERROR_OUT_OF_HOST_MEMORY;
+-         return;
+-      }
+-
+-      for (uint32_t i = 0; i < *args->pPhysicalDeviceGroupCount; i++) {
+-         args->pPhysicalDeviceGroupProperties[i].sType =
+-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
+-      }
+-   }
++   uint32_t *orig_count = args->pPhysicalDeviceGroupCount;
+ 
++   /* The host's groups can name physical devices that
++    * vkEnumeratePhysicalDevices did not return: Mesa's device-select layer
++    * filters that list to the selected GPU but passes every group through.
++    * Fetch all groups, drop devices this instance never enumerated and the
++    * groups left empty, and answer the guest from that list, counts included.
++    */
+    struct vn_instance_proc_table *vk = &instance->proc_table;
+    vn_replace_vkEnumeratePhysicalDeviceGroups_args_handle(args);
+-   args->ret =
+-      vk->EnumeratePhysicalDeviceGroups(args->instance, args->pPhysicalDeviceGroupCount,
+-                                        args->pPhysicalDeviceGroupProperties);
++   uint32_t count = 0;
++   args->ret = vk->EnumeratePhysicalDeviceGroups(args->instance, &count, NULL);
+    if (args->ret != VK_SUCCESS)
+       return;
+ 
+-   if (!orig_props)
++   VkPhysicalDeviceGroupProperties *props = calloc(count ? count : 1, sizeof(*props));
++   if (!props) {
++      args->ret = VK_ERROR_OUT_OF_HOST_MEMORY;
+       return;
++   }
++   for (uint32_t i = 0; i < count; i++)
++      props[i].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
++   args->ret = vk->EnumeratePhysicalDeviceGroups(args->instance, &count, props);
++   if (args->ret != VK_SUCCESS) {
++      free(props);
++      return;
++   }
+ 
+-   /* TODO avoid requiring venus driver to call vkEnumeratePhysicalDevices first */
+-   /* replace VkPhysicalDevice handles by object ids */
+-   for (uint32_t i = 0; i < *args->pPhysicalDeviceGroupCount; i++) {
+-      const VkPhysicalDeviceGroupProperties *props =
+-         &args->pPhysicalDeviceGroupProperties[i];
+-      VkPhysicalDeviceGroupProperties *out = &orig_props[i];
++   uint32_t kept = 0;
++   for (uint32_t i = 0; i < count; i++) {
++      VkPhysicalDeviceGroupProperties group = props[i];
++      group.physicalDeviceCount = 0;
++      for (uint32_t j = 0; j < props[i].physicalDeviceCount; j++) {
++         VkPhysicalDevice handle = props[i].physicalDevices[j];
++         bool known = false;
++         for (uint32_t k = 0; k < instance->physical_device_count; k++)
++            known |= instance->physical_device_handles[k] == handle;
++         if (known)
++            group.physicalDevices[group.physicalDeviceCount++] = handle;
++      }
++      if (!group.physicalDeviceCount)
++         continue;
++      if (group.physicalDeviceCount != props[i].physicalDeviceCount)
++         group.subsetAllocation = VK_FALSE;
++      props[kept++] = group;
++   }
++
++   args->pPhysicalDeviceGroupCount = orig_count;
++   args->pPhysicalDeviceGroupProperties = orig_props;
++   if (!orig_props) {
++      *orig_count = kept;
++      free(props);
++      return;
++   }
+ 
+-      out->physicalDeviceCount = props->physicalDeviceCount;
+-      out->subsetAllocation = props->subsetAllocation;
+-      for (uint32_t j = 0; j < props->physicalDeviceCount; j++) {
++   uint32_t written = MIN2(*orig_count, kept);
++   for (uint32_t i = 0; i < written; i++) {
++      VkPhysicalDeviceGroupProperties *out = &orig_props[i];
++      out->physicalDeviceCount = props[i].physicalDeviceCount;
++      out->subsetAllocation = props[i].subsetAllocation;
++      for (uint32_t j = 0; j < props[i].physicalDeviceCount; j++) {
+          const struct vkr_physical_device *physical_dev =
+-            vkr_instance_lookup_physical_device(instance, props->physicalDevices[j]);
++            vkr_instance_lookup_physical_device(instance, props[i].physicalDevices[j]);
+          if (!physical_dev) {
+             vkr_log("venus driver is required to call vkEnumeratePhysicalDevices first");
+             args->ret = VK_ERROR_INITIALIZATION_FAILED;
+-            if (orig_props)
+-               free(args->pPhysicalDeviceGroupProperties);
++            free(props);
+             return;
+          }
+ 
+@@ -496,9 +521,9 @@ vkr_dispatch_vkEnumeratePhysicalDeviceGroups(
+                                 VK_OBJECT_TYPE_PHYSICAL_DEVICE);
+       }
+    }
+-
+-   free(args->pPhysicalDeviceGroupProperties);
+-   args->pPhysicalDeviceGroupProperties = orig_props;
++   *orig_count = written;
++   args->ret = written < kept ? VK_INCOMPLETE : VK_SUCCESS;
++   free(props);
+ }
+ 
+ static void

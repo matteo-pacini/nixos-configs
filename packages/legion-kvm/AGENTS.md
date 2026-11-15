@@ -107,9 +107,9 @@ into derivations:
 ## Our changes to upstream
 
 Patch files live in `patches/` as `<target>-<NNN>-<what>.patch`: `target` is
-the tree they patch (`legion` for upstream's source, `qemu`), and `NNN` is
-the order they apply in. Changes that insert module option values stay as
-substitutions in the `.nix` files.
+the tree they patch (`legion` for upstream's source, `qemu`, `virgl`), and
+`NNN` is the order they apply in. Changes that insert module option values
+stay as substitutions in the `.nix` files.
 
 | Where | Change | Applied |
 |---|---|---|
@@ -117,6 +117,7 @@ substitutions in the `.nix` files.
 | `patches/legion-002-sdl-gles-display.patch` | QEMU `-display sdl,gl=es` instead of `gl=on`: the desktop window imports frames as `GL_TEXTURE_EXTERNAL_OES`, which Mesa only supports in GLES, so `gl=on` showed a black window on the native-context path | always |
 | `patches/legion-003-vcpu-affinity-env.patch` | launcher sets `LEGION_VCPU_AFFINITY` | `pinVcpus` |
 | `patches/legion-007-qemu-parent-death-signal.patch` | QEMU gets SIGKILL if the launcher dies, so its window can't outlive it | always |
+| `patches/virgl-001-device-groups-filter.patch` | the render server drops GPUs it never enumerated from `vkEnumeratePhysicalDeviceGroups`. Mesa's device-select layer narrows the device list to the selected GPU but passes every group through, so on a host with several GPUs (BrightFalls: RX 6800 XT, 780M, llvmpipe) Venus failed with "venus driver is required to call vkEnumeratePhysicalDevices first" | always |
 | `patches/qemu-001-vcpu-affinity.patch` | vCPU threads pin themselves from `LEGION_VCPU_AFFINITY` | always (inert without it) |
 | `rust.nix` substitution, `src/game.rs` | game display size | always (`resolution`) |
 | `rust.nix` substitution, `src/game.rs`, `src/main.rs` | default `LEGION_MEMORY_MIB` | always (`memoryMiB`) |
