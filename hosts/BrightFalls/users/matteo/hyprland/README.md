@@ -1091,9 +1091,12 @@ with the JSON written to `/tmp/v` first.
 
 ## Tests
 
-Flake checks, defined in `tests/default.nix`. All of them run on every pull
-request in the `brightfalls-tests` job (`.github/workflows/pr-build.yml`), a
-required check for merging into `master`:
+Flake checks, defined in `tests/default.nix`. All of them but `hypr-config`
+run on every pull request in the `brightfalls-tests` job
+(`.github/workflows/pr-build.yml`), a required check for merging into
+`master`. `hypr-config` is run by hand before a change to the Hyprland
+config, not in CI: Hyprland's verify crashes (exit 139) on the full config on
+GitHub's runners, cause not known.
 
 - `nix build .#checks.x86_64-linux.desk-sync`: runs `tests/run.sh` against a
   temporary HOME.

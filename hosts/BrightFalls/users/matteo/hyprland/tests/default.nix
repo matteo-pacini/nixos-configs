@@ -13,6 +13,10 @@
 #   nix build .#checks.<system>.desk-unlock
 #   nix build .#checks.<system>.bluetooth-agent
 #   nix build .#checks.<system>.audio-output-cycle
+# All but hypr-config run in CI (the brightfalls-tests job in
+# .github/workflows/pr-build.yml). hypr-config is run by hand before a change
+# to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
+# full hyprland.lua on GitHub's runners, cause not known.
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };

@@ -174,8 +174,10 @@ nix build .#checks.x86_64-linux.audio-output-cycle  # audio-output-cycle against
 
 The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
 repository's `.js` files, so they fail until a live change to those files is pulled. All of them
-run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a required check for
-merging into `master`. For a new test, break the code once and watch it fail.
+but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
+required check for merging into `master`. `hypr-config` is run by hand before a change to the
+Hyprland config, not in CI: Hyprland's verify crashes (exit 139) on the full config on GitHub's
+runners, cause not known (see open work). For a new test, break the code once and watch it fail.
 
 **Builds.** Before every push, on the merged branch, the coordinator runs:
 
@@ -505,6 +507,15 @@ the automatic login and unlocked by the first lock-screen unlock; the SSH
 agent; file dialogs, screen sharing and dark GTK apps through the portals;
 the default apps; printing; the CPU's energy preference without
 power-profiles-daemon (it was `balance_performance`); no failed units.
+
+**To investigate:** the `hypr-config` check fails on GitHub's runners
+(ubuntu-24.04, Nix sandbox): `Hyprland --verify-config` on the full
+`hyprland.lua` exits 139 (a segfault), while `rescue.lua` and `theme.lua`
+alone and every other assertion pass; the same derivation passes on
+BrightFalls. It is out of the `brightfalls-tests` job until this is
+understood. Leads: what differs on the runner (no `/dev/dri`, the CPU, the
+kernel); which part of the config triggers it, bisected with temporary CI
+runs.
 
 **Known bugs, pinned by the checks and not fixed** (each check says what
 to change once the bug is fixed):
