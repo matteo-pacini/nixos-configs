@@ -53,12 +53,23 @@ never retried. It is confirmed by the first non-retained state message from
 that device within 5 s that shows the result (see confirms()). A brightness
 command also switches the light on. Sockets have no command at all. When
 stdin closes the process disconnects and exits.
+
+Malformed messages from the broker are ignored whole: a device state or
+bridge/devices payload that is not JSON or nests too deeply to parse, any
+payload with a list or object where this program reads a value or the
+reverse, and an availability or bridge/state that is not "online" or
+"offline". A last_seen that is not a string is only left out; values of other
+scalar types are passed on as they are. If the connection's thread ends for any other reason than
+stdin closing, the process sends a "broker" "down" event with "error":
+"network thread ended" and exits with status 1, without "exit".
 """
 
 import argparse
 import json
+import os
 import sys
 import threading
+import traceback
 from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
@@ -96,12 +107,20 @@ def emit(**obj):
     sys.stdout.flush()
 
 
+def from_json(payload):
+    """The parsed payload, or None if it is not JSON or nests too deeply to parse."""
+    try:
+        return json.loads(payload)
+    except (ValueError, RecursionError):
+        return None
+
+
 def state_of(payload):
     """The "state" of an availability or bridge/state payload: JSON or plain."""
     text = payload.decode(errors="replace").strip()
     try:
         value = json.loads(text)
-    except ValueError:
+    except (ValueError, RecursionError):
         return text
     return value.get("state") if isinstance(value, dict) else None
 
@@ -180,11 +199,37 @@ def load_config(path, devices):
     return {"host": config["host"], "port": port, "base": config["base"], "topics": topics}, None
 
 
-def expose_properties(exposes):
-    for e in exposes:
+def definition_of(entry, kind):
+    """The "definition" reported for a device of `kind` from its bridge/devices
+    entry, None if the entry has no exposes. Raises ValueError if any part of
+    it read here has the wrong type."""
+    definition = entry.get("definition")
+    if definition is None:
+        return None
+    if not isinstance(definition, dict):
+        raise ValueError
+    exposes = definition.get("exposes")
+    if exposes is None:
+        return None
+    if not isinstance(exposes, list):
+        raise ValueError
+    properties = set()
+    todo = list(exposes)
+    # A stack, not recursion: features can nest as deep as the JSON parser allows.
+    while todo:
+        e = todo.pop()
+        if not isinstance(e, dict):
+            raise ValueError
         if "property" in e:
-            yield e["property"]
-        yield from expose_properties(e.get("features", []))
+            if isinstance(e["property"], (list, dict)):
+                raise ValueError
+            properties.add(e["property"])
+        features = e.get("features", [])
+        if not isinstance(features, list):
+            raise ValueError
+        todo += features
+    return {"matches": any(e.get("type") == EXPOSE_TYPE[kind] for e in exposes),
+            "properties": [k for k in KEYS[kind] if k in properties]}
 
 
 class Device:
@@ -244,6 +289,19 @@ class Desk:
         self.thread.start()
 
     def run(self):
+        try:
+            self.connect_and_loop()
+        except BaseException:
+            traceback.print_exc()
+        if self.stopping.is_set():
+            return
+        # Without this thread nothing more is reported, so the process must
+        # not outlive it. Exiting under LOCK: no other line is half written.
+        with LOCK:
+            self.set_broker("down", error="network thread ended")
+            os._exit(1)
+
+    def connect_and_loop(self):
         # The first connection is made here rather than by paho's
         # retry_first_connection, which waits twice (20 s) after the first
         # failure. Once connected, loop_forever retries every RETRY_SECONDS.
@@ -345,11 +403,10 @@ class Desk:
         device.report()
 
     def on_state(self, device, msg):
-        try:
-            payload = json.loads(msg.payload)
-        except ValueError:
-            return
+        payload = from_json(msg.payload)
         if not isinstance(payload, dict):
+            return
+        if any(isinstance(payload.get(key), (list, dict)) for key in KEYS[device.kind]):
             return
         values = dict(device.values or {})
         for key in KEYS[device.kind]:
@@ -369,22 +426,19 @@ class Desk:
                 emit(event="command", id=cid, state="confirmed")
 
     def on_definitions(self, payload):
+        entries = from_json(payload)
+        if not isinstance(entries, list) or not all(
+                isinstance(e, dict) and not isinstance(e.get("friendly_name"), (list, dict))
+                for e in entries):
+            return
+        found = {e.get("friendly_name"): e for e in entries}
         try:
-            entries = json.loads(payload)
+            definitions = {d.id: definition_of(found.get(d.name, {}), d.kind)
+                           for d in self.devices.values()}
         except ValueError:
             return
-        if not isinstance(entries, list):
-            return
-        found = {e.get("friendly_name"): e for e in entries if isinstance(e, dict)}
         for device in self.devices.values():
-            exposes = ((found.get(device.name) or {}).get("definition") or {}).get("exposes")
-            if not isinstance(exposes, list):
-                definition = None
-            else:
-                matches = any(e.get("type") == EXPOSE_TYPE[device.kind] for e in exposes)
-                properties = set(expose_properties(exposes))
-                definition = {"matches": matches,
-                              "properties": [k for k in KEYS[device.kind] if k in properties]}
+            definition = definitions[device.id]
             if definition != device.definition:
                 device.definition = definition
                 device.report()

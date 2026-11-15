@@ -512,9 +512,6 @@ to change once the bug is fixed):
   `calendar-export.py`'s `mirror()` rewrites the copy in place, khal
   rescans a calendar only when its directory's mtime changes, and khal.db
   is kept between runs (`calendar-export` check).
-- A malformed `bridge/devices` message ends `desk-mqtt`'s network thread:
-  the process lives on, never says the broker is down, and reports nothing
-  more (`office-helper` check).
 - Latent, unreachable with the shipped data: `office.js` throws for a
   device list with no sockets (`office-panel`); `queries.js` `parse`
   throws on a broken day line instead of returning null (`calendar-panel`).
