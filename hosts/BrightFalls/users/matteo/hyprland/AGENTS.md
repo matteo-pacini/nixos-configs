@@ -166,6 +166,7 @@ nix build .#checks.x86_64-linux.office-panel     # office/office.js under node
 nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback Mosquitto
 nix build .#checks.x86_64-linux.system-panel     # system/decode.js under node
 nix build .#checks.x86_64-linux.display-layout   # display-layout.sh against a fake hyprctl
+nix build .#checks.x86_64-linux.hypr-config      # user/hypr through Hyprland --verify-config
 ```
 
 The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
@@ -181,15 +182,18 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-panel \
   .#checks.x86_64-linux.office-helper .#checks.x86_64-linux.system-panel \
   .#checks.x86_64-linux.display-layout \
+  .#checks.x86_64-linux.hypr-config \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
 through `hc run --bg --no-notify --name <name> "…; echo EXIT=\$?"` and
 `hc wait`. Nix does not compile QML: a green build says nothing about the
-shell loading. For Lua, `Hyprland --verify-config -c <copy>/hyprland.lua` on a
-temporary copy laid out like the install (`config/hypr/*`,
-`share/desk/hypr/*`, `XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointed at it); an
-unknown key name in a bind is ignored silently, so it cannot catch that.
+shell loading. For Lua, the `hypr-config` check runs `Hyprland --verify-config`
+on the repository's files laid out like the install (`tests/hypr/run.sh`); a
+live edit needs the same on a temporary copy (`config/hypr/*`,
+`share/desk/hypr/*`, `XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointed at it). Both
+catch a misspelt key name in a bind (`Unknown key`), not a mouse button code
+out of range.
 
 **Injected data and previews.** Allowed during development: temporary IPC
 targets, a property that points a loader at a fixture, a data override, a

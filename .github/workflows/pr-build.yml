@@ -100,7 +100,8 @@ jobs:
             .#checks.x86_64-linux.office-helper \
             .#checks.x86_64-linux.office-panel \
             .#checks.x86_64-linux.system-panel \
-            .#checks.x86_64-linux.display-layout
+            .#checks.x86_64-linux.display-layout \
+            .#checks.x86_64-linux.hypr-config
 
   pr-build:
     needs: [eval]

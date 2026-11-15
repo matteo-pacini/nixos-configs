@@ -1151,3 +1151,14 @@ required check for merging into `master`:
   restore and the workspaces put back when it ends, is killed or
   single-monitor itself is terminated, a nested call, and no Hyprland.
   About 1 s.
+- `nix build .#checks.x86_64-linux.hypr-config`: lays `user/hypr/`,
+  `user/desk/` and `defaults/hypr/` out as installed and runs
+  `Hyprland --verify-config` on `hyprland.lua` and on `rescue.lua` and
+  `theme.lua` alone, checks that `hyprland.lua` reaches both of those at
+  their installed paths (it loads them through `pcall`, so a missing one is
+  silent), and runs `theme.lua` under Lua 5.5 against the shipped
+  `theme.json` and broken ones (alpha, short and named colours, blank fonts,
+  unknown keys, an escaped quote, a truncated file, no file, no
+  `XDG_CONFIG_HOME`) (`tests/hypr/run.sh`). A misspelt key name in a bind
+  fails it (`Unknown key`); a mouse button code out of range does not.
+  About 1 s once Hyprland is in the store.

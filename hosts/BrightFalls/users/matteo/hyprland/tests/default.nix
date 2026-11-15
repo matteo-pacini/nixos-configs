@@ -9,6 +9,7 @@
 #   nix build .#checks.<system>.office-helper
 #   nix build .#checks.<system>.system-panel
 #   nix build .#checks.<system>.display-layout
+#   nix build .#checks.<system>.hypr-config
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -96,6 +97,20 @@ in
       ''
         bash ${./display-layout/run.sh} ${../../../../display-layout.sh} \
           ${../user/hypr/monitors.lua}
+        touch $out
+      '';
+
+  # The Hyprland config, laid out as installed, through Hyprland
+  # --verify-config, and theme.lua's reading of theme.json.
+  hypr-config =
+    pkgs.runCommand "hypr-config-tests"
+      {
+        nativeBuildInputs = [ pkgs.jq ];
+      }
+      ''
+        # lua5_5: the Lua the Hyprland package embeds.
+        bash ${./hypr/run.sh} ${pkgs.lib.getExe' pkgs.hyprland "Hyprland"} \
+          ${pkgs.lib.getExe pkgs.lua5_5} ${../user} ${../defaults}
         touch $out
       '';
 
