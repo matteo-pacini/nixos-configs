@@ -122,7 +122,10 @@ Scope {
         }
         Dropdowns.closeOthers("network");
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
-        current = Math.max(0, rows.findIndex(r => r.kind === "wired" && r.device.connected));
+        // The connected wired device, else the first one; with none, nothing
+        // (the Set in Nix rows are only selected by ↓ or a click).
+        const up = rows.findIndex(r => r.kind === "wired" && r.device.connected);
+        current = up >= 0 ? up : wired.length > 0 ? 0 : -1;
         expanded = "";
         flash = "";
         fresh = "";
@@ -985,7 +988,7 @@ Scope {
                 }
 
                 KeyHints {
-                    keys: [["Enter", "select"], ["S", "speed test"], ["Esc", root.expanded !== "" ? "back" : "close"]]
+                    keys: (root.rows.length > (root.current >= 0 ? 1 : 0) ? [["↑↓", "select"]] : []).concat(root.current >= 0 ? [["Enter", "select"]] : [], [["S", "speed test"], ["Esc", root.expanded !== "" ? "back" : "close"]])
                     message: root.flash
                 }
             }
@@ -1094,7 +1097,7 @@ Scope {
                 }
 
                 KeyHints {
-                    keys: [["Enter", "run"], ["1-" + root.choices.length, "run that one"], ["Esc", "back"]]
+                    keys: [["↑↓", "select"], ["Enter", "run"], ["1-" + root.choices.length, "run that one"], ["Esc", "back"]]
                 }
             }
 

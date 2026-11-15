@@ -75,7 +75,8 @@ const CALLS = ["111e", "111f", "1108", "1112", "1131"];
 
 // What a device does through this computer, from evidence only:
 //   links    the agent's "links" event for it (BlueZ media transports,
-//            AVRCP and PAN connected), or null
+//            AVRCP and PAN connected, and `calls`: "none", "connected" or
+//            "active" from PipeWire's hands-free link), or null
 //   nodes    its PipeWire nodes as [{ profile: api.bluez5.profile,
 //            mediaClass, linked }], linked meaning an active link to or
 //            from another node; calls (HFP/HSP) have nodes only while a
@@ -92,18 +93,25 @@ function uses(links, nodes, answers, device) {
     const lines = [];
     const covered = new Set();
 
+    // An agent older than the `calls` field leaves it undefined: then
+    // nothing is known about the link, only about the answer.
+    const calls = links?.calls;
     const callNode = nodes.some(n => String(n.profile).startsWith("headset-"));
     const callAnswer = Object.keys(answers).find(u => CALLS.includes(shortUuid(u)));
     for (const u of Object.keys(answers))
         if (CALLS.includes(shortUuid(u)))
             covered.add(u);
-    if (callNode) {
+    if (callNode || calls === "active") {
         roles.push({ id: "calls", state: "active" });
         lines.push(["calls through this computer", "in a call now"]);
+    } else if (calls === "connected") {
+        roles.push({ id: "calls", state: "connected" });
+        lines.push(["calls through this computer", "connected, no call now"]);
     } else if (callAnswer !== undefined) {
         if (answers[callAnswer])
             roles.push({ id: "calls", state: "allowed" });
-        lines.push(["calls through this computer", answers[callAnswer] ? "allowed, no call now" : "denied"]);
+        const allowed = calls === undefined ? "allowed, no call now" : "allowed, not connected";
+        lines.push(["calls through this computer", answers[callAnswer] ? allowed : "denied"]);
     }
 
     // Played here only when PipeWire has the device's audio node linked;

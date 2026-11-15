@@ -1,12 +1,14 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "services.js" as S
 
 // BlueZ's default pairing agent for this session: runs `desk-bt-agent`
 // (bt-agent.py in nixos-configs, which describes the protocol) for as long as
 // the shell runs, and starts it again if it exits. Requests wait in
 // `requests` until answer() is called; nothing is ever answered here on the
-// user's behalf.
+// user's behalf. Requests, answers and cancels go to the shell's log by
+// method, id and short service UUID only, never a device name or address.
 Scope {
     id: root
 
@@ -24,6 +26,7 @@ Scope {
         requests = requests.filter(r => r !== request);
         if (request.id === null)
             return;
+        console.info("bluetooth agent: answer", request.id, request.method, request.uuid ? S.shortUuid(request.uuid) : "-", accept ? "allow" : "deny");
         proc.write(JSON.stringify(Object.assign({
             id: request.id,
             accept
@@ -44,10 +47,13 @@ Scope {
             return;
         }
         if (ev.event === "request") {
+            if (ev.id !== null)
+                console.info("bluetooth agent: request", ev.id, ev.method, ev.uuid ? S.shortUuid(ev.uuid) : "-");
             // A newer passkey display for the same device replaces the
             // older one; `entered` counts the keys typed so far.
             requests = requests.filter(r => !(r.id === null && ev.id === null && r.device === ev.device)).concat([ev]);
         } else if (ev.event === "cancel") {
+            console.info("bluetooth agent: cancel", ev.ids.join(",") || "-");
             requests = requests.filter(r => r.id !== null && !ev.ids.includes(r.id));
         } else if (ev.event === "links") {
             const links = Object.assign({}, BluetoothShared.links);

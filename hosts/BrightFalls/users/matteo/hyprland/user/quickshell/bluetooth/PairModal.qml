@@ -260,7 +260,7 @@ PanelWindow {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                text: `Trusting ${modal.deviceName} stops these questions.`
+                text: `T allows this and anything else ${modal.deviceName} asks, now and later.`
                 color: Theme.comment
                 font.family: Theme.fontMono
                 font.pixelSize: 11
@@ -275,7 +275,7 @@ PanelWindow {
                     model: {
                         const m = modal.method;
                         if (modal.service)
-                            return [["Enter", "allow"], ["T", "allow and trust"], ["Esc", "deny"]];
+                            return [["Enter", "allow this"], ["T", "allow all, trust"], ["Esc", "deny"]];
                         if (modal.display)
                             return [["Esc", "cancel"]];
                         if (modal.typing)

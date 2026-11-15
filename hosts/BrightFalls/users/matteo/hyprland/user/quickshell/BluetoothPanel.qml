@@ -55,11 +55,20 @@ Scope {
                 })) : [])
     property string currentKey: ""
     property int lastIndex: 0
+    // With no row picked, the nearest device row; never a Set in Nix row,
+    // which is only selected by ↓ or a click. -1 when no device is listed.
     readonly property int current: {
         const at = rows.findIndex(r => r.key === currentKey);
-        return at >= 0 ? at : Math.min(lastIndex, rows.length - 1);
+        if (at >= 0)
+            return at;
+        let i = Math.min(lastIndex, rows.length - 1);
+        while (i >= 0 && rows[i].kind === "nix")
+            i--;
+        return i;
     }
     readonly property var currentRow: rows[current] ?? null
+    readonly property string selectedKey: currentRow?.key ?? ""
+    readonly property bool canMove: rows.length > (current >= 0 ? 1 : 0)
 
     property string expanded: ""
     property string armed: ""
@@ -82,8 +91,8 @@ Scope {
     property var pairFailed: ({})
     property var connectTried: ({})
     property var connectFailed: ({})
-    // Device paths whose pairing request the user accepted; trusted once
-    // paired.
+    // Device path -> { at, trusted } for pairings the user said yes to:
+    // when, and whether that yes is what trusted the device (settleAccepted).
     property var accepted: ({})
     property var pairedBefore: []
     // The power toggle over IPC, waiting for the adapter to follow.
@@ -220,7 +229,37 @@ Scope {
             const failed = Object.assign({}, pairFailed);
             failed[path] = true;
             pairFailed = failed;
+            settleAccepted(path);
         }
+    }
+
+    // A device is trusted on the user's yes to the pairing, before BlueZ
+    // reports it paired, so the services it asks for right after pairing
+    // are allowed at once instead of waiting on the modal while the device's
+    // own timeout runs. If the pairing then fails, BlueZ keeps that trust on
+    // an unpaired device (src/device.c, device_bonding_complete), so it is
+    // withdrawn here: at once for `failedPath`, otherwise once the device
+    // drops its connection unpaired or a minute has passed.
+    function settleAccepted(failedPath: string): void {
+        const accepted = Object.assign({}, root.accepted);
+        for (const path of Object.keys(accepted)) {
+            const d = device(path);
+            const age = Date.now() - accepted[path].at;
+            if (d?.paired) {
+                delete accepted[path];
+                continue;
+            }
+            // A pairing started here ends through endPairing() instead.
+            const failed = path === failedPath || !d || (path !== pairTarget && (age > 60000 || (!d.connected && age > 4000)));
+            if (!failed)
+                continue;
+            if (accepted[path].trusted && d && d.trusted) {
+                d.trusted = false;
+                console.info("bluetooth: trust withdrawn, the pairing did not complete");
+            }
+            delete accepted[path];
+        }
+        root.accepted = accepted;
     }
 
     // Quickshell's pair() gives up on BlueZ's reply after QtDBus's call
@@ -447,22 +486,26 @@ Scope {
         if (!on)
             return [["B", "turn on"], ["Esc", "close"]];
         if (pairTarget !== "")
-            return [["Esc", "cancel pairing"]];
+            return [["Esc", "cancel pairing"], ["B", "on/off"]];
+        // The selected row's keys, then the ones that work on any row.
         const row = currentRow;
+        const showing = row !== null && expanded === row.key;
+        let keys = [];
         if (row?.kind === "nix")
-            return [["Enter", "show file"], ["Esc", "close"]];
-        if (row?.kind === "nearby")
-            return [["Enter", "pair"], ["S", scanUntil > 0 ? "stop" : "scan"], ["V", visibleOn ? "hide" : "visible"], ["Esc", "close"]];
-        if (row && expanded === row.key)
-            return [["C", "connect/disconnect"], ["T", "trust"], ["F", "forget"], ["Enter", "close details"]];
-        if (row)
-            return [["Enter", "details"], ["C", row.device.connected ? "disconnect" : "connect"], ["S", scanUntil > 0 ? "stop" : "scan"], ["V", visibleOn ? "hide" : "visible"], ["F", "forget"], ["B", "on/off"], ["Esc", "close"]];
-        return [["S", scanUntil > 0 ? "stop" : "scan"], ["V", visibleOn ? "hide" : "visible"], ["B", "on/off"], ["Esc", "close"]];
+            keys = [["Enter", "show file"]];
+        else if (row?.kind === "nearby")
+            keys = [["Enter", "pair"]];
+        else if (row)
+            keys = [["Enter", showing ? "close details" : "details"], ["C", row.device.connected ? "disconnect" : "connect"]].concat(showing ? [["T", row.device.trusted ? "untrust" : "trust"]] : [], [["F", "forget"]]);
+        if (canMove)
+            keys.push(["↑↓", "select"]);
+        return keys.concat([["S", scanUntil > 0 ? "stop" : "scan"], ["V", visibleOn ? "hide" : "visible"], ["B", "on/off"], ["Esc", armed !== "" ? "cancel" : showing ? "back" : "close"]]);
     }
 
-    onCurrentKeyChanged: {
+    // Also when the selection moves on its own (a row came or went).
+    onSelectedKeyChanged: {
         armed = "";
-        if (expanded !== "" && expanded !== currentKey)
+        if (expanded !== "" && expanded !== selectedKey)
             expanded = "";
     }
     onOnChanged: {
@@ -505,8 +548,9 @@ Scope {
         connectFailed = failed;
     }
 
-    // A device the user accepted becomes trusted once paired, and a pairing
-    // while visible ends the visible window.
+    // A device the user said yes to is trusted once paired, if the yes did
+    // not already trust it, and a pairing while visible ends the visible
+    // window.
     readonly property var pairedNow: BluetoothShared.devices.filter(d => d.paired).map(d => d.dbusPath)
     onPairedNowChanged: {
         const fresh = pairedNow.filter(p => !pairedBefore.includes(p));
@@ -562,10 +606,18 @@ Scope {
                 agent.dropDisplays(r.device);
                 return;
             }
+            // A yes to the pairing itself trusts the device now (settleAccepted).
             if (accept && r.method !== "AuthorizeService") {
                 const accepted = Object.assign({}, root.accepted);
-                accepted[r.device] = true;
+                accepted[r.device] = {
+                    at: Date.now(),
+                    trusted: d !== null && !d.trusted
+                };
                 root.accepted = accepted;
+                if (d && !d.trusted) {
+                    d.trusted = true;
+                    console.info("bluetooth: trusted on the user's yes to", r.method);
+                }
             }
             if (r.method === "AuthorizeService")
                 BluetoothShared.recordAnswer(r.device, r.uuid, accept);
@@ -592,6 +644,13 @@ Scope {
         repeat: true
         running: root.pairTarget !== ""
         onTriggered: root.checkPairing()
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: Object.keys(root.accepted).length > 0
+        onTriggered: root.settleAccepted("")
     }
 
     // Counts the scan and the visible window down, and ends them.

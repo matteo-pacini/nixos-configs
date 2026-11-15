@@ -72,11 +72,20 @@ Scope {
                 })) : [])
     property string currentKey: ""
     property int lastIndex: 0
+    // With no row picked, the nearest program or input; never a Set in Nix
+    // row, which is only selected by ↓ or a click. -1 when there is none.
     readonly property int current: {
         const at = rows.findIndex(r => r.key === currentKey);
-        return at >= 0 ? at : Math.min(lastIndex, rows.length - 1);
+        if (at >= 0)
+            return at;
+        let i = Math.min(lastIndex, rows.length - 1);
+        while (i >= 0 && rows[i].kind === "nix")
+            i--;
+        return i;
     }
     readonly property var currentRow: rows[current] ?? null
+    readonly property string selectedKey: currentRow?.key ?? ""
+    readonly property bool canMove: rows.length > (current >= 0 ? 1 : 0)
     property string expanded: ""
     property string flash: ""
     // Graph period from pw-top while details are open: { quantum, rate }.
@@ -349,7 +358,8 @@ Scope {
         refreshTimer.restart()
     onModiNodeChanged: if (open)
         refreshTimer.restart()
-    onCurrentKeyChanged: if (expanded !== "" && expanded !== currentKey)
+    // Also when the selection moves on its own (a row came or went).
+    onSelectedKeyChanged: if (expanded !== "" && expanded !== selectedKey)
         expanded = ""
 
     PwObjectTracker {
@@ -1119,17 +1129,18 @@ Scope {
                     message: root.flash
                     keys: {
                         const row = root.currentRow;
+                        const move = root.canMove ? [["↑↓", "select"]] : [];
                         if (!row)
-                            return [["Esc", "close"]];
+                            return move.concat([["Esc", "close"]]);
                         if (row.kind === "nix")
-                            return [["Enter", "show file"], ["Esc", "close"]];
+                            return move.concat([["Enter", "show file"], ["Esc", "close"]]);
                         if (row.kind === "input" && NoSignal.has(row.node))
-                            return [["←→", "gain"], ["M", "mute"], ["Enter", "why"], ["Esc", "close"]];
+                            return move.concat([["←→", "gain"], ["M", "mute"], ["Enter", "why"], ["Esc", "close"]]);
                         if (row.kind === "input")
-                            return [["←→", "gain"], ["M", "mute"], ["Enter", "make default"], ["Esc", "close"]];
+                            return move.concat([["←→", "gain"], ["M", "mute"], ["Enter", "make default"], ["Esc", "close"]]);
                         if (root.expanded === row.key)
-                            return [["Enter", "close details"], ["←→", "volume"], ["M", "mute"], ["Esc", "back"]];
-                        return [["↑↓", "select"], ["←→", "volume"], ["M", "mute"], ["Enter", "details"], ["Esc", "close"]];
+                            return move.concat([["Enter", "close details"], ["←→", "volume"], ["M", "mute"], ["Esc", "back"]]);
+                        return move.concat([["←→", "volume"], ["M", "mute"], ["Enter", "details"], ["Esc", "close"]]);
                     }
                 }
             }
