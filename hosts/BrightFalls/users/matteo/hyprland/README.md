@@ -588,7 +588,7 @@ device reports under 15%.
   every device (`hosts/BrightFalls/audio/default.nix`): with LDAC, A2DP from
   a phone never settled against BlueZ 5.87.
 - **Low battery**: one critical notification per device each time it drops
-  under 15% (`bluetooth/Bt.qml`); remembered across reloads, not restarts.
+  under 15% (`bluetooth/BluetoothShared.qml`); remembered across reloads, not restarts.
 
 ## Lock screen
 

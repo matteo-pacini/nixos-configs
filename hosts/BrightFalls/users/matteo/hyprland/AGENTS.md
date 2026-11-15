@@ -183,7 +183,9 @@ unknown key name in a bind is ignored silently, so it cannot catch that.
 **Injected data and previews.** Allowed during development: temporary IPC
 targets, a property that points a loader at a fixture, a data override, a
 no-focus preview mode on DP-2. Remove them before the report; anything kept
-on purpose is named in it (the lock screen's `DESK_LOCK_PREVIEW=1` is kept).
+on purpose is named in it (the lock screen's `DESK_LOCK_PREVIEW=1` is kept,
+and so is `audio/NoSignal.qml`'s `statusRoot`, pointed at a copy of the
+`/proc/asound` tree to simulate a microphone that sends nothing).
 `qs ipc show` at the end must list only the real targets.
 
 **Real hardware.** Announced, in as few rounds as possible, with the user
@@ -336,30 +338,33 @@ Directories (`import qs.<dir>`):
 
 | Directory | What |
 |-----------|------|
-| `common/` | Shared by panels: `Style.qml` (singleton: bar metrics, `panelTop`, edge, radius, surface, soft, track, scrim colours), `Dropdowns.qml` (singleton registry: `add()` a panel, `closeOthers()`, `anchor()`/`centre()` for placement), `DropCard.qml` (the card, shadow, placement and eased height), `KeyHints.qml` (footer hints), `LockedList.qml` (loads `locked.json` for an area), `NixTag.qml`, `SectionHeader.qml` |
+| `common/` | Shared by panels: `Style.qml` (singleton: bar metrics, `panelTop`, edge, radius, the cards' `growDuration`, surface, soft, track, scrim colours), `Dropdowns.qml` (singleton registry: `add()` a panel, `closeOthers()`, `anchor()`/`centre()` for placement), `DropCard.qml` (the card, shadow, placement and eased height), `KeyHints.qml` (the drop-downs' footer: hints that wrap, or a wrapped `message` in their place), `LockedList.qml` (loads `locked.json` for an area), `NixTag.qml`, `SectionHeader.qml` |
 | `launcher/` | `Calc.qml` (parser, evaluator), `Emoji.qml` (lazy list, search), `emoji.txt` (generated) |
 | `notifications/` | `Card.qml` (one card), `Entry.qml` (timeout, replacement, leave animation) |
-| `network/` | `Panel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml` |
+| `network/` | `NetworkPanel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml` |
 | `audio/` | `AudioPanel.qml` (shared singleton), `Stack.qml` (the DAC drawing), `Modi.qml` (`/proc/asound` reads), `Graph.qml` (`pw-dump`), `Level.qml` (level bar), `NoSignal.qml` (singleton, runs always) |
 | `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions; node-tested) |
 | `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-run), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
-| `bluetooth/` | `Bt.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
+| `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
 Imports: each panel imports its own directory and `qs.common`; `Bar.qml`
 imports every feature directory; `Osd.qml` imports `qs.bluetooth` (it shows
-`Bt.announce`); `Notifications.qml` and `calendar/Reminders.qml` read the
+`BluetoothShared.announce`); `Notifications.qml` and `calendar/Reminders.qml` read the
 root `LockState`. No cycles: keep it that way, and don't make one panel
 import another to talk to it (use `Dropdowns`, or D-Bus as Reminders does).
 The lock (`lock.qml`, `lock/`) imports only `Theme.qml`, so a change to
 `Theme.qml` can break the next lock: test it in the lock preview.
 
 Names to know: the singleton each panel shares with the bar is
-`network/Panel.qml`, `audio/AudioPanel.qml`, `calendar/CalendarPanel.qml`,
-`system/SystemPanel.qml` and `bluetooth/Bt.qml`. "Panel" does not mean
-placement only: `CalendarPanel` holds the export and the minute clock, `Bt`
-the adapter, batteries and remembered answers, because the bar and the
-reminders need them while the panel is closed.
+`network/NetworkPanel.qml`, `audio/AudioPanel.qml`,
+`calendar/CalendarPanel.qml`, `system/SystemPanel.qml` and
+`bluetooth/BluetoothShared.qml`. "Panel" does not mean placement only:
+`CalendarPanel` holds the export and the minute clock, and
+`BluetoothShared` the adapter, batteries and remembered answers, because the
+bar, the OSD and the reminders need them while the panel is closed.
+`BluetoothShared` is not named `BluetoothPanel`, which is the root
+component, nor `Bluetooth`, which is Quickshell's own singleton.
 
 To add a drop-down panel: a root file and its line in `shell.qml`; a
 singleton in its directory with `screen` and `toggleRequested(screen)`;
@@ -421,53 +426,37 @@ was written; check the reports of any newer work for its own.
 
 **Code follow-ups** from the modularity review (estimates for one agent
 working live; the ones that change what the user sees need the user's
-look first):
-1. **Footers and flash messages** (about 1 h). Two footer styles exist:
-   drop-downs (cyan key, `common/KeyHints.qml`, plus hand-built copies in
-   Network's list footer, Calendar, Bluetooth and `PairModal.qml`) and modals
-   (Launcher, Cheatsheet, SessionMenu); one or two is the user's call. The
-   flash message is handled four ways, with a `say()` timer copied in four
-   panels (2.5 s, Calendar 3.5 s). **Bug:** Audio overlays its flash on the
-   hints without growing the footer, so a flash longer than one line (the
-   no-signal explanation) is cut off by the card's clip.
-2. **Pure logic out of QML into node-tested `.js`** (2 to 3 h a panel):
+look first). Its footer, height animation, naming, leftover and colour items
+are done; what is left:
+1. **Pure logic out of QML into node-tested `.js`** (2 to 3 h a panel):
    Network (nmcli/route/duplex parsing, the `speedtests.jsonl` reduction,
    done twice, `age()`), Audio (`facts()`, `details()`, path text),
    Cheatsheet (grouping and column balancing), Bluetooth (`rowSub()`,
    `details()`, codec names), `SpeedTest.qml`'s parsers.
-3. **One height animation** (minutes, plus the user's pick): 260 ms in
-   Network and Calendar, 200 ms elsewhere (`DropCard.growDuration`). Then
-   move it to `Style`.
-4. **Shared drop-down window, row selection, bar open mark** (about 2 h):
+2. **Shared drop-down window, row selection, bar open mark** (about 2 h):
    the `PanelWindow` shell (layer, focus, click-off, key forwarding) is
    copied in five panels; Audio and Bluetooth have identical selection code;
    `Bar.qml` draws the 14×2 open mark five times. The "pick the screen by
    name" line is repeated in 11 places.
-5. **One notification sender** (about 30 min plus a device test): `gdbus …
-   Notify` argument lists are built by hand in `bluetooth/Bt.qml`,
-   `audio/NoSignal.qml` and `calendar/Reminders.qml`. The first two pass
-   unquoted strings, so a device name that parses as GVariant text would be
-   altered; Reminders quotes them (`gv()`).
-6. **Naming** (about 30 min, update this file with it): `Panel` and `Bt`
-   against `AudioPanel`, `CalendarPanel`, `SystemPanel`; the root
-   `BluetoothPanel.qml` against `Network.qml`, `Audio.qml` and the rest.
-   `Osd.qml` picks its glyph by matching the literal text `"Bluetooth on"`
-   from `BluetoothPanel.qml`.
-7. **Leftovers** (15 min): `bluetooth/Agent.qml`'s unused `answered` signal
-   and `command` property and a stale comment about IPC;
-   `CalendarPanel.exportPath` (a fixture override nothing sets);
-   `Reminders.fullscreenOverride` (a test input); `NoSignal.statusRoot`
-   (kept as the way to simulate a hang: decide); a brace slip in
-   `BluetoothPanel.qml`'s power toggle. Live only, not in the repository:
+3. **One notification sender** (about 30 min plus a device test): `gdbus …
+   Notify` argument lists are built by hand in
+   `bluetooth/BluetoothShared.qml`, `audio/NoSignal.qml` and
+   `calendar/Reminders.qml`. The first two pass unquoted strings, so a
+   device name that parses as GVariant text would be altered; Reminders
+   quotes them (`gv()`).
+4. **Small ones** (minutes each): the flash timer (`say()` and a `Timer`,
+   2.5 s, Calendar 3.5 s) is still copied in Network, Audio, Calendar and
+   Bluetooth; `Osd.qml` picks its glyph by matching the literal text
+   `"Bluetooth on"` from `BluetoothPanel.qml`; the root `BluetoothPanel.qml`
+   is named unlike `Network.qml`, `Audio.qml` and the rest; `#191a21` (text
+   on purple) is hard-coded in `Polkit.qml` and `BluetoothPanel.qml`;
+   `lock/LockFace.qml` copies the "soft" formula (leave it until the lock
+   can be re-tested). Live only, not in the repository:
    `~/.config/hypr/dms/`, unused DankMaterialShell output (the user's call).
-8. **Remaining colour copies** (15 min): the "soft" and "track" formulas in
-   `notifications/Card.qml`, `audio/Stack.qml`, `audio/Level.qml`,
-   `system/Machine.qml`, `system/Ring.qml` and `Osd.qml` could use `Style`;
-   `#191a21` (text on purple) is hard-coded in `Polkit.qml` and
-   `BluetoothPanel.qml`. Leave `lock/LockFace.qml` until the lock can be
-   re-tested.
 
-Also noted, no action planned: rings and level bars are separate drawings
+Also noted, no action planned: the centred modals (Launcher, Cheatsheet,
+SessionMenu, Polkit, the pairing modal) keep their own footers rather than
+`KeyHints` (the pairing modal's is a hand-built copy of the drop-down look); rings and level bars are separate drawings
 per panel (they differ in size and behaviour); Polkit and the pairing modal
 are hand-built modals sharing a look by copy; `system/Sensors.qml` reads
 `system/locked.json` through its own batched reads rather than
