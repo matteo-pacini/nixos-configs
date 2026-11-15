@@ -140,7 +140,7 @@ in
 
   # desk-mqtt (the office panel's helper) against a Mosquitto on loopback,
   # with the test playing Zigbee2MQTT under invented device names. Takes
-  # about 40 s: it waits out the 5 s confirmation and two 10 s reconnects.
+  # about 45 s: it waits out the 5 s confirmation and two 10 s reconnects.
   office-helper =
     pkgs.runCommand "office-helper-tests"
       {

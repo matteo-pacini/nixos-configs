@@ -1131,10 +1131,13 @@ required check for merging into `master`:
   a Mosquitto on loopback, with `tests/office/test-desk-mqtt.py` playing
   Zigbee2MQTT under invented names and a spy on `#`: retained state at
   connect and "nothing retained", availability and Zigbee2MQTT offline, a
-  confirmed and an unconfirmed command, socket and malformed commands
-  refused with nothing published, the broker dropping and coming back, the
-  broker unreachable at start, a missing and an invalid config, read-only,
-  and a config that names a socket as the light. About 40 s.
+  confirmed and an unconfirmed command, the blind's close, stop and position
+  confirmed, socket and malformed commands refused with nothing published,
+  the broker dropping and coming back, the broker unreachable at start and
+  refusing the connection, a missing config and each way a config can be
+  invalid, read-only, a config that names a socket as the light, and
+  malformed device definitions from the broker (a known bug, see the test).
+  About 45 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
