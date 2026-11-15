@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
+import qs.common
 
 // The session menu, on the focused monitor. Toggled over IPC:
 //   qs ipc call session toggle
@@ -115,7 +116,7 @@ Scope {
         id: window
 
         visible: root.open
-        color: Qt.rgba(15 / 255, 16 / 255, 22 / 255, 0.5)
+        color: Style.scrim
         anchors {
             top: true
             bottom: true
@@ -172,8 +173,8 @@ Scope {
             anchors.centerIn: parent
             width: 300
             height: column.implicitHeight + 2
-            radius: 10
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+            radius: Style.radius
+            color: Style.surface
             border.width: 1
             border.color: Theme.purple
 

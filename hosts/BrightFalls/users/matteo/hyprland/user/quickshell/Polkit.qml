@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Polkit
 import Quickshell.Wayland
+import qs.common
 
 // The session's polkit authentication agent: a dialog on the focused monitor
 // for each request, one at a time in the order they arrive. The pending
@@ -16,8 +17,7 @@ Scope {
     id: root
 
     readonly property AuthFlow flow: agent.flow
-    // The mockup's "soft" text colour, between foreground and comment.
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
 
     function submit() {
         if (!flow || !flow.isResponseRequired)
@@ -54,7 +54,7 @@ Scope {
         id: window
 
         visible: agent.isActive
-        color: Qt.rgba(15 / 255, 16 / 255, 22 / 255, 0.5)
+        color: Style.scrim
         anchors {
             top: true
             bottom: true
@@ -89,8 +89,8 @@ Scope {
             anchors.centerIn: parent
             width: Math.min(420, parent.width - 24)
             height: column.implicitHeight + 36
-            radius: 10
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+            radius: Style.radius
+            color: Style.surface
             border.width: 1
             border.color: Theme.purple
 

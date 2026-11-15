@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
+import qs.common
 
 // The keybinding cheat sheet, on the focused monitor. Toggled over IPC:
 //   qs ipc call cheatsheet toggle
@@ -27,8 +28,7 @@ Scope {
     readonly property int headingHeight: 19
     readonly property int rowHeight: 27
     readonly property int groupGap: 16
-    // The mockup's "soft" text colour, between foreground and comment.
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
     readonly property color keyFill: Qt.tint(Theme.background, Qt.rgba(Theme.currentLine.r, Theme.currentLine.g, Theme.currentLine.b, 0.45))
 
     readonly property var keyNames: ({
@@ -202,7 +202,7 @@ Scope {
         id: window
 
         visible: root.open
-        color: Qt.rgba(15 / 255, 16 / 255, 22 / 255, 0.5)
+        color: Style.scrim
         anchors {
             top: true
             bottom: true
@@ -237,8 +237,8 @@ Scope {
             anchors.centerIn: parent
             width: Math.min(980, parent.width - 28)
             height: column.implicitHeight + 2
-            radius: 10
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+            radius: Style.radius
+            color: Style.surface
             border.width: 1
             border.color: Theme.purple
 

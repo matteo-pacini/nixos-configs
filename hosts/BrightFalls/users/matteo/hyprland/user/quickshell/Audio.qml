@@ -1,15 +1,11 @@
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Wayland
 import qs.audio
-import qs.bluetooth
-import qs.calendar
-import qs.network
-import qs.system
+import qs.common
 
 // The audio panel, hanging under the bar's audio item on one monitor.
 // Toggled over IPC (on the focused monitor) or from the bar:
@@ -23,16 +19,11 @@ Scope {
     id: root
 
     readonly property bool open: AudioPanel.screen !== ""
-    // Bar.qml: 6 px margin plus the bar's 34 px, then the 8 px gap that
-    // everything under the bar keeps.
-    readonly property int top: 6 + 34 + 8
     readonly property int panelWidth: 400
 
-    readonly property string lockedPath: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/desk/audio/locked.json"
-
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
     readonly property color chip: Qt.tint(Theme.background, Qt.rgba(Theme.currentLine.r, Theme.currentLine.g, Theme.currentLine.b, 0.5))
-    readonly property color track: Qt.darker(Theme.background, 1.5)
+    readonly property color track: Style.track
 
     readonly property var nodes: Pipewire.nodes.values
     // Without the links to level monitors (this panel's own among them):
@@ -63,8 +54,8 @@ Scope {
         return any ?? 0;
     }
 
-    property var locked: []
-    property bool lockedPresent: false
+    readonly property var locked: lockedFile.entries
+    readonly property bool lockedPresent: lockedFile.present
 
     readonly property var rows: programs.map(p => ({
                 kind: "program",
@@ -96,14 +87,7 @@ Scope {
             close();
             return;
         }
-        if (Panel.screen !== "")
-            Panel.toggleRequested(Panel.screen);
-        if (CalendarPanel.screen !== "")
-            CalendarPanel.toggleRequested(CalendarPanel.screen);
-        if (SystemPanel.screen !== "")
-            SystemPanel.toggleRequested(SystemPanel.screen);
-        if (Bt.screen !== "")
-            Bt.toggleRequested(Bt.screen);
+        Dropdowns.closeOthers("audio");
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         expanded = "";
         flash = "";
@@ -427,28 +411,13 @@ Scope {
         }
     }
 
-    FileView {
+    LockedList {
         id: lockedFile
 
-        path: root.lockedPath
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const parsed = JSON.parse(text());
-                root.locked = Array.isArray(parsed) ? parsed.filter(r => typeof r.label === "string") : [];
-                root.lockedPresent = true;
-            } catch (e) {
-                console.warn("audio: locked.json:", e.message);
-                root.locked = [];
-                root.lockedPresent = false;
-            }
-        }
-        onLoadFailed: {
-            root.locked = [];
-            root.lockedPresent = false;
-        }
+        area: "audio"
     }
+
+    Component.onCompleted: Dropdowns.add("audio", AudioPanel)
 
     Connections {
         target: AudioPanel
@@ -464,17 +433,6 @@ Scope {
         function toggle(): void {
             root.toggle(Hyprland.focusedMonitor?.name ?? "");
         }
-    }
-
-    component SectionHeader: Text {
-        leftPadding: 14
-        topPadding: 10
-        bottomPadding: 4
-        color: Theme.comment
-        font.family: Theme.fontMono
-        font.pixelSize: 11
-        font.weight: Font.Medium
-        font.letterSpacing: 0.88
     }
 
     component Mono: Text {
@@ -593,40 +551,10 @@ Scope {
             }
         }
 
-        RectangularShadow {
-            anchors.fill: card
-            radius: card.radius
-            offset.y: 12
-            blur: 36
-            color: Qt.rgba(0, 0, 0, 0.45)
-        }
-
-        Rectangle {
-            id: card
-
-            readonly property real centre: root.open ? AudioPanel.iconCentre(AudioPanel.screen) : -1
-
-            x: centre < 0 ? window.width - width - 6 : Math.max(6, Math.min(window.width - width - 6, Math.round(centre - width / 2)))
-            y: root.top
-            width: root.panelWidth
-            height: content.implicitHeight + 2
-            radius: 10
-            clip: true
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
-            border.width: 1
-            border.color: Theme.purple
-
-            Behavior on height {
-                NumberAnimation {
-                    duration: 200
-                    easing.type: Easing.OutQuint
-                }
-            }
-
-            // Keeps clicks on the panel from reaching the close area.
-            MouseArea {
-                anchors.fill: parent
-            }
+        DropCard {
+            centre: root.open ? Dropdowns.centre("audio", AudioPanel.screen) : -1
+            cardWidth: root.panelWidth
+            contentHeight: content.implicitHeight
 
             Column {
                 id: content
@@ -817,6 +745,7 @@ Scope {
                 }
 
                 SectionHeader {
+                    bottomPadding: 4
                     text: "PLAYING"
                 }
 
@@ -993,6 +922,7 @@ Scope {
 
                 SectionHeader {
                     visible: root.inputs.length > 0
+                    bottomPadding: 4
                     text: "INPUTS"
                 }
 
@@ -1121,6 +1051,7 @@ Scope {
 
                 SectionHeader {
                     visible: root.lockedPresent && root.locked.length > 0
+                    bottomPadding: 4
                     text: "SET IN NIX"
                 }
 
@@ -1168,25 +1099,12 @@ Scope {
                                 font.pixelSize: 14
                             }
 
-                            Rectangle {
+                            NixTag {
                                 id: tag
 
                                 anchors.right: parent.right
                                 anchors.rightMargin: 8
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: tagText.implicitWidth + 10
-                                height: tagText.implicitHeight + 2
-                                radius: 4
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Theme.currentLine
-
-                                Mono {
-                                    id: tagText
-
-                                    anchors.centerIn: parent
-                                    text: "nix"
-                                }
                             }
                         }
                     }

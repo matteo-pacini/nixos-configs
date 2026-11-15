@@ -1,14 +1,10 @@
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
-import qs.audio
-import qs.bluetooth
 import qs.calendar
-import qs.network
-import qs.system
+import qs.common
 import "calendar/queries.js" as Q
 
 // The calendar panel, hanging under the bar's clock on one monitor.
@@ -22,16 +18,13 @@ Scope {
     id: root
 
     readonly property bool open: CalendarPanel.screen !== ""
-    // Bar.qml: 6 px margin plus the bar's 34 px, then the 8 px gap that
-    // everything under the bar keeps.
-    readonly property int top: 6 + 34 + 8
     readonly property int panelWidth: 360
 
     // ~/.local/share/desk/calendar/source.json names the file holding the
     // CalDAV base; that address is a secret, read only when O is pressed.
     readonly property string sourcePath: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/desk/calendar/source.json"
 
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
     readonly property color dim: Qt.tint(Theme.background, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.55))
 
     readonly property var data: CalendarPanel.data
@@ -55,14 +48,7 @@ Scope {
             close();
             return;
         }
-        if (Panel.screen !== "")
-            Panel.toggleRequested(Panel.screen);
-        if (AudioPanel.screen !== "")
-            AudioPanel.toggleRequested(AudioPanel.screen);
-        if (SystemPanel.screen !== "")
-            SystemPanel.toggleRequested(SystemPanel.screen);
-        if (Bt.screen !== "")
-            Bt.toggleRequested(Bt.screen);
+        Dropdowns.closeOthers("calendar");
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         selected = Q.addDays(now, 0);
         flash = "";
@@ -202,6 +188,8 @@ Scope {
         blockLoading: true
     }
 
+    Component.onCompleted: Dropdowns.add("calendar", CalendarPanel)
+
     Connections {
         target: CalendarPanel
 
@@ -305,40 +293,12 @@ Scope {
             }
         }
 
-        RectangularShadow {
-            anchors.fill: card
-            radius: card.radius
-            offset.y: 12
-            blur: 36
-            color: Qt.rgba(0, 0, 0, 0.45)
-        }
-
-        Rectangle {
-            id: card
-
-            readonly property real centre: root.open ? CalendarPanel.iconCentre(CalendarPanel.screen) : -1
-
-            x: centre < 0 ? Math.round((window.width - width) / 2) : Math.max(6, Math.min(window.width - width - 6, Math.round(centre - width / 2)))
-            y: root.top
-            width: root.panelWidth
-            height: content.implicitHeight + 2
-            radius: 10
-            clip: true
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
-            border.width: 1
-            border.color: Theme.purple
-
-            Behavior on height {
-                NumberAnimation {
-                    duration: 260
-                    easing.type: Easing.OutQuint
-                }
-            }
-
-            // Keeps clicks on the panel from reaching the close area.
-            MouseArea {
-                anchors.fill: parent
-            }
+        DropCard {
+            centre: root.open ? Dropdowns.centre("calendar", CalendarPanel.screen) : -1
+            centredFallback: true
+            cardWidth: root.panelWidth
+            contentHeight: content.implicitHeight
+            growDuration: 260
 
             Column {
                 id: content

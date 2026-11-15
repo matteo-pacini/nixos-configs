@@ -10,6 +10,7 @@ import Quickshell.Widgets
 import qs.audio
 import qs.bluetooth
 import qs.calendar
+import qs.common
 import qs.network
 import qs.system
 
@@ -43,8 +44,7 @@ Scope {
             "DP-1": [1, 2, 3, 4, 5],
             "DP-2": [6, 7, 8, 9, 10]
         })
-    // The mockup's "soft" text colour, between foreground and comment.
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
 
     // Game mode (Super+Ctrl+G in hypr/bindings.lua) is the only thing that
     // turns animations off, and it always removes or re-adds DP-2 or reloads
@@ -153,11 +153,11 @@ Scope {
                 right: true
             }
             margins {
-                top: 6
-                left: 6
-                right: 6
+                top: Style.barMargin
+                left: Style.barMargin
+                right: Style.barMargin
             }
-            implicitHeight: 34
+            implicitHeight: Style.barHeight
             WlrLayershell.namespace: "desk-bar"
 
             Connections {
@@ -172,8 +172,8 @@ Scope {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 10
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+                radius: Style.radius
+                color: Style.surface
                 border.width: 1
                 border.color: Theme.purple
 
@@ -291,7 +291,7 @@ Scope {
                     width: clockRow.implicitWidth
                     height: parent.height
 
-                    Component.onCompleted: CalendarPanel.register(bar.modelData.name, clock, bar)
+                    Component.onCompleted: Dropdowns.anchor("calendar", bar.modelData.name, clock, bar)
 
                     Hover {
                         hovered: clockArea.containsMouse
@@ -349,7 +349,7 @@ Scope {
                             id: ring
 
                             readonly property real fraction: clock.dayFraction
-                            readonly property color track: Qt.darker(Theme.background, 1.5)
+                            readonly property color track: Style.track
                             readonly property color fill: Theme.pink
 
                             anchors.verticalCenter: parent.verticalCenter
@@ -480,7 +480,7 @@ Scope {
                         width: systemRow.implicitWidth
                         height: parent.height
 
-                        Component.onCompleted: SystemPanel.register(bar.modelData.name, system, bar)
+                        Component.onCompleted: Dropdowns.anchor("system", bar.modelData.name, system, bar)
 
                         Hover {
                             hovered: systemArea.containsMouse
@@ -553,7 +553,7 @@ Scope {
                         width: bluetoothRow.implicitWidth
                         height: parent.height
 
-                        Component.onCompleted: Bt.register(bar.modelData.name, bluetooth, bar)
+                        Component.onCompleted: Dropdowns.anchor("bluetooth", bar.modelData.name, bluetooth, bar)
 
                         Hover {
                             hovered: bluetoothArea.containsMouse
@@ -612,7 +612,7 @@ Scope {
                         width: networkGlyph.implicitWidth
                         height: parent.height
 
-                        Component.onCompleted: Panel.register(bar.modelData.name, network, bar)
+                        Component.onCompleted: Dropdowns.anchor("network", bar.modelData.name, network, bar)
 
                         Hover {
                             hovered: networkArea.containsMouse
@@ -664,7 +664,7 @@ Scope {
                         width: audioRow.implicitWidth
                         height: parent.height
 
-                        Component.onCompleted: AudioPanel.register(bar.modelData.name, audio, bar)
+                        Component.onCompleted: Dropdowns.anchor("audio", bar.modelData.name, audio, bar)
 
                         Hover {
                             hovered: audioArea.containsMouse

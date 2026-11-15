@@ -1,15 +1,11 @@
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Networking
 import Quickshell.Wayland
-import qs.audio
-import qs.bluetooth
-import qs.calendar
+import qs.common
 import qs.network
-import qs.system
 
 // The network panel, hanging under the bar's network icon on one monitor.
 // Toggled over IPC (on the focused monitor) or by clicking the icon:
@@ -23,9 +19,6 @@ Scope {
     id: root
 
     readonly property bool open: Panel.screen !== ""
-    // Bar.qml: 6 px margin plus the bar's 34 px, then the 8 px gap that
-    // everything under the bar keeps.
-    readonly property int top: 6 + 34 + 8
     readonly property int panelWidth: 380
     // Height of the gauges and the line under them, footer excluded; the
     // second is for all in turn, where chips and a table come with them.
@@ -47,9 +40,8 @@ Scope {
     }
 
     readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/desk"
-    readonly property string lockedPath: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/desk/network/locked.json"
 
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
 
     // Nerd Font (Material Design) glyphs.
     readonly property var glyph: ({
@@ -78,8 +70,8 @@ Scope {
     property string sessionChoice: ""
     // Connection name -> highest download or upload stored for it, in Mb/s.
     property var best: ({})
-    property var locked: []
-    property bool lockedPresent: false
+    readonly property var locked: lockedFile.entries
+    readonly property bool lockedPresent: lockedFile.present
 
     readonly property var rows: wired.map(d => ({
                 kind: "wired",
@@ -128,14 +120,7 @@ Scope {
             close();
             return;
         }
-        if (AudioPanel.screen !== "")
-            AudioPanel.toggleRequested(AudioPanel.screen);
-        if (CalendarPanel.screen !== "")
-            CalendarPanel.toggleRequested(CalendarPanel.screen);
-        if (SystemPanel.screen !== "")
-            SystemPanel.toggleRequested(SystemPanel.screen);
-        if (Bt.screen !== "")
-            Bt.toggleRequested(Bt.screen);
+        Dropdowns.closeOthers("network");
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         current = Math.max(0, rows.findIndex(r => r.kind === "wired" && r.device.connected));
         expanded = "";
@@ -582,28 +567,13 @@ Scope {
         }
     }
 
-    FileView {
+    LockedList {
         id: lockedFile
 
-        path: root.lockedPath
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const parsed = JSON.parse(text());
-                root.locked = Array.isArray(parsed) ? parsed.filter(r => typeof r.label === "string") : [];
-                root.lockedPresent = true;
-            } catch (e) {
-                console.warn("network: locked.json:", e.message);
-                root.locked = [];
-                root.lockedPresent = false;
-            }
-        }
-        onLoadFailed: {
-            root.locked = [];
-            root.lockedPresent = false;
-        }
+        area: "network"
     }
+
+    Component.onCompleted: Dropdowns.add("network", Panel)
 
     Connections {
         target: Panel
@@ -619,17 +589,6 @@ Scope {
         function toggle(): void {
             root.toggle(Hyprland.focusedMonitor?.name ?? "");
         }
-    }
-
-    component SectionHeader: Text {
-        leftPadding: 14
-        topPadding: 10
-        bottomPadding: 3
-        color: Theme.comment
-        font.family: Theme.fontMono
-        font.pixelSize: 11
-        font.weight: Font.Medium
-        font.letterSpacing: 0.88
     }
 
     component Small: Text {
@@ -713,40 +672,11 @@ Scope {
             }
         }
 
-        RectangularShadow {
-            anchors.fill: card
-            radius: card.radius
-            offset.y: 12
-            blur: 36
-            color: Qt.rgba(0, 0, 0, 0.45)
-        }
-
-        Rectangle {
-            id: card
-
-            readonly property real centre: root.open ? Panel.iconCentre(Panel.screen) : -1
-
-            x: centre < 0 ? window.width - width - 6 : Math.max(6, Math.min(window.width - width - 6, Math.round(centre - width / 2)))
-            y: root.top
-            width: root.panelWidth
-            height: (root.layer === "gauges" ? gaugeView.implicitHeight : root.layer === "chooser" ? chooser.implicitHeight : list.implicitHeight) + 2
-            radius: 10
-            clip: true
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
-            border.width: 1
-            border.color: Theme.purple
-
-            Behavior on height {
-                NumberAnimation {
-                    duration: 260
-                    easing.type: Easing.OutQuint
-                }
-            }
-
-            // Keeps clicks on the panel from reaching the close area.
-            MouseArea {
-                anchors.fill: parent
-            }
+        DropCard {
+            centre: root.open ? Dropdowns.centre("network", Panel.screen) : -1
+            cardWidth: root.panelWidth
+            contentHeight: root.layer === "gauges" ? gaugeView.implicitHeight : root.layer === "chooser" ? chooser.implicitHeight : list.implicitHeight
+            growDuration: 260
 
             Column {
                 id: list
@@ -1044,28 +974,12 @@ Scope {
                                 font.pixelSize: 15
                             }
 
-                            Rectangle {
+                            NixTag {
                                 id: tag
 
                                 anchors.right: parent.right
                                 anchors.rightMargin: 8
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: tagText.implicitWidth + 10
-                                height: tagText.implicitHeight + 2
-                                radius: 4
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Theme.currentLine
-
-                                Text {
-                                    id: tagText
-
-                                    anchors.centerIn: parent
-                                    text: "nix"
-                                    color: Theme.comment
-                                    font.family: Theme.fontMono
-                                    font.pixelSize: 11
-                                }
                             }
                         }
                     }

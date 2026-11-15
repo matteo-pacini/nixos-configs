@@ -3,6 +3,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs
+import qs.common
 import "services.js" as S
 
 // The centred modal for one agent request: a code to compare or type, a
@@ -23,7 +24,7 @@ PanelWindow {
     readonly property bool typing: method === "RequestPasskey" || method === "RequestPinCode"
     readonly property bool display: method === "DisplayPasskey" || method === "DisplayPinCode"
     readonly property var service: method === "AuthorizeService" ? S.describe(request.uuid, deviceName) : null
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
 
     // accept: the answer; extra: { passkey } or { pin }; trust: also trust
     // the device. For a display request, accept false means stop pairing.
@@ -50,7 +51,7 @@ PanelWindow {
     }
 
     visible: request !== null
-    color: Qt.rgba(15 / 255, 16 / 255, 22 / 255, 0.5)
+    color: Style.scrim
     anchors {
         top: true
         bottom: true
@@ -107,8 +108,8 @@ PanelWindow {
         anchors.centerIn: parent
         width: Math.min(380, parent.width - 24)
         height: column.implicitHeight + 30
-        radius: 10
-        color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+        radius: Style.radius
+        color: Style.surface
         border.width: 1
         border.color: Theme.purple
 

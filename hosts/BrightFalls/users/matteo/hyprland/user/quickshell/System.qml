@@ -1,13 +1,9 @@
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
-import qs.audio
-import qs.bluetooth
-import qs.calendar
-import qs.network
+import qs.common
 import qs.system
 import "system/decode.js" as D
 
@@ -21,13 +17,10 @@ Scope {
     id: root
 
     readonly property bool open: SystemPanel.screen !== ""
-    // Bar.qml: 6 px margin plus the bar's 34 px, then the 8 px gap that
-    // everything under the bar keeps.
-    readonly property int top: 6 + 34 + 8
     readonly property int panelWidth: 420
 
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
-    readonly property color track: Qt.darker(Theme.background, 1.5)
+    readonly property color soft: Style.soft
+    readonly property color track: Style.track
 
     readonly property var s: Sensors.s
     readonly property var sections: ["cpu", "mem", "egpu", "igpu", "storage"]
@@ -39,14 +32,7 @@ Scope {
             close();
             return;
         }
-        if (Panel.screen !== "")
-            Panel.toggleRequested(Panel.screen);
-        if (AudioPanel.screen !== "")
-            AudioPanel.toggleRequested(AudioPanel.screen);
-        if (CalendarPanel.screen !== "")
-            CalendarPanel.toggleRequested(CalendarPanel.screen);
-        if (Bt.screen !== "")
-            Bt.toggleRequested(Bt.screen);
+        Dropdowns.closeOthers("system");
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         current = 0;
         details = false;
@@ -104,6 +90,8 @@ Scope {
     onOpenChanged: if (!open)
         details = false
 
+    Component.onCompleted: Dropdowns.add("system", SystemPanel)
+
     Connections {
         target: SystemPanel
 
@@ -124,24 +112,6 @@ Scope {
         color: Theme.comment
         font.family: Theme.fontMono
         font.pixelSize: 11
-    }
-
-    // The small box marking a figure the NixOS configuration fixes.
-    component NixTag: Rectangle {
-        width: tagText.implicitWidth + 10
-        height: tagText.implicitHeight + 2
-        radius: 4
-        color: "transparent"
-        border.width: 1
-        border.color: Theme.currentLine
-
-        Mono {
-            id: tagText
-
-            anchors.centerIn: parent
-            text: "nix"
-            font.pixelSize: 10
-        }
     }
 
     component Pill: Rectangle {
@@ -275,6 +245,7 @@ Scope {
                     NixTag {
                         id: tag
 
+                        pixelSize: 10
                         visible: cell.row[3] === true
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -416,40 +387,10 @@ Scope {
             }
         }
 
-        RectangularShadow {
-            anchors.fill: card
-            radius: card.radius
-            offset.y: 12
-            blur: 36
-            color: Qt.rgba(0, 0, 0, 0.45)
-        }
-
-        Rectangle {
-            id: card
-
-            readonly property real centre: root.open ? SystemPanel.iconCentre(SystemPanel.screen) : -1
-
-            x: centre < 0 ? window.width - width - 6 : Math.max(6, Math.min(window.width - width - 6, Math.round(centre - width / 2)))
-            y: root.top
-            width: root.panelWidth
-            height: content.implicitHeight + 2
-            radius: 10
-            clip: true
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
-            border.width: 1
-            border.color: Theme.purple
-
-            Behavior on height {
-                NumberAnimation {
-                    duration: 200
-                    easing.type: Easing.OutQuint
-                }
-            }
-
-            // Keeps clicks on the panel from reaching the close area.
-            MouseArea {
-                anchors.fill: parent
-            }
+        DropCard {
+            centre: root.open ? Dropdowns.centre("system", SystemPanel.screen) : -1
+            cardWidth: root.panelWidth
+            contentHeight: content.implicitHeight
 
             Column {
                 id: content

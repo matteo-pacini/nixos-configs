@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs
+import qs.common
 
 // The bar system item's hover list: every temperature in the machine, each
 // coloured by its own limit. It takes no keyboard focus and has no keys.
@@ -11,7 +12,7 @@ PopupWindow {
     property bool shown: false
 
     readonly property var s: Sensors.s
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
     readonly property var rows: {
         const s = root.s;
         const t = x => x === null || x === undefined ? "–" : `${Math.round(x)} °C`;
@@ -32,15 +33,15 @@ PopupWindow {
     implicitWidth: 230
     implicitHeight: list.implicitHeight + 2
     anchor.item: item
-    // Centred under the item, 8 px below the bar like the panels.
+    // Centred under the item, as far below the bar as the panels.
     anchor.rect.x: item.width / 2
-    anchor.rect.y: item.height + 8
+    anchor.rect.y: item.height + Style.belowBar
     anchor.gravity: Edges.Bottom
 
     Rectangle {
         anchors.fill: parent
-        radius: 10
-        color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+        radius: Style.radius
+        color: Style.surface
         border.width: 1
         border.color: Theme.purple
 

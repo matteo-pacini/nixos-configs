@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
+import qs.common
 import qs.launcher
 
 // The app launcher, on the focused monitor. Toggled over IPC:
@@ -115,8 +116,8 @@ Scope {
             y: Math.round(parent.height * 0.15)
             width: 640
             height: column.implicitHeight + 2
-            radius: 10
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+            radius: Style.radius
+            color: Style.surface
             border.width: 1
             border.color: Theme.purple
 
