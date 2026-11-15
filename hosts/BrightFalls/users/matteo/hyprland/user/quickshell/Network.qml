@@ -8,6 +8,7 @@ import Quickshell.Wayland
 import qs.audio
 import qs.calendar
 import qs.network
+import qs.system
 
 // The network panel, hanging under the bar's network icon on one monitor.
 // Toggled over IPC (on the focused monitor) or by clicking the icon:
@@ -130,6 +131,8 @@ Scope {
             AudioPanel.toggleRequested(AudioPanel.screen);
         if (CalendarPanel.screen !== "")
             CalendarPanel.toggleRequested(CalendarPanel.screen);
+        if (SystemPanel.screen !== "")
+            SystemPanel.toggleRequested(SystemPanel.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         current = Math.max(0, rows.findIndex(r => r.kind === "wired" && r.device.connected));
         expanded = "";

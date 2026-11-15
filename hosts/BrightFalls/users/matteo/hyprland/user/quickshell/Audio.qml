@@ -8,6 +8,7 @@ import Quickshell.Wayland
 import qs.audio
 import qs.calendar
 import qs.network
+import qs.system
 
 // The audio panel, hanging under the bar's audio item on one monitor.
 // Toggled over IPC (on the focused monitor) or from the bar:
@@ -98,6 +99,8 @@ Scope {
             Panel.toggleRequested(Panel.screen);
         if (CalendarPanel.screen !== "")
             CalendarPanel.toggleRequested(CalendarPanel.screen);
+        if (SystemPanel.screen !== "")
+            SystemPanel.toggleRequested(SystemPanel.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         expanded = "";
         flash = "";

@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import qs.audio
 import qs.calendar
 import qs.network
+import qs.system
 import "calendar/queries.js" as Q
 
 // The calendar panel, hanging under the bar's clock on one monitor.
@@ -57,6 +58,8 @@ Scope {
             Panel.toggleRequested(Panel.screen);
         if (AudioPanel.screen !== "")
             AudioPanel.toggleRequested(AudioPanel.screen);
+        if (SystemPanel.screen !== "")
+            SystemPanel.toggleRequested(SystemPanel.screen);
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         selected = Q.addDays(now, 0);
         flash = "";

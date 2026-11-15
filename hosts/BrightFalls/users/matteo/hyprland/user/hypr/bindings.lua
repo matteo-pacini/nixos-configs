@@ -90,6 +90,7 @@ bind("Session", "SUPER + ESCAPE", "Session menu", hl.dsp.exec_cmd("qs ipc call s
 bind("Session", "SUPER + N", "Network", hl.dsp.exec_cmd("qs ipc call network toggle"))
 bind("Session", "SUPER + A", "Audio", hl.dsp.exec_cmd("qs ipc call audio toggle"))
 bind("Session", "SUPER + C", "Calendar", hl.dsp.exec_cmd("qs ipc call calendar toggle"))
+bind("Session", "SUPER + Y", "System", hl.dsp.exec_cmd("qs ipc call system toggle"))
 -- logind must ignore a short press (HandlePowerKey in desktop-hyprland.nix),
 -- or it powers off before the menu shows.
 bind("Session", "XF86PowerOff", "Session menu", hl.dsp.exec_cmd("qs ipc call session toggle"))

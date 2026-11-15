@@ -272,6 +272,43 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
   reloads or reboots: what has fired is kept in `~/.local/state/desk/calendar-
   reminders.json`.
 
+- `System.qml` and `system/`: the system panel. Super+Y or a click on the chip
+  in the bar. The bar item shows the CPU's temperature (k10temp Tctl) and the
+  eGPU's junction temperature, each orange or red near its limit; resting the
+  pointer on it lists every temperature in the machine. The panel draws the
+  UM890 Pro, the OCuLink cable and the DEG1 with the RX 6800 XT, its fans
+  turning in proportion to the card's real fan speed. Under it, the cable's
+  negotiated link against what the root port can do, and "≈ N W chip + card",
+  the APU's package power plus the card's board power (not wall power).
+  Sections: CPU (load, per-thread load, average clock and the configured
+  maximum, tagged `nix` when NixOS sets it, hottest core from the APU's
+  metrics, package power); Memory (used = total − available, cache, swap, both
+  modules' temperatures); eGPU (load, VRAM, junction, memory temperature, fan
+  rpm and duty, power, clocks, voltage, which outputs it drives, a throttling
+  tag only while the card reports throttling); iGPU (load, VRAM, clock,
+  voltage); Storage and network (NVMe temperature and read/write rate, free
+  space for `/`, `/home`, `/mnt/games`, the default route's interface rate).
+  ↑↓ choose a section, Enter shows its details (regulator temperatures, power
+  limit, who controls the fans, CPU policy and clock limit with the file that
+  sets it, link errors if any), Esc closes them, then the panel.
+
+  Everything is read straight from sysfs and procfs (`system/Sensors.qml`),
+  never from LACT's socket and never writing anything. Hardware is found by
+  name and device path, not hwmon numbers. While the panel is closed only the
+  two bar temperatures are read, every 5 seconds; hovering reads the
+  temperatures each second; the open panel reads about 30 small files a second
+  and a few every 10 seconds. Memory-module alarm files are never read,
+  because reading one clears it.
+
+  Deliberately not shown: **link saturation**, because no traffic counter
+  exists for this card on this kernel (`pcie_bw` is absent on Navi 21, and
+  gpu_metrics v1.3 has no bandwidth fields), so the link line says only what
+  was negotiated; **CPU-only power**, because RAPL is root-only, so "package"
+  is the whole chip, CPU and built-in graphics together; **per-program use,
+  frame rate and frame time**, which are MangoHud's job inside a game;
+  **history**, which is not kept. Nothing of this panel is meant to be shown
+  over a fullscreen game.
+
 ## Calendar events
 
 The calendar panel reads one file that a user service refreshes from the

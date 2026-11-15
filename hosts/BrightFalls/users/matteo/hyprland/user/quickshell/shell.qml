@@ -24,5 +24,6 @@ ShellRoot {
     Network {}
     Audio {}
     Calendar {}
+    System {}
     Reminders {}
 }

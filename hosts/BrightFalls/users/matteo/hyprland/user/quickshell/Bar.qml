@@ -11,6 +11,7 @@ import Quickshell.Widgets
 import qs.audio
 import qs.calendar
 import qs.network
+import qs.system
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -20,6 +21,7 @@ Scope {
     // Nerd Font (Material Design) glyphs.
     readonly property var glyph: ({
             menu: "\u{f035c}",
+            chip: "\u{f061a}",
             gamepad: "\u{f0297}",
             bluetooth: "\u{f00af}",
             bluetoothConnected: "\u{f00b1}",
@@ -463,6 +465,84 @@ Scope {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Item {
+                        id: system
+
+                        readonly property bool panelOpen: SystemPanel.screen === bar.modelData.name
+                        readonly property var s: Sensors.s
+                        // CPU, then the eGPU's junction; one line per
+                        // temperature. Each must be one Sensors reads while
+                        // closed (level 0 sources).
+                        readonly property var temps: [[s.cpuTemp, Sensors.heat("cpu", s.cpuTemp)], [s.egpuPresent && s.egpuAwake ? s.egpuJunction : null, Sensors.heat("junction", s.egpuJunction)]].filter(t => t[0] !== null && t[0] !== undefined)
+
+                        width: systemRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: SystemPanel.register(bar.modelData.name, system, bar)
+
+                        Hover {
+                            hovered: systemArea.containsMouse
+                        }
+
+                        // Marks the item whose panel is open.
+                        Rectangle {
+                            visible: system.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        Row {
+                            id: systemRow
+
+                            height: parent.height
+                            spacing: 6
+
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.glyph.chip
+                                color: system.panelOpen ? Theme.purple : Theme.foreground
+                            }
+
+                            Repeater {
+                                model: system.temps
+
+                                Text {
+                                    required property var modelData
+
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: `${Math.round(modelData[0])}°`
+                                    color: modelData[1] === 2 ? Theme.red : modelData[1] === 1 ? Theme.orange : Theme.foreground
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: root.fontSize
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: systemArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: SystemPanel.toggleRequested(bar.modelData.name)
+                            onContainsMouseChanged: {
+                                if (containsMouse)
+                                    SystemPanel.hoverScreen = bar.modelData.name;
+                                else if (SystemPanel.hoverScreen === bar.modelData.name)
+                                    SystemPanel.hoverScreen = "";
+                            }
+                        }
+
+                        Temperatures {
+                            item: system
+                            shown: SystemPanel.hoverScreen === bar.modelData.name && SystemPanel.screen === ""
                         }
                     }
 
