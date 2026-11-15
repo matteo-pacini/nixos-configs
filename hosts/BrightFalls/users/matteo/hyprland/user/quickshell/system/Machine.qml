@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs
+import qs.common
 
 // The machine from the front: the UM890 Pro, the OCuLink cable, and the DEG1
 // dock with the three-fan RX 6800 XT lying on it. Absent (`egpu` false), the
@@ -20,7 +21,7 @@ Item {
     readonly property color metal: "#3b3e4f"
     readonly property color metalHigh: "#565a70"
     readonly property color dark: "#20222c"
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
 
     property real angle: 0
 

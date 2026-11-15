@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import Quickshell.Wayland
 import qs.bluetooth
+import qs.common
 
 // The volume OSD: a pill under the bar on the focused monitor. Shows on a
 // change to the default output's volume, mute or device, to the default
@@ -122,7 +123,7 @@ Scope {
 
     // Bluetooth on or off from its bind (BluetoothPanel.qml).
     Connections {
-        target: Bt
+        target: BluetoothShared
 
         function onAnnounce(text) {
             root.glyph = text === "Bluetooth on" ? "\u{f00af}" : "\u{f00b2}";
@@ -184,7 +185,7 @@ Scope {
             width: row.implicitWidth + 28 + 2
             height: row.implicitHeight + 14 + 2
             radius: height / 2
-            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+            color: Style.surface
             border.width: 1
             border.color: Theme.purple
             opacity: root.shown ? 1 : 0

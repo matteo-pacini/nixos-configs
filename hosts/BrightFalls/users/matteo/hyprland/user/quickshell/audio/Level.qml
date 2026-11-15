@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.Pipewire
 import qs
+import qs.common
 
 // A live level bar for one node: green for the level now, a mark for the
 // recent peak (held 1.5 s), red while clipping. Levels are on Quickshell's
@@ -26,7 +27,7 @@ Rectangle {
     width: parent.width
     height: 3
     radius: 2
-    color: Qt.darker(Theme.background, 1.5)
+    color: Style.track
 
     onLevelChanged: {
         if (level >= held) {

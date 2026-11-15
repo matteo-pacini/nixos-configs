@@ -18,7 +18,7 @@ import qs.network
 Scope {
     id: root
 
-    readonly property bool open: Panel.screen !== ""
+    readonly property bool open: NetworkPanel.screen !== ""
     readonly property int panelWidth: 380
     // Height of the gauges and the line under them, footer excluded; the
     // second is for all in turn, where chips and a table come with them.
@@ -130,14 +130,14 @@ Scope {
         infoQuery.running = true;
         records.reload();
         lockedFile.reload();
-        Panel.screen = window.screen.name;
+        NetworkPanel.screen = window.screen.name;
     }
 
     function close(): void {
         if (speedTest.running)
             speedTest.cancel();
         resetTest();
-        Panel.screen = "";
+        NetworkPanel.screen = "";
     }
 
     function say(text: string): void {
@@ -573,10 +573,10 @@ Scope {
         area: "network"
     }
 
-    Component.onCompleted: Dropdowns.add("network", Panel)
+    Component.onCompleted: Dropdowns.add("network", NetworkPanel)
 
     Connections {
-        target: Panel
+        target: NetworkPanel
 
         function onToggleRequested(screen) {
             root.toggle(screen);
@@ -673,10 +673,9 @@ Scope {
         }
 
         DropCard {
-            centre: root.open ? Dropdowns.centre("network", Panel.screen) : -1
+            centre: root.open ? Dropdowns.centre("network", NetworkPanel.screen) : -1
             cardWidth: root.panelWidth
             contentHeight: root.layer === "gauges" ? gaugeView.implicitHeight : root.layer === "chooser" ? chooser.implicitHeight : list.implicitHeight
-            growDuration: 260
 
             Column {
                 id: list
@@ -985,52 +984,9 @@ Scope {
                     }
                 }
 
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: Theme.currentLine
-                }
-
-                Item {
-                    width: parent.width
-                    height: Math.max(hints.implicitHeight, flashText.implicitHeight) + 16
-
-                    Row {
-                        id: hints
-
-                        x: 14
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: root.flash === ""
-                        spacing: 14
-
-                        Repeater {
-                            model: [["Enter", "select"], ["S", "speed test"], ["Esc", root.expanded !== "" ? "back" : "close"]]
-
-                            Text {
-                                required property var modelData
-
-                                text: `<font color="${Theme.cyan}">${modelData[0]}</font> ${modelData[1]}`
-                                textFormat: Text.StyledText
-                                color: Theme.comment
-                                font.family: Theme.fontMono
-                                font.pixelSize: 11
-                            }
-                        }
-                    }
-
-                    Text {
-                        id: flashText
-
-                        x: 14
-                        width: parent.width - 28
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: root.flash !== ""
-                        text: root.flash
-                        wrapMode: Text.Wrap
-                        color: Theme.yellow
-                        font.family: Theme.fontMono
-                        font.pixelSize: 11
-                    }
+                KeyHints {
+                    keys: [["Enter", "select"], ["S", "speed test"], ["Esc", root.expanded !== "" ? "back" : "close"]]
+                    message: root.flash
                 }
             }
 

@@ -298,7 +298,6 @@ Scope {
             centredFallback: true
             cardWidth: root.panelWidth
             contentHeight: content.implicitHeight
-            growDuration: 260
 
             Column {
                 id: content
@@ -598,53 +597,10 @@ Scope {
                 }
 
                 // Keys, or the state of the data.
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: Theme.currentLine
-                }
-
-                Item {
-                    readonly property string message: root.flash !== "" ? root.flash : !CalendarPanel.present ? "No calendar is set up. Events appear once the sync service has run." : root.stale
-
-                    width: parent.width
-                    height: (message !== "" ? messageText.implicitHeight : hints.implicitHeight) + 16
-
-                    Flow {
-                        id: hints
-
-                        visible: parent.message === ""
-                        x: 14
-                        y: 8
-                        width: parent.width - 28
-                        spacing: 14
-
-                        Repeater {
-                            model: [["←→↑↓", "day"], ["PgUp PgDn", "month"], ["T", "today"], ["O", "open in Nextcloud"], ["Esc", "close"], ["R", "sync"]]
-
-                            Text {
-                                required property var modelData
-
-                                text: `<font color="${Theme.cyan}">${modelData[0]}</font> ${modelData[1]}`
-                                textFormat: Text.StyledText
-                                color: Theme.comment
-                                font.family: Theme.fontMono
-                                font.pixelSize: 11
-                            }
-                        }
-                    }
-
-                    Mono {
-                        id: messageText
-
-                        visible: parent.message !== ""
-                        x: 14
-                        y: 8
-                        width: parent.width - 28
-                        wrapMode: Text.Wrap
-                        text: parent.message
-                        color: root.flash !== "" ? Theme.yellow : CalendarPanel.present ? Theme.orange : Theme.comment
-                    }
+                KeyHints {
+                    keys: [["←→↑↓", "day"], ["PgUp PgDn", "month"], ["T", "today"], ["O", "open in Nextcloud"], ["Esc", "close"], ["R", "sync"]]
+                    message: root.flash !== "" ? root.flash : !CalendarPanel.present ? "No calendar is set up. Events appear once the sync service has run." : root.stale
+                    messageColor: root.flash !== "" ? Theme.yellow : CalendarPanel.present ? Theme.orange : Theme.comment
                 }
             }
         }

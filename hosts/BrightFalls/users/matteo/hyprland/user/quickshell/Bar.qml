@@ -90,8 +90,8 @@ Scope {
     // the host is offline.
     readonly property bool offline: !(wired || wireless) || [NetworkConnectivity.None, NetworkConnectivity.Portal, NetworkConnectivity.Limited].includes(Networking.connectivity)
 
-    readonly property bool bluetoothOn: Bt.on
-    readonly property bool bluetoothConnected: bluetoothOn && Bt.devices.some(d => d.connected)
+    readonly property bool bluetoothOn: BluetoothShared.on
+    readonly property bool bluetoothConnected: bluetoothOn && BluetoothShared.devices.some(d => d.connected)
 
     // A hover highlight behind a clickable item.
     component Hover: Rectangle {
@@ -548,7 +548,7 @@ Scope {
                     Item {
                         id: bluetooth
 
-                        readonly property bool panelOpen: Bt.screen === bar.modelData.name
+                        readonly property bool panelOpen: BluetoothShared.screen === bar.modelData.name
 
                         width: bluetoothRow.implicitWidth
                         height: parent.height
@@ -586,9 +586,9 @@ Scope {
                             // A connected device's battery under 15%, the
                             // lowest if several.
                             Text {
-                                visible: Bt.lowest >= 0
+                                visible: BluetoothShared.lowest >= 0
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: `${Bt.lowest}%`
+                                text: `${BluetoothShared.lowest}%`
                                 color: Theme.red
                                 font.family: Theme.fontMono
                                 font.pixelSize: root.fontSize
@@ -600,14 +600,14 @@ Scope {
 
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: Bt.toggleRequested(bar.modelData.name)
+                            onClicked: BluetoothShared.toggleRequested(bar.modelData.name)
                         }
                     }
 
                     Item {
                         id: network
 
-                        readonly property bool panelOpen: Panel.screen === bar.modelData.name
+                        readonly property bool panelOpen: NetworkPanel.screen === bar.modelData.name
 
                         width: networkGlyph.implicitWidth
                         height: parent.height
@@ -643,7 +643,7 @@ Scope {
 
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: Panel.toggleRequested(bar.modelData.name)
+                            onClicked: NetworkPanel.toggleRequested(bar.modelData.name)
                         }
                     }
 

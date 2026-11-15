@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import Quickshell.Widgets
 import qs
+import qs.common
 
 // One notification: icon, summary, body, time and up to three actions.
 // Left click invokes the default action (which dismisses it unless the sender
@@ -29,7 +30,7 @@ Rectangle {
     readonly property var stripActions: [...notification.actions].filter(a => a.identifier !== "default").slice(0, 3)
     // Letter tile colour: red when critical, else picked by the app's name.
     readonly property color tile: critical ? Theme.red : [Theme.cyan, Theme.green, Theme.orange, Theme.pink, Theme.purple, Theme.yellow][[...notification.appName].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 6, 0)]
-    readonly property color soft:Qt.rgba(Theme.foreground.r * 0.7 + Theme.comment.r * 0.3, Theme.foreground.g * 0.7 + Theme.comment.g * 0.3, Theme.foreground.b * 0.7 + Theme.comment.b * 0.3, 1)
+    readonly property color soft: Style.soft
 
     // The notification's image, else its icon, else the icon of the app's
     // desktop entry; "" leaves the letter tile.
@@ -76,7 +77,7 @@ Rectangle {
 
     implicitHeight: main.height + (strip.visible ? strip.height : 0) + 2
     radius: 10
-    color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
+    color: Style.surface
     border.width: 1
     border.color: critical ? Theme.red : Theme.purple
     // While a peek strip grows into a full card.

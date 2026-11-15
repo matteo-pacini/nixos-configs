@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs
+import qs.common
 
 // A percentage ring with its figure inside and a label under it. `value`
 // 0..100, or null for not known yet (an empty ring and a dash). Purple,
@@ -28,7 +29,7 @@ Column {
 
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: Qt.darker(Theme.background, 1.5)
+                strokeColor: Style.track
                 strokeWidth: 6
 
                 PathAngleArc {

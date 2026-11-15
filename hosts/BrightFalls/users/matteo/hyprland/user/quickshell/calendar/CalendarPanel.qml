@@ -15,8 +15,7 @@ Singleton {
     property string screen: ""
 
     // Written by the calendar-sync user service after each good sync.
-    readonly property string defaultPath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/desk/calendar/events.jsonl"
-    property string exportPath: defaultPath
+    readonly property string exportPath: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/desk/calendar/events.jsonl"
 
     // Queries.parse's result, or null while there is no readable export.
     property var data: null

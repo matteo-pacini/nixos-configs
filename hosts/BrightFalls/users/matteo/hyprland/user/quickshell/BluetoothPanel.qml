@@ -21,21 +21,21 @@ import "bluetooth/services.js" as S
 Scope {
     id: root
 
-    readonly property bool open: Bt.screen !== ""
+    readonly property bool open: BluetoothShared.screen !== ""
     readonly property int panelWidth: 380
     readonly property int scanSeconds: 30
     readonly property int visibleSeconds: 120
 
     readonly property color soft: Style.soft
 
-    readonly property var adapter: Bt.adapter
+    readonly property var adapter: BluetoothShared.adapter
     readonly property bool blocked: adapter !== null && adapter.state === BluetoothAdapterState.Blocked
     readonly property bool usable: adapter !== null && !blocked
     readonly property bool on: usable && adapter.enabled
 
-    readonly property var paired: D.sortPaired(Bt.devices.filter(d => d.paired))
-    readonly property var nearby: showNearby ? D.nearby(Bt.devices, Bt.rssi) : []
-    readonly property bool anyRssi: nearby.some(d => Bt.rssi[d.dbusPath] !== undefined)
+    readonly property var paired: D.sortPaired(BluetoothShared.devices.filter(d => d.paired))
+    readonly property var nearby: showNearby ? D.nearby(BluetoothShared.devices, BluetoothShared.rssi) : []
+    readonly property bool anyRssi: nearby.some(d => BluetoothShared.rssi[d.dbusPath] !== undefined)
 
     readonly property var locked: lockedFile.entries
     readonly property bool lockedPresent: lockedFile.present
@@ -95,7 +95,7 @@ Scope {
     readonly property var requestDevice: shownRequest ? device(shownRequest.device) : null
 
     function device(path: string): var {
-        return Bt.devices.find(d => d.dbusPath === path) ?? null;
+        return BluetoothShared.devices.find(d => d.dbusPath === path) ?? null;
     }
 
     function toggle(screen: string): void {
@@ -115,7 +115,7 @@ Scope {
         currentKey = "";
         now = Date.now();
         lockedFile.reload();
-        Bt.screen = window.screen.name;
+        BluetoothShared.screen = window.screen.name;
     }
 
     function close(): void {
@@ -123,7 +123,7 @@ Scope {
         endVisible();
         if (pairTarget !== "")
             cancelPairing();
-        Bt.screen = "";
+        BluetoothShared.screen = "";
     }
 
     function say(text: string): void {
@@ -148,7 +148,7 @@ Scope {
     }
 
     function startScan(): void {
-        Bt.rssi = {};
+        BluetoothShared.rssi = {};
         showNearby = true;
         scanUntil = Date.now() + scanSeconds * 1000;
         now = Date.now();
@@ -257,12 +257,13 @@ Scope {
 
     function power(): void {
         if (!usable) {
-            Bt.announce(blocked ? "Bluetooth is blocked" : "No Bluetooth adapter");
+            BluetoothShared.announce(blocked ? "Bluetooth is blocked" : "No Bluetooth adapter");
             return;
         }
         powerPending = true;
         powerTimer.restart();
-        adapter.enabled = !adapter.enabled;    }
+        adapter.enabled = !adapter.enabled;
+    }
 
     function activate(): void {
         const row = currentRow;
@@ -324,7 +325,7 @@ Scope {
                 armed = "";
                 expanded = "";
                 say(`Forgot ${row.device.name}.`);
-                Bt.forgetAnswers(row.key);
+                BluetoothShared.forgetAnswers(row.key);
                 row.device.forget();
             } else {
                 armed = row.key;
@@ -365,7 +366,7 @@ Scope {
                     mediaClass: n.properties["media.class"] ?? "",
                     linked: groups.some(g => (g.source === n || g.target === n) && g.state === PwLinkState.Active)
                 }));
-        return S.uses(d.connected ? Bt.links[d.dbusPath] ?? null : null, d.connected ? nodes : [], Bt.answers[d.dbusPath] ?? {}, d.name);
+        return S.uses(d.connected ? BluetoothShared.links[d.dbusPath] ?? null : null, d.connected ? nodes : [], BluetoothShared.answers[d.dbusPath] ?? {}, d.name);
     }
 
     function rowSub(d: var, nearbyRow: bool): var {
@@ -468,7 +469,7 @@ Scope {
         if (powerPending) {
             powerPending = false;
             powerTimer.stop();
-            Bt.announce(on ? "Bluetooth on" : "Bluetooth off");
+            BluetoothShared.announce(on ? "Bluetooth on" : "Bluetooth off");
         }
         if (!on) {
             scanUntil = 0;
@@ -480,14 +481,14 @@ Scope {
     onVisibleOnChanged: syncPairable()
     onRequestChanged: {
         if (request !== null && shownRequest === null) {
-            const name = open ? Bt.screen : Hyprland.focusedMonitor?.name;
+            const name = open ? BluetoothShared.screen : Hyprland.focusedMonitor?.name;
             modal.screen = Array.from(Quickshell.screens).find(s => s.name === name) ?? Quickshell.screens[0];
         }
         shownRequest = request;
     }
 
     // Connection attempts end in Connected or back in Disconnected.
-    readonly property string stateKey: Bt.devices.map(d => d.dbusPath + ":" + d.state).join(",")
+    readonly property string stateKey: BluetoothShared.devices.map(d => d.dbusPath + ":" + d.state).join(",")
     onStateKeyChanged: {
         const tried = Object.assign({}, connectTried);
         const failed = Object.assign({}, connectFailed);
@@ -506,7 +507,7 @@ Scope {
 
     // A device the user accepted becomes trusted once paired, and a pairing
     // while visible ends the visible window.
-    readonly property var pairedNow: Bt.devices.filter(d => d.paired).map(d => d.dbusPath)
+    readonly property var pairedNow: BluetoothShared.devices.filter(d => d.paired).map(d => d.dbusPath)
     onPairedNowChanged: {
         const fresh = pairedNow.filter(p => !pairedBefore.includes(p));
         pairedBefore = pairedNow;
@@ -527,7 +528,7 @@ Scope {
 
     Component.onCompleted: {
         pairedBefore = pairedNow;
-        Dropdowns.add("bluetooth", Bt);
+        Dropdowns.add("bluetooth", BluetoothShared);
     }
 
     Agent {
@@ -567,7 +568,7 @@ Scope {
                 root.accepted = accepted;
             }
             if (r.method === "AuthorizeService")
-                Bt.recordAnswer(r.device, r.uuid, accept);
+                BluetoothShared.recordAnswer(r.device, r.uuid, accept);
             if (accept && trust && d)
                 d.trusted = true;
             root.pairActivity = Date.now();
@@ -621,7 +622,7 @@ Scope {
         onTriggered: {
             if (root.powerPending) {
                 root.powerPending = false;
-                Bt.announce(root.on ? "Bluetooth did not turn off" : "Bluetooth did not turn on");
+                BluetoothShared.announce(root.on ? "Bluetooth did not turn off" : "Bluetooth did not turn on");
             }
         }
     }
@@ -643,7 +644,7 @@ Scope {
     }
 
     Connections {
-        target: Bt
+        target: BluetoothShared
 
         function onToggleRequested(screen) {
             root.toggle(screen);
@@ -901,7 +902,7 @@ Scope {
         }
 
         DropCard {
-            centre: root.open ? Dropdowns.centre("bluetooth", Bt.screen) : -1
+            centre: root.open ? Dropdowns.centre("bluetooth", BluetoothShared.screen) : -1
             cardWidth: root.panelWidth
             contentHeight: content.implicitHeight
 
@@ -1131,55 +1132,9 @@ Scope {
                     }
                 }
 
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: Theme.currentLine
-                }
-
-                // Key hints, wrapping onto a second line when they need it,
-                // or a message in their place.
-                Item {
-                    width: parent.width
-                    height: Math.max(hintFlow.implicitHeight, flashText.implicitHeight) + 16
-
-                    Flow {
-                        id: hintFlow
-
-                        x: 14
-                        width: parent.width - 28
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: root.flash === ""
-                        spacing: 14
-
-                        Repeater {
-                            model: root.hints
-
-                            Text {
-                                required property var modelData
-
-                                text: `<font color="${Theme.cyan}">${modelData[0]}</font> ${modelData[1]}`
-                                textFormat: Text.StyledText
-                                color: Theme.comment
-                                font.family: Theme.fontMono
-                                font.pixelSize: 11
-                            }
-                        }
-                    }
-
-                    Text {
-                        id: flashText
-
-                        x: 14
-                        width: parent.width - 28
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: root.flash !== ""
-                        text: root.flash
-                        wrapMode: Text.Wrap
-                        color: Theme.yellow
-                        font.family: Theme.fontMono
-                        font.pixelSize: 11
-                    }
+                KeyHints {
+                    keys: root.hints
+                    message: root.flash
                 }
             }
         }

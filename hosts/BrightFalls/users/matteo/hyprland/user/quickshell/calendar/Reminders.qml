@@ -17,9 +17,6 @@ import "queries.js" as Q
 Scope {
     id: root
 
-    // "auto" follows Hyprland; "on" or "off" stands in for it.
-    property string fullscreenOverride: "auto"
-
     readonly property var data: CalendarPanel.data
     readonly property string statePath: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/desk/calendar-reminders.json"
 
@@ -28,7 +25,7 @@ Scope {
     readonly property var fullscreenWorkspaces: Hyprland.monitors.values.map(m => m.activeWorkspace).filter(w => w !== null && w.hasFullscreen)
     readonly property bool hyprFullscreen: Hyprland.toplevels.values.some(t => fullscreenWorkspaces.includes(t.workspace) && t.lastIpcObject.fullscreen === 2)
     // The lock screen holds them the same way, until the session is unlocked.
-    readonly property bool fullscreen: (fullscreenOverride === "auto" ? hyprFullscreen : fullscreenOverride === "on") || LockState.held
+    readonly property bool fullscreen: hyprFullscreen || LockState.held
 
     // Notifications not yet sent, in order; one gdbus call at a time.
     property var queue: []

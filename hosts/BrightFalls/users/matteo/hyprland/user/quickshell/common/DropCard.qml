@@ -6,7 +6,8 @@ import qs
 // whole-monitor window. The card hangs Style.panelTop from the top, centred on
 // its bar item and kept Style.edge from the monitor's sides; while the item's
 // position is unknown it sits at the right edge, or in the middle with
-// `centredFallback`. Its height follows `contentHeight` with an eased change.
+// `centredFallback`. Its height follows `contentHeight`, eased over
+// Style.growDuration.
 // Children go inside the card; place them at x 1, y 1, inside the border.
 // Clicks on the card stop there; clicks beside it reach the window.
 Item {
@@ -18,7 +19,6 @@ Item {
     property int cardWidth
     // Height of the children, border excluded.
     property real contentHeight
-    property int growDuration: 200
 
     default property alias content: card.data
 
@@ -47,7 +47,7 @@ Item {
 
         Behavior on height {
             NumberAnimation {
-                duration: root.growDuration
+                duration: Style.growDuration
                 easing.type: Easing.OutQuint
             }
         }

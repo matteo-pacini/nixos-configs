@@ -10,7 +10,6 @@ import Quickshell.Io
 Scope {
     id: root
 
-    property string command: "desk-bt-agent"
     // Open requests, oldest first: the agent's request events, with id null
     // for DisplayPasskey and DisplayPinCode.
     property var requests: []
@@ -18,8 +17,6 @@ Scope {
 
     // The agent registered; BlueZ has just made the adapter pairable.
     signal registered
-    // The user answered a request about `device` (a D-Bus path).
-    signal answered(string device, string method, bool accept)
 
     // `extra` carries the passkey or pin that RequestPasskey and
     // RequestPinCode answer with.
@@ -31,14 +28,13 @@ Scope {
             id: request.id,
             accept
         }, extra ?? {})) + "\n");
-        answered(request.device, request.method, accept);
     }
 
     function hasRequestFor(device: string): bool {
         return requests.some(r => r.device === device);
     }
 
-    // One line from the agent (or, for tests, from IPC).
+    // One line from the agent.
     function handle(line: string): void {
         let ev;
         try {
@@ -54,13 +50,13 @@ Scope {
         } else if (ev.event === "cancel") {
             requests = requests.filter(r => r.id !== null && !ev.ids.includes(r.id));
         } else if (ev.event === "links") {
-            const links = Object.assign({}, Bt.links);
+            const links = Object.assign({}, BluetoothShared.links);
             links[ev.device] = ev;
-            Bt.links = links;
+            BluetoothShared.links = links;
         } else if (ev.event === "rssi") {
-            const rssi = Object.assign({}, Bt.rssi);
+            const rssi = Object.assign({}, BluetoothShared.rssi);
             rssi[ev.device] = ev.rssi;
-            Bt.rssi = rssi;
+            BluetoothShared.rssi = rssi;
         } else if (ev.event === "ready") {
             ready = true;
             restart.interval = 2000;
@@ -78,7 +74,7 @@ Scope {
     Process {
         id: proc
 
-        command: [root.command]
+        command: ["desk-bt-agent"]
         running: true
         stdinEnabled: true
         stdout: SplitParser {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs
+import qs.common
 
 // The desk's hardware stack from the front: a Magni 2 amplifier on a Modi 2
 // converter. The Magni is analog and always drawn the same; `modi` is
@@ -17,7 +18,7 @@ Item {
     readonly property color recess: "#2a2c39"
     readonly property color hole: "#191a21"
     readonly property color holeDeep: "#0f1015"
-    readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    readonly property color soft: Style.soft
 
     implicitWidth: 116
     implicitHeight: Math.round(implicitWidth * 126 / 200)

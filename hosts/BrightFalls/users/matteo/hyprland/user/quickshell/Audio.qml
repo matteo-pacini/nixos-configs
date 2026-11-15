@@ -1115,38 +1115,21 @@ Scope {
                     height: 6
                 }
 
-                Item {
-                    width: parent.width
-                    height: hints.implicitHeight
-
-                    KeyHints {
-                        id: hints
-
-                        opacity: root.flash === "" ? 1 : 0
-                        keys: {
-                            const row = root.currentRow;
-                            if (!row)
-                                return [["Esc", "close"]];
-                            if (row.kind === "nix")
-                                return [["Enter", "show file"], ["Esc", "close"]];
-                            if (row.kind === "input" && NoSignal.has(row.node))
-                                return [["←→", "gain"], ["M", "mute"], ["Enter", "why"], ["Esc", "close"]];
-                            if (row.kind === "input")
-                                return [["←→", "gain"], ["M", "mute"], ["Enter", "make default"], ["Esc", "close"]];
-                            if (root.expanded === row.key)
-                                return [["Enter", "close details"], ["←→", "volume"], ["M", "mute"], ["Esc", "back"]];
-                            return [["↑↓", "select"], ["←→", "volume"], ["M", "mute"], ["Enter", "details"], ["Esc", "close"]];
-                        }
-                    }
-
-                    Mono {
-                        x: 14
-                        y: 1 + (parent.height - 1 - height) / 2
-                        width: parent.width - 28
-                        visible: root.flash !== ""
-                        text: root.flash
-                        wrapMode: Text.Wrap
-                        color: Theme.yellow
+                KeyHints {
+                    message: root.flash
+                    keys: {
+                        const row = root.currentRow;
+                        if (!row)
+                            return [["Esc", "close"]];
+                        if (row.kind === "nix")
+                            return [["Enter", "show file"], ["Esc", "close"]];
+                        if (row.kind === "input" && NoSignal.has(row.node))
+                            return [["←→", "gain"], ["M", "mute"], ["Enter", "why"], ["Esc", "close"]];
+                        if (row.kind === "input")
+                            return [["←→", "gain"], ["M", "mute"], ["Enter", "make default"], ["Esc", "close"]];
+                        if (root.expanded === row.key)
+                            return [["Enter", "close details"], ["←→", "volume"], ["M", "mute"], ["Esc", "back"]];
+                        return [["↑↓", "select"], ["←→", "volume"], ["M", "mute"], ["Enter", "details"], ["Esc", "close"]];
                     }
                 }
             }

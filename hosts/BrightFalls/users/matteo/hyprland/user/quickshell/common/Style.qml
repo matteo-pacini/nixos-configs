@@ -19,6 +19,8 @@ Singleton {
     readonly property int edge: 6
     // Corner radius of the bar, cards and modals.
     readonly property int radius: 10
+    // How long a drop-down card takes to ease to a new height, in ms.
+    readonly property int growDuration: 200
 
     // The fill of the bar, cards and modals.
     readonly property color surface: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
