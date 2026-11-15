@@ -164,7 +164,13 @@ alpha, a 1 px `Theme.purple` border, 10 px corners.
     change, plus once 6 s later to see the device suspend
     (`audio/Graph.qml`). Volume, mute, links and link state are Quickshell's
     (`Quickshell.Services.Pipewire`). A volume set here is a stream volume,
-    which WirePlumber remembers for that program.
+    which WirePlumber remembers for that program. Under the volume, a level
+    bar like the inputs' (`audio/Level.qml`, shared with them) shows what the
+    program adds to the output: the monitor reads the stream before its
+    volume (Quickshell divides the volume out), so the bar multiplies it back
+    in; muted or paused, it has no monitor and is flat. A stream lacking a
+    channel of its output (mono into the stereo Modi) gets no bar, since
+    Quickshell 0.3.2 cannot meter it; its details say "not metered".
   - Inputs: every capture device with its gain, a level bar (Quickshell's
     `PwNodePeakMonitor`, cube-root scale, one capture stream per input while
     the panel is open, none after) with a yellow mark for the peak of the
