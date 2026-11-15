@@ -1,8 +1,8 @@
 diff --git a/src/qemu_policy.rs b/src/qemu_policy.rs
-index 6530207..b7218ea 100644
+index d0e8f32..e813e67 100644
 --- a/src/qemu_policy.rs
 +++ b/src/qemu_policy.rs
-@@ -47,6 +47,10 @@ pub fn exec(args: &[OsString]) -> Result<()> {
+@@ -37,6 +37,10 @@ pub fn exec(args: &[OsString]) -> Result<()> {
              .context("verify QEMU child memory policy")?,
          "QEMU child did not retain its hugepage policy"
      );

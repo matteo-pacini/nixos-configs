@@ -1,7 +1,7 @@
-# The Proton build legion-kvm's Wine repair recipe is pinned to
-# (config/compatibility.json). The compat tool holds real files rather than
-# store symlinks: legion shares the selected Proton directory into the guest
-# over virtiofs, where /nix/store does not exist.
+# The Proton build legion-kvm is tested with; the guest build also scans it
+# for the libraries Proton needs in the guest. The compat tool holds real files
+# rather than store symlinks: legion shares the selected Proton directory into
+# the guest over virtiofs, where /nix/store does not exist.
 { proton-ge-bin, fetchzip }:
 proton-ge-bin.overrideAttrs (
   finalAttrs: old: {

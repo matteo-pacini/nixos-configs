@@ -1,6 +1,6 @@
 # Guest userspace: a slice of Debian 13 /usr, as upstream's guest expects a
 # Debian layout (hardcoded /usr/lib/x86_64-linux-gnu paths in the guest
-# programs). Upstream's own radv() and guest_userspace() from
+# programs). Upstream's own venus() and guest_userspace() from
 # tools/build_runtime.py run inside a Debian VM; only their inputs come from Nix.
 {
   lib,
@@ -11,7 +11,6 @@
   binutils,
   legionSource,
   rust,
-  wine,
   proton,
 }:
 let
@@ -33,8 +32,8 @@ let
 
   # Hash from upstream's config/sources.json.
   mesa = fetchurl {
-    url = "https://deb.debian.org/debian/pool/main/m/mesa/mesa_25.0.7.orig.tar.xz";
-    sha256 = "592272df3cf01e85e7db300c449df5061092574d099da275d19e97ef0510f8a6";
+    url = "https://archive.mesa3d.org/mesa-26.2.6.tar.xz";
+    sha256 = "b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92";
   };
 
   # Retarget the Nix-built guest programs at Debian's loader and library path.
@@ -49,8 +48,7 @@ let
     dontStrip = true;
     installPhase = ''
       mkdir -p $out/release
-      for path in bin/legion-proton-bootstrap bin/legion-guest-compositor bin/legion-audio-runtime \
-                  bin/legion-cpu-adapter-fixture lib/liblegion_cpu_adapter.so; do
+      for path in bin/legion-proton-bootstrap bin/legion-guest-compositor bin/legion-audio-runtime; do
         target=$out/release/$(basename $path)
         install -m0755 ${rust.workspace}/$path $target
         newest=$(objdump -T $target | { grep -oE 'GLIBC_[0-9.]+' || true; } | sed 's/GLIBC_//' | sort -V | tail -1)
@@ -59,7 +57,7 @@ let
           exit 1
         fi
         patchelf --remove-rpath $target
-        case $path in bin/*) patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 $target ;; esac
+        patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 $target
       done
     '';
   };
@@ -88,10 +86,10 @@ vmTools.runInLinuxImage (
       find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name locale.alias -exec rm -rf {} +
 
       work=/tmp/legion
-      mkdir -p $work/wine/dlls/ntdll/x86_64-windows $work/sources/mesa
-      cp ${wine}/ntdll.dll $work/wine/dlls/ntdll/x86_64-windows/ntdll.dll
+      mkdir -p $work/sources/mesa
       tar -xf ${mesa} --strip-components=1 -C $work/sources/mesa
-      # guest_userspace() reads the Proton tree from /proton.
+      # guest_userspace() scans the Proton tree at /proton for the guest
+      # libraries it needs.
       ln -s ${proton.src} /proton
 
       python3 - <<'PY'
@@ -103,7 +101,7 @@ vmTools.runInLinuxImage (
       br.OUT = Path('/tmp/legion')
       br.TARGET = Path('${programs}')
       br.JOBS = 4
-      br.radv(br.OUT/'sources/mesa')
+      br.venus(br.OUT/'sources/mesa')
       br.guest_userspace()
       PY
 

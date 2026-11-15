@@ -40,11 +40,9 @@ stdenv.mkDerivation {
     jobs=$(( NIX_BUILD_CORES > 16 ? 16 : NIX_BUILD_CORES ))
     python3 ../kernel/build_guest.py --source . --output ../out --native-display --jobs $jobs \
       || { tail -50 ../out/build.log; exit 1; }
-    for name in nvidia:backends/nvidia/driver cpuid:guest-cpuid; do
-      cp -r ${legionSource.src}/''${name#*:} ../modules-''${name%%:*}
-      chmod -R u+w ../modules-''${name%%:*}
-      make -C ../out M=$PWD/../modules-''${name%%:*} CONFIG_VIRTIO_GPU_NV=m -j$jobs modules
-    done
+    cp -r ${legionSource.src}/guest-cpuid ../modules-cpuid
+    chmod -R u+w ../modules-cpuid
+    make -C ../out M=$PWD/../modules-cpuid -j$jobs modules
     runHook postBuild
   '';
   installPhase = ''
@@ -55,7 +53,6 @@ stdenv.mkDerivation {
               drivers/gpu/drm/drm_kms_helper.ko drivers/gpu/drm/virtio/virtio-gpu.ko; do
       install -Dm0644 ../out/$ko $out/modules/$(basename $ko)
     done
-    install -Dm0644 ../modules-nvidia/virtio_gpu_nv.ko $out/modules/virtio_gpu_nv.ko
     install -Dm0644 ../modules-cpuid/legion_cpuid.ko $out/modules/legion_cpuid.ko
     runHook postInstall
   '';

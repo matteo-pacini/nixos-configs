@@ -12,8 +12,9 @@
   vmTools,
   glibc,
   virtiofsd,
-  # Guest display mode for games on the AMD path; the NVIDIA path stays at
-  # upstream's 1920x1080. Upstream accepts up to 3840x2160.
+  virglrenderer,
+  mesa,
+  # Guest display mode for games. Upstream accepts up to 3840x2160.
   resolution ? {
     width = 1920;
     height = 1080;
@@ -23,7 +24,7 @@
   refreshRate ? 75,
   # Default guest memory in MiB (upstream: 12288); LEGION_MEMORY_MIB overrides.
   memoryMiB ? 12288,
-  # Open the AMD path's game window fullscreen unless LEGION_FULLSCREEN is set
+  # Open the game window fullscreen unless LEGION_FULLSCREEN is set
   # to something other than 1 (upstream: windowed unless it is 1).
   fullscreen ? false,
   # Pin each vCPU to the host CPU at the same position in the topology the
@@ -48,25 +49,22 @@ let
       ;
   };
   kernel = callPackage ./kernel.nix { inherit legionSource; };
-  qemu = callPackage ./qemu.nix { inherit legionSource refreshRate; };
-  wine = callPackage ./wine.nix { inherit legionSource proton; };
+  virgl = callPackage ./virglrenderer.nix { inherit virglrenderer legionSource; };
+  qemu = callPackage ./qemu.nix {
+    inherit legionSource refreshRate;
+    virglrenderer = virgl;
+  };
   guest = callPackage ./guest.nix {
     inherit
       vmTools
       legionSource
       rust
-      wine
       proton
       ;
   };
 
   # Module order and numbering follow build_runtime.py assemble().
-  nvidiaModules = [
-    "virtio_gpu_nv"
-    "legion_cpuid"
-    "ntsync"
-  ];
-  amdModules = [
+  modules = [
     "virtio_dma_buf"
     "drm_shmem_helper"
     "drm_kms_helper"
@@ -74,37 +72,31 @@ let
     "legion_cpuid"
     "ntsync"
   ];
-  modules = lib.unique (nvidiaModules ++ amdModules);
   modulePath =
     name:
     "guest/modules/${lib.fixedWidthNumber 3 (lib.lists.findFirstIndex (m: m == name) null modules)}.ko";
 
-  common = {
+  manifest = builtins.toJSON {
+    schema = 2;
     qemu = "libexec/qemu-system-x86_64";
-    kernel = "guest/kernel";
-    init = "guest/init";
+    qemu_data = "share/qemu";
+    renderer = "libexec/virgl_render_server";
+    virtiofsd = "libexec/virtiofsd";
     # Every asset must resolve inside the runtime root, so the loader is a
     # copy. host/lib stays otherwise empty: the Nix-built tools carry RUNPATHs.
     host_loader = "host/lib/ld-linux-x86-64.so.2";
     host_libraries = "host/lib";
+    kernel = "guest/kernel";
+    init = "guest/init";
+    modules = map modulePath modules;
     userspace = "guest/usr";
+    workload_config = "guest/workload.json";
   };
-  manifest = builtins.toJSON (
-    common
-    // {
-      schema = 1;
-      nvidia_driver = "0.0.0";
-      qemu_data = "share/qemu";
-      backend = "libexec/vhost-user-nvgpu";
-      virtiofsd = "libexec/virtiofsd";
-      modules = map modulePath nvidiaModules;
-      workload_config = "guest/workload.json";
-      host_driver_libraries = true;
-      amdgpu = common // {
-        modules = map modulePath amdModules;
-      };
-    }
-  );
+  build = builtins.toJSON {
+    build_id = legionSource.src.rev;
+    toolchain_image = "";
+    optional_wine_repair = false;
+  };
   workload = builtins.toJSON {
     schema = 1;
     width = 1920;
@@ -133,20 +125,25 @@ stdenv.mkDerivation {
   dontFixup = true;
   passAsFile = [
     "manifest"
+    "build"
     "workload"
   ];
-  inherit manifest workload;
+  inherit manifest build workload;
   installPhase = ''
     runHook preInstall
     install -Dm0755 ${rust.static}/bin/legion $out/bin/legion
     # The launcher dispatches on argv[0]; hardlinks keep the tool names.
-    for name in legion-qemu legion-amdgpu-qemu legion-backend legion-virtiofsd; do
+    for name in legion-qemu legion-render-server legion-virtiofsd; do
       ln $out/bin/legion $out/bin/$name
     done
     install -Dm0755 ${qemu}/bin/qemu-system-x86_64 $out/libexec/qemu-system-x86_64
-    install -Dm0755 ${rust.vhost-user-nvgpu}/bin/vhost-user-nvgpu $out/libexec/vhost-user-nvgpu
+    install -Dm0755 ${virgl}/libexec/virgl_render_server $out/libexec/virgl_render_server
     install -Dm0755 ${virtiofsd}/bin/virtiofsd $out/libexec/virtiofsd
     install -Dm0755 ${glibc}/lib/ld-linux-x86-64.so.2 $out/host/lib/ld-linux-x86-64.so.2
+    # The render server loads only this layer (VK_LAYER_PATH=host/vulkan) to
+    # pick the GPU; the Vulkan driver itself is the host's.
+    install -Dm0644 ${mesa}/share/vulkan/implicit_layer.d/VkLayer_MESA_device_select.json \
+      $out/host/vulkan/VkLayer_MESA_device_select.json
     mkdir -p $out/share
     cp -r ${qemu}/share/qemu $out/share/qemu
 
@@ -159,6 +156,7 @@ stdenv.mkDerivation {
     cp -a ${guest}/usr $out/guest/usr
     install -m0644 $workloadPath $out/guest/workload.json
     install -m0644 $manifestPath $out/runtime.json
+    install -m0644 $buildPath $out/build.json
     install -m0644 ${legionSource.src}/README.md $out/README.txt
     runHook postInstall
   '';
@@ -168,8 +166,8 @@ stdenv.mkDerivation {
       proton
       rust
       kernel
+      virgl
       qemu
-      wine
       guest
       ;
   };
