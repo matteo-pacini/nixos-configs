@@ -159,17 +159,18 @@ runs (see conventions). Run them with
 nix build .#checks.x86_64-linux.desk-sync        # tests/run.sh, temporary HOME
 nix build .#checks.x86_64-linux.calendar-export  # fixtures through the export
 nix build .#checks.x86_64-linux.calendar-panel   # calendar/queries.js under node
+nix build .#checks.x86_64-linux.bluetooth-panel  # bluetooth/services.js, devices.js under node
 ```
 
-The calendar-panel check reads the repository's `queries.js`, so it fails
-until a live change to that file is pulled. Only `desk-sync` runs in PR CI
+The calendar-panel and bluetooth-panel checks read the repository's `.js`
+files, so they fail until a live change to those files is pulled. Only `desk-sync` runs in PR CI
 (`pr-build.yml`). For a new test, break the code once and watch it fail.
 
 **Builds.** Before every push, on the merged branch, the coordinator runs:
 
 ```bash
 nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export \
-  .#checks.x86_64-linux.calendar-panel \
+  .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -303,11 +304,11 @@ not.
 | `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` user service, imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
-| `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout) |
+| `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -416,8 +417,9 @@ was written; check the reports of any newer work for its own.
 - Tray menu styling (they are Qt platform menus), friendly launcher category
   names, scrolling for panels taller than the screen (the audio panel runs
   off the bottom with many programs).
-- The Bluetooth and system node tests live only in the build's scratch
-  directory; they belong under `tests/` as flake checks.
+- The system panel's node tests live only in the build's scratch
+  directory; they belong under `tests/` as a flake check, as Bluetooth's
+  are (`bluetooth-panel`).
 
 **Code follow-ups** from the modularity review (estimates for one agent
 working live; the ones that change what the user sees need the user's

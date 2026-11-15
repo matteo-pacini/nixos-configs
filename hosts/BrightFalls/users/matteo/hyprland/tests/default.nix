@@ -1,7 +1,9 @@
-# desk-sync's, calendar-export's and the calendar panel's tests, as flake checks:
+# desk-sync's, calendar-export's, the calendar panel's and the Bluetooth
+# panel's tests, as flake checks:
 #   nix build .#checks.<system>.desk-sync
 #   nix build .#checks.<system>.calendar-export
 #   nix build .#checks.<system>.calendar-panel
+#   nix build .#checks.<system>.bluetooth-panel
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -42,6 +44,15 @@ in
       ''
         node ${./calendar/panel}/test-calendar.js \
           ${../user/quickshell/calendar/queries.js}
+        touch $out
+      '';
+
+  # The panel's libraries (quickshell/bluetooth/services.js, devices.js)
+  # against invented devices and links.
+  bluetooth-panel =
+    pkgs.runCommand "bluetooth-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; }
+      ''
+        node ${./bluetooth/test-bluetooth.js} ${../user/quickshell/bluetooth}
         touch $out
       '';
 

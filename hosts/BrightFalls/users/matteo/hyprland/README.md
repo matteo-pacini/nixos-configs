@@ -554,20 +554,40 @@ device reports under 15%.
   controls, a network plug for network sharing; green in use now, white
   connected, grey allowed but not in use. Details list the same in words
   under "uses", only from evidence: the media transports, media control and
-  network links BlueZ has set up (reported by the agent helper), the
-  device's PipeWire nodes (audio is "playing here" only while its node is
-  linked to an output; calls have a node only during a call) and the service
+  network links BlueZ has set up and the hands-free link PipeWire holds
+  (both reported by the agent helper), the device's PipeWire nodes (audio is
+  "playing here" only while its node is linked to an output) and the service
   questions answered in this session (kept across reloads, not restarts; a
   trusted device is not asked). Input devices and file transfer show only as
   answered services: BlueZ exposes no connected state for them.
-- **Keys**: ↑↓ select; Enter opens details (address, trust, battery, the
-  codec PipeWire negotiated, uses) or pairs a nearby device; C connects or
-  disconnects; T switches trust (details); F forgets, after a second F; S
-  scans for 30 s and lists named, unpaired devices under "Nearby", strongest
-  signal first (RSSI from the agent; sorted by name, and it says so, when
-  none is reported); V makes this computer visible for 2 minutes so a phone
-  can find and pair with it; B turns the adapter on or off; Esc steps back,
-  then closes.
+- **Calls** follow PipeWire's telephony service (`org.pipewire.Telephony` on
+  the session bus, run by WirePlumber), which has one audio-gateway object
+  per phone whose hands-free link is set up: the handset is white while that
+  link is up, green with "in a call now" while call audio runs through this
+  computer, and gone when the link drops. A grey handset means calls were
+  allowed in this session but are not connected. PipeWire's card cannot tell
+  this: its `audio-gateway` profile looks the same with or without
+  hands-free.
+- **Known behaviour: a switch to a text console drops calls.** Leaving the
+  graphical seat (Ctrl+Alt+F*, or a GDM user switch) makes WirePlumber stop
+  its Bluetooth monitor, which frees PipeWire's Bluetooth side: call audio in
+  progress here stops (the phone falls back to its earpiece), the hands-free
+  link and the phone's music drop. Back on the seat the profiles are
+  registered again, but calls return only when the phone reconnects
+  hands-free (C, C here, or from the phone); PipeWire does not reopen the
+  link (WirePlumber `monitors/bluez/enumerate-device.lua`, PipeWire
+  `backend-native.c`).
+- **Keys**: the footer always lists the keys that work anywhere in the panel
+  (↑↓ select, S, V, B, Esc) and adds the selected row's. ↑↓ select; Enter
+  opens details (address, trust, battery, the codec PipeWire negotiated,
+  uses), pairs a nearby device, or names the file of a Set in Nix row; C
+  connects or disconnects; T switches trust (details); F forgets, after a
+  second F; S scans for 30 s and lists named, unpaired devices under
+  "Nearby", strongest signal first (RSSI from the agent; sorted by name, and
+  it says so, when none is reported); V makes this computer visible for 2
+  minutes so a phone can find and pair with it; B turns the adapter on or
+  off; Esc steps back, then closes. With no device listed nothing is
+  selected; ↓ reaches the Set in Nix rows.
 - **Pairing**: `desk-bt-agent` (`bt-agent.py`, `bt-agent.nix`), a small
   Python helper the shell starts once and restarts if it exits, is BlueZ's
   default agent; Quickshell has no agent and QML cannot export a D-Bus
@@ -575,11 +595,23 @@ device reports under 15%.
   untrusted devices open a centred modal (`bluetooth/PairModal.qml`) on the
   panel's monitor, or on the focused one when the panel is closed. Nothing is
   ever answered without a key. Services are named in plain words with the
-  question they mean (`bluetooth/services.js`); T there allows and trusts. A
-  device paired after the user's yes is trusted, which stops those
-  questions. The result of a pairing is read from BlueZ's `Paired` and the
-  agent's requests, not from the reply to `Pair()`, which QtDBus abandons
-  after its call timeout.
+  question they mean (`bluetooth/services.js`); T there allows this and
+  anything else the device asks, now and later, by trusting it. BlueZ asks
+  one service at a time and holds the rest where the agent cannot see them,
+  so there is no count of questions waiting. The user's yes to a pairing
+  (code, no-code, passkey or PIN) trusts the device at once, before BlueZ
+  reports it paired, so the services a phone opens right after pairing are
+  allowed without a question instead of waiting on the modal while the
+  phone's own timeout (about 15 s) runs. A refused pairing never trusts. If
+  the pairing then fails, BlueZ would keep a trusted, unpaired device
+  (`src/device.c`, `device_bonding_complete`), so the shell withdraws the
+  trust: at once for a pairing started here, otherwise when the device
+  disconnects unpaired or after a minute. The result of a pairing is read
+  from BlueZ's `Paired` and the agent's requests, not from the reply to
+  `Pair()`, which QtDBus abandons after its call timeout. Every request,
+  answer and cancel goes to the shell's log (`journalctl --user -u
+  quickshell`) by method, request id and short service UUID, never a device
+  name or address.
 - **Pairable**: the adapter accepts pairing only while this computer pairs a
   device or while V runs. BlueZ turns it on whenever an agent registers, and
   the shell turns it off again. It stays on for pairings started here too:
@@ -898,3 +930,9 @@ Flake checks, defined in `tests/default.nix`:
   `user/quickshell/calendar/queries.js` under node against invented events
   (`tests/calendar/panel/`, written by `make-fixture.js` and
   `make-reminders-fixture.js` there), dates in London time.
+- `nix build .#checks.x86_64-linux.bluetooth-panel`: runs
+  `user/quickshell/bluetooth/services.js` and `devices.js` under node
+  against invented devices and links (`tests/bluetooth/test-bluetooth.js`):
+  service names and questions, kinds, battery tiers, order, the nearby
+  filter, low-battery crossings, and what the "uses" lines and glyphs say,
+  calls included.
