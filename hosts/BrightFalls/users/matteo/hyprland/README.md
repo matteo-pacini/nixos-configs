@@ -18,7 +18,8 @@ work) is in [AGENTS.md](AGENTS.md).
   [Session menu](#session-menu), [Polkit dialog](#polkit-dialog),
   [Network panel](#network-panel), [Audio panel](#audio-panel),
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
-  [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel)
+  [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
+  [Tray menu](#tray-menu)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
@@ -150,8 +151,8 @@ user service (Hyprland session only, `Restart=on-failure`) with `qs`, which
 loads `~/.config/quickshell/shell.qml`. `shell.qml` lists the components,
 one line each; a new component is a new file beside it and a line there, and
 a component's own parts go in a directory named after it (`import
-qs.<dir>`). Its pragmas set the icon theme (Adwaita) and `UseQApplication`,
-which the tray's menus need.
+qs.<dir>`). Its one pragma sets the icon theme (Adwaita); pragmas are read
+at startup only, so changing one needs `systemctl --user restart quickshell`.
 
 `Theme.qml` is the palette and fonts every surface shares. Every surface is
 drawn the same way: `Theme.background` at 0.96 alpha, a 1 px `Theme.purple`
@@ -216,7 +217,7 @@ workspaces (its five, plus any other that exists there; click or scroll to
 switch); the focused window's title on that monitor; the clock (see
 [Calendar panel](#calendar-panel)); then a gamepad while game mode is on
 (read from Hyprland's `animations:enabled`), the tray (left click activates,
-right click opens the item's menu), the system chip (two temperatures, see
+right click opens the item's menu, see [Tray menu](#tray-menu)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, network, and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
@@ -634,6 +635,31 @@ device reports under 15%.
 - **Low battery**: one critical notification per device each time it drops
   under 15% (`bluetooth/BluetoothShared.qml`); remembered across reloads, not restarts.
 
+### Tray menu
+
+`tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
+`tray/menu.js` (the header's name and the entries' marks). A tray icon's
+right-click menu, drawn by the shell rather than by Qt: the application's
+own entries, read over DBusMenu through Quickshell's `QsMenuOpener`, in a
+card like the drop-down panels' that hangs under the icon on that bar's
+monitor. Opening it closes any open panel and the reverse (it is `tray` in
+`common/Dropdowns.qml`). Left click on an icon is unchanged: it activates the
+application, or opens the menu if the icon has only a menu.
+
+- Header: the application's name, from the item's tooltip title, else its
+  title, else its id, without a trailing unread count such as "(3)".
+- Entries: a fixed 250 px width, labels wrap. Checkbox `✓` (green) or `☐`,
+  partly checked `▣`; radio `●` (green) or `○`; disabled entries dim, with no
+  hover and no action; separators as thin lines; a submenu has `›` on the
+  right. Application icons on entries are not shown.
+- Mouse plus Esc: hover selects, a click runs the entry and closes; a click on
+  a submenu replaces the content in place with a back row (`‹` and the
+  submenu's name, cyan) on top, at any depth. A click outside or Esc closes.
+- The menu follows changes the application makes while it is open. If the
+  application rebuilds its menu while a submenu is shown, the menu goes back
+  to the top level; if it leaves the tray, the menu closes.
+- No IPC target and no key: a tray menu is opened from its icon only.
+
 ## Lock screen
 
 Super+L, the session menu's Lock row, or `qs ipc call lockscreen lock`; also
@@ -946,3 +972,6 @@ Flake checks, defined in `tests/default.nix`:
   service names and questions, kinds, battery tiers, order, the nearby
   filter, low-battery crossings, and what the "uses" lines and glyphs say,
   calls included.
+- `nix build .#checks.x86_64-linux.tray-panel`: runs
+  `user/quickshell/tray/menu.js` under node (`tests/tray/test-tray.js`): the
+  header's name and the entries' check and radio marks.

@@ -7,11 +7,10 @@
 // here rather than leaving it to Qt's platform theme, whose answer depends on
 // the environment the service starts with.
 //@ pragma IconTheme Adwaita
-// Tray item menus (Bar.qml) are Qt platform menus, which need a QApplication.
-//@ pragma UseQApplication
 
 import Quickshell
 import qs.calendar
+import qs.tray
 
 ShellRoot {
     Launcher {}
@@ -26,6 +25,7 @@ ShellRoot {
     Calendar {}
     System {}
     BluetoothPanel {}
+    TrayMenu {}
     Reminders {}
     Lockscreen {}
 }

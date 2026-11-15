@@ -16,7 +16,7 @@ by greetd (automatic login once per boot, tuigreet after a logout), with a
 desktop shell written in
 QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
 session menu, polkit dialog, network, audio, calendar, system and Bluetooth
-panels, and a lock screen.
+panels, tray menus, and a lock screen.
 
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
@@ -161,9 +161,10 @@ nix build .#checks.x86_64-linux.desk-sync        # tests/run.sh, temporary HOME
 nix build .#checks.x86_64-linux.calendar-export  # fixtures through the export
 nix build .#checks.x86_64-linux.calendar-panel   # calendar/queries.js under node
 nix build .#checks.x86_64-linux.bluetooth-panel  # bluetooth/services.js, devices.js under node
+nix build .#checks.x86_64-linux.tray-panel       # tray/menu.js under node
 ```
 
-The calendar-panel and bluetooth-panel checks read the repository's `.js`
+The calendar-panel, bluetooth-panel and tray-panel checks read the repository's `.js`
 files, so they fail until a live change to those files is pulled. Only `desk-sync` runs in PR CI
 (`pr-build.yml`). For a new test, break the code once and watch it fail.
 
@@ -172,6 +173,7 @@ files, so they fail until a live change to those files is pulled. Only `desk-syn
 ```bash
 nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export \
   .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
+  .#checks.x86_64-linux.tray-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -309,7 +311,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -349,6 +351,7 @@ Directories (`import qs.<dir>`):
 | `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions; node-tested) |
 | `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-run), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
+| `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
 Imports: each panel imports its own directory and `qs.common`; `Bar.qml`
@@ -387,12 +390,17 @@ notifications (critical ones above fullscreen), OSD, cheat sheet, session
 menu, polkit dialog, network panel with speed test (two providers), audio
 panel (the DAC stack, per-program rows and levels, inputs, no-signal flag),
 clock and calendar (sync, export, reminders, digest), system panel,
-Bluetooth panel with pairing agent, lock screen with a recovery command.
+Bluetooth panel with pairing agent, lock screen with a recovery command,
+tray right-click menus drawn by the shell (`tray/`).
 
 **To do at the next deploy:**
 - `~/.config/mako/` is left over from before the shell was the notification
   daemon (`desk-sync` leaves dropped files alone); delete it.
-- `systemctl --user restart quickshell` if `shell.qml`'s pragmas changed.
+- `systemctl --user restart quickshell`: `shell.qml` no longer has
+  `//@ pragma UseQApplication` (it was there only for the Qt platform menus
+  the tray used before `tray/`), and pragmas are read at startup only. Then
+  check the shell's log is clean; nothing else is known to need a
+  QApplication, but this is the first start without one.
 
 The earlier stand-ins (hand-made `locked.json` files, speed-test tools on a
 profile link, the Bluetooth agent's temporary command) were gone when this
@@ -408,6 +416,9 @@ was written; check the reports of any newer work for its own.
 - Bluetooth keyboards (type-a-code pairing), LE devices, a real low-battery
   device.
 - A real microphone hang with the no-signal flag (simulated only).
+- Tray menus: running a real entry, real pointer hover, a real application's
+  submenu, check or radio entries (none of the tray apps here has them; a
+  fixture showed them), and a menu changing while open.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 
@@ -415,8 +426,7 @@ was written; check the reports of any newer work for its own.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.
-- Tray menu styling (they are Qt platform menus), friendly launcher category
-  names, scrolling for panels taller than the screen (the audio panel runs
+- Friendly launcher category names, scrolling for panels taller than the screen (the audio panel runs
   off the bottom with many programs).
 - The system panel's node tests live only in the build's scratch
   directory; they belong under `tests/` as a flake check, as Bluetooth's

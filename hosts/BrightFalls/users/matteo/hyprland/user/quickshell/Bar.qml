@@ -13,6 +13,7 @@ import qs.calendar
 import qs.common
 import qs.network
 import qs.system
+import qs.tray
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -431,8 +432,8 @@ Scope {
                                 required property SystemTrayItem modelData
 
                                 function showMenu() {
-                                    const p = mapToItem(null, 0, height);
-                                    modelData.display(bar, Math.round(p.x), Math.round(p.y) + 6);
+                                    Dropdowns.anchor("tray", bar.modelData.name, trayItem, bar);
+                                    TrayShared.openRequested(modelData, bar.modelData.name);
                                 }
 
                                 width: root.iconSize
