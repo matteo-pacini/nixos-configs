@@ -447,6 +447,18 @@ Scope {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: audio.muted || audio.volume === 0 ? root.glyph.volumeMuted : audio.volume < 0.34 ? root.glyph.volumeLow : audio.volume < 0.67 ? root.glyph.volumeMedium : root.glyph.volumeHigh
                                 color: audio.muted ? Theme.comment : audio.panelOpen ? Theme.purple : Theme.foreground
+
+                                // An input is attached but sends nothing
+                                // (NoSignal); the audio panel says which.
+                                Rectangle {
+                                    visible: NoSignal.any
+                                    x: parent.width - width / 2
+                                    y: (parent.height - parent.contentHeight) / 2
+                                    width: 6
+                                    height: 6
+                                    radius: 3
+                                    color: Theme.red
+                                }
                             }
 
                             Text {

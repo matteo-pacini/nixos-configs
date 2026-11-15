@@ -170,7 +170,7 @@ Scope {
     }
 
     function inputName(n: PwNode): string {
-        return (n.description || n.nickname || n.name).replace(/ (Analog|Digital|Pro)( Stereo| Mono| Surround [0-9.]+)?$/, "");
+        return NoSignal.inputName(n);
     }
 
     function layer(n: PwNode): string {
@@ -316,6 +316,8 @@ Scope {
                 period = null;
                 periodQuery.running = true;
             }
+        } else if (NoSignal.has(row.node)) {
+            say(`${inputName(row.node)} is attached but sends nothing. Unplug its cable for a few seconds.`);
         } else if (Pipewire.defaultAudioSource !== row.node) {
             Pipewire.preferredDefaultAudioSource = row.node;
             say(`${inputName(row.node)} is the default input now, until another is chosen.`);
@@ -1004,6 +1006,7 @@ Scope {
                             readonly property bool selected: root.currentRow?.key === key
                             readonly property bool muted: modelData.audio?.muted ?? false
                             readonly property real gain: modelData.audio?.volume ?? 0
+                            readonly property bool noSignal: NoSignal.has(modelData)
                             readonly property var listeners: tracker.linkGroups.map(g => g.target).filter(t => t && t.type === PwNodeType.AudioInStream).map(t => t.properties["application.name"] || t.description || t.name)
 
                             width: parent.width - 12
@@ -1072,6 +1075,8 @@ Scope {
                                             list.push(["default", Theme.cyan]);
                                         if ((own.rate ?? 0) > 0)
                                             list.push([`${root.khz(own.rate)} kHz ${root.channelName(own.channels)}`, tone]);
+                                        if (input.noSignal)
+                                            list.push(["no signal · replug the cable", Theme.red]);
                                         if (input.listeners.length > 0)
                                             list.push([`heard by ${input.listeners.join(", ")}`, Theme.orange]);
                                         if (inputLevel.clipping)
@@ -1092,11 +1097,13 @@ Scope {
                                     }
                                 }
 
+                                // Flat while flagged: there is nothing to
+                                // measure, and no capture is opened for it.
                                 Level {
                                     id: inputLevel
 
                                     node: input.modelData
-                                    active: root.open
+                                    active: root.open && !input.noSignal
                                 }
                             }
                         }
@@ -1195,6 +1202,8 @@ Scope {
                                 return [["Esc", "close"]];
                             if (row.kind === "nix")
                                 return [["Enter", "show file"], ["Esc", "close"]];
+                            if (row.kind === "input" && NoSignal.has(row.node))
+                                return [["←→", "gain"], ["M", "mute"], ["Enter", "why"], ["Esc", "close"]];
                             if (row.kind === "input")
                                 return [["←→", "gain"], ["M", "mute"], ["Enter", "make default"], ["Esc", "close"]];
                             if (root.expanded === row.key)
