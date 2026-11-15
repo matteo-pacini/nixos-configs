@@ -8,6 +8,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import Quickshell.Widgets
+import qs.audio
 import qs.network
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
@@ -404,6 +405,7 @@ Scope {
                     Item {
                         id: audio
 
+                        readonly property bool panelOpen: AudioPanel.screen === bar.modelData.name
                         readonly property PwNodeAudio pw: root.sink?.audio ?? null
                         readonly property bool muted: pw?.muted ?? true
                         readonly property real volume: pw?.volume ?? 0
@@ -417,8 +419,22 @@ Scope {
                         width: audioRow.implicitWidth
                         height: parent.height
 
+                        Component.onCompleted: AudioPanel.register(bar.modelData.name, audio, bar)
+
                         Hover {
                             hovered: audioArea.containsMouse
+                        }
+
+                        // Marks the item whose panel is open.
+                        Rectangle {
+                            visible: audio.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
                         }
 
                         Row {
@@ -430,7 +446,7 @@ Scope {
                             Glyph {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: audio.muted || audio.volume === 0 ? root.glyph.volumeMuted : audio.volume < 0.34 ? root.glyph.volumeLow : audio.volume < 0.67 ? root.glyph.volumeMedium : root.glyph.volumeHigh
-                                color: audio.muted ? Theme.comment : Theme.foreground
+                                color: audio.muted ? Theme.comment : audio.panelOpen ? Theme.purple : Theme.foreground
                             }
 
                             Text {
@@ -449,9 +465,11 @@ Scope {
 
                             anchors.fill: parent
                             hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
+                                if (mouse.button === Qt.MiddleButton) {
+                                    AudioPanel.toggleRequested(bar.modelData.name);
+                                } else if (mouse.button === Qt.RightButton) {
                                     if (audio.pw)
                                         audio.pw.muted = !audio.pw.muted;
                                 } else {

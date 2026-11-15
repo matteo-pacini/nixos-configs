@@ -21,4 +21,5 @@ ShellRoot {
     SessionMenu {}
     Polkit {}
     Network {}
+    Audio {}
 }
