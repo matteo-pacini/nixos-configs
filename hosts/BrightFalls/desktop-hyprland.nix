@@ -148,10 +148,29 @@ let
       label = "Blue Microphones ranked first among inputs";
       file = wpFile "priority.session";
     };
+
+  # The system panel's Nix-set values (user/quickshell/System.qml), on the
+  # same terms. `khz` is the cap the panel compares with the chip's maximum.
+  cpuMax = config.powerManagement.cpufreq.max;
+  systemRows =
+    lib.optional (cpuMax != null) {
+      id = "cpu-max";
+      label = "CPU clock limit";
+      khz = cpuMax;
+      file = setIn options.powerManagement.cpufreq.max;
+    }
+    # Only the daemon is declared; its fan curve lives in /etc/lact/config.yaml,
+    # written by LACT itself.
+    ++ lib.optional config.services.lact.enable {
+      id = "lact";
+      label = "LACT daemon enabled";
+      file = setIn options.services.lact.enable;
+    };
 in
 {
   home-manager.users.matteo.xdg.dataFile."desk/network/locked.json".text = builtins.toJSON lockedRows;
   home-manager.users.matteo.xdg.dataFile."desk/audio/locked.json".text = builtins.toJSON audioRows;
+  home-manager.users.matteo.xdg.dataFile."desk/system/locked.json".text = builtins.toJSON systemRows;
 
   programs.hyprland = {
     enable = true;
