@@ -32,7 +32,10 @@ Scope {
     readonly property color track: Qt.darker(Theme.background, 1.5)
 
     readonly property var nodes: Pipewire.nodes.values
-    readonly property var groups: Pipewire.linkGroups.values
+    // Without the links to level monitors (this panel's own among them):
+    // they are no destination, and a program's monitor must not make it
+    // look like it plays.
+    readonly property var groups: Pipewire.linkGroups.values.filter(g => g.target?.properties["media.category"] !== "Monitor")
     // Filter-chain halves (the surround sinks' outputs) are streams too;
     // node.link-group marks them.
     readonly property var programs: nodes.filter(n => n.type === PwNodeType.AudioOutStream && n.ready && !n.properties["node.link-group"]).sort((a, b) => a.id - b.id)
@@ -198,6 +201,16 @@ Scope {
         return groups.some(g => g.source === n && g.state === PwLinkState.Active);
     }
 
+    // A stream's monitor captures in its output's channel layout, and
+    // Quickshell 0.3.2 only meters it when the stream has each of those
+    // channels itself; otherwise it logs an error every cycle and reads 0
+    // (a mono stream into the stereo Modi). Such streams get no monitor.
+    function meterable(n: PwNode, target: PwNode): bool {
+        const own = Array.from(n.audio?.channels ?? []);
+        const out = Array.from(target?.audio?.channels ?? []);
+        return own.length > 0 && out.length > 0 && out.every(c => own.includes(c));
+    }
+
     // Everything a program row and its details say, from Quickshell's
     // nodes and links plus pw-dump's formats. Fields are 0 / "" / -1 while
     // pw-dump has not answered.
@@ -236,6 +249,7 @@ Scope {
             volume,
             muted,
             live,
+            meterable: meterable(n, target),
             verdict
         };
     }
@@ -260,6 +274,8 @@ Scope {
         lines.push(["becomes", becomes]);
         lines.push(["goes to", f.target ? (f.target.description || f.target.name) + (f.through !== "" ? " → Modi 2" : "") : "nothing linked"]);
         lines.push(["volume", f.muted ? "muted" : Math.round(f.volume * 100) === 100 ? "100%, untouched" : `${Math.round(f.volume * 100)}%, applied by PipeWire`]);
+        if (f.target && !f.meterable)
+            lines.push(["level", `not metered: ${channelName(n.audio?.channels.length ?? 0)} into ${channelName(f.target.audio?.channels.length ?? 0)}`]);
         lines.push(["period", period && period.rate > 0 ? `${period.quantum} frames · ${Math.round(period.quantum / period.rate * 1000)} ms` : "measuring…"]);
         return lines;
     }
@@ -898,6 +914,16 @@ Scope {
                                             muted: program.f.muted
                                         }
                                     }
+
+                                    // What the program adds to the output:
+                                    // after its volume, flat when muted or
+                                    // paused.
+                                    Level {
+                                        visible: program.f.meterable
+                                        node: program.modelData
+                                        active: root.open && program.f.live && program.f.meterable && !program.f.muted
+                                        gain: program.f.volume
+                                    }
                                 }
                             }
 
@@ -979,57 +1005,16 @@ Scope {
                             readonly property bool muted: modelData.audio?.muted ?? false
                             readonly property real gain: modelData.audio?.volume ?? 0
                             readonly property var listeners: tracker.linkGroups.map(g => g.target).filter(t => t && t.type === PwNodeType.AudioInStream).map(t => t.properties["application.name"] || t.description || t.name)
-                            // Quickshell's visual scale (cube root of the
-                            // sample peak), 0..1.
-                            readonly property real level: monitor.peak
-                            property real held: 0
-                            // A level held at full scale changes no more, so
-                            // clipping is the level now or a recent one.
-                            property bool clippedLately: false
-                            readonly property bool clipping: level >= 0.99 || clippedLately
 
                             width: parent.width - 12
                             height: inputBody.implicitHeight + 12
                             radius: 6
                             color: selected ? Theme.currentLine : "transparent"
 
-                            onLevelChanged: {
-                                if (level >= held) {
-                                    held = level;
-                                    holdTimer.restart();
-                                }
-                                // 0.99 on this scale is 97% of full scale.
-                                if (level >= 0.99) {
-                                    clippedLately = true;
-                                    clipTimer.restart();
-                                }
-                            }
-
-                            PwNodePeakMonitor {
-                                id: monitor
-
-                                node: input.modelData
-                                enabled: root.open
-                            }
-
                             PwNodeLinkTracker {
                                 id: tracker
 
                                 node: input.modelData
-                            }
-
-                            Timer {
-                                id: holdTimer
-
-                                interval: 1500
-                                onTriggered: input.held = input.level
-                            }
-
-                            Timer {
-                                id: clipTimer
-
-                                interval: 2000
-                                onTriggered: input.clippedLately = false
                             }
 
                             MouseArea {
@@ -1089,7 +1074,7 @@ Scope {
                                             list.push([`${root.khz(own.rate)} kHz ${root.channelName(own.channels)}`, tone]);
                                         if (input.listeners.length > 0)
                                             list.push([`heard by ${input.listeners.join(", ")}`, Theme.orange]);
-                                        if (input.clipping)
+                                        if (inputLevel.clipping)
                                             list.push(["clipping", Theme.red]);
                                         return list;
                                     }
@@ -1107,26 +1092,11 @@ Scope {
                                     }
                                 }
 
-                                Rectangle {
-                                    width: parent.width
-                                    height: 3
-                                    radius: 2
-                                    color: root.track
+                                Level {
+                                    id: inputLevel
 
-                                    Rectangle {
-                                        width: parent.width * Math.min(1, input.level)
-                                        height: parent.height
-                                        radius: 2
-                                        color: Theme.green
-                                    }
-
-                                    Rectangle {
-                                        visible: input.held > 0.01
-                                        x: Math.min(parent.width - width, parent.width * Math.min(1, input.held))
-                                        width: 2
-                                        height: parent.height
-                                        color: input.clipping ? Theme.red : Theme.yellow
-                                    }
+                                    node: input.modelData
+                                    active: root.open
                                 }
                             }
                         }
