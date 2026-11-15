@@ -55,6 +55,12 @@ in
 
   # BrightFalls service secrets
   "brightfalls/attic-netrc.age".publicKeys = [ brightfalls ];
+  # CalDAV base URL, user and app password for the read-only calendar sync.
+  "brightfalls/caldav-url.age".publicKeys = [ brightfalls ];
+  "brightfalls/caldav-user.age".publicKeys = [ brightfalls ];
+  "brightfalls/caldav-password.age".publicKeys = [ brightfalls ];
+  # MQTT broker and Zigbee2MQTT device names for the office panel's desk-mqtt.
+  "brightfalls/office-mqtt.age".publicKeys = [ brightfalls ];
 
   # NightSprings service secrets
   "nightsprings/attic-netrc.age".publicKeys = [ nightsprings ];

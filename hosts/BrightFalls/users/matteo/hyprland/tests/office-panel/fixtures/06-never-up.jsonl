@@ -1,0 +1,9 @@
+{"event":"config","state":"ok","read_only":false,"devices":[{"id":"light","kind":"light","label":"Light"},{"id":"blind","kind":"blind","label":"Blind"},{"id":"pc","kind":"socket","label":"PC"},{"id":"egpu","kind":"socket","label":"eGPU"},{"id":"desk1","kind":"socket","label":"Desk 1"},{"id":"desk2","kind":"socket","label":"Desk 2"},{"id":"desk3","kind":"socket","label":"Desk 3"}]}
+{"event":"broker","state":"down","since":"@-40","ever_up":false,"last_attempt":"@-3"}
+{"event":"device","id":"light","kind":"light","label":"Light","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
+{"event":"device","id":"blind","kind":"blind","label":"Blind","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
+{"event":"device","id":"pc","kind":"socket","label":"PC","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
+{"event":"device","id":"egpu","kind":"socket","label":"eGPU","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
+{"event":"device","id":"desk1","kind":"socket","label":"Desk 1","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
+{"event":"device","id":"desk2","kind":"socket","label":"Desk 2","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
+{"event":"device","id":"desk3","kind":"socket","label":"Desk 3","values":null,"last_seen":null,"received":null,"retained":null,"availability":null,"availability_since":null,"definition":null}
