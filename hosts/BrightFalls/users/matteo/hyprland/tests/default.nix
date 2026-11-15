@@ -61,31 +61,22 @@ in
           echo "a removed file or calendar is still exported"
           exit 1
         fi
-        # KNOWN BUG, kept green: the two edits are missing from the second
-        # run. khal rescans a calendar only when its directory's mtime
-        # changes, and mirror() rewrites an existing copy in place, which
-        # leaves the directory alone; calendar.nix keeps khal.db between
-        # runs, so an event edited on the server stays as it was until a
-        # file is added to or removed from its calendar. When fixed, this
-        # block becomes: diff -u scratch.jsonl again.jsonl
-        grep -q '"title": "FX crosses midnight"' again.jsonl
-        grep -q '"title": "FX GMT+0200 in summer"' again.jsonl
-        sed -e 's/FX crosses midnight/FX renamed/' -e 's/FX GMT+0200 in summer/FX renamed GMT/' \
-          again.jsonl | diff -u scratch.jsonl -
+        diff -u scratch.jsonl again.jsonl
 
         # A copy made by an older format is rebuilt.
         echo 0 >inc/vdir/.format
         run vdir "$PWD/inc" rebuilt.jsonl
         diff -u scratch.jsonl rebuilt.jsonl
 
-        # The cause of the bug above: the same kind of edit shows once the
-        # copy's directory is touched.
+        # khal rescans a calendar only when its directory's mtime changes:
+        # a run with nothing changed leaves it alone, and an edit to a file
+        # that is already copied changes it.
+        before=$(stat -c %y inc/vdir/fixB)
+        run vdir "$PWD/inc" same.jsonl
+        [ "$(stat -c %y inc/vdir/fixB)" = "$before" ]
         sed -i 's/^SUMMARY:FX renamed$/SUMMARY:FX renamed twice/' vdir/fixB/midnight.ics
-        run vdir "$PWD/inc" stale.jsonl
-        grep -q '"title": "FX renamed"' stale.jsonl
-        touch inc/vdir/fixB
-        run vdir "$PWD/inc" touched.jsonl
-        grep -q '"title": "FX renamed twice"' touched.jsonl
+        run vdir "$PWD/inc" edited.jsonl
+        grep -q '"title": "FX renamed twice"' edited.jsonl
         touch $out
       '';
 

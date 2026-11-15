@@ -972,6 +972,9 @@ kinds occur in the synced data, neither with a `VTIMEZONE`:
 
 The derived copy is rewritten per file only when the vdir file's mtime
 changes, and keeps that mtime, so khal re-indexes only what pimsync changed.
+khal rescans a calendar only when its directory's mtime changes, so a
+rewrite goes through a new file and a rename, which changes it; a run that
+rewrites nothing leaves the directories alone and khal skips the rescan.
 After a change to the rewrite, bump `COPY_FORMAT` in `calendar-export.py` to
 rebuild the copy.
 
@@ -1104,9 +1107,10 @@ required check for merging into `master`:
   Tokyo) as of 2026-11-15 and compares with `tests/calendar/expected.jsonl`.
   It then exports a changed copy again into the same work directory (a
   calendar and a file removed, two files edited) and compares with a run
-  from scratch, and checks that a copy made by an older format is rebuilt.
-  The edits do not reach the second run: a known bug, described in the
-  check. No network, no secrets. About 5 s. To regenerate the expected file after an intended
+  from scratch, and checks that a copy made by an older format is rebuilt,
+  that a run with nothing changed leaves a calendar's directory mtime alone
+  and that a later edit to an already copied file still reaches the export.
+  No network, no secrets. About 5 s. To regenerate the expected file after an intended
   change, run the built `calendar-export` with
   `CALENDAR_NOW=2026-11-15T10:00:00+00:00`, a khal config from
   `calendar-export.nix` and that file as the output, and review the diff.

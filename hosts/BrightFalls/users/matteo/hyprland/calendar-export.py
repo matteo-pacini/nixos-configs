@@ -95,7 +95,11 @@ def derive(text):
 def mirror(src_root, dst_root):
     """Bring dst_root in line with src_root, rewriting .ics files through
     derive(). A file is rewritten only when its source mtime changed, and the
-    copy keeps the source mtime, so khal re-indexes only what pimsync changed."""
+    copy keeps the source mtime, so khal re-indexes only what pimsync changed.
+
+    khal rescans a calendar only when its directory's mtime changes, so a
+    rewrite goes through a new file and a rename, which changes it; writing
+    in place would leave an edited event stale in khal's kept database."""
     stamp = dst_root / ".format"
     if dst_root.exists() and (
         not stamp.exists() or stamp.read_text() != COPY_FORMAT
@@ -120,12 +124,14 @@ def mirror(src_root, dst_root):
             st = sp.stat()
             if dp.exists() and dp.stat().st_mtime_ns == st.st_mtime_ns:
                 continue
+            tmp = dst / f".{fname}.tmp"
             if fname.endswith(".ics"):
                 text = sp.read_bytes().decode("utf-8")
-                dp.write_bytes(derive(text).encode("utf-8"))
+                tmp.write_bytes(derive(text).encode("utf-8"))
             else:
-                dp.write_bytes(sp.read_bytes())
-            os.utime(dp, ns=(st.st_atime_ns, st.st_mtime_ns))
+                tmp.write_bytes(sp.read_bytes())
+            os.utime(tmp, ns=(st.st_atime_ns, st.st_mtime_ns))
+            os.replace(tmp, dp)
 
 
 def known_tzid(tzid):

@@ -508,10 +508,6 @@ power-profiles-daemon (it was `balance_performance`); no failed units.
 
 **Known bugs, pinned by the checks and not fixed** (each check says what
 to change once the bug is fixed):
-- An event edited on the server never reaches the calendar export:
-  `calendar-export.py`'s `mirror()` rewrites the copy in place, khal
-  rescans a calendar only when its directory's mtime changes, and khal.db
-  is kept between runs (`calendar-export` check).
 - A malformed `bridge/devices` message ends `desk-mqtt`'s network thread:
   the process lives on, never says the broker is down, and reports nothing
   more (`office-helper` check).
