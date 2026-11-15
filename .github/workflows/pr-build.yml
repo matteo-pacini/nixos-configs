@@ -64,13 +64,41 @@ jobs:
             sandbox = true
             sandbox-fallback = false
 
-      - name: Run herdr and desk-sync tests
+      - name: Run herdr tests
         run: |
           nix build -L \
             .#checks.x86_64-linux.herdr-layout \
             .#checks.x86_64-linux.herdr-js \
-            .#checks.x86_64-linux.herdr-scripts \
-            .#checks.x86_64-linux.desk-sync
+            .#checks.x86_64-linux.herdr-scripts
+
+  # hosts/BrightFalls/users/matteo/hyprland/tests: needs only cache.nixos.org, so no tailnet.
+  brightfalls-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # As in pr-build: the build sandbox needs unprivileged user namespaces.
+      - name: Allow unprivileged user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v35
+        with:
+          nix_conf: |
+            sandbox = true
+            sandbox-fallback = false
+
+      - name: Run BrightFalls desktop tests
+        run: |
+          nix build -L \
+            .#checks.x86_64-linux.desk-sync \
+            .#checks.x86_64-linux.calendar-export \
+            .#checks.x86_64-linux.calendar-panel \
+            .#checks.x86_64-linux.bluetooth-panel \
+            .#checks.x86_64-linux.tray-panel \
+            .#checks.x86_64-linux.office-helper \
+            .#checks.x86_64-linux.office-panel
 
   pr-build:
     needs: [eval]

@@ -167,8 +167,9 @@ nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback 
 ```
 
 The calendar-panel, bluetooth-panel, tray-panel and office-panel checks read the repository's `.js`
-files, so they fail until a live change to those files is pulled. Only `desk-sync` runs in PR CI
-(`pr-build.yml`). For a new test, break the code once and watch it fail.
+files, so they fail until a live change to those files is pulled. All seven run on every pull
+request in the `brightfalls-tests` job (`pr-build.yml`), a required check for merging into
+`master`. For a new test, break the code once and watch it fail.
 
 **Builds.** Before every push, on the merged branch, the coordinator runs:
 

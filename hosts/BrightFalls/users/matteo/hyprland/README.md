@@ -1088,10 +1088,12 @@ with the JSON written to `/tmp/v` first.
 
 ## Tests
 
-Flake checks, defined in `tests/default.nix`:
+Flake checks, defined in `tests/default.nix`. All of them run on every pull
+request in the `brightfalls-tests` job (`.github/workflows/pr-build.yml`), a
+required check for merging into `master`:
 
 - `nix build .#checks.x86_64-linux.desk-sync`: runs `tests/run.sh` against a
-  temporary HOME. Also run in PR CI.
+  temporary HOME.
 - `nix build .#checks.x86_64-linux.calendar-export`: exports
   `tests/calendar/fixtures/` (five calendars: a weekly series with an
   EXDATE, a moved and a cancelled occurrence; New York; all-day, multi-day
