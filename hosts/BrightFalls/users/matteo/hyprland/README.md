@@ -1102,7 +1102,11 @@ required check for merging into `master`:
   occurrence; and `fixE`, one event per alarm shape above, including a
   series whose overrides have their own alarm and none, an e-mail alarm and
   Tokyo) as of 2026-11-15 and compares with `tests/calendar/expected.jsonl`.
-  No network, no secrets. To regenerate the expected file after an intended
+  It then exports a changed copy again into the same work directory (a
+  calendar and a file removed, two files edited) and compares with a run
+  from scratch, and checks that a copy made by an older format is rebuilt.
+  The edits do not reach the second run: a known bug, described in the
+  check. No network, no secrets. About 5 s. To regenerate the expected file after an intended
   change, run the built `calendar-export` with
   `CALENDAR_NOW=2026-11-15T10:00:00+00:00`, a khal config from
   `calendar-export.nix` and that file as the output, and review the diff.

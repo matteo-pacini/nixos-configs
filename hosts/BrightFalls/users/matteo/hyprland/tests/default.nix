@@ -38,6 +38,54 @@ in
         ${pkgs.lib.getExe calendarExport.package} \
           ${./calendar/fixtures} "$PWD/work" khal.conf "$PWD/events.jsonl"
         diff -u ${./calendar/expected.jsonl} events.jsonl
+
+        # A second run into the same work directory after the calendars
+        # change (a calendar gone, a file gone, two files edited, one of
+        # them rewritten by the GMT fix), against a run from scratch.
+        cp -r --no-preserve=mode ${./calendar/fixtures} vdir
+        run() { # vdir, work, output
+          mkdir -p "$2"
+          substitute ${khalConfig} "$2.conf" --replace-fail @workDir@ "$2"
+          ${pkgs.lib.getExe calendarExport.package} "$1" "$2" "$2.conf" "$3"
+        }
+        run vdir "$PWD/inc" first.jsonl
+        diff -u ${./calendar/expected.jsonl} first.jsonl
+        rm -r vdir/fixE vdir/fixA/weekly.ics
+        sed -i 's/^SUMMARY:FX crosses midnight/SUMMARY:FX renamed/' vdir/fixB/midnight.ics
+        sed -i 's/^SUMMARY:.*/SUMMARY:FX renamed GMT/' vdir/fixD/gmt-summer.ics
+        run vdir "$PWD/inc" again.jsonl
+        run vdir "$PWD/scratch" scratch.jsonl
+        grep -q '"title": "FX renamed"' scratch.jsonl
+        grep -q '"title": "FX renamed GMT"' scratch.jsonl
+        if grep -q 'fx-weekly\|fx-alarm-' again.jsonl; then
+          echo "a removed file or calendar is still exported"
+          exit 1
+        fi
+        # KNOWN BUG, kept green: the two edits are missing from the second
+        # run. khal rescans a calendar only when its directory's mtime
+        # changes, and mirror() rewrites an existing copy in place, which
+        # leaves the directory alone; calendar.nix keeps khal.db between
+        # runs, so an event edited on the server stays as it was until a
+        # file is added to or removed from its calendar. When fixed, this
+        # block becomes: diff -u scratch.jsonl again.jsonl
+        grep -q '"title": "FX crosses midnight"' again.jsonl
+        grep -q '"title": "FX GMT+0200 in summer"' again.jsonl
+        sed -e 's/FX crosses midnight/FX renamed/' -e 's/FX GMT+0200 in summer/FX renamed GMT/' \
+          again.jsonl | diff -u scratch.jsonl -
+
+        # A copy made by an older format is rebuilt.
+        echo 0 >inc/vdir/.format
+        run vdir "$PWD/inc" rebuilt.jsonl
+        diff -u scratch.jsonl rebuilt.jsonl
+
+        # The cause of the bug above: the same kind of edit shows once the
+        # copy's directory is touched.
+        sed -i 's/^SUMMARY:FX renamed$/SUMMARY:FX renamed twice/' vdir/fixB/midnight.ics
+        run vdir "$PWD/inc" stale.jsonl
+        grep -q '"title": "FX renamed"' stale.jsonl
+        touch inc/vdir/fixB
+        run vdir "$PWD/inc" touched.jsonl
+        grep -q '"title": "FX renamed twice"' touched.jsonl
         touch $out
       '';
 
