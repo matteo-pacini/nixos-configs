@@ -1188,3 +1188,10 @@ required check for merging into `master`:
   PAN and RSSI change, hands-free links and call audio, the telephony
   service leaving and coming back, Release, and stdin closing (unregister,
   `exit`). Under 1 s.
+- `nix build .#checks.x86_64-linux.audio-output-cycle`: builds
+  `audio-output-cycle` (Super+Shift+O, `../audio-output-cycle.nix`) against
+  fake `pw-dump`, `wpctl` and `notify-send` and runs it
+  (`tests/audio-output-cycle/run.sh`): the order stereo, surround A,
+  surround B and back, a default outside the cycle, a missing surround sink
+  skipped, only stereo, no DAC, and the notification replacing the last
+  one. Under 1 s.

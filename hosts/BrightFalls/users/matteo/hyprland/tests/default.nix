@@ -12,6 +12,7 @@
 #   nix build .#checks.<system>.hypr-config
 #   nix build .#checks.<system>.desk-unlock
 #   nix build .#checks.<system>.bluetooth-agent
+#   nix build .#checks.<system>.audio-output-cycle
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -137,6 +138,38 @@ in
     bash ${./desk-unlock/run.sh} ${../desk-unlock.sh}
     touch $out
   '';
+
+  # audio-output-cycle (Super+Shift+O) built against fake pw-dump, wpctl and
+  # notify-send; their protocol is at the top of the test.
+  audio-output-cycle =
+    let
+      cycle = pkgs.callPackage ../../audio-output-cycle.nix {
+        pipewire = pkgs.writeShellScriptBin "pw-dump" ''
+          # One non-sink node, then the sinks.
+          printf '[{"id":5,"info":{"props":{"media.class":"Audio/Source","node.name":"x","node.description":"x"}}}'
+          while read -r id name desc; do
+            printf ',{"id":%s,"info":{"props":{"media.class":"Audio/Sink","node.name":"%s","node.description":"%s"}}}' \
+              "$id" "$name" "$desc"
+          done <"$FAKE/sinks"
+          printf ']\n'
+        '';
+        wireplumber = pkgs.writeShellScriptBin "wpctl" ''
+          case "$1" in
+          inspect) printf 'id 1, type PipeWire:Interface:Node\n    media.class = "Audio/Sink"\n  * node.name = "%s"\n' "$(cat "$FAKE/default")" ;;
+          set-default) echo "wpctl $*" >>"$FAKE/log" ;;
+          *) exit 9 ;;
+          esac
+        '';
+        libnotify = pkgs.writeShellScriptBin "notify-send" ''
+          echo "notify-send $*" >>"$FAKE/log"
+          echo 7
+        '';
+      };
+    in
+    pkgs.runCommand "audio-output-cycle-tests" { nativeBuildInputs = [ pkgs.jq ]; } ''
+      bash ${./audio-output-cycle/run.sh} ${pkgs.lib.getExe cycle}
+      touch $out
+    '';
 
   # desk-mqtt (the office panel's helper) against a Mosquitto on loopback,
   # with the test playing Zigbee2MQTT under invented device names. Takes
