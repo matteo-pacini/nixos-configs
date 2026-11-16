@@ -172,9 +172,10 @@ nix build .#checks.x86_64-linux.bluetooth-agent  # desk-bt-agent against private
 nix build .#checks.x86_64-linux.audio-output-cycle  # audio-output-cycle against fake PipeWire tools
 nix build .#checks.x86_64-linux.fleet-helper     # desk-fleet's state model, then the helper against fake ssh, comin-deploy, gh
 nix build .#checks.x86_64-linux.fleet-panel      # fleet/fleet.js under node
+nix build .#checks.x86_64-linux.tailscale-panel  # tailscale/tailscale.js under node
 ```
 
-The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel and system-panel checks read the
+The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel and system-panel checks read the
 repository's `.js` files, so they fail until a live change to those files is pulled. All of them
 but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
 required check for merging into `master`. `hypr-config` is run by hand before a change to the
@@ -191,7 +192,7 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.display-layout .#checks.x86_64-linux.hypr-config \
   .#checks.x86_64-linux.desk-unlock .#checks.x86_64-linux.bluetooth-agent \
   .#checks.x86_64-linux.audio-output-cycle .#checks.x86_64-linux.fleet-helper \
-  .#checks.x86_64-linux.fleet-panel \
+  .#checks.x86_64-linux.fleet-panel .#checks.x86_64-linux.tailscale-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -325,7 +326,7 @@ not.
 | Path | What |
 |------|------|
 | `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
-| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` user service, imports `calendar.nix` |
+| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` user service, the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
@@ -334,7 +335,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -376,6 +377,7 @@ Directories (`import qs.<dir>`):
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
 | `fleet/` | `FleetShared.qml` (shared singleton: `screen`, `toggleRequested`, `said`, `readOnly`, runs `desk-fleet` and restarts it, `fleet` state, `send()`, `open`/`closed` to the helper), `fleet.js` (all fleet decisions: applying helper events, order, header, pipeline, row views and folding, info lines, keys lit, questions, key to command, navigation, footer texts, bar view; node-tested) |
+| `tailscale/` | `tailscale.js` (all Tailscale panel decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested). The panel's QML is not built yet |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -474,6 +476,10 @@ was written; check the reports of any newer work for its own.
   a report lists as expected still is.
 
 **Not built:**
+- The Tailscale panel's QML (Super+V, read-only, every device; design
+  approved): `tailscale/TailscaleShared.qml`, `Tailscale.qml`, its bar item
+  and bind. Its decisions (`tailscale/tailscale.js`, `tailscale-panel`
+  check) and the mesh-host file are built.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.

@@ -26,6 +26,8 @@ work) is in [AGENTS.md](AGENTS.md).
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
 - [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel)
+- [Tailscale: status and mesh hosts](#tailscale-status-and-mesh-hosts) (the
+  decisions behind the Tailscale panel)
 - [Tests](#tests)
 
 ## The session
@@ -87,9 +89,11 @@ a missing key. A colour must be `#` plus exactly six hex digits (QML and
 Hyprland read an alpha digit pair differently); a font must not be blank.
 
 Nix also generates read-only data the shell shows, under
-`~/.local/share/desk/` (`desktop-hyprland.nix` and `calendar.nix`):
-`network/`, `audio/`, `system/` and `bluetooth/locked.json` (values set in
-Nix, shown greyed with a `nix` tag) and `calendar/source.json`.
+`~/.local/share/desk/` (`desktop-hyprland.nix`, `calendar.nix` and
+`default.nix`): `network/`, `audio/`, `system/` and `bluetooth/locked.json`
+(values set in Nix, shown greyed with a `nix` tag), `calendar/source.json`
+and `tailscale/hosts.json` (see [Tailscale: status and mesh
+hosts](#tailscale-status-and-mesh-hosts)).
 
 ## Activation
 
@@ -1220,6 +1224,46 @@ are in `host_row()`.
   and the desktop are configured with), and `comin` and `comin-deploy` (each
   host's own).
 
+## Tailscale: status and mesh hosts
+
+`user/quickshell/tailscale/tailscale.js` holds every decision of the
+Tailscale panel, a read-only view of this computer and every device in the
+tailnet. It takes the result of one `tailscale status --json` call (stdout,
+exit code, stderr, whether it timed out, whether it was the light
+`--peers=false` call) and returns what the panel and its bar item draw. The
+returned shapes are the comment at the top of the file.
+
+- **States**: no answer yet; the daemon not running; the call failing, hanging
+  or printing something that is not status JSON (the last good list is kept,
+  greyed, "as of" its time); and every `BackendState`, with logged out, login
+  started and this computer's key expired told apart. Rows are live only in
+  `Starting` and `Running`; in the other states with a map they are greyed.
+- **Lines over any state**: each `Health` string whole, this computer not
+  connected to control, its key within 14 days of expiry, an exit node in use
+  or offline, an urgent security update, a newer version (which comes only
+  with a flake update: `tailscale update` refuses on NixOS).
+- **Rows**: "My hosts" (peers whose MagicDNS name is in the mesh-host file,
+  under the repository's name and Fleet's glyph for their kind), then "Other
+  devices"; online first, then by name. One chip per row by priority
+  (Expired, Exit node down, Expiring, Offline, Exit node, Direct, Peer
+  relay, Relayed, No path, Idle), a second line, details, and what can be
+  copied. Peers `tailscale status` hides are hidden too (sharee nodes,
+  Mullvad exit nodes not in use).
+- **Never read**: `User` (login and display names), the tailnet's name,
+  capabilities, Taildrop, location, SSH host keys. No person's or tailnet's
+  name can reach the screen.
+- **Keys**: navigation by peer ID across reads, Enter folds, Y opens a copy
+  chooser (name, DNS name, IPv4, IPv6, each only when it exists) or copies
+  `sudo tailscale login` while logged out, T opens `ssh <alias>` in Ghostty
+  for an online mesh host that runs sshd, O opens the admin console (the
+  login page while one is pending), F5 reads again. A key that does not apply
+  gives the reason. Nothing writes to the daemon.
+- **Mesh hosts**: `~/.local/share/desk/tailscale/hosts.json`, generated in
+  `default.nix` from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`: for each
+  host with a `tailscale` name, `{ label, dns, alias, sshd, device }` (the
+  SSH alias is its `principal`; `sshd` is whether it has a `port`). With no
+  file, every peer is another device and T is never offered.
+
 ## Tests
 
 Flake checks, defined in `tests/default.nix`. All of them but `hypr-config`
@@ -1293,6 +1337,15 @@ GitHub's runners, cause not known.
   error, refusals, long texts) and inline events: order, header, pipeline,
   folding, keys lit, questions, the command each key sends (the switch's
   generation as given), navigation, footers and the bar item.
+- `nix build .#checks.x86_64-linux.tailscale-panel`: runs
+  `user/quickshell/tailscale/tailscale.js` under node
+  (`tests/tailscale-panel/test-tailscale-panel.js`) against hand-made status
+  answers in `tests/tailscale-panel/fixtures/` (invented names, documentation
+  address ranges): every panel state (failed calls as stdout, exit code and
+  stderr), every line over a state, every chip and second-line combination,
+  names, sort and hidden peers, the wording at each boundary, every key's
+  decision with the reasons it gives, the bar item for light and full
+  answers, and junk input. Under 1 s.
 - `nix build .#checks.x86_64-linux.fleet-helper`: `tests/fleet/test-desk-fleet.py`
   runs `desk-fleet`'s state model against three real probes cut down to the
   fields it reads (`tests/fleet/fixtures/`) and cases built in the test (every
