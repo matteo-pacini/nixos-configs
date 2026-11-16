@@ -59,7 +59,7 @@ The house card (`custom:nocturne-floorplan`, see [../cards/README.md](../cards/R
 
 - The layer replaced the bin collection card, the outdoor temperature and humidity tiles, and the main door tile, which were removed on 2026-11-16. The door is the bar on the plan; its battery is on the Security dashboard. The outdoor sparklines are gone; a tap on a pill opens the history.
 - Checked live after the deploy (2026-11-16): the layer on a wide card, the same card height on all three floors, the bins against the calendar, and the partly cloudy drawing. See the README for what is still not verified.
-- The tank size in the car's config (54 litres) is an assumption, not a checked figure. It only scales the fuel bar.
+- The tank size in the car's config scales the fuel bar. The owner confirmed the value on 2026-11-16.
 - The letterbox is drawn as holding mail while the mail sensor's contact is on. That reading of the sensor was not checked (2026-11-16).
 
 ## Charts
