@@ -1,0 +1,305 @@
+{
+  "Version": "1.104.5-t0000000-g0000000",
+  "BackendState": "Running",
+  "AuthURL": "",
+  "TailscaleIPs": ["100.64.0.1"],
+  "Self": {
+    "ID": "nSelf",
+    "HostName": "BrightFalls",
+    "DNSName": "brightfalls-ts.tail0000.ts.net.",
+    "OS": "linux",
+    "UserID": 1,
+    "TailscaleIPs": ["100.64.0.1"],
+    "Online": true
+  },
+  "Health": [],
+  "MagicDNSSuffix": "tail0000.ts.net",
+  "CurrentTailnet": { "MagicDNSSuffix": "tail0000.ts.net", "MagicDNSEnabled": false },
+  "Peer": {
+    "k01": {
+      "ID": "expired-flag",
+      "DNSName": "expired-flag.tail0000.ts.net.",
+      "OS": "android",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.1"],
+      "LastSeen": "2026-10-25T12:00:00Z",
+      "Online": false,
+      "Expired": true,
+      "KeyExpiry": "2026-11-26T12:00:00Z"
+    },
+    "k02": {
+      "ID": "expired-past",
+      "DNSName": "expired-past.tail0000.ts.net.",
+      "OS": "android",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.2"],
+      "LastSeen": "2026-10-25T12:00:00Z",
+      "Online": false,
+      "KeyExpiry": "2026-11-13T12:00:00Z"
+    },
+    "k03": {
+      "ID": "exit-down",
+      "DNSName": "exit-down.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.3"],
+      "LastSeen": "2026-11-16T11:57:00Z",
+      "Online": false,
+      "ExitNode": true,
+      "ExitNodeOption": true
+    },
+    "k04": {
+      "ID": "expiring",
+      "DNSName": "expiring.tail0000.ts.net.",
+      "OS": "android",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.4"],
+      "LastSeen": "2026-10-25T12:00:00Z",
+      "Online": false,
+      "KeyExpiry": "2026-11-21T12:00:00Z"
+    },
+    "k05": {
+      "ID": "offline",
+      "DNSName": "offline.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.5"],
+      "Relay": "lhr",
+      "LastSeen": "2026-11-11T12:00:00Z",
+      "Online": false,
+      "Active": true
+    },
+    "k06": {
+      "ID": "offline-unset",
+      "DNSName": "offline-unset.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.6"],
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "Online": false
+    },
+    "k07": {
+      "ID": "exit",
+      "DNSName": "exit.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.7"],
+      "CurAddr": "192.0.2.7:41641",
+      "Relay": "lhr",
+      "Online": true,
+      "Active": true,
+      "ExitNode": true,
+      "ExitNodeOption": true
+    },
+    "k08": {
+      "ID": "direct",
+      "DNSName": "direct.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.8", "fd7a:115c:a1e0::108"],
+      "CurAddr": "192.0.2.8:41641",
+      "Relay": "lhr",
+      "RxBytes": 999,
+      "TxBytes": 9940,
+      "Online": true,
+      "Active": true
+    },
+    "k09": {
+      "ID": "peer-relay",
+      "DNSName": "peer-relay.tail1111.ts.net.",
+      "OS": "linux",
+      "UserID": 2,
+      "TailscaleIPs": ["100.64.1.9"],
+      "PeerRelay": "192.0.2.9:7777:1",
+      "Relay": "fra",
+      "Online": true,
+      "Active": true
+    },
+    "k10": {
+      "ID": "relayed",
+      "DNSName": "relayed.tail1111.ts.net.",
+      "OS": "linux",
+      "UserID": 2,
+      "TailscaleIPs": ["100.64.1.10"],
+      "Relay": "fra",
+      "Online": true,
+      "Active": true
+    },
+    "k11": {
+      "ID": "no-path",
+      "DNSName": "no-path.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.11"],
+      "Relay": "",
+      "Online": true,
+      "Active": true
+    },
+    "k12": {
+      "ID": "idle",
+      "DNSName": "idle.tail0000.ts.net.",
+      "OS": "macOS",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.12"],
+      "Relay": "lhr",
+      "LastWrite": "2026-11-16T11:51:00Z",
+      "Online": true,
+      "Active": false
+    },
+    "k13": {
+      "ID": "never",
+      "DNSName": "never.tail0000.ts.net.",
+      "OS": "macOS",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.13"],
+      "Relay": "lhr",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "Active": false
+    },
+    "k14": {
+      "ID": "online-expired",
+      "DNSName": "online-expired.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.14"],
+      "CurAddr": "192.0.2.14:41641",
+      "Online": true,
+      "Active": true,
+      "KeyExpiry": "2026-11-16T10:00:00Z"
+    },
+    "k15": {
+      "ID": "shared-offline",
+      "DNSName": "shared-offline.tail1111.ts.net.",
+      "OS": "linux",
+      "UserID": 2,
+      "TailscaleIPs": ["100.64.1.15"],
+      "LastSeen": "2026-11-16T10:00:00Z",
+      "Online": false
+    },
+    "k16": {
+      "ID": "tagged",
+      "DNSName": "tagged.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 3,
+      "Tags": ["tag:a", "tag:b"],
+      "PrimaryRoutes": ["192.0.2.0/25", "198.51.100.0/24"],
+      "TailscaleIPs": ["100.64.1.16"],
+      "CurAddr": "192.0.2.16:41641",
+      "Online": true,
+      "Active": true
+    },
+    "k17": {
+      "ID": "offers",
+      "DNSName": "offers.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.17"],
+      "Online": true,
+      "Active": false,
+      "ExitNodeOption": true
+    },
+    "k18": {
+      "ID": "bare",
+      "DNSName": "",
+      "HostName": "",
+      "OS": "",
+      "UserID": 1,
+      "TailscaleIPs": null,
+      "Online": true,
+      "Active": false
+    },
+    "k19": {
+      "ID": "hostname-only",
+      "DNSName": "",
+      "HostName": "printer",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.19"],
+      "Online": true
+    },
+    "k20": {
+      "ID": "sharee",
+      "DNSName": "sharee.tail2222.ts.net.",
+      "OS": "linux",
+      "UserID": 4,
+      "TailscaleIPs": ["100.64.1.20"],
+      "Online": true,
+      "ShareeNode": true
+    },
+    "k21": {
+      "ID": "mullvad",
+      "DNSName": "se-sto-wg-001.mullvad.ts.net.",
+      "OS": "linux",
+      "UserID": 5,
+      "TailscaleIPs": ["100.64.1.21"],
+      "Online": true,
+      "ExitNodeOption": true
+    },
+    "k22": {
+      "ID": "v6-only",
+      "DNSName": "v6-only.tail0000.ts.net.",
+      "OS": "plan9",
+      "UserID": 1,
+      "TailscaleIPs": ["fd7a:115c:a1e0::122"],
+      "Online": true
+    },
+    "k23": {
+      "ID": "ios",
+      "DNSName": "ios.tail0000.ts.net.",
+      "OS": "iOS",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.23"],
+      "Online": true
+    },
+    "k24": {
+      "ID": "punycode",
+      "DNSName": "xn--caf-dma.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.24"],
+      "Online": true
+    },
+    "k25": {
+      "ID": "sharer",
+      "DNSName": "sharer.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "AltSharerUserID": 6,
+      "Tags": ["tag:a"],
+      "TailscaleIPs": ["100.64.1.25"],
+      "Online": true
+    },
+    "k26": {
+      "ID": "far-key",
+      "DNSName": "far-key.tail0000.ts.net.",
+      "OS": "android",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.26"],
+      "LastSeen": "2026-10-25T12:00:00Z",
+      "Online": false,
+      "KeyExpiry": "2027-03-20T12:00:00Z"
+    },
+    "k27": {
+      "ID": "exit-relayed",
+      "DNSName": "exit-relayed.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.27"],
+      "Relay": "lhr",
+      "Online": true,
+      "Active": true,
+      "ExitNode": true,
+      "ExitNodeOption": true
+    },
+    "k28": {
+      "ID": "no-online-field",
+      "DNSName": "no-online-field.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.1.28"]
+    },
+    "k29": "not an object"
+  },
+  "ClientVersion": null
+}

@@ -1,0 +1,9 @@
+{
+  "hosts": [
+    { "label": "BrightFalls", "dns": "brightfalls-ts.tail0000.ts.net", "alias": "brightfalls", "sshd": true, "device": "desktop" },
+    { "label": "CauldronLake", "dns": "cauldronlake-ts.tail0000.ts.net", "alias": "cauldronlake", "sshd": true, "device": "laptop" },
+    { "label": "Nexus", "dns": "nexus-ts.tail0000.ts.net", "alias": "nexus", "sshd": true, "device": "server" },
+    { "label": "NightSprings", "dns": "nightsprings-ts.tail0000.ts.net", "alias": "nightsprings", "sshd": true, "device": "laptop" },
+    { "label": "NoSshd", "dns": "nosshd-ts.tail0000.ts.net", "alias": "nosshd", "sshd": false, "device": "laptop" }
+  ]
+}

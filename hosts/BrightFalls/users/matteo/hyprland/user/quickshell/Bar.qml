@@ -15,9 +15,11 @@ import qs.fleet
 import qs.network
 import qs.office
 import qs.system
+import qs.tailscale
 import qs.tray
 import "fleet/fleet.js" as FleetView
 import "office/office.js" as OfficeView
+import "tailscale/tailscale.js" as TailscaleView
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -35,6 +37,7 @@ Scope {
             lightbulb: "\u{f0335}",
             lightbulbOutline: "\u{f0336}",
             serverNetwork: "\u{f048d}",
+            tailscale: "\u{f0499}",
             ethernet: "\u{f0200}",
             wifi: "\u{f05a9}",
             noNetwork: "\u{f0319}",
@@ -729,6 +732,50 @@ Scope {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: BluetoothShared.toggleRequested(bar.modelData.name)
+                        }
+                    }
+
+                    Item {
+                        id: tailscale
+
+                        readonly property bool panelOpen: TailscaleShared.screen === bar.modelData.name
+                        readonly property var shown: TailscaleView.bar(TailscaleShared.answer, panelOpen, Date.now())
+
+                        width: tailscaleGlyph.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Dropdowns.anchor("tailscale", bar.modelData.name, tailscale, bar)
+
+                        Hover {
+                            hovered: tailscaleArea.containsMouse
+                        }
+
+                        Glyph {
+                            id: tailscaleGlyph
+
+                            anchors.centerIn: parent
+                            text: root.glyph.tailscale
+                            color: tailscale.shown.colour === "purple" ? Theme.purple : tailscale.shown.colour === "orange" ? Theme.orange : tailscale.shown.colour === "dim" ? Theme.comment : Theme.foreground
+                        }
+
+                        // Marks the icon whose panel is open.
+                        Rectangle {
+                            visible: tailscale.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        MouseArea {
+                            id: tailscaleArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: TailscaleShared.toggleRequested(bar.modelData.name)
                         }
                     }
 
