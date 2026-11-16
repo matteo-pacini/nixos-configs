@@ -55,13 +55,12 @@ Three places use one `button-card` in place of a group of tiles. Each is a JavaS
 
 ## Home, first tab
 
-The house card (`custom:nocturne-floorplan`, see [../cards/README.md](../cards/README.md)) has had an Attic floor and a config for the Outside layer since 2026-11-16: a fixed frame, people dots, weather, the outdoor sensor, power now, gas today, the bins, the letterbox and the car.
+The house card (`custom:nocturne-floorplan`, see [../cards/README.md](../cards/README.md)) has an Attic floor and the Outside layer: a fixed frame, people dots, weather, the outdoor sensor, power now, gas today, the bins, the letterbox and the car. The config was saved on 2026-11-16 and the card code deployed the same day.
 
-- The Outside layer and the fixed frame need the card code from the same day. Until that is deployed the card ignores the new keys and only the Attic floor shows.
-- The tank size in the car's config (54 litres) is an assumption, not a checked figure. It only scales the fuel bar.
+- The layer replaced the bin collection card, the outdoor temperature and humidity tiles, and the main door tile, which were removed on 2026-11-16. The door is the bar on the plan; its battery is on the Security dashboard. The outdoor sparklines are gone; a tap on a pill opens the history.
+- Checked live after the deploy (2026-11-16): the layer on a wide card, the same card height on all three floors, the bins against the calendar, and the partly cloudy drawing. See the README for what is still not verified.
+- The tank size in the car's config scales the fuel bar. The owner confirmed the value on 2026-11-16.
 - The letterbox is drawn as holding mail while the mail sensor's contact is on. That reading of the sensor was not checked (2026-11-16).
-- The cards the layer is meant to replace are still on the tab: the bin collection card, the outdoor temperature and humidity tiles, and the main door tile. They go once the owner has seen the layer live.
-- Backup of the dashboard from before the change: `backup-20261116-home`.
 
 ## Charts
 
