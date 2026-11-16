@@ -1,5 +1,5 @@
 diff --git a/src/venus.rs b/src/venus.rs
-index f9a0cce..fadcff1 100644
+index 854079e..a459764 100644
 --- a/src/venus.rs
 +++ b/src/venus.rs
 @@ -380,6 +380,7 @@ pub(crate) fn run(args: &[OsString]) -> Result<()> {
@@ -10,7 +10,7 @@ index f9a0cce..fadcff1 100644
          .args(["-object",&ram.argument,"-nodefaults","-no-reboot","-monitor","none","-serial","stdio","-nic","none"])
          .args(["-device","virtio-keyboard-pci","-device","virtio-tablet-pci"])
          .args(["-display",&if config.window { if fullscreen { "sdl,gl=es,full-screen=on".to_owned() } else { "sdl,gl=es".to_owned() } } else { format!("egl-headless,rendernode={}",qemu_path(&node)?) },
-@@ -667,3 +668,17 @@ fn retry_window(config: &Config, x11_available: bool, stderr: &str, console_empt
+@@ -683,3 +684,17 @@ fn retry_window(config: &Config, x11_available: bool, stderr: &str, console_empt
  #[cfg(test)]
  #[path = "../tests/unit/venus.rs"]
  mod tests;

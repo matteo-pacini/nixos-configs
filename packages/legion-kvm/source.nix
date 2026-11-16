@@ -1,10 +1,10 @@
 { fetchFromGitHub }:
 {
-  version = "0-unstable-2026-11-15";
+  version = "0-unstable-2026-11-16";
   src = fetchFromGitHub {
     owner = "brcly";
     repo = "legion-kvm";
-    rev = "2e2738835d48327411bce2e7a14aba8b2d48e517";
-    hash = "sha256-zEDuJYfOLCMeVt5do1xh025LC6OBhvR41ShLb5EkWA4=";
+    rev = "79a6ec06d8c32a3ccd55956671b1e09fc594b8e9";
+    hash = "sha256-PEZIpp+vTQhSluKnyuStfWm8ziaYup6HXqCfUQpcsm8=";
   };
 }
