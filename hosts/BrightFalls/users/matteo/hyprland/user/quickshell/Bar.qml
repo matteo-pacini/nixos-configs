@@ -20,6 +20,7 @@ import qs.tray
 import "fleet/fleet.js" as FleetView
 import "office/office.js" as OfficeView
 import "tailscale/tailscale.js" as TailscaleView
+import "network/wifi.js" as WifiView
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -39,8 +40,11 @@ Scope {
             serverNetwork: "\u{f048d}",
             tailscale: "\u{f0499}",
             ethernet: "\u{f0200}",
-            wifi: "\u{f05a9}",
             noNetwork: "\u{f0319}",
+            wifi1: "\u{f091f}",
+            wifi2: "\u{f0922}",
+            wifi3: "\u{f0925}",
+            wifi4: "\u{f0928}",
             volumeHigh: "\u{f057e}",
             volumeMedium: "\u{f0580}",
             volumeLow: "\u{f057f}",
@@ -100,6 +104,17 @@ Scope {
     // Unknown means NetworkManager's check is off or has not run, not that
     // the host is offline.
     readonly property bool offline: !(wired || wireless) || [NetworkConnectivity.None, NetworkConnectivity.Portal, NetworkConnectivity.Limited].includes(Networking.connectivity)
+    // wifiEnabled reads true with no Wi-Fi device at all, so the radio
+    // counts as on only with a device and no hardware block.
+    readonly property bool wifiRadio: networkDevices.some(d => d.type === DeviceType.Wifi) && Networking.wifiHardwareEnabled && Networking.wifiEnabled
+    readonly property real wifiSignal: networkDevices.find(d => d.type === DeviceType.Wifi && d.connected)?.networks.values.find(n => n.connected)?.signalStrength ?? 0
+    readonly property var networkLook: WifiView.bar({
+        wired: wired,
+        wifi: wireless,
+        signal: wifiSignal,
+        radio: wifiRadio,
+        offline: offline
+    })
 
     readonly property bool bluetoothOn: BluetoothShared.on
     readonly property bool bluetoothConnected: bluetoothOn && BluetoothShared.devices.some(d => d.connected)
@@ -784,7 +799,9 @@ Scope {
 
                         readonly property bool panelOpen: NetworkPanel.screen === bar.modelData.name
 
-                        width: networkGlyph.implicitWidth
+                        readonly property color tone: root.networkLook.red ? Theme.red : network.panelOpen ? Theme.purple : Theme.foreground
+
+                        width: networkPair.implicitWidth
                         height: parent.height
 
                         Component.onCompleted: Dropdowns.anchor("network", bar.modelData.name, network, bar)
@@ -793,12 +810,30 @@ Scope {
                             hovered: networkArea.containsMouse
                         }
 
-                        Glyph {
-                            id: networkGlyph
+                        Row {
+                            id: networkPair
 
                             anchors.centerIn: parent
-                            text: root.wired ? root.glyph.ethernet : root.wireless ? root.glyph.wifi : root.glyph.noNetwork
-                            color: root.offline ? Theme.red : network.panelOpen ? Theme.purple : Theme.foreground
+                            spacing: 2
+
+                            Glyph {
+                                id: networkGlyph
+
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.networkLook.glyph === "wifi" ? root.glyph["wifi" + root.networkLook.tier] : root.glyph[root.networkLook.glyph]
+                                color: network.tone
+                            }
+
+                            // The radio is on: a small Wi-Fi mark beside the
+                            // glyph, low on the line.
+                            Glyph {
+                                visible: root.networkLook.mark
+                                anchors.bottom: networkGlyph.bottom
+                                anchors.bottomMargin: 2
+                                text: root.glyph.wifi4
+                                color: network.tone
+                                font.pixelSize: 11
+                            }
                         }
 
                         // Marks the icon whose panel is open.

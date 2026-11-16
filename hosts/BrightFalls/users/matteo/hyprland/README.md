@@ -237,7 +237,8 @@ right click opens the item's menu, see [Tray menu](#tray-menu)), the fleet
 item (a server glyph and the number of hosts that want attention, see
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, the Tailscale item (see
-[Tailscale panel](#tailscale-panel)), network, and audio. The audio item
+[Tailscale panel](#tailscale-panel)), network (a small Wi-Fi mark beside
+it while the radio is on and Wi-Fi is not what it shows, see [Network panel](#network-panel)), and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
 steps, middle click opens the audio panel; a red dot on it means an input
@@ -321,8 +322,8 @@ restart.
 
 ### Network panel
 
-`Network.qml` (parts in `network/`), a 380 px panel under the bar's network
-icon. Wired devices only; Wi-Fi is not built.
+`Network.qml` (parts in `network/`), a 420 px panel under the bar's network
+icon: WIRED, then WI-FI, then SET IN NIX.
 
 - Wired devices first: a connected one shows link speed, IPv4 address and
   its last speed test; Enter opens its details (address, gateway, DNS, MAC,
@@ -331,11 +332,84 @@ icon. Wired devices only; Wi-Fi is not built.
   duplex from sysfs, all read when the panel opens; the rest from
   `Quickshell.Networking`.
 - "Set in Nix": greyed rows from `~/.local/share/desk/network/locked.json`
-  (Tailscale on, IPv6 off, Wake-on-LAN interfaces, hostname, firewall on; a
-  row only while the setting has that value), each naming the repo file that
-  sets it, which Enter shows in the footer.
-- Keys: Up/Down move, Enter, Esc closes details, then the panel; S opens the
-  speed test chooser.
+  (Tailscale on, IPv6 off, Wake-on-LAN interfaces, hostname, firewall on,
+  Wi-Fi off at every boot; a row only while the setting has that value),
+  each naming the repo file that sets it, which Enter shows in the footer.
+- Keys: Up/Down move (selection follows the row, not its position, so
+  networks coming and going during a scan do not move it), Enter, Esc closes
+  details, then the panel; S opens the speed test chooser. The Wi-Fi keys
+  are below.
+
+**Wi-Fi.** The section header says `off`, `scanning` or `on` on the right.
+With no Wi-Fi device the section is one line, `No Wi-Fi device.`; with the
+radio blocked by a hardware switch, `Blocked by a hardware switch.`; with
+the radio off, `Radio off. W turns it on.` With the radio on it reads
+`Looking for networks…` until a scan answers, then `No networks found.` or
+the list. Each row has a signal glyph in four steps, the name (the only
+thing cut short), and a line with the security in words (`WPA2 password`,
+`open`, `open, encrypted` for OWE, `enterprise: not supported`) and
+`· saved` for a network NetworkManager has a profile for; `connected` in
+green or `joining…` in cyan on the right. Connected first, then saved, then
+by signal; the order holds still while the password modal is up or a join
+runs. Enter on the connected row opens its details (address, gateway, DNS,
+MAC, security, signal, whether the wired link carries the traffic). A
+failed join leaves a red line on its row ending `Enter retries`; a sign-in
+page the network wants shows as an orange line on the connected row, only
+while Wi-Fi carries the default route.
+
+- **Keys**: W turns the radio on or off; F5 scans again; Enter joins (a
+  saved, open or OWE network at once, an unsaved password network through
+  the modal) or opens the connected row's details; C disconnects the
+  connected network, or joins a saved one; F on a saved network asks
+  (`press F again to forget · Esc keeps it`), and a second F forgets it. Esc
+  first cancels a join in progress (and forgets the profile of a network
+  that was not saved before), then keeps an armed forget, then closes
+  Wi-Fi details, then does what it does elsewhere in the panel. While a join
+  runs every other key says `joining · Esc cancels`. S is unchanged. A join
+  that neither connects nor fails within 30 s is reported as `no answer
+  after 30 s` and not cancelled: NetworkManager may still finish it.
+- **The password** (`network/PasswordModal.qml`): a centred modal on the
+  panel's monitor, with the panel hidden behind it, naming the network and
+  its security. The field is masked, Tab shows or hides it, Enter joins
+  once the text can be a password (8 to 63 bytes, as NetworkManager counts,
+  or 64 hex digits for WPA/WPA2; at least one character for WPA3). The field is empty and masked every time
+  the modal opens or closes. If NetworkManager answers that it lacks the
+  secret or authentication timed out, the modal comes back, empty, with one
+  line: `Not joined. The password was wrong, or the network refused it.` It
+  cannot say which: NetworkManager reports a wrong password and a refusal
+  the same way. Esc closes the modal; after a failed attempt on a network
+  that was not saved before, it also forgets the profile NetworkManager made
+  for that attempt, so nothing with a wrong password is left behind. A
+  network saved before is never forgotten by Esc.
+- **Where it goes**: the networks come from `Quickshell.Networking`, turned
+  into plain rows (names, signal, security, state) while the panel is open;
+  every decision is in `network/wifi.js`, plain JavaScript node runs too
+  (the `wifi-panel` check). The password goes from the field straight to
+  NetworkManager over D-Bus (`connectWithPsk`), which stores it in its
+  connection profile, as for any network it saves. The shell does not keep
+  it, log it or write it anywhere, and nothing in this repository holds one.
+- **Scanning** runs only while the panel is open with the radio on (also
+  while the modal hides the panel), and stops when the panel closes or the
+  radio goes off. Nothing Wi-Fi runs while the panel is closed except the
+  bar's reading of module properties.
+- **Off at every boot**: the `wifi-radio-off-at-boot` unit
+  (`hosts/BrightFalls/networking.nix`) writes `WirelessEnabled=false` into
+  NetworkManager's state file before NetworkManager starts, once per boot.
+  W turns the radio on for the session; the next boot has it off again. The
+  "Wi-Fi off at every boot" row under Set in Nix says so.
+- **Bar**: the network item shows the ethernet glyph while wired, the Wi-Fi
+  glyph in its four signal steps while only Wi-Fi is connected, or the
+  no-network glyph; while the radio is on and Wi-Fi is not the glyph shown,
+  a small Wi-Fi mark sits beside it, so a radio left on is visible. Red when
+  offline, purple while the panel is open, as before.
+- **Not offered**: hidden networks (the module drops access points with no
+  name); setting up enterprise (802.1X) networks (the module cannot pass an
+  identity, method or certificate; a saved one still joins from its
+  profile), WEP (the join call refuses it) and LEAP; opening a sign-in page
+  (only the line); hotspot and sharing (not in the module); forgetting a
+  saved network that is out of range (the module does not list it, so the
+  panel cannot reach it); the link rate (the module gives none; the details
+  say so).
 
 **Speed test.** S opens a chooser in place of the list: 1 Cloudflare
 (`cfspeedtest`, speed.cloudflare.com), 2 Speedtest.net (the Ookla CLI,
@@ -1383,6 +1457,15 @@ GitHub's runners, cause not known.
   names, sort and hidden peers, the wording at each boundary, every key's
   decision with the reasons it gives, the bar item for light and full
   answers, and junk input. Under 1 s.
+- `nix build .#checks.x86_64-linux.wifi-panel`: runs
+  `user/quickshell/network/wifi.js` under node
+  (`tests/wifi-panel/test-wifi-panel.js`) against invented networks in
+  `tests/wifi-panel/fixtures/` and the module's enum names copied by hand:
+  the section's states, signal tiers, security words, order and the order
+  held during a join, the password check, every key and event of the join,
+  forget and cancel machine with its effects, footer hints, details and the
+  bar item; a sentinel password is checked never to reach state, effects or
+  view. Under 1 s.
 - `nix build .#checks.x86_64-linux.fleet-helper`: `tests/fleet/test-desk-fleet.py`
   runs `desk-fleet`'s state model against three real probes cut down to the
   fields it reads (`tests/fleet/fixtures/`) and cases built in the test (every
