@@ -17,7 +17,6 @@
     ./boot-splash.nix
     ./printer.nix
     ./virtualization.nix
-    ./specialisations.nix
   ];
 
   custom.kernel.enable = true;
