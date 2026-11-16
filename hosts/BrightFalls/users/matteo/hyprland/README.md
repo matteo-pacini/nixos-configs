@@ -42,14 +42,18 @@ session. The plain `hyprland.desktop` stays installed for `uwsm start`,
 with `NoDisplay` so no session chooser offers it
 (`desktop-hyprland.nix`). `~/.config/uwsm/env-hyprland` is a read-only Nix-managed
 file that points `AQ_DRM_DEVICES` at the udev links `/dev/dri/dgpu` and
-`/dev/dri/igpu`.
+`/dev/dri/igpu`, and sets `XCURSOR_THEME` and `XCURSOR_SIZE` from
+`home.pointerCursor` (`users/matteo/desktop.nix`): UWSM sources only
+`/etc/profile` and `~/.profile`, so Home Manager's session variables never
+reach the session.
 
 There is no other desktop. The services the session's apps rely on are
 declared in `hosts/BrightFalls/desktop.nix`: gnome-keyring (secret service)
 and gcr-ssh-agent (`SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh`), gvfs, udisks2,
 upower, dconf, the portals (`hyprland` first, `gtk` for the file chooser
 and settings, `gnome-keyring` for secrets), and the apps that stay:
-Nautilus, Loupe, Papers, File Roller, Seahorse. GTK and Qt look, the dark
+Nautilus, Loupe, Papers, File Roller, Seahorse. GTK and Qt look, the
+cursor (Dracula, XCursor only, 24 px), the dark
 colour scheme and the default apps (`mimeapps.list`, a read-only link) are
 in `users/matteo/desktop.nix`.
 
