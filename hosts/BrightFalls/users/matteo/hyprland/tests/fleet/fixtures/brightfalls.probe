@@ -1,0 +1,279 @@
+@@booted
+/nix/store/0x7c2xfrfqgj8hqniq4b4djz9jmrcijb-nixos-system-BrightFalls-26.11.20261111.d4f25a3
+@@current
+/nix/store/g756j7cnzip2kb00p005z1k8ixpzcvq5-nixos-system-BrightFalls-26.11.20261111.d4f25a3
+@@bkernel
+/nix/store/nii7dvrn4rx3rc62cmwq5fqmna6f7sxb-linux-7.3.4/bzImage
+@@ckernel
+/nix/store/nii7dvrn4rx3rc62cmwq5fqmna6f7sxb-linux-7.3.4/bzImage
+@@profile
+1794778921
+@@efi
+@@mode
+manual
+@@status
+{
+ "is_suspended": false,
+ "builder": {
+  "is_evaluating": false,
+  "is_building": false,
+  "generation": {
+   "uuid": "00bd4ff4-db82-4e94-989f-8a06671bac6f",
+   "selected_branch_name": "deploy",
+   "selected_branch_is_testing": false,
+   "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "out_path": "/nix/store/isgpmr39c9jfvafrqvz5rknj876zy3qk-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+   "eval_err": "",
+   "build_status": "built",
+   "build_err": "",
+   "eval_started_at": "2026-11-16T08:04:04.669915164Z",
+   "eval_ended_at": "2026-11-16T08:04:25.297461929Z",
+   "build_started_at": "2026-11-16T08:04:25.297483629Z",
+   "build_ended_at": "2026-11-16T08:04:25.297484962Z"
+  }
+ },
+ "deployer": {
+  "is_deploying": false,
+  "is_suspended": false,
+  "operation": "",
+  "generation_to_deploy": null,
+  "deployment": {
+   "status": "done",
+   "operation": "boot",
+   "operation_submitted": "boot",
+   "created_at": "2026-11-14T17:46:53.669999789Z",
+   "ended_at": "2026-11-14T17:46:55.245496787Z",
+   "error_msg": "",
+   "current_inhibitors": {
+    "dbus-implementation": "broker"
+   },
+   "new_inhibitors": {
+    "dbus-implementation": "broker"
+   },
+   "generation": {
+    "uuid": "1714b0cc-57ab-49b1-8ba4-f2ff3ec4ced1",
+    "selected_branch_name": "deploy",
+    "selected_branch_is_testing": false,
+    "selected_commit_id": "72a03c03bda921b915bc977ad5814207f5a89615",
+    "out_path": "/nix/store/7hj2x7h6iprnzhkcpcj5hf1wg9smzv79-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+    "eval_err": "",
+    "build_status": "built",
+    "build_err": "",
+    "eval_started_at": "2026-11-14T17:46:20.817927851Z",
+    "eval_ended_at": "2026-11-14T17:46:41.003810652Z",
+    "build_started_at": "2026-11-14T17:46:41.003822043Z",
+    "build_ended_at": "2026-11-14T17:46:41.003822955Z"
+   }
+  }
+ },
+ "fetcher": {
+  "repository_status": {
+   "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "selected_branch_name": "deploy",
+   "selected_branch_is_testing": false,
+   "main_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "error_msg": "",
+   "remotes": [
+    {
+     "name": "origin",
+     "fetch_error_msg": "",
+     "fetched_at": "2026-11-16T08:56:04.681438894Z",
+     "main": {
+      "commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200"
+     },
+     "testing": {
+      "name": "testing-BrightFalls",
+      "commit_id": "",
+      "error_msg": "this branch has been hard reset: its head 'fd5e5763cf1c1d996ce6c12c388c62e835fa4321' is not on top of '073c52e6831804a69eae70f10a92ab3de29ff200'"
+     }
+    }
+   ]
+  }
+ },
+ "store": {
+  "deployments": [
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-14T17:46:53.669999789Z",
+    "ended_at": "2026-11-14T17:46:55.245496787Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "1714b0cc-57ab-49b1-8ba4-f2ff3ec4ced1",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "72a03c03bda921b915bc977ad5814207f5a89615",
+     "out_path": "/nix/store/7hj2x7h6iprnzhkcpcj5hf1wg9smzv79-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-14T17:46:20.817927851Z",
+     "eval_ended_at": "2026-11-14T17:46:41.003810652Z",
+     "build_started_at": "2026-11-14T17:46:41.003822043Z",
+     "build_ended_at": "2026-11-14T17:46:41.003822955Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-14T16:58:17.617598207Z",
+    "ended_at": "2026-11-14T16:58:19.352028078Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "c73c1a7c-2343-42bf-8925-9e6c3ba4c11d",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "b95a838437f9bd50cd252fef863f68f5c8573831",
+     "out_path": "/nix/store/7hj2x7h6iprnzhkcpcj5hf1wg9smzv79-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-14T15:34:20.832336650Z",
+     "eval_ended_at": "2026-11-14T15:34:40.819589688Z",
+     "build_started_at": "2026-11-14T15:34:40.819599626Z",
+     "build_ended_at": "2026-11-14T15:34:40.819600718Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-13T18:09:41.023961937Z",
+    "ended_at": "2026-11-13T18:09:43.176581624Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "813cb263-1f18-41b1-9886-92abdea839b7",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "133532c98a9a26abc8b6a889b6f158c8f4943cfc",
+     "out_path": "/nix/store/mbbixk3mb7jvxbwibqf3qvlg8ibkvn0z-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-13T17:27:36.091739276Z",
+     "eval_ended_at": "2026-11-13T17:27:58.589454168Z",
+     "build_started_at": "2026-11-13T17:27:58.591431072Z",
+     "build_ended_at": "2026-11-13T17:28:03.396908785Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-13T17:17:23.690964088Z",
+    "ended_at": "2026-11-13T17:27:20.290877672Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "1ad0bc2c-6c6e-4da2-858c-6ee785c80ac1",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "66c979c9f410abea23aef5bca8b5626e825b2c70",
+     "out_path": "/nix/store/jm5ql2sjhki4f1gxr1m1hrhny6g2nxnf-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-13T11:45:35.621608239Z",
+     "eval_ended_at": "2026-11-13T11:46:27.826666094Z",
+     "build_started_at": "2026-11-13T11:46:27.827581592Z",
+     "build_ended_at": "2026-11-13T11:47:01.360989805Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "",
+    "created_at": null,
+    "ended_at": null,
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "",
+     "selected_branch_name": "",
+     "selected_branch_is_testing": null,
+     "selected_commit_id": "",
+     "out_path": "/nix/store/0x7c2xfrfqgj8hqniq4b4djz9jmrcijb-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "",
+     "build_err": "",
+     "eval_started_at": null,
+     "eval_ended_at": null,
+     "build_started_at": null,
+     "build_ended_at": null
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "",
+    "created_at": null,
+    "ended_at": null,
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "",
+     "selected_branch_name": "",
+     "selected_branch_is_testing": null,
+     "selected_commit_id": "",
+     "out_path": "/nix/store/cxmfvgqandh8qjql80llprahnrmd2dm4-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "",
+     "build_err": "",
+     "eval_started_at": null,
+     "eval_ended_at": null,
+     "build_started_at": null,
+     "build_ended_at": null
+    }
+   }
+  ],
+  "generations": [
+   {
+    "uuid": "00bd4ff4-db82-4e94-989f-8a06671bac6f",
+    "selected_branch_name": "deploy",
+    "selected_branch_is_testing": false,
+    "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+    "out_path": "/nix/store/isgpmr39c9jfvafrqvz5rknj876zy3qk-nixos-system-BrightFalls-26.11.20261111.d4f25a3",
+    "eval_err": "",
+    "build_status": "built",
+    "build_err": "",
+    "eval_started_at": "2026-11-16T08:04:04.669915164Z",
+    "eval_ended_at": "2026-11-16T08:04:25.297461929Z",
+    "build_started_at": "2026-11-16T08:04:25.297483629Z",
+    "build_ended_at": "2026-11-16T08:04:25.297484962Z"
+   }
+  ],
+  "deployer": {
+   "is_suspended": false,
+   "suspend_reason": ""
+  }
+ },
+ "deploy_confirmer": {
+  "submitted": "00bd4ff4-db82-4e94-989f-8a06671bac6f"
+ }
+}
+@@end

@@ -13,6 +13,7 @@
 #   nix build .#checks.<system>.desk-unlock
 #   nix build .#checks.<system>.bluetooth-agent
 #   nix build .#checks.<system>.audio-output-cycle
+#   nix build .#checks.<system>.fleet-helper
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -229,6 +230,18 @@ in
           ${pkgs.lib.getExe' pkgs.mosquitto "mosquitto"} "$PWD/work"
         touch $out
       '';
+
+  # desk-fleet (the fleet panel's helper): its state model against probe
+  # fixtures (fleet/fixtures, and cases built in the test), then the built
+  # helper against fake ssh, comin, comin-deploy, sudo, ghostty and gh. Takes
+  # about 40 s: it follows a deploy until comin has been idle for 20 s.
+  fleet-helper = pkgs.runCommand "fleet-helper-tests" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+    mkdir work
+    python3 -I ${./fleet/test-desk-fleet.py} \
+      ${pkgs.lib.getExe (pkgs.callPackage ../desk-fleet.nix { })} \
+      ${../desk-fleet.py} ${./fleet/fixtures} "$PWD/work"
+    touch $out
+  '';
 
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
