@@ -53,6 +53,16 @@ Three places use one `button-card` in place of a group of tiles. Each is a JavaS
 - The automation tiles, the two drinking charts and the 48-hour chart are still separate cards.
 - Not verified (2026-11-16): the mode pills and the Reset buttons have not been tapped, and the card has not been seen with the pump stopped, on battery, or with unavailable sensors. The light pill was tested both ways.
 
+## Home, first tab
+
+The house card (`custom:nocturne-floorplan`, see [../cards/README.md](../cards/README.md)) has had an Attic floor and a config for the Outside layer since 2026-11-16: a fixed frame, people dots, weather, the outdoor sensor, power now, gas today, the bins, the letterbox and the car.
+
+- The Outside layer and the fixed frame need the card code from the same day. Until that is deployed the card ignores the new keys and only the Attic floor shows.
+- The tank size in the car's config (54 litres) is an assumption, not a checked figure. It only scales the fuel bar.
+- The letterbox is drawn as holding mail while the mail sensor's contact is on. That reading of the sensor was not checked (2026-11-16).
+- The cards the layer is meant to replace are still on the tab: the bin collection card, the outdoor temperature and humidity tiles, and the main door tile. They go once the owner has seen the layer live.
+- Backup of the dashboard from before the change: `backup-20261116-home`.
+
 ## Charts
 
 **Which card can read what:**

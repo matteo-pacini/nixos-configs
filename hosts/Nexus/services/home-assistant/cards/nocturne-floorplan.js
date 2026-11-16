@@ -1,11 +1,12 @@
 // nocturne-floorplan: a flat, layered house plan for Home Assistant.
 //
-// One card shows one floor at a time with three layers: lights (tap a bulb to
+// One card shows one floor at a time with four layers: lights (tap a bulb to
 // switch it, tap a room to switch all of its lights, hold a bulb for its
 // dialog; a dimmed bulb is amber, a full one yellow), heat (a "current /
 // target" pill per room, current green at or above target and red below,
 // orange with a flame while the radiator heats, and a humidity pill beside
-// it) and doors (green closed, red open).
+// it), doors (green closed, red open) and outside (weather, meters, bins,
+// the letterbox and the car, drawn around the house).
 //
 // The card only draws; the house lives in the card's YAML, so the layout and
 // entity ids stay in .storage rather than this repository. Coordinates are
@@ -38,6 +39,39 @@
 //           shell: [-21, 8.3, -5.6, 52.7]       # optional: its own outline
 //       doors: [{ entity: binary_sensor.main_door, a: [47.6, 97.6], b: [54.8, 97.6] }]
 //
+// Three optional card-level keys draw what is around the house. They are
+// shared by every floor, and their positions are in the first floor's percent:
+//
+//   frame: [-23, -35, 102, 135]      # x0, y0, x1, y1: one viewBox for every
+//                                    # floor, so the card keeps its height;
+//                                    # narrower floors are centred in it
+//   people: [person.a, person.b]     # a dot per person in the header
+//   outside:                         # the "Outside" layer
+//     - { type: label, text: Outside, at: [-22, -29] }
+//     - { type: weather, entity: weather.home, at: [-18, -19] }
+//     - { type: pill, entity: sensor.outdoor_temperature, icon: thermometer, at: [-7, -19] }
+//       # icon: thermometer | water | flash | fire; optional precision, suffix
+//     - type: bins                   # coloured from noon the day before
+//       calendar: calendar.waste     # its events are fetched once an hour
+//       at: [6, 112]                 # top of the first bin; optional gap
+//       bins: [{ name: Garden, match: garden, color: "#c08a5a" }]
+//     - { type: mail, entity: binary_sensor.letterbox, at: [51, 115] }
+//     - type: car                    # not drawn while the tracker is away
+//       at: [-13.4, 77]
+//       vertical: true
+//       narrow_at: [-13.4, 79]
+//       tracker: device_tracker.car
+//       lock: lock.car
+//       engine: binary_sensor.car_engine
+//       fuel: sensor.car_fuel        # litres; capacity gives the bar its scale
+//       capacity: 54
+//       low: 10                      # optional: litres at which the bar turns red
+//       range: sensor.car_range
+//       navigate: /dashboard-home/car  # tap goes here; without it, the lock's dialog
+//
+// On phones an outside item is drawn in the turned plan only if it has a
+// `narrow_at`; the others become a strip of pills above the plan.
+//
 // Below NARROW px of card width (phones) the plan is turned a quarter
 // anticlockwise so a wide floor fills the portrait screen: what is left on the
 // plan (the garage) ends up at the bottom, and text stays upright. Room names
@@ -54,13 +88,37 @@ const MDI = {
   bulbOff: "M12,2A7,7 0 0,1 19,9C19,11.38 17.81,13.47 16,14.74V17A1,1 0 0,1 15,18H9A1,1 0 0,1 8,17V14.74C6.19,13.47 5,11.38 5,9A7,7 0 0,1 12,2M9,21V20H15V21A1,1 0 0,1 14,22H10A1,1 0 0,1 9,21M12,4A5,5 0 0,0 7,9C7,11.05 8.23,12.81 10,13.58V16H14V13.58C15.77,12.81 17,11.05 17,9A5,5 0 0,0 12,4Z",
   fire: "M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2M14.5 17.5C14.22 17.74 13.76 18 13.4 18.1C12.28 18.5 11.16 17.94 10.5 17.28C11.69 17 12.4 16.12 12.61 15.23C12.78 14.43 12.46 13.77 12.33 13C12.21 12.26 12.23 11.63 12.5 10.94C12.69 11.32 12.89 11.7 13.13 12C13.9 13 15.11 13.44 15.37 14.8C15.41 14.94 15.43 15.08 15.43 15.23C15.46 16.05 15.1 16.95 14.5 17.5H14.5Z",
   water: "M12,20A6,6 0 0,1 6,14C6,10 12,3.25 12,3.25C12,3.25 18,10 18,14A6,6 0 0,1 12,20Z",
+  thermometer: "M15 13V5A3 3 0 0 0 9 5V13A5 5 0 1 0 15 13M12 4A1 1 0 0 1 13 5V8H11V5A1 1 0 0 1 12 4Z",
+  flash: "M7,2V13H10V22L17,10H13L17,2H7Z",
+  mail: "M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z",
+  lock: "M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z",
+  lockOpen: "M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10A2,2 0 0,1 6,8H15V6A3,3 0 0,0 12,3A3,3 0 0,0 9,6H7A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,17A2,2 0 0,0 14,15A2,2 0 0,0 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17Z",
 };
 
 const LAYERS = [
   { id: "lights", name: "Lights", icon: "mdi:lightbulb", color: "var(--yellow-color)" },
   { id: "heat", name: "Heat", icon: "mdi:radiator", color: "var(--orange-color)" },
   { id: "doors", name: "Doors", icon: "mdi:door-open", color: "var(--red-color)" },
+  // Only offered when the card has `outside` items.
+  { id: "outside", name: "Outside", icon: "mdi:pine-tree", color: "var(--cyan-color)" },
 ];
+
+// Icons an outside pill can ask for: the path drawn in the plan and the
+// icon used in the phone strip.
+const PILL_ICONS = {
+  thermometer: { path: MDI.thermometer, mdi: "mdi:thermometer", color: "var(--orange-color)" },
+  water: { path: MDI.water, mdi: "mdi:water", color: "var(--cyan-color)" },
+  flash: { path: MDI.flash, mdi: "mdi:flash", color: "var(--yellow-color)" },
+  fire: { path: MDI.fire, mdi: "mdi:fire", color: "var(--orange-color)" },
+};
+
+// A bin counts as due on its collection day, and from this hour the day before.
+const DUE_HOUR = 12;
+// Calendar events are fetched at most this often, for this many days ahead.
+const EVENTS_MS = 3600e3;
+const EVENT_DAYS = 28;
+// Redraw on a timer as well, so a bin turns due without any entity changing.
+const TICK_MS = 600e3;
 
 // Pill text is set in the code face, which is monospaced, so its width is
 // known without measuring (and measuring returns 0 while the view is hidden).
@@ -147,6 +205,56 @@ const CSS = `
   .door.closed { stroke: var(--green-color); }
   .door.open { stroke: var(--red-color); }
   .door.na { stroke: var(--fp-faint); }
+
+  .who { display: inline-flex; gap: 6px; }
+  .who span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; border-radius: 999px; background: var(--fp-raised); font-size: 11px; font-weight: 600; color: var(--fp-muted); }
+  .who i { width: 7px; height: 7px; border-radius: 50%; background: var(--fp-faint); }
+  .who .home i { background: var(--green-color); }
+  .strip { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px 0; }
+  .strip button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px 0 8px; border-radius: 999px; background: var(--fp-void); box-shadow: inset 0 0 0 1px var(--c, var(--fp-line)); font-family: var(--ha-font-family-code, monospace); font-size: 12px; font-weight: 500; color: var(--primary-text-color); }
+  .strip button ha-icon { --mdc-icon-size: 16px; color: var(--i, var(--fp-muted)); }
+  .strip button.off { color: var(--fp-faint); }
+  .strip button.off ha-icon { color: var(--fp-faint); }
+  .pill.out rect { fill: var(--fp-void); }
+  .pill.i-water path { fill: var(--cyan-color); }
+  .pill.i-flash path { fill: var(--yellow-color); }
+  .out-item { cursor: pointer; }
+  .out-item text { font-family: var(--ha-font-family-code, monospace); font-weight: 500; text-anchor: middle; fill: var(--fp-muted); }
+  .out-item.na { opacity: .45; }
+  .bin .name { font-family: var(--ha-font-family-body, inherit); font-size: 21px; font-weight: 600; letter-spacing: .04em; text-transform: none; fill: var(--fp-faint); }
+  .bin .tag { font-size: 26px; fill: var(--fp-faint); }
+  .bin .shape { fill: none; stroke: var(--fp-faint); stroke-width: 3.5; stroke-linejoin: round; }
+  .bin .wheel { fill: var(--fp-void); stroke: var(--fp-faint); stroke-width: 3.5; }
+  .bin.due .name { fill: var(--primary-text-color); }
+  .bin.due .tag { fill: var(--c); font-weight: 600; }
+  .bin.due .shape { fill: var(--c); stroke: var(--c); }
+  .bin.due .wheel { stroke: var(--c); }
+  .mail circle { fill: var(--fp-card); stroke: var(--fp-line); stroke-width: 3; }
+  .mail path { fill: var(--fp-faint); }
+  .mail text { font-size: 24px; fill: var(--fp-faint); }
+  .mail.on circle { fill: var(--yellow-color); stroke: var(--yellow-color); }
+  .mail.on path { fill: var(--text-primary-color); }
+  .mail.on text { fill: var(--primary-text-color); }
+  .car .body { fill: var(--fp-card); stroke: var(--fp-line); stroke-width: 3.5; }
+  .car .cabin { fill: var(--fp-raised); }
+  .car .track { fill: var(--fp-raised); }
+  .car .fuel { fill: var(--green-color); }
+  .car .lock { fill: var(--green-color); }
+  .car .lock.open { fill: var(--red-color); }
+  .car .lamp { fill: var(--yellow-color); }
+  .car text { font-size: 26px; }
+  .car.low .fuel { fill: var(--red-color); }
+  .car.low text { fill: var(--red-color); }
+  .car.running .body { stroke: var(--orange-color); }
+  .car.running .cabin { fill: color-mix(in srgb, var(--orange-color) 30%, var(--fp-raised)); }
+  .car.running text { fill: var(--orange-color); }
+  .car .halo { fill: none; stroke: var(--orange-color); stroke-width: 4; animation: fp-halo 1.8s ease-in-out infinite; }
+  @keyframes fp-halo { 0%, 100% { opacity: .15; } 50% { opacity: .8; } }
+  @media (prefers-reduced-motion: reduce) { .car .halo { animation: none; opacity: .5; } }
+  .sky .sun { fill: var(--yellow-color); stroke: var(--yellow-color); }
+  .sky .cloud { fill: var(--fp-muted); }
+  .sky .drop { stroke: var(--cyan-color); }
+  .sky line { stroke-width: 5; stroke-linecap: round; }
 `;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -159,7 +267,11 @@ class NocturneFloorplan extends HTMLElement {
     }
     this._config = config;
     this._floor = 0;
-    this._layers = new Set(config.layers || LAYERS.map((l) => l.id));
+    this._outside = config.outside || [];
+    this._layerDefs = LAYERS.filter((l) => l.id !== "outside" || this._outside.length);
+    this._layers = new Set(config.layers || this._layerDefs.map((l) => l.id));
+    this._events = {};
+    this._fetched = 0;
     this._entities = this._collect();
     this._seen = null;
     if (!this.shadowRoot) {
@@ -188,14 +300,20 @@ class NocturneFloorplan extends HTMLElement {
       }
     });
     this._resize.observe(this);
+    this._tick = setInterval(() => {
+      this._fetchEvents();
+      this._render();
+    }, TICK_MS);
   }
 
   disconnectedCallback() {
     this._resize?.disconnect();
+    clearInterval(this._tick);
   }
 
   set hass(hass) {
     this._hass = hass;
+    if (!this._fetched) this._fetchEvents();
     // Redraw only when one of this card's entities changed; hass is set on
     // every state change in the house.
     const seen = this._entities.map((id) => hass.states[id]);
@@ -221,7 +339,82 @@ class NocturneFloorplan extends HTMLElement {
       }
       for (const d of f.doors || []) ids.add(d.entity);
     }
+    for (const p of this._config.people || []) ids.add(p);
+    for (const o of this._outside) {
+      for (const k of ["entity", "tracker", "lock", "engine", "fuel", "range"]) if (o[k]) ids.add(o[k]);
+    }
     return [...ids];
+  }
+
+  // The calendar entity only holds its next event, so the bins need the
+  // event list itself.
+  async _fetchEvents() {
+    const calendars = [...new Set(this._outside.filter((o) => o.type === "bins" && o.calendar).map((o) => o.calendar))];
+    if (!calendars.length || !this._hass || Date.now() - this._fetched < EVENTS_MS) return;
+    this._fetched = Date.now();
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start.getTime() + EVENT_DAYS * 864e5);
+    try {
+      for (const c of calendars) {
+        const events = await this._hass.callApi("GET", `calendars/${c}?start=${start.toISOString()}&end=${end.toISOString()}`);
+        this._events[c] = events.map((e) => ({ summary: e.summary || "", date: String(e.start?.date || e.start?.dateTime || "").slice(0, 10) }));
+      }
+      this._render();
+    } catch (_) {
+      // Try again on the next tick or state change.
+      this._fetched = 0;
+    }
+  }
+
+  // Next collection of one bin: `due` on the day, and from DUE_HOUR the day before.
+  _bin(calendar, bin) {
+    const now = new Date();
+    const today = ymd(now);
+    const tomorrow = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+    const match = String(bin.match || bin.name).toLowerCase();
+    const next = (this._events[calendar] || [])
+      .filter((e) => e.date >= today && e.summary.toLowerCase().includes(match))
+      .map((e) => e.date)
+      .sort()[0];
+    if (!next) return { due: false, tag: "" };
+    if (next === today) return { due: true, tag: "today" };
+    if (next === tomorrow && now.getHours() >= DUE_HOUR) return { due: true, tag: "tomorrow" };
+    const day = new Date(`${next}T12:00:00`);
+    return { due: false, tag: `${day.toLocaleDateString(this._hass?.locale?.language, { weekday: "short" })} ${day.getDate()}` };
+  }
+
+  _bins() {
+    return this._outside.filter((o) => o.type === "bins").flatMap((o) => (o.bins || []).map((b) => ({ ...b, calendar: o.calendar, ...this._bin(o.calendar, b) })));
+  }
+
+  // What to show for a car, or null while its tracker says it is away.
+  _car(o) {
+    const where = this._st(o.tracker)?.state;
+    if (o.tracker && where && !["home", "unavailable", "unknown"].includes(where)) return null;
+    const fuel = num(this._st(o.fuel));
+    const range = num(this._st(o.range));
+    const na = fuel == null && range == null;
+    const running = this._on(o.engine);
+    const parts = [running ? "running" : null, fuel != null ? `${Math.round(fuel)} L` : null, range != null && !running ? `${Math.round(range)} km` : null];
+    return {
+      na,
+      running,
+      low: fuel != null && o.low != null && fuel <= o.low,
+      unlocked: this._st(o.lock)?.state === "unlocked",
+      level: fuel != null && o.capacity ? Math.max(0, Math.min(1, fuel / o.capacity)) : null,
+      text: na ? "no data" : parts.filter(Boolean).join(" · "),
+    };
+  }
+
+  // An outside pill's text: the state with a short unit.
+  _value(o) {
+    const st = this._st(o.entity);
+    const v = num(st);
+    if (v == null) return null;
+    const unit = st.attributes.unit_of_measurement || "";
+    const suffix = o.suffix ?? (unit.startsWith("°") ? "°" : unit === "%" ? "%" : unit ? ` ${unit}` : "");
+    return v.toFixed(o.precision ?? (suffix === "°" ? 1 : 0)) + suffix;
   }
 
   _st(id) {
@@ -245,6 +438,7 @@ class NocturneFloorplan extends HTMLElement {
       lights: all((f) => (f.rooms || []).flatMap((r) => r.lights || [])).filter((l) => this._on(l.entity)).length + " on",
       heat: all((f) => f.rooms || []).filter((r) => r.climate && this._heat(r).heating).length + " heating",
       doors: all((f) => f.doors || []).filter((d) => this._on(d.entity)).length + " open",
+      outside: this._bins().filter((b) => b.due).length + " due",
     };
   }
 
@@ -255,15 +449,20 @@ class NocturneFloorplan extends HTMLElement {
     const floors = c.floors.length > 1
       ? `<div class="seg" role="group" aria-label="Floor" style="--n: ${c.floors.length}">${c.floors.map((f, i) => `<button type="button" data-floor="${i}">${esc(f.name)}</button>`).join("")}</div>`
       : "";
-    const chips = LAYERS.map((l) => `<button class="chip" type="button" data-layer="${l.id}" aria-pressed="${this._layers.has(l.id)}" style="--c: ${l.color}"><ha-icon icon="${l.icon}"></ha-icon>${l.name} <span class="n">${counts[l.id]}</span></button>`).join("");
+    const chips = this._layerDefs.map((l) => `<button class="chip" type="button" data-layer="${l.id}" aria-pressed="${this._layers.has(l.id)}" style="--c: ${l.color}"><ha-icon icon="${l.icon}"></ha-icon>${l.name} <span class="n">${counts[l.id]}</span></button>`).join("");
     // ha-card is created once and only its contents are replaced: a new
     // ha-card would replay the theme's rise-in animation on every update.
     if (!this._parts) {
-      this.shadowRoot.innerHTML = `<style>${CSS}</style><ha-card><div class="head"></div><div class="layers" role="group" aria-label="Layers"></div><div class="plan"></div></ha-card>`;
+      this.shadowRoot.innerHTML = `<style>${CSS}</style><ha-card><div class="head"></div><div class="layers" role="group" aria-label="Layers"></div><div class="strip" role="group" aria-label="Outside" hidden></div><div class="plan"></div></ha-card>`;
       const q = (sel) => this.shadowRoot.querySelector(sel);
-      this._parts = { head: q(".head"), layers: q(".layers"), plan: q(".plan") };
+      this._parts = { head: q(".head"), layers: q(".layers"), strip: q(".strip"), plan: q(".plan") };
     }
-    const head = `<h2><ha-icon icon="${esc(c.icon || "mdi:home")}"></ha-icon>${esc(c.title || "House")}</h2>${floors}`;
+    const who = (c.people || []).map((id) => {
+      const st = this._st(id);
+      const name = String(st?.attributes.friendly_name || id.split(".")[1]).split(" ")[0];
+      return `<span class="${st?.state === "home" ? "home" : ""}" title="${esc(name)}: ${esc(st?.state || "unknown")}"><i></i>${esc(name)}</span>`;
+    }).join("");
+    const head = `<h2><ha-icon icon="${esc(c.icon || "mdi:home")}"></ha-icon>${esc(c.title || "House")}</h2>${who ? `<div class="who">${who}</div>` : ""}${floors}`;
     if (head !== this._head) {
       this._parts.head.innerHTML = this._head = head;
     }
@@ -273,18 +472,66 @@ class NocturneFloorplan extends HTMLElement {
       seg.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", i === this._floor));
     }
     this._parts.layers.innerHTML = chips;
+    const strip = this._narrow && this._layers.has("outside") ? this._strip() : "";
+    this._parts.strip.innerHTML = strip;
+    this._parts.strip.hidden = !strip;
     this._parts.plan.innerHTML = this._plan(c.floors[this._floor]);
+  }
+
+  // Phones: the outside items that have no place in the turned plan.
+  _strip() {
+    const pill = (attrs, icon, text, style = "", cls = "") => `<button type="button" class="${cls}" ${attrs} style="${style}"><ha-icon icon="${icon}"></ha-icon>${esc(text)}</button>`;
+    let s = "";
+    for (const o of this._outside) {
+      if (o.narrow_at) continue;
+      if (o.type === "pill") {
+        const text = this._value(o);
+        const icon = PILL_ICONS[o.icon];
+        if (text != null) s += pill(`data-more="${esc(o.entity)}"`, icon?.mdi || "mdi:circle-small", text, icon ? `--i: ${icon.color}` : "");
+      } else if (o.type === "weather") {
+        const st = this._st(o.entity);
+        const t = st?.attributes.temperature;
+        const names = { "clear-night": "night", partlycloudy: "partly-cloudy", exceptional: "cloudy" };
+        if (st) s += pill(`data-more="${esc(o.entity)}"`, `mdi:weather-${names[st.state] || st.state}`, t != null ? `${Math.round(t)}°` : st.state, "--i: var(--yellow-color)");
+      } else if (o.type === "bins") {
+        for (const b of o.bins || []) {
+          const state = this._bin(o.calendar, b);
+          s += pill(`data-more="${esc(o.calendar)}"`, "mdi:trash-can", state.due ? `${b.name} ${state.tag}` : b.name, state.due ? `--c: ${esc(b.color || "var(--green-color)")}; --i: ${esc(b.color || "var(--green-color)")}` : "", state.due ? "" : "off");
+        }
+      } else if (o.type === "mail") {
+        const on = this._on(o.entity);
+        s += pill(`data-more="${esc(o.entity)}"`, "mdi:email", on ? "mail" : "no mail", on ? "--c: var(--yellow-color); --i: var(--yellow-color)" : "", on ? "" : "off");
+      } else if (o.type === "car") {
+        const car = this._car(o);
+        if (car) s += pill(o.navigate ? `data-nav="${esc(o.navigate)}"` : `data-more="${esc(o.lock || o.fuel)}"`, "mdi:car", car.text, car.running ? "--c: var(--orange-color); --i: var(--orange-color)" : "");
+      }
+    }
+    return s;
   }
 
   _plan(floor) {
     const W = floor.width || 1000;
     const X0 = ((floor.x0 || 0) * W) / 100;
     const turn = this._narrow;
-    // Floor percent to SVG units; turned, (x, y) becomes (y, W - x).
+    // With a `frame`, every floor shares the first floor's coordinates: a
+    // narrower floor is centred over it, and the viewBox no longer depends
+    // on the floor, so the card keeps its height.
+    const frame = this._config.frame;
+    const first = this._config.floors[0];
+    const W0 = first.width || 1000;
+    const off = frame ? (W0 - W) / 2 : 0;
+    const right = frame ? W0 : W;
+    // Floor percent to SVG units; turned, (x, y) becomes (y, right - x).
     const px = (p) => {
-      const x = (p[0] * W) / 100;
+      const x = off + (p[0] * W) / 100;
       const y = p[1] * 10;
-      return turn ? [y, W - x] : [x, y];
+      return turn ? [y, right - x] : [x, y];
+    };
+    // The same for outside items, which are always in the first floor's percent.
+    const po = (p) => {
+      const x = (p[0] * W0) / 100;
+      const y = p[1] * 10;
+      return turn ? [y, W0 - x] : [x, y];
     };
     const rect = (b, cls) => {
       const [a, c] = [px([b[0], b[1]]), px([b[2], b[3]])];
@@ -293,7 +540,13 @@ class NocturneFloorplan extends HTMLElement {
     // y0 only widens the wide view: turned, room names are placed inside
     // their rooms and labels outside the house are not drawn.
     const Y0 = turn ? 0 : (floor.y0 || 0) * 10;
-    const view = turn ? [-20, -20, 1040, W - X0 + 40] : [X0 - 20, Y0 - 20, W - X0 + 40, 1040 - Y0];
+    const view = frame
+      ? turn
+        ? [-20, -20, 1040, W0 - ((first.x0 || 0) * W0) / 100 + 40]
+        : [(frame[0] * W0) / 100, frame[1] * 10, ((frame[2] - frame[0]) * W0) / 100, (frame[3] - frame[1]) * 10]
+      : turn
+        ? [-20, -20, 1040, W - X0 + 40]
+        : [X0 - 20, Y0 - 20, W - X0 + 40, 1040 - Y0];
     const k = turn ? ZOOM_NARROW : Math.max(1, view[2] / ZOOM_UNITS);
     const at = (r, key) => (turn && r[`narrow_${key}`]) || (key === "humidity_pill" && turn ? null : r[key]);
     const pts = (poly) => poly.map((p) => px(p).join(",")).join(" ");
@@ -407,7 +660,68 @@ class NocturneFloorplan extends HTMLElement {
         }
       }
     }
+
+    if (on("outside")) {
+      for (const o of this._outside) {
+        const pos = turn ? o.narrow_at : o.at;
+        if (pos) s += this._outsideItem(o, po(pos), k, turn);
+      }
+    }
     return s + "</svg>";
+  }
+
+  // One outside item centred on `c` (bins: the top of the first bin) at scale `k`.
+  _outsideItem(o, c, k, turn) {
+    const place = `transform="translate(${c[0]},${c[1]}) scale(${k})"`;
+    if (o.type === "label") {
+      return `<text class="label" x="${c[0]}" y="${c[1]}">${esc(o.text)}</text>`;
+    }
+    if (o.type === "pill") {
+      const text = this._value(o);
+      if (text == null) return "";
+      return this._pill(c, k, `pill out i-${esc(o.icon)}`, esc(o.entity), PILL_ICONS[o.icon]?.path, text, esc(text), `${esc(this._st(o.entity)?.attributes.friendly_name || o.entity)}: ${esc(text)}`);
+    }
+    if (o.type === "weather") {
+      const st = this._st(o.entity);
+      if (!st) return "";
+      return `<g class="out-item sky" data-more="${esc(o.entity)}" role="button" tabindex="0" aria-label="Weather: ${esc(st.state)}" ${place}><title>${esc(st.state)}</title>${sky(st.state)}</g>`;
+    }
+    if (o.type === "mail") {
+      const on = this._on(o.entity);
+      return `<g class="out-item mail${on ? " on" : ""}" data-more="${esc(o.entity)}" role="button" tabindex="0" aria-label="${on ? "Mail" : "No mail"}" ${place}><circle r="40"/><path transform="translate(-23,-23) scale(1.9167)" d="${MDI.mail}"/><text y="74">${on ? "mail" : "no mail"}</text></g>`;
+    }
+    if (o.type === "bins") {
+      const gap = o.gap || 130;
+      const bins = (o.bins || []).map((b, i) => {
+        const state = this._bin(o.calendar, b);
+        // Turned, the row runs down the screen instead of across it.
+        const at = turn ? `translate(0,${-i * gap})` : `translate(${i * gap},0)`;
+        return `<g class="bin${state.due ? " due" : ""}" style="--c: ${esc(b.color || "var(--green-color)")}" transform="${at}"><title>${esc(b.name)}: ${esc(state.tag || "no date")}</title><text class="name" y="-14">${esc(b.name)}</text><rect class="shape" x="-36" y="0" width="72" height="14" rx="6"/><path class="shape" d="M-30 20H30L23 100H-23Z"/><circle class="wheel" cx="20" cy="105" r="8"/><text class="tag" y="142">${esc(state.tag)}</text></g>`;
+      });
+      return `<g class="out-item" data-more="${esc(o.calendar)}" role="button" tabindex="0" aria-label="Bin collections" ${place}>${bins.join("")}</g>`;
+    }
+    if (o.type === "car") {
+      const car = this._car(o);
+      if (!car) return "";
+      // The drawing is turned with the plan, so a car parked nose-up on a
+      // wide card lies on its side on a phone.
+      const up = Boolean(o.vertical) !== turn;
+      const [w, h] = up ? [112, 266] : [266, 112];
+      const by = h / 2 + 16;
+      const cabin = up ? `x="-40" y="-52" width="80" height="120"` : `x="-68" y="-40" width="120" height="80"`;
+      const lamps = !car.running ? "" : up
+        ? `<rect class="lamp" x="-44" y="${-h / 2 + 7}" width="24" height="8" rx="4"/><rect class="lamp" x="20" y="${-h / 2 + 7}" width="24" height="8" rx="4"/>`
+        : `<rect class="lamp" x="${w / 2 - 15}" y="-44" width="8" height="24" rx="4"/><rect class="lamp" x="${w / 2 - 15}" y="20" width="8" height="24" rx="4"/>`;
+      const cls = `out-item car${car.na ? " na" : ""}${car.running ? " running" : ""}${car.low ? " low" : ""}`;
+      const tap = o.navigate ? `data-nav="${esc(o.navigate)}"` : `data-more="${esc(o.lock || o.fuel)}"`;
+      return `<g class="${cls}" ${tap} role="button" tabindex="0" aria-label="Car: ${esc(car.text)}" ${place}>`
+        + (car.running ? `<rect class="halo" x="${-w / 2 - 11}" y="${-h / 2 - 11}" width="${w + 22}" height="${h + 22}" rx="58"/>` : "")
+        + `<rect class="body" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="48"/><rect class="cabin" ${cabin} rx="24"/>${lamps}`
+        + (o.lock ? `<path class="lock${car.unlocked ? " open" : ""}" transform="${up ? "translate(-17,-110)" : "translate(72,-17)"} scale(1.4167)" d="${car.unlocked ? MDI.lockOpen : MDI.lock}"/>` : "")
+        + (car.level != null ? `<rect class="track" x="-105" y="${by}" width="210" height="12" rx="6"/><rect class="fuel" x="-105" y="${by}" width="${Math.round(210 * car.level)}" height="12" rx="6"/>` : "")
+        + `<text y="${by + (car.level != null ? 46 : 26)}">${esc(car.text)}</text></g>`;
+    }
+    return "";
   }
 
   // A pill centred on `c` and scaled by `k`, sized to its text so the padding matches on both
@@ -423,9 +737,13 @@ class NocturneFloorplan extends HTMLElement {
       this._held = false;
       return;
     }
-    const t = e.target.closest("[data-floor],[data-layer],[data-entity],[data-more],[data-room]");
+    const t = e.target.closest("[data-floor],[data-layer],[data-entity],[data-more],[data-nav],[data-room]");
     if (!t) return;
-    if (t.dataset.floor) {
+    if (t.dataset.nav) {
+      history.pushState(null, "", t.dataset.nav);
+      window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+      return;
+    } else if (t.dataset.floor) {
       const floor = Number(t.dataset.floor);
       if (floor === this._floor) return;
       this._floor = floor;
@@ -478,10 +796,28 @@ function centre(poly) {
   return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...poly.slice(0, 4).map((p) => p[1])) + Math.max(...ys)) / 2];
 }
 
+// A local date as yyyy-mm-dd, the form an all-day calendar event uses.
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// A small weather drawing, about 70 units across, for a weather entity's state.
+function sky(state) {
+  const sun = (x, y, r) => `<circle class="sun" cx="${x}" cy="${y}" r="${r}"/>` + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<line class="sun" x1="${x}" y1="${y - r - 7}" x2="${x}" y2="${y - r - 15}" transform="rotate(${a} ${x} ${y})"/>`).join("");
+  const cloud = `<path class="cloud" d="M-26,18 a15,15 0 0 1 2,-30 a20,20 0 0 1 38,4 a13,13 0 0 1 0,26 Z"/>`;
+  const drops = (cls) => [-14, 2, 18].map((x) => `<line class="${cls}" x1="${x}" y1="26" x2="${x - 4}" y2="36"/>`).join("");
+  if (state === "sunny") return sun(0, 0, 20);
+  if (state === "clear-night") return `<path class="sun" d="M8,-26 A27,27 0 1 0 26,8 A21,21 0 0 1 8,-26 Z"/>`;
+  if (state === "partlycloudy") return sun(14, -12, 12) + cloud;
+  if (["rainy", "pouring", "lightning-rainy", "hail"].includes(state)) return cloud + drops("drop");
+  if (["snowy", "snowy-rainy"].includes(state)) return cloud + drops("cloud");
+  return cloud;
+}
+
 customElements.define("nocturne-floorplan", NocturneFloorplan);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "nocturne-floorplan",
   name: "Nocturne floorplan",
-  description: "Layered house plan: lights, heating pills and doors.",
+  description: "Layered house plan: lights, heating pills, doors, and what is around the house.",
 });

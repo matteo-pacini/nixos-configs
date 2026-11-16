@@ -11,7 +11,7 @@ keeps serving the old frontend index until then.
 ## nocturne-floorplan
 
 This card is the layered house plan on **Home > Home** (dashboard
-`dashboard-home`, first view). One card shows one floor at a time and has three
+`dashboard-home`, first view). One card shows one floor at a time and has four
 layers:
 
 | Layer  | Draws                                                                                    | From                                         |
@@ -19,10 +19,13 @@ layers:
 | Lights | A bulb per light: tap to toggle, hold for its dialog. Tapping a room switches all of its lights. A dimmable light is tinted from amber at low brightness to yellow at full. | `rooms[].lights[].entity` (`light.*` or `switch.*`) |
 | Heat   | A "current / target" pill. Current is green when at or above target, red below it. The pill turns orange with a flame while heating. A humidity pill sits under it. | `temperature`, `climate` (target and `hvac_action`), `humidity` |
 | Doors  | A bar on the wall: green when closed, red when open.                                      | `floors[].doors[].entity` (`binary_sensor.*`, on = open) |
+| Outside | What is around the house: weather, value pills, bins, the letterbox and the car. See "Around the house". | `outside[]` |
 
 Visual design and the reasoning behind it: the "Home floor drafts" artifact
-(draft A), https://claude.ai/artifact/LFWSboBTmE83nFT9kYynnc. Colours and faces
-come from the Nocturne theme variables (`../themes/nocturne.yaml`).
+(draft A), https://claude.ai/artifact/LFWSboBTmE83nFT9kYynnc. The Outside layer
+was drafted in https://claude.ai/artifact/9KeKow4fkHtT9rks1Cox9v and is the
+OutsideRing component of the design system. Colours and faces come from the
+Nocturne theme variables (`../themes/nocturne.yaml`).
 
 ### Where things live
 
@@ -77,6 +80,53 @@ garage, also needs:
 - `shell`: its own dark outline.
 - The floor's `x0`, set low enough to include it.
 
+### Around the house
+
+Three card-level keys, all optional. A card without them draws as it did before.
+
+- `frame: [x0, y0, x1, y1]` gives every floor the same viewBox, so the card
+  keeps its height when the floor changes. The values are in the first floor's
+  percent and may go below 0 or above 100 to leave room around the house. A
+  narrower floor is centred over the first one. On phones the frame's height
+  comes from the first floor, including its `x0`.
+- `people: [person.x, ...]` puts a dot per person in the header: green at
+  home, faint otherwise. The label is the first word of the friendly name.
+- `outside:` is a list of items, shared by every floor. Each has a `type` and
+  an `at`, also in the first floor's percent.
+
+| `type` | Keys | Draws |
+|--------|------|-------|
+| `label` | `text` | A spaced caption. `at` is the left end of its baseline. |
+| `weather` | `entity` (`weather.*`) | A small drawing for the current condition. |
+| `pill` | `entity`, `icon` (`thermometer`, `water`, `flash`, `fire`), optional `precision` and `suffix` | The state with a short unit. Temperatures get one decimal and "°". |
+| `bins` | `calendar`, `bins: [{ name, match, color }]`, optional `gap` | One bin per entry. `at` is the top of the first one. |
+| `mail` | `entity` (`binary_sensor.*`) | A letterbox: yellow when on. |
+| `car` | `tracker`, `lock`, `engine`, `fuel`, `capacity`, `low`, `range`, `vertical`, `navigate` | The car from above, with a fuel bar and one line of text. |
+
+**Bins.** The calendar entity's state only holds its next event, so the card
+fetches the calendar's events itself: on load, then at most once an hour, 28
+days ahead. A bin belongs to the next event whose summary contains `match`
+(or `name`), ignoring case. It is an outline with a short date until noon the
+day before (`DUE_HOUR`), then it takes its `color` and reads "tomorrow" or
+"today". The Outside chip counts the bins that are due. The card redraws every
+ten minutes so a bin turns due without any entity changing.
+
+**Car.** The card draws nothing while `tracker` is in any state other than
+`home`, `unavailable` or `unknown`. `fuel` is in litres; `capacity` gives the
+bar its scale and `low` the level at which it turns red. A running `engine`
+turns the outline orange, lights the headlamps and pulses a halo. With neither
+fuel nor range the car fades and reads "no data". A tap goes to `navigate`, or
+opens the lock's dialog without it.
+
+**Phones.** An item is drawn in the turned plan only if it has a `narrow_at`.
+The others become a strip of small pills between the layer chips and the plan;
+a `label` is dropped. A car with `vertical: true` lies on its side once turned,
+since the drawing turns with the plan.
+
+Not verified (2026-11-16): the car away, running, unlocked, low on fuel and
+without data; a bin turning "tomorrow" at noon; the letterbox when on; the
+weather drawings other than the sunny one; the light theme.
+
 ### Coordinates
 
 Every position is `[x, y]` in percent:
@@ -91,8 +141,12 @@ On the current floors:
 - **Zoom.** Pills, bulbs and room names are drawn at a scale `k`, so that
   text stays readable when a wide floor shrinks to fit the card. On a wide
   card, `k` is the plan's width in SVG units divided by 1550 (`ZOOM_UNITS`),
-  and at least 1. That makes text the same size on every floor: about 1.43
-  on the Ground floor, with the garage, and about 1.05 on the First floor.
+  and at least 1. Without a `frame` that is about 1.43 on the Ground floor,
+  with the garage, and about 1.05 on the First floor. With a `frame`, which
+  this house uses, every floor has the frame's width and `k` is about 1.46
+  everywhere, so an upper floor's pills are larger against its rooms than
+  they were. The Office keeps its humidity pill above its temperature pill
+  for that reason.
   On a phone, `k` is 1.15 (`ZOOM_NARROW`). The sizes below are at `k` = 1.
 - **Pills.** A pill is 56 units tall (5.6% of y). The humidity pill sits 64
   units (6.4%) below the temperature pill unless `humidity_pill` places it.
@@ -142,6 +196,20 @@ document.querySelector("home-assistant").shadowRoot.append(el);
 ```
 
 Remove it afterwards. A tab reload also clears it.
+
+To test a change to the code before a deploy, serve a copy of the file from
+this machine with its element renamed, and import that in the tab. Chrome
+allows `http://localhost` from an HTTPS page, but the server must send
+`Access-Control-Allow-Origin: *`:
+
+```js
+// The copy ends in customElements.define("nocturne-floorplan-test", ...)
+await import("http://localhost:8765/fp.js");
+const el = document.createElement("nocturne-floorplan-test");
+```
+
+A second import of a changed copy needs a new element name, since a name can
+only be defined once per page load.
 
 ### Editing the card YAML from a script
 
