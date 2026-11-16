@@ -19,11 +19,13 @@ work) is in [AGENTS.md](AGENTS.md).
   [Network panel](#network-panel), [Audio panel](#audio-panel),
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
-  [Office panel](#office-panel), [Tray menu](#tray-menu)
+  [Office panel](#office-panel), [Fleet panel](#fleet-panel),
+  [Tray menu](#tray-menu)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
+- [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel)
 - [Tests](#tests)
 
 ## The session
@@ -165,8 +167,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The six drop-down panels (network, audio, calendar, system, Bluetooth,
-office) behave alike: each opens under its bar item on that bar's monitor (or the
+The seven drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -184,6 +186,7 @@ others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
 | System | Super+Y, bar temperature chip | `system` |
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
 | Office | Super+O, bar light bulb and watts | `office` |
+| Fleet | Super+G, bar server glyph and count | `fleet` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
@@ -222,8 +225,9 @@ workspaces (its five, plus any other that exists there; click or scroll to
 switch); the focused window's title on that monitor; the clock (see
 [Calendar panel](#calendar-panel)); then a gamepad while game mode is on
 (read from Hyprland's `animations:enabled`), the tray (left click activates,
-right click opens the item's menu, see [Tray menu](#tray-menu)), the office
-item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
+right click opens the item's menu, see [Tray menu](#tray-menu)), the fleet
+item (a server glyph and the number of hosts that want attention, see
+[Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, network, and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
@@ -713,6 +717,71 @@ position; the sockets not clickable. **Never seen for real** (simulated with
 recorded helper lines, and node-tested): the broker lost, Zigbee2MQTT
 offline, a device offline, a command not confirmed.
 
+### Fleet panel
+
+`Fleet.qml`, with `fleet/FleetShared.qml` (shared with the bar: placement,
+the helper process, the state) and `fleet/fleet.js` (every decision: how the
+helper's events change the state, host order, the header and pipeline, row
+views and folding, info lines, which keys are lit, the questions, key to
+command, the footer, the bar item; node-tested). A panel under the bar's
+fleet item with one row per host: what it runs, what its comin is doing,
+what a reboot changes, one chip, and the keys that apply. All of it comes
+from [`desk-fleet`](#fleet-desk-fleet), which the shell runs for as long as
+it runs and starts again if it exits (after 2 s, doubling to a minute while
+it keeps failing). The panel never recomputes: chip, colours, texts and
+whether a key is allowed (with the helper's reason when not) are the
+helper's.
+
+- **Bar item**: a server glyph and the number of hosts with a red, Pending,
+  Behind or Reboot chip (none at zero). Dim with no number until a host has
+  been read, or while the helper is not running. A click opens the panel.
+- **Header**: "checked N s ago" (or "checking…") and `read only` or `live`.
+  Under it the pipeline: master's commit, the last `build.yml` run on master
+  (passed, building, queued or its conclusion), and the deploy branch's
+  commit with "N behind" in orange. A GitHub error replaces the pipeline with
+  a banner; the hosts are still read.
+- **Rows**: in the helper's order, online hosts first; this computer marked.
+  Lines fold to their first line ("… (I for all)"); I unfolds the selected
+  row with its full paths, kernels, inhibitors and comin's messages. The row
+  of a host where an action runs shows its state: a spinner and the last
+  output line while running, then ok in green or failed with the exit code in
+  red, and the sudo-password message in orange.
+- **Questions** in the row, before anything that changes a running machine:
+  switch (names the commit and what it replaces: a hand build, a testing
+  branch; Enter switches, D diffs first, Esc cancels) and reboot (what it
+  comes back on, or that it is not known; Enter, Esc). B (next boot) asks
+  nothing. M opens the mode chooser: 1 manual, 2 automatic boot, 3 automatic
+  switch (macOS 1 and 3), Esc back; the current mode is ticked and picking it
+  sends nothing.
+- **Keys**: ↑↓, J K, Home End select a host; S switch, B next boot, D diff,
+  M mode, R reboot, T ssh (a plain terminal on this computer), I info, A the
+  host's last action output, each only when lit; O opens the build run in
+  the browser (`uwsm app -- xdg-open`); F5 probes everything again; Esc
+  cancels the open question, else closes. A key that is not lit says the
+  helper's reason in the footer for 2 s, as does a refusal. A click selects a
+  row; nothing is mouse-only.
+- **One line instead of the panel** when the helper was not found ("The
+  fleet helper (desk-fleet) was not found.") or stopped and is being
+  restarted.
+- **While closed** the helper probes every 5 minutes, so the bar's number
+  stays true; while open every 60 s, with the header and spinner ticking.
+- **Read-only for development**: `readonly property bool readOnly` in
+  `fleet/FleetShared.qml`. `true` starts the helper as `desk-fleet
+  --read-only`, which refuses switch, boot, mode and reboot and runs nothing
+  on any host; the save restarts the helper. It is `false` in the
+  repository: the panel is live once deployed.
+
+**Seen for real** (by the agent that built it, with the helper read-only):
+the panel with the real fleet (BrightFalls Pending on a hand build, Nexus
+Pending with the same system held, NightSprings up to date, CauldronLake
+offline), the bar item with its count and dim, a switch sent with the row's
+generation and refused read-only, A with no session, F5, T and D windows on
+this computer, the helper-not-found line. **Fixtures and node only**: every
+chip, the cases the old herdr panel read wrong, the questions and the mode
+chooser, action running, ok, failed and the sudo message, the GitHub banner,
+long texts. **Not done yet**: real key presses and clicks, Super+G in a
+reloaded session, O, and any real switch, boot, mode change or reboot.
+
 ### Tray menu
 
 `tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
@@ -1089,6 +1158,68 @@ rm /tmp/v
 
 with the JSON written to `/tmp/v` first.
 
+## Fleet: desk-fleet
+
+`desk-fleet` (`desk-fleet.py`, `desk-fleet.nix`) is the helper for the fleet
+panel: one long-running process, JSON lines on stdin and stdout like
+`desk-mqtt`. For each host it says what the host runs, what its comin is
+doing and what a reboot would change, picks the one chip that most wants
+attention, and lists the actions allowed now with a reason for each one that
+is not. It runs the panel's few deploy actions. The full protocol is the
+docstring at the top of `desk-fleet.py`; the rules for every line and chip
+are in `host_row()`.
+
+- **Hosts**: this machine, then the hosts it may SSH into (`lib/ssh-mesh.nix`),
+  with their kind and darwin flag from `lib/host-kinds.nix` (shared with the
+  herdr workbench), generated into the package at build time.
+- **Probing**: one read-only command per host (`PROBE`): this machine through
+  `sh`, the others through `ssh -o BatchMode=yes -o ConnectTimeout=5`, in
+  parallel, each row sent as it lands. GitHub (master, deploy, the testing
+  branches, the last `build.yml` run on master, how far deploy is behind)
+  through `gh`; a GitHub failure is its own event and the hosts are still read.
+  Every 5 minutes, every 60 s while the panel says it is open, on `refresh`,
+  and every 5 s for a host whose deploy the panel started, until comin has
+  been idle for 20 s (at most 30 minutes).
+- **Systems, not commits**: the running system's store path is looked up in
+  comin's deployments and generations (comin's "dummy" deployments for a
+  booted system it never deployed do not count). A newer commit that builds
+  the same system is up to date; a hand build or a testing branch is never
+  behind.
+- **Next boot** is read without root as follows. The boot loader's default is
+  set by whoever installed it last: comin's newest boot or switch deployment,
+  or a hand `nixos-rebuild switch`/`boot`, which also moves the readable
+  `/nix/var/nix/profiles/system` link (comin uses its own profile). So
+  comin's staged system is the next boot only while that link is older than
+  comin's deployment and no `LoaderEntryDefault`/`LoaderEntryOneShot` EFI
+  variable is set; otherwise the row says `unknown`. A hand switch run
+  straight from `switch-to-configuration` is not seen.
+- **Testing branches on a manual host** are held for confirmation like any
+  other commit (comin submits every built generation to its deploy
+  confirmer), and comin deploys them with `test` however they are released,
+  so `boot` is refused for a held testing generation.
+- **Actions**: `switch`, `boot`, `mode` and `reboot` run `comin-deploy` or a
+  reboot on the host (`systemctl reboot` here, which logind allows from the
+  active session; `sudo -n systemctl reboot` elsewhere), in a tmux session of their own on a
+  private socket (`$XDG_RUNTIME_DIR/desk-fleet/tmux.sock`, tmux pinned in the
+  package), with no window; `attach` shows that session in Ghostty, running
+  or finished, until the next action on the host replaces it. A remote reboot whose
+  sudo wants a password runs again as `sudo systemctl reboot` in the same
+  session, opened in Ghostty for the password. `diff`
+  (`nix store diff-closures`) and `ssh` open in Ghostty at once.
+- **Walls**: a host command runs only if the host's latest row allows it,
+  `switch` and `boot` only with the generation the row holds; anything else
+  is refused with a reason. The only strings that reach a host's shell are
+  fixed commands plus a generation uuid, a mode from the row's list, or a
+  system store path, each checked. `--read-only` refuses `switch`, `boot`,
+  `mode` and `reboot` ("read-only") and runs nothing for them; probes, `diff`,
+  `ssh` and `attach` still work, and `hello` says which mode it is in.
+- **Rows** are final text for the panel. Each line has its full `text` and
+  `first`, the text's first line, so a long error (a Nix eval trace) can be
+  folded.
+- **From the system, not pinned**: `ssh` and `ghostty` (the ones the mesh
+  and the desktop are configured with), and `comin` and `comin-deploy` (each
+  host's own).
+
 ## Tests
 
 Flake checks, defined in `tests/default.nix`. All of them but `hypr-config`
@@ -1154,6 +1285,26 @@ GitHub's runners, cause not known.
   messages of each kind from the broker (ignored, the helper still
   reports), and the network thread dying (broker down, exit status 1).
   About 45 s.
+- `nix build .#checks.x86_64-linux.fleet-panel`: runs
+  `user/quickshell/fleet/fleet.js` under node
+  (`tests/fleet-panel/test-fleet-panel.js`) against recorded `desk-fleet`
+  lines in `tests/fleet-panel/fixtures/` (built from the helper's example
+  rows: every chip, the cases the old panel read wrong, actions, GitHub
+  error, refusals, long texts) and inline events: order, header, pipeline,
+  folding, keys lit, questions, the command each key sends (the switch's
+  generation as given), navigation, footers and the bar item.
+- `nix build .#checks.x86_64-linux.fleet-helper`: `tests/fleet/test-desk-fleet.py`
+  runs `desk-fleet`'s state model against three real probes cut down to the
+  fields it reads (`tests/fleet/fixtures/`) and cases built in the test (every
+  chip, the cases the old herdr panel read wrong, next boot unknown, Darwin,
+  no GitHub, the command gate), then the built helper against fake `ssh`,
+  `comin`, `comin-deploy`, `sudo`, `ghostty` and `gh`: refused commands run
+  nothing, a switch here is followed every 5 s until comin is idle, mode over
+  ssh, a failing action, a reboot whose sudo wants a password, this machine's
+  reboot without sudo, attach, diff, ssh, GitHub failing; a multi-line error's
+  `first`; and a second run with `--read-only` in which every write is
+  refused and runs nothing while probes, diff, ssh and attach still work.
+  About 50 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
