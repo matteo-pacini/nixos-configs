@@ -16,12 +16,21 @@ in
         glsl-shader = "~~/shaders/nnedi3-nns128-win8x6.hook";
       };
 
+      # PGS subtitles: mpv applies sub-scale to bitmap subs only when
+      # sub-ass-override is not "no"
+      "pgs-scaling" = {
+        profile-cond = ''(function() local t = p["track-list"] or {}; for _, tr in ipairs(t) do if tr.type == "sub" and tr.selected then return (tr["codec"] or ""):lower():match("pgs") ~= nil end end; return false end)()'';
+        profile-restore = "copy-equal";
+        sub-ass-override = "yes";
+      };
+
       # SD NTSC primaries fix (480p US/anime)
       "sd-ntsc" = {
         profile-cond = ''p["video-params/w"]<=720 and p["video-params/primaries"]=="bt.601-525"'';
         profile-restore = "copy-equal";
         target-prim = "bt.601-525";
         target-trc = "bt.1886";
+        scale-antiring = 0;
       };
 
       # SD PAL primaries fix (576p UK/Euro)
@@ -30,6 +39,7 @@ in
         profile-restore = "copy-equal";
         target-prim = "bt.601-625";
         target-trc = "bt.1886";
+        scale-antiring = 0;
       };
 
       # 1080p Blu-ray BT.709 SDR
@@ -51,6 +61,7 @@ in
         gamut-mapping-mode = "perceptual";
         target-peak = 120;
         screenshot-high-bit-depth = "yes";
+        screenshot-sw = "yes";
       };
 
       # Dolby Vision → SDR tone-map
