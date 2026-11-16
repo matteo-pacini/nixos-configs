@@ -19,6 +19,8 @@ let
     );
   net = config.networking;
   wolInterfaces = lib.attrNames (lib.filterAttrs (_: i: i.wakeOnLan.enable) net.interfaces);
+  # The unit that turns the Wi-Fi radio off at boot (networking.nix).
+  wifiOffUnit = "wifi-radio-off-at-boot";
 
   # The network panel's "Set in Nix" rows (user/quickshell/Network.qml). A
   # row is present only while its setting has the value it states.
@@ -47,6 +49,11 @@ let
       id = "firewall";
       label = "Firewall on";
       file = setIn options.networking.firewall.enable;
+    }
+    ++ lib.optional (config.systemd.services.${wifiOffUnit}.enable or false) {
+      id = "wifi-boot";
+      label = "Wi-Fi off at every boot";
+      file = definedIn options.systemd.services (v: v ? ${wifiOffUnit});
     };
 
   pw = config.services.pipewire;
