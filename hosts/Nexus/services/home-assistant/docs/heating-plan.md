@@ -14,7 +14,7 @@ Times of day, setpoints, room names and people are house data. They live in HA a
 | `input_boolean.heating_plan` | On: the plan drives the valves. Off: every valve is switched off. This is the summer and long-trip switch. |
 | `input_number.heating_breakfast_time`, `input_number.heating_breakfast_warm_up` | Breakfast time (a slider in hours, 03:00–09:00 in 15-minute steps) and the warm-up before it (0.5–4 h). They move the morning of the timeline; see below. |
 | `automation.heating_plan_breakfast` | 10 s after either breakfast helper changes, it rewrites the timeline up to the first Work block with `scheduler.edit`. Breakfast runs from breakfast minus warm-up for one hour; any gap until 08:00 is Night; every block from Work on is kept as set in the timeline. |
-| `input_boolean.heating_tv_watching` | The TV modifier's flag. `automation.heating_plan` sets it once the TV and the Shield have both been on for 2 min, and clears it once either has been off for 10 min. |
+| `input_boolean.heating_tv_watching` | The TV modifier's flag. `automation.heating_plan` sets it once the TV and the Shield have both been on for 2 min, and clears it once either has been off for 10 min. It also clears a stale flag on HA start and at midnight. |
 | `automation.heating_plan` | Maps period, levels, presence and the TV flag to one setpoint per valve. |
 | Dashboard | The Climate dashboard's "Heat & air" section, in this order: the on/off toggle, the timeline bar, the breakfast slider and warm-up buttons, the level buttons, and a markdown table of which room gets which level. |
 
@@ -44,7 +44,7 @@ The bar uses `triggers_update: all`, because button-card has no timer; that is w
 
 - **One timeline, not one schedule per scene.** The Scheduler card (4.0.19) shows a schedule whose blocks each set an `input_select` option as a single draggable timeline. This was spiked on 2026-11-14 with a throwaway helper before the build. Blocks under about 2 h show an icon instead of their name at desktop width.
 - **Levels instead of scenes.** A card cannot read the setpoints a scene would apply; a scene's state exposes only its entity list. So a table built from scenes would have been hand-typed and would go stale. Levels are helpers, so the dashboard table and the automation read the same numbers.
-- **No setpoint above what a room reaches.** A valve that never reaches its setpoint keeps the boiler running for hours. The living area tops out around 18 °C at the usual flow temperature. A setpoint of 19 there kept the boiler on all afternoon on 2026-11-14.
+- **No setpoint above what a room reaches.** A valve that never reaches its setpoint keeps the boiler running for hours. The living area tops out around 18 °C at the usual flow temperature. A setpoint of 19 there kept the boiler on all afternoon on 2026-11-14. The owners put `comfy` back to 19 all the same, because 18 was too low for comfort; the longer boiler run is accepted. Do not lower it again to save boiler time.
 - **The living area holds `base` between meals instead of dropping to `floor`.** It warms at 0.2–0.4 °C/h, so it cannot get back from the floor in time for a meal. The kitchen warms at about 0.5 °C/h, and the work room and bedrooms at about 1 °C/h.
 - **Nights go to the floor.** On a night near 0 °C outside, the radiators at a 60 °C flow could not hold even 17 °C in the living area. The boiler ran non-stop from 01:00 to 10:00 on 2026-11-14 without getting there. The owners chose the floor plus a morning warm-up over raising the flow temperature, because the radiators are the limit. On cold mornings the living area therefore reaches about 17 °C by breakfast, not 18.
 - **Breakfast starts about 2 h early, and its start changes with the household's mornings,** sometimes as early as 05:00 or a night trip. Hence a breakfast slider and a warm-up setting, rather than dragging a timeline edge on a phone. After breakfast the morning goes back to Night until 08:00, so an early breakfast does not keep the living area warm until Work.
@@ -57,6 +57,7 @@ The bar uses `triggers_update: all`, because button-card has no timer; that is w
 - **Writes.** The automation writes a valve only when its mode or setpoint differs, so battery TRVs are not woken for nothing. After each write it waits up to 30 s for the valve to report the new value. Runs are queued, and without that wait a second run read the old setpoint, skipped its write, and left the valve on the first run's value (seen 2026-11-14: living room left at Bedtime's level in Dinner).
 - **Manual changes.** A valve changed by hand holds until the next period, presence, level or TV change, or the 20:00 and midnight checks.
 - **Restart.** The automation re-applies on HA start. The `input_select` restores its state, so the nightly 03:00 restart keeps the current period.
+- **The TV flag is reconciled on HA start and at midnight.** If the flag is on while the TV and the Shield are not both on, the automation clears it. The stop trigger alone is not enough: it is a template trigger with a 10 min `for`, so a restart inside those 10 min loses the timer, and after the restart the template is already true and never fires. Midnight only ends the modifier through the hour check, so a stuck flag would switch the modifier on again at 20:00 every evening. A restart while the household is watching clears the flag too, when the media players have not reported yet; the watching trigger sets it again 2 min later.
 - **Plan off.** Setting the period while the plan switch is off switches the valves off, because that is what "off" means. Turn the plan on first. On the first run, the period was set before the switch was turned on, so every valve went off for a second and then on again.
 - **Self-test.** The plan fires whatever the self-test is doing, as the old schedules did.
 
@@ -72,7 +73,7 @@ To go back without restoring it:
 ## Pending
 
 - Delete the scenes, and the backup dashboards `backup-20261114-climate`, `-2` and `-3`, after a few days of the plan running cleanly.
-- The TV modifier was tested on 2026-11-14 with the evening window moved to the current hour: 2 min after the TV and Shield came on, the living room went from the floor to comfy in the Bedtime period. It has not yet run on a real evening.
+- The stale-flag check on HA start is not verified (2026-11-15). The same branch was tested through a temporary time trigger carrying the midnight id; a restart with the flag on has not been tried.
 
 ## Changelog
 
@@ -83,3 +84,5 @@ To go back without restoring it:
 | 2026-11-14 | Added the breakfast time slider and warm-up buttons, and `automation.heating_plan_breakfast`, which moves the morning of the timeline to match. The old Morning, Night and first-floor dehumidifier schedules were deleted by hand. |
 | 2026-11-14 | Added the TV modifier: `input_boolean.heating_tv_watching`, plus triggers in `automation.heating_plan` for watching starting and stopping, 20:00 and midnight. While it is active the living room is held at comfy or above. The timeline bar and the table card describe it. |
 | 2026-11-14 | Tested the TV modifier. The test exposed a race between queued runs: fixed by waiting for each valve to confirm its write. The timeline bar shows the TV window and state. The separate Schedules section was removed from the dashboard; the Scheduler card lives only in the timeline's pop-up. |
+| 2026-11-15 | First real evening of the TV modifier: it switched on at 20:04. The TV went off at 20:54 and HA restarted at 21:02, inside the 10 min stop delay, so the flag stayed on and the living room was held at comfy into the Night period. Added a branch to `automation.heating_plan` that clears a stale flag on HA start and at midnight, with ids on those two triggers. Tested with a temporary time trigger: flag set by hand, cleared when the trigger fired, living room back to the floor. |
+| 2026-11-15 | Recorded that the owners set `comfy` back to 19: 18 was too low. Seen live on 2026-11-15, when the TV modifier held the living room at 19. |
