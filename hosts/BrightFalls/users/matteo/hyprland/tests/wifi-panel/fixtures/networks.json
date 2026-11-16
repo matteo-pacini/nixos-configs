@@ -1,0 +1,12 @@
+[
+  { "name": "Harbour Loft", "signal": 0.82, "security": "Wpa2Psk", "known": true, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Fernhill 5G", "signal": 0.4, "security": "Sae", "known": true, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Cafe Meridian Guest", "signal": 0.6, "security": "Open", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Northgate Staff", "signal": 0.6, "security": "Wpa2Eap", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "printer-setup-7F", "signal": 0.3, "security": "Wpa2Psk", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Larkspur: Flat 2", "signal": 0.1, "security": "WpaPsk", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Tea Room ☕", "signal": 0.6, "security": "Owe", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Upstairs Extender 32 Chars Long!", "signal": 0.55, "security": "Wpa2Psk", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "orchard", "signal": 0.5, "security": "Wpa2Psk", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false },
+  { "name": "Orchard", "signal": 0.5, "security": "Wpa2Psk", "known": false, "connected": false, "state": "Disconnected", "stateChanging": false }
+]

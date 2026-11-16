@@ -110,7 +110,8 @@ jobs:
             .#checks.x86_64-linux.audio-output-cycle \
             .#checks.x86_64-linux.fleet-helper \
             .#checks.x86_64-linux.fleet-panel \
-            .#checks.x86_64-linux.tailscale-panel
+            .#checks.x86_64-linux.tailscale-panel \
+            .#checks.x86_64-linux.wifi-panel
 
   pr-build:
     needs: [eval]

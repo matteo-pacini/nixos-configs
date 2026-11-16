@@ -16,6 +16,7 @@
 #   nix build .#checks.<system>.fleet-helper
 #   nix build .#checks.<system>.fleet-panel
 #   nix build .#checks.<system>.tailscale-panel
+#   nix build .#checks.<system>.wifi-panel
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -155,6 +156,13 @@ in
         node ${./tailscale-panel}/test-tailscale-panel.js ${../user/quickshell/tailscale}
         touch $out
       '';
+
+  # The Network panel's Wi-Fi library (quickshell/network/wifi.js) against
+  # invented networks in wifi-panel/fixtures/ and Quickshell's enum names.
+  wifi-panel = pkgs.runCommand "wifi-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./wifi-panel}/test-wifi-panel.js ${../user/quickshell/network}
+    touch $out
+  '';
 
   # The system panel's library (quickshell/system/decode.js) against invented
   # gpu_metrics blobs and /proc, sysfs, df and LACT texts.
