@@ -86,8 +86,8 @@ in
 
   services.fwupd.enable = true;
 
-  # mDNS discovery for phone mirroring (custom.phone.scrcpy);
-  # GNOME already enables avahi, this just makes the dependency explicit
+  # mDNS discovery for phone mirroring (custom.phone.scrcpy) and the
+  # driverless printer queue cups-browsed creates
   services.avahi.enable = true;
 
   # fwupd-refresh.service runs as the sessionless `fwupd-refresh` user,

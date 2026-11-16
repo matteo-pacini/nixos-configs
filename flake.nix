@@ -86,14 +86,6 @@
     #####################
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
-    #############
-    # Magunetto #
-    #############
-    magunetto.url = "github:matteo-pacini/Magunetto";
-    magunetto.inputs.nixpkgs.follows = "nixpkgs";
-    # Only used by Magunetto's own devShell; following avoids pulling a second
-    # nixpkgs into this lock.
-    magunetto.inputs.openspec.follows = "nixpkgs";
     #########
     # comin #
     #########
@@ -209,6 +201,24 @@
             age.secrets."openrouter.env" = {
               file = ./secrets/shared/openrouter.env.age;
               owner = "matteo"; # opencode launcher runs as the user; default root:root 0400 would block it
+            };
+            # Read by the calendar-sync user service and the Quickshell panel.
+            age.secrets."brightfalls/caldav-url" = {
+              file = ./secrets/brightfalls/caldav-url.age;
+              owner = "matteo";
+            };
+            age.secrets."brightfalls/caldav-user" = {
+              file = ./secrets/brightfalls/caldav-user.age;
+              owner = "matteo";
+            };
+            age.secrets."brightfalls/caldav-password" = {
+              file = ./secrets/brightfalls/caldav-password.age;
+              owner = "matteo";
+            };
+            # Read by desk-mqtt, which the Quickshell office panel runs.
+            age.secrets."brightfalls/office-mqtt" = {
+              file = ./secrets/brightfalls/office-mqtt.age;
+              owner = "matteo";
             };
           }
         ];
@@ -480,6 +490,11 @@
       checks = inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (
         system:
         import ./modules/home-manager/herdr/tests { pkgs = inputs.nixpkgs.legacyPackages.${system}; }
+        // inputs.nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
+          import ./hosts/BrightFalls/users/matteo/hyprland/tests {
+            pkgs = inputs.nixpkgs.legacyPackages.${system};
+          }
+        )
       );
 
       formatter = {

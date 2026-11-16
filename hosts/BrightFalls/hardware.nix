@@ -72,15 +72,6 @@
   # With amd_pstate=active, the default powersave governor is dynamic (not fixed-min)
   powerManagement.cpufreq.max = 4500000; # kHz
 
-  # Force mutter/GDM to use the 6800 XT (eGPU) as primary GPU
-  # With dual AMD GPUs (iGPU + dGPU), mutter may pick the wrong one by default
-  # This udev rule tells mutter to prefer the dGPU for rendering
-  # Match by PCI device ID (1002:73BF = RX 6800 XT) for stability across reboots
-  # See: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1562
-  services.udev.extraRules = ''
-    SUBSYSTEM=="drm", KERNEL=="card*", ATTRS{device}=="0x73bf", ATTRS{vendor}=="0x1002", TAG+="mutter-device-preferred-primary"
-  '';
-
   # Activate the LVM volume group inside the LUKS container
   boot.initrd.services.lvm.enable = true;
 

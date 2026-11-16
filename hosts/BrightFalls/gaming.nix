@@ -4,6 +4,17 @@
   config,
   ...
 }:
+let
+  displayLayout = pkgs.writeShellApplication {
+    name = "display-layout";
+    runtimeInputs = with pkgs; [
+      coreutils
+      hyprland
+      jq
+    ];
+    text = builtins.readFile ./display-layout.sh;
+  };
+in
 {
   boot.kernel.sysctl = {
     "vm.max_map_count" = "1048576";
@@ -58,53 +69,11 @@
     ppfeaturemask = "0xffffffff";
   };
 
-  # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
   environment.systemPackages = [
+    displayLayout
+    # Passthrough: run a game on DP-1 only, restoring DP-2 (60Hz) on exit/crash.
     (pkgs.writeShellScriptBin "single-monitor" ''
-      gdctl=${pkgs.mutter}/bin/gdctl
-
-      restore() {
-        "$gdctl" set \
-          --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 \
-          --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951
-      }
-      trap restore EXIT
-
-      "$gdctl" set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998
-
-      "$@"
+      exec ${lib.getExe displayLayout} single "$@"
     '')
   ];
-
-  services.sunshine = {
-    enable = true;
-    openFirewall = true;
-    autoStart = true;
-    capSysAdmin = true;
-    applications = {
-      apps = [
-        {
-          name = "Desktop";
-          image-path = "desktop.png";
-        }
-      ];
-    };
-    settings = {
-      sunshine_name = "BrightFalls Sunshine";
-      # With no capture method set, Sunshine also probes the XDG portal at
-      # every start, which raises GNOME's remote-control dialog at each login.
-      capture = "kms";
-      global_prep_cmd = builtins.toJSON [
-        {
-          # Switch to HDMI for streaming (e.g., TV via capture card)
-          do = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor HDMI-1 --mode 3840x2160@59.940";
-          # Restore dual DP monitors when streaming ends
-          undo = "${pkgs.mutter}/bin/gdctl set --logical-monitor --primary --monitor DP-1 --mode 2560x1440@143.998 --logical-monitor --monitor DP-2 --right-of DP-1 --mode 2560x1440@59.951";
-        }
-      ];
-      audio_sink = "alsa_output.usb-Schiit_Audio_USB_Modi_Device-00.iec958-stereo";
-      fec_percentage = 10;
-      qp = 10;
-    };
-  };
 }
