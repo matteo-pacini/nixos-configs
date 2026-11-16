@@ -40,7 +40,6 @@ Scope {
             serverNetwork: "\u{f048d}",
             tailscale: "\u{f0499}",
             ethernet: "\u{f0200}",
-            wifi: "\u{f05a9}",
             noNetwork: "\u{f0319}",
             wifi1: "\u{f091f}",
             wifi2: "\u{f0922}",
