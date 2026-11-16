@@ -10,30 +10,8 @@ let
   mesh = import ../../../lib/ssh-mesh.nix;
   modsHome = "${config.xdg.configHome}/herdr-app/mods";
 
-  # What lib/ssh-mesh.nix doesn't say about each of its hosts: the device
-  # space-cards draws, and whether it runs nix-darwin.
-  hostKinds = {
-    BrightFalls = {
-      device = "desktop";
-      darwin = false;
-    };
-    Nexus = {
-      device = "server";
-      darwin = false;
-    };
-    CauldronLake = {
-      device = "laptop";
-      darwin = false;
-    };
-    NightSprings = {
-      device = "laptop";
-      darwin = true;
-    };
-    WorkLaptop = {
-      device = "laptop";
-      darwin = true;
-    };
-  };
+  # The device space-cards draws, and whether it runs nix-darwin.
+  hostKinds = import ../../../lib/host-kinds.nix;
   meshHost = config.custom.ssh.mesh.host;
   usesHosts = cfg.workbench.spaceCards.enable;
 
@@ -149,7 +127,7 @@ in
             }
             {
               assertion = lib.all (name: hostKinds ? ${name}) (lib.attrNames mesh.hosts);
-              message = "herdr/workbench.nix: hostKinds has no entry for ${
+              message = "lib/host-kinds.nix has no entry for ${
                 lib.concatStringsSep ", " (lib.filter (n: !(hostKinds ? ${n})) (lib.attrNames mesh.hosts))
               } (hosts in lib/ssh-mesh.nix).";
             }
