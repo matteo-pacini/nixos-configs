@@ -6,21 +6,27 @@ offers. Reports to its parent as JSON lines on stdout; takes commands as JSON
 lines on stdin. Times are UTC, ISO 8601 with milliseconds and "Z".
 
 Usage: desk-fleet [--config FILE] [--gh PATH] [--tmux PATH] [--runtime DIR]
+                  [--read-only]
 
 --config: JSON {"repo": "owner/name", "hosts": [{"label", "alias", "darwin",
     "device", "local"}]}, this machine first. Generated from lib/ssh-mesh.nix.
 --runtime: where the private tmux socket and the actions' exit codes live
     (default $XDG_RUNTIME_DIR/desk-fleet).
+--read-only: probes as usual; switch, boot, mode and reboot are refused
+    ("read-only") and run nothing. diff, ssh, attach, refresh, open and
+    closed still work.
 
 stdout:
-  {"event": "hello", "repo": str, "hosts": [{"host", "alias", "darwin",
-      "device", "local"}]}
+  {"event": "hello", "repo": str, "read_only": bool,
+      "hosts": [{"host", "alias", "darwin", "device", "local"}]}
   {"event": "round", "state": "started" | "done", "at": t}
       A probe of every host and GitHub; "done" when the last answer landed.
   {"event": "probing", "host": str}
   {"event": "host", ...}  One host's row, see host_row(). Sent after every
       probe of that host, and again for every host when GitHub's facts or a
-      followed deploy change what the row says.
+      followed deploy change what the row says. Each of its "lines" has the
+      full "text" and "first", the text's first line (an error can run to
+      many lines; "first" is what a folded row shows).
   {"event": "github", "state": "ok", "master": sha, "deploy": sha,
       "ahead": int | null, "testing_branches": [str],
       "run": {"status", "conclusion", "url", "head_sha", "title",
@@ -49,7 +55,10 @@ A host command runs only if the host's latest row allows it
 (row["actions"][cmd]["allowed"]); "switch" and "boot" must name the
 generation the row holds, if any, so a newer one is never deployed unseen.
 Switch, boot, mode and reboot run in a tmux session of their own, on a
-private socket, with no window; "attach" shows it. Nothing but the commands
+private socket, with no window; "attach" shows it. A reboot of this machine
+is a plain `systemctl reboot` (logind allows it from the active session);
+another host's is `sudo -n systemctl reboot`, and if sudo wants a password,
+`sudo systemctl reboot` in the same session, opened in Ghostty. Nothing but the commands
 built in run_action() ever reaches a host. When stdin closes the process
 exits; sessions still running are left to finish.
 """
@@ -352,7 +361,7 @@ def next_boot(f, c, darwin):
 
 
 def line(key, text, tone=None, **extra):
-    return {"key": key, "text": text, "tone": tone, **extra}
+    return {"key": key, "text": text, "first": text.split("\n", 1)[0], "tone": tone, **extra}
 
 
 def host_row(host, probe, github, now, following=False):
@@ -758,7 +767,8 @@ def on_host(host, command, tty=True):
 
 
 class Fleet:
-    def __init__(self, config, gh, sessions):
+    def __init__(self, config, gh, sessions, read_only=False):
+        self.read_only = read_only
         self.repo = config["repo"]
         self.hosts = {h["label"]: h for h in config["hosts"]}
         self.order = [h["label"] for h in config["hosts"]]
@@ -906,6 +916,9 @@ class Fleet:
             emit(event="action", **base, state="refused", reason="unknown-host")
             return
         host = self.hosts[label]
+        if self.read_only and name in ("switch", "boot", "mode", "reboot"):
+            emit(event="action", **base, state="refused", reason="read-only")
+            return
         if name == "attach":
             if not self.sessions.exists(label):
                 emit(event="action", **base, state="refused", reason="no-session")
@@ -947,6 +960,8 @@ class Fleet:
             command = f"comin-deploy boot {act['generation']}"
         elif name == "mode":
             command = f"comin-deploy mode {msg['value']}"
+        elif host["local"]:
+            command = "systemctl reboot"
         else:
             command = "sudo -n systemctl reboot"
         # The host's shell reads this: every word above is fixed or checked
@@ -982,7 +997,8 @@ class Fleet:
                 shown, last_emit = tail, time.monotonic()
                 emit(event="action", **base, state="running", tail=tail)
             time.sleep(1)
-        if name == "reboot" and code != 0 and any("password is required" in x for x in tail):
+        if name == "reboot" and not host["local"] and code != 0 \
+                and any("password is required" in x for x in tail):
             emit(event="message", host=label, kind="sudo-password",
                  text=f"sudo on {label} needs a password: type it in the terminal that opened.")
             self.sessions.start(label, on_host(host, "sudo systemctl reboot"))
@@ -1039,12 +1055,13 @@ def main():
     parser.add_argument("--tmux", default=TMUX)
     parser.add_argument("--runtime", default=os.path.join(
         os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/desk-fleet-{os.getuid()}", "desk-fleet"))
+    parser.add_argument("--read-only", action="store_true")
     args = parser.parse_args()
     with open(args.config) as fh:
         config = json.load(fh)
 
-    fleet = Fleet(config, args.gh, Sessions(args.tmux, args.runtime))
-    emit(event="hello", repo=fleet.repo,
+    fleet = Fleet(config, args.gh, Sessions(args.tmux, args.runtime), args.read_only)
+    emit(event="hello", repo=fleet.repo, read_only=args.read_only,
          hosts=[{"host": h["label"], "alias": h["alias"], "darwin": h["darwin"], "device": h["device"],
                  "local": h["local"]} for h in config["hosts"]])
     threading.Thread(target=fleet.loop, daemon=True).start()

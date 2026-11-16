@@ -234,7 +234,7 @@ in
   # desk-fleet (the fleet panel's helper): its state model against probe
   # fixtures (fleet/fixtures, and cases built in the test), then the built
   # helper against fake ssh, comin, comin-deploy, sudo, ghostty and gh. Takes
-  # about 40 s: it follows a deploy until comin has been idle for 20 s.
+  # about 50 s: it follows a deploy until comin has been idle for 20 s.
   fleet-helper = pkgs.runCommand "fleet-helper-tests" { nativeBuildInputs = [ pkgs.python3 ]; } ''
     mkdir work
     python3 -I ${./fleet/test-desk-fleet.py} \

@@ -160,6 +160,15 @@ def model_tests():
     r = row(probe_text(status(base, gens=[g_a, g_eval], builder=g_eval), A, profile_ago=6000))
     expect("eval failed", r, "build-failed", has=[("next", "attribute 'foo' missing")])
 
+    # A multi-line error keeps its full text and carries its first line.
+    trace = "error: attribute 'foo' missing\n       at /hosts/Nexus/default.nix:3:5:\n            2|"
+    g_trace = G(4, C2, "", eval_err=trace, built=False)
+    r = row(probe_text(status(base, gens=[g_a, g_trace], builder=g_trace), A, profile_ago=6000))
+    nxt = [x for x in r["lines"] if x["key"] == "next"]
+    check("multi-line text whole", nxt and nxt[0]["text"] == "2222222 · " + trace, nxt)
+    check("multi-line first", nxt and nxt[0]["first"] == "2222222 · error: attribute 'foo' missing", nxt)
+    check("every line has first", all(x["first"] == x["text"].split("\n")[0] for x in r["lines"]), r["lines"])
+
     r = row(probe_text(status(base, gens=[g_a], builder=g_a, main=C1, fetch_err="could not resolve host"), A,
                        profile_ago=6000))
     expect("fetch failed", r, "fetch-failed", keys=["mode", "reboot", "ssh"],
@@ -394,6 +403,7 @@ if [ "$1" = -n ] && [ -e "$FAKE/$host.password" ]; then echo "sudo: a password i
 echo "$host sudo $*" >>"$FAKE/log"
 ''')
     write_exe(os.path.join(bindir, "ghostty"), 'echo "ghostty $*" >>"$FAKE/log"\n')
+    write_exe(os.path.join(bindir, "systemctl"), 'echo "${FAKE_HOST:-local} systemctl $*" >>"$FAKE/log"\n')
     gh = os.path.join(bindir, "fake-gh")
     write_exe(gh, r'''
 echo "gh $*" >>"$FAKE/gh.log"
@@ -415,39 +425,46 @@ esac
             {"label": "Gone", "alias": "gone", "darwin": False, "device": "laptop", "local": False}]}, fh)
 
     env = {**os.environ, "FAKE": fake, "PATH": bindir + ":" + os.environ["PATH"]}
+
+    def start(runtime, *extra):
+        """A running helper: (process, its events so far, wait, send)."""
+        proc = subprocess.Popen([HELPER, "--config", config, "--gh", gh, "--runtime", runtime, *extra],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=env)
+        events, q = [], queue.Queue()
+
+        def reader():
+            for out in proc.stdout:
+                q.put(json.loads(out))
+            q.put(None)
+
+        threading.Thread(target=reader, daemon=True).start()
+
+        def wait(pred, timeout, what):
+            end = time.monotonic() + timeout
+            for e in events:
+                if pred(e):
+                    return e
+            while time.monotonic() < end:
+                try:
+                    e = q.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                if e is None:
+                    break
+                events.append(e)
+                if pred(e):
+                    return e
+            check("helper " + what, False, f"not seen in {timeout} s")
+            return None
+
+        def send(**msg):
+            proc.stdin.write(json.dumps(msg) + "\n")
+            proc.stdin.flush()
+
+        return proc, events, wait, send
+
     runtime = os.path.join(WORK, "rt")
-    proc = subprocess.Popen([HELPER, "--config", config, "--gh", gh, "--runtime", runtime],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=env)
-    events, q = [], queue.Queue()
-
-    def reader():
-        for out in proc.stdout:
-            q.put(json.loads(out))
-        q.put(None)
-
-    threading.Thread(target=reader, daemon=True).start()
-
-    def wait(pred, timeout, what):
-        end = time.monotonic() + timeout
-        for e in events:
-            if pred(e):
-                return e
-        while time.monotonic() < end:
-            try:
-                e = q.get(timeout=0.2)
-            except queue.Empty:
-                continue
-            if e is None:
-                break
-            events.append(e)
-            if pred(e):
-                return e
-        check("helper " + what, False, f"not seen in {timeout} s")
-        return None
-
-    def send(**msg):
-        proc.stdin.write(json.dumps(msg) + "\n")
-        proc.stdin.flush()
+    proc, events, wait, send = start(runtime)
 
     def logged(want=None):
         """The fakes' log; with `want`, once it holds that (Ghostty is
@@ -462,6 +479,7 @@ esac
 
     hello = wait(lambda e: e["event"] == "hello", 5, "hello")
     check("hello order", [h["host"] for h in hello["hosts"]] == ["Here", "Far", "Mac", "Gone"], hello)
+    check("hello not read-only", hello["read_only"] is False, hello)
     wait(lambda e: e["event"] == "round" and e["state"] == "done", 20, "first round")
     rows = {e["host"]: e for e in events if e["event"] == "host"}
     check("helper Here pending", rows.get("Here", {}).get("chip", {}).get("id") == "pending", rows.get("Here"))
@@ -546,6 +564,13 @@ esac
     wait(lambda e: e["event"] == "action" and e.get("id") == 26, 5, "ssh")
     check("ssh in ghostty", "ghostty --title=Fleet: Far -e ssh far" in logged("-e ssh far"), logged())
 
+    # This machine reboots through logind, never sudo.
+    send(id=27, cmd="reboot", host="Here")
+    e = wait(lambda e: e["event"] == "action" and e.get("id") == 27 and e["state"] in ("ok", "failed"), 15,
+             "local reboot")
+    check("local reboot ok", e and e["state"] == "ok", e)
+    check("local reboot without sudo", "local systemctl reboot" in logged() and "local sudo" not in logged(), logged())
+
     # GitHub failing is its own message; hosts are still read.
     open(os.path.join(fake, "gh.broken"), "w").close()
     mark = len(events)
@@ -563,6 +588,52 @@ esac
     proc.wait(10)
     subprocess.run([fleet_tmux(), "-S", os.path.join(runtime, "tmux.sock"), "kill-server"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # --read-only: rows as usual, every write refused before the gate, the
+    # rest still works.
+    before = logged()
+    proc, events, wait, send = start(os.path.join(WORK, "rt-ro"), "--read-only")
+    hello = wait(lambda e: e["event"] == "hello", 5, "read-only hello")
+    check("hello read-only", hello and hello["read_only"] is True, hello)
+    wait(lambda e: e["event"] == "round" and e["state"] == "done", 20, "read-only round")
+    here = [e for e in events if e["event"] == "host" and e["host"] == "Here"]
+    check("read-only still probes", here and here[-1]["chip"]["id"] == "pending", here)
+    writes = [
+        {"id": 30, "cmd": "switch", "host": "Here", "generation": g_b["uuid"]},
+        {"id": 31, "cmd": "boot", "host": "Here", "generation": g_b["uuid"]},
+        {"id": 32, "cmd": "mode", "host": "Far", "value": "manual"},
+        {"id": 33, "cmd": "reboot", "host": "Far"},
+        {"id": 34, "cmd": "reboot", "host": "Here"},
+    ]
+    for msg in writes:
+        send(**msg)
+    for msg in writes:
+        e = wait(lambda e, i=msg["id"]: e["event"] == "action" and e.get("id") == i, 5, f"read-only {msg['id']}")
+        check(f"read-only refuses {msg['cmd']} {msg['host']}", e and e["state"] == "refused"
+              and e["reason"] == "read-only", e)
+    send(id=35, cmd="diff", host="Here")
+    e = wait(lambda e: e["event"] == "action" and e.get("id") == 35, 5, "read-only diff")
+    check("read-only diff works", e and e["state"] == "ok", e)
+    send(id=36, cmd="ssh", host="Far")
+    e = wait(lambda e: e["event"] == "action" and e.get("id") == 36, 5, "read-only ssh")
+    check("read-only ssh works", e and e["state"] == "ok", e)
+    send(id=37, cmd="attach", host="Here")
+    e = wait(lambda e: e["event"] == "action" and e.get("id") == 37, 5, "read-only attach")
+    check("read-only attach not refused for read-only", e and e.get("reason") != "read-only", e)
+    mark = len(events)
+    send(cmd="open")
+    send(cmd="refresh")
+    wait(lambda e: e["event"] == "round" and e["state"] == "started" and events.index(e) >= mark, 10,
+         "read-only refresh")
+    end = time.monotonic() + 5
+    while "-e ssh far" not in logged()[len(before):] and time.monotonic() < end:
+        time.sleep(0.1)
+    added = logged()[len(before):]
+    check("read-only diff and ssh reach ghostty", "diff-closures" in added and "-e ssh far" in added, added)
+    check("read-only ran nothing", not any(w in added for w in ("comin-deploy", "sudo", "systemctl")), added)
+    proc.stdin.close()
+    wait(lambda e: e["event"] == "exit", 10, "read-only exit")
+    proc.wait(10)
 
 
 def fleet_tmux():

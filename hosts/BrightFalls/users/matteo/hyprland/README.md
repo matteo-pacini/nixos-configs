@@ -1130,11 +1130,12 @@ are in `host_row()`.
   other commit (comin submits every built generation to its deploy
   confirmer), and comin deploys them with `test` however they are released,
   so `boot` is refused for a held testing generation.
-- **Actions**: `switch`, `boot`, `mode` and `reboot` run `comin-deploy` or
-  `sudo -n systemctl reboot` on the host, in a tmux session of their own on a
+- **Actions**: `switch`, `boot`, `mode` and `reboot` run `comin-deploy` or a
+  reboot on the host (`systemctl reboot` here, which logind allows from the
+  active session; `sudo -n systemctl reboot` elsewhere), in a tmux session of their own on a
   private socket (`$XDG_RUNTIME_DIR/desk-fleet/tmux.sock`, tmux pinned in the
   package), with no window; `attach` shows that session in Ghostty, running
-  or finished, until the next action on the host replaces it. A reboot whose
+  or finished, until the next action on the host replaces it. A remote reboot whose
   sudo wants a password runs again as `sudo systemctl reboot` in the same
   session, opened in Ghostty for the password. `diff`
   (`nix store diff-closures`) and `ssh` open in Ghostty at once.
@@ -1142,7 +1143,12 @@ are in `host_row()`.
   `switch` and `boot` only with the generation the row holds; anything else
   is refused with a reason. The only strings that reach a host's shell are
   fixed commands plus a generation uuid, a mode from the row's list, or a
-  system store path, each checked.
+  system store path, each checked. `--read-only` refuses `switch`, `boot`,
+  `mode` and `reboot` ("read-only") and runs nothing for them; probes, `diff`,
+  `ssh` and `attach` still work, and `hello` says which mode it is in.
+- **Rows** are final text for the panel. Each line has its full `text` and
+  `first`, the text's first line, so a long error (a Nix eval trace) can be
+  folded.
 - **From the system, not pinned**: `ssh` and `ghostty` (the ones the mesh
   and the desktop are configured with), and `comin` and `comin-deploy` (each
   host's own).
@@ -1219,8 +1225,11 @@ GitHub's runners, cause not known.
   no GitHub, the command gate), then the built helper against fake `ssh`,
   `comin`, `comin-deploy`, `sudo`, `ghostty` and `gh`: refused commands run
   nothing, a switch here is followed every 5 s until comin is idle, mode over
-  ssh, a failing action, a reboot whose sudo wants a password, attach, diff,
-  ssh, GitHub failing. About 40 s.
+  ssh, a failing action, a reboot whose sudo wants a password, this machine's
+  reboot without sudo, attach, diff, ssh, GitHub failing; a multi-line error's
+  `first`; and a second run with `--read-only` in which every write is
+  refused and runs nothing while probes, diff, ssh and attach still work.
+  About 50 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
