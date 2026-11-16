@@ -34,9 +34,8 @@ work) is in [AGENTS.md](AGENTS.md).
 
 greetd starts the session on VT 1 with `uwsm start -e -D Hyprland
 hyprland.desktop`, the command of `hyprland-uwsm.desktop` (`desktop.nix`).
-The first login of each boot is automatic, with no password: the login
-keyring stays locked until the first unlock at the lock screen, or until an
-app asks for it and a prompt takes the password. After a logout, or if the
+The first login of each boot is automatic, with no password. After a
+logout, or if the
 session ends, tuigreet asks for the password on VT 1 and starts the same
 session. The plain `hyprland.desktop` stays installed for `uwsm start`,
 with `NoDisplay` so no session chooser offers it
@@ -958,10 +957,7 @@ side in the shell).
 - **Password.** PAM, with the service named by `pamService` in `lock.qml`.
   The repository declares `desk-lock` for it
   (`security.pam.services.desk-lock` in `desktop-hyprland.nix`): `pam_unix`,
-  no lockout; a wrong password costs pam_unix's delay of about 2 s. Then
-  `pam_gnome_keyring` hands the same password to the running keyring daemon,
-  which unlocks the login keyring if it is locked (it is after the automatic
-  login).
+  no lockout; a wrong password costs pam_unix's delay of about 2 s.
   A service that does not exist means no password can unlock, so a renamed
   service has to be deployed before `pamService` names it. The lock screen
   keeps what is typed only until it hands it to PAM.
