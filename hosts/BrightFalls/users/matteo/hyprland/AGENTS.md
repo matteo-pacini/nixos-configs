@@ -173,9 +173,10 @@ nix build .#checks.x86_64-linux.audio-output-cycle  # audio-output-cycle against
 nix build .#checks.x86_64-linux.fleet-helper     # desk-fleet's state model, then the helper against fake ssh, comin-deploy, gh
 nix build .#checks.x86_64-linux.fleet-panel      # fleet/fleet.js under node
 nix build .#checks.x86_64-linux.tailscale-panel  # tailscale/tailscale.js under node
+nix build .#checks.x86_64-linux.wifi-panel       # network/wifi.js under node
 ```
 
-The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel and system-panel checks read the
+The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel, wifi-panel and system-panel checks read the
 repository's `.js` files, so they fail until a live change to those files is pulled. All of them
 but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
 required check for merging into `master`. `hypr-config` is run by hand before a change to the
@@ -193,6 +194,7 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.desk-unlock .#checks.x86_64-linux.bluetooth-agent \
   .#checks.x86_64-linux.audio-output-cycle .#checks.x86_64-linux.fleet-helper \
   .#checks.x86_64-linux.fleet-panel .#checks.x86_64-linux.tailscale-panel \
+  .#checks.x86_64-linux.wifi-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
