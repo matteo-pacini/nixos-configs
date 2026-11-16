@@ -1,8 +1,8 @@
 diff --git a/src/game.rs b/src/game.rs
-index 0c0e6e6..0080dfe 100644
+index 3342810..2a88c13 100644
 --- a/src/game.rs
 +++ b/src/game.rs
-@@ -244,6 +244,20 @@ fn copy(source: &Path, target: &Path) -> Result<()> {
+@@ -353,6 +353,20 @@ fn copy(source: &Path, target: &Path) -> Result<()> {
              .success(),
          "copy guest session runtime failed"
      );

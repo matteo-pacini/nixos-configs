@@ -10,7 +10,9 @@ virglrenderer.overrideAttrs (old: {
     "${legionSource.src}/patches/virgl-venus-ring-poll-experimental.patch"
     # With more than one GPU, Mesa's device-select layer narrows
     # vkEnumeratePhysicalDevices to the selected one but not the device
-    # groups, and Venus then fails to initialise in the guest.
+    # groups, and Venus then fails to initialise in the guest. Upstream
+    # patches its own copy of the layer (mesa-device-select-groups.patch);
+    # the host here uses nixpkgs Mesa's, unpatched.
     ./patches/virgl-001-device-groups-filter.patch
   ];
 })

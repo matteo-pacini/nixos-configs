@@ -38,6 +38,9 @@ into derivations:
   only that layer enabled. Upstream copies the layer from its guest Mesa
   build; here `host/vulkan` holds nixpkgs Mesa's manifest, which points at
   the store. The Vulkan driver itself comes from `/run/opengl-driver`.
+  Upstream's layer carries `patches/mesa-device-select-groups.patch`, so its
+  device groups match the selected GPU; nixpkgs' layer doesn't, and
+  `virgl-001` filters the groups in the render server instead.
 - **The guest is Debian 13.** The guest programs hardcode Debian paths.
   `guest.nix`:
   - boots vmTools from the pinned closures in `debs-*.nix`;

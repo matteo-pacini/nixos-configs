@@ -1,5 +1,5 @@
 diff --git a/src/venus.rs b/src/venus.rs
-index a03c0ae..f9a0cce 100644
+index befc4f1..854079e 100644
 --- a/src/venus.rs
 +++ b/src/venus.rs
 @@ -382,7 +382,7 @@ pub(crate) fn run(args: &[OsString]) -> Result<()> {
