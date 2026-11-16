@@ -201,6 +201,31 @@ t("footer texts for refusals and windows that failed", () => {
     assert.equal(F.footer({ event: "host" }), "");
 });
 
+t("the panel closes when a window opened or sudo wants a password, not on a refusal or failure", () => {
+    for (const action of ["diff", "ssh", "attach"]) {
+        assert.equal(F.closesPanel({ event: "action", id: 1, host: "H", action, state: "ok" }), true, action);
+        assert.equal(F.closesPanel({ event: "action", id: 1, host: "H", action, state: "failed", reason: "x" }), false, action);
+        assert.equal(F.closesPanel({ event: "action", id: 1, host: "H", action, state: "refused", reason: "offline" }), false, action);
+    }
+    for (const action of ["switch", "boot", "mode", "reboot"])
+        assert.equal(F.closesPanel({ event: "action", id: 1, host: "H", action, state: "ok", tail: [], exit: 0 }), false, action);
+    assert.equal(F.closesPanel({ event: "message", host: "H", kind: "sudo-password", text: "t" }), true);
+    assert.equal(F.closesPanel({ event: "message", host: "H", kind: "other", text: "t" }), false);
+    const lines = fs.readFileSync(path.join(__dirname, "fixtures", "refusals.jsonl"), "utf8").trim().split("\n").map(l => F.closesPanel(JSON.parse(l)));
+    assert.deepEqual(lines, [false, false, false, false, false]);
+    const sudo = fs.readFileSync(path.join(__dirname, "fixtures", "actions.jsonl"), "utf8").trim().split("\n").map(l => JSON.parse(l)).filter(F.closesPanel);
+    assert.deepEqual(sudo.map(e => [e.event, e.host]), [["message", "SudoAsks"]]);
+});
+
+t("Esc in the footer: close, cancel a question, back from the mode chooser", () => {
+    assert.equal(F.escLabel(null), "close");
+    assert.equal(F.escLabel({ host: "H", what: "switch" }), "cancel");
+    assert.equal(F.escLabel({ host: "H", what: "reboot" }), "cancel");
+    assert.equal(F.escLabel({ host: "H", what: "mode" }), "back");
+    const row = load("hero").rows.Nexus;
+    assert.equal(F.question(row, "mode").keys.at(-1).label, F.escLabel({ host: "Nexus", what: "mode" }));
+});
+
 t("GitHub error: banner text, checking line, header still checking", () => {
     const st = load("github-error");
     assert.deepEqual(F.pipeline(st), { error: "GitHub: gh is not logged in. Hosts are still read; Behind cannot be judged." });

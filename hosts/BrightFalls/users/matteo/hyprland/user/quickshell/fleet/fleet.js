@@ -456,6 +456,23 @@ function footer(ev) {
     return "";
 }
 
+// Whether the panel closes on this helper event: a window it asked for opened
+// (diff, ssh, attach), or a terminal opened for a sudo password. The panel
+// holds exclusive keyboard focus, so that window could not be typed in while
+// it stays open. A refusal or a failure keeps it open to show the footer.
+function closesPanel(ev) {
+    if (ev.event === "message")
+        return ev.kind === "sudo-password";
+    return ev.event === "action" && ev.state === "ok" && ["diff", "ssh", "attach"].includes(ev.action);
+}
+
+// The footer's label for Esc, given the open question or null.
+function escLabel(ask) {
+    if (!ask)
+        return "close";
+    return ask.what === "mode" ? "back" : "cancel";
+}
+
 // The bar item: { count, dim }, count 0 meaning no number.
 function barView(st) {
     const names = Object.keys(st.rows);
@@ -465,4 +482,4 @@ function barView(st) {
 }
 
 if (typeof module !== "undefined")
-    module.exports = { SESSION_ACTIONS, MODES, initial, apply, sent, single, order, checking, checked, liveText, pipeline, glyph, modePill, infoLines, actionLine, keys, rowView, question, decide, move, footer, barView };
+    module.exports = { SESSION_ACTIONS, MODES, initial, apply, sent, single, order, checking, checked, liveText, pipeline, glyph, modePill, infoLines, actionLine, keys, rowView, question, decide, move, footer, closesPanel, escLabel, barView };

@@ -29,6 +29,9 @@ Singleton {
     signal toggleRequested(string screen)
     // Something the footer should say for a moment.
     signal said(string text)
+    // Asks Fleet.qml to close the panel, so a window the helper opened gets
+    // the keyboard.
+    signal closeRequested
 
     // Writes one command to the helper; `cmd` is a fleet.js command object.
     // Returns false when the helper is not running.
@@ -67,6 +70,8 @@ Singleton {
         const text = F.footer(ev);
         if (text !== "")
             said(text);
+        if (F.closesPanel(ev))
+            closeRequested();
         if (ev.event === "hello" && screen !== "")
             shown(true);
         if (ev.event === "action" && ev.state !== "running")

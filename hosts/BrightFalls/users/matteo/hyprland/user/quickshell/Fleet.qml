@@ -213,6 +213,10 @@ Scope {
             if (root.open)
                 root.say(text);
         }
+        function onCloseRequested() {
+            if (root.open)
+                root.close();
+        }
     }
 
     IpcHandler {
@@ -439,7 +443,7 @@ Scope {
                     }
 
                     KeyHints {
-                        keys: (root.names.length > 1 ? [["↑↓ J K", "host"]] : []).concat(root.runUrl !== "" ? [["O", "open build run"]] : []).concat([["F5", "refresh"], ["Esc", root.ask ? "cancel" : "close"]])
+                        keys: (root.names.length > 1 ? [["↑↓ J K", "host"]] : []).concat(root.runUrl !== "" ? [["O", "open build run"]] : []).concat([["F5", "refresh"], ["Esc", F.escLabel(root.ask)]])
                         message: root.flash
                         messageColor: Theme.orange
                     }
