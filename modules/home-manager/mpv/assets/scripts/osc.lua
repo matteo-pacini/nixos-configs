@@ -92,20 +92,21 @@ local osc_styles = {
     smallButtonsR = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs30\\fnmpv-osd-symbols}",
     topButtons = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs12\\fnmpv-osd-symbols}",
 
-    elementDown = "{\\1c&H999999}",
+    elementDown = "{\\1c&HA47262}",
     timecodes = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs20}",
     vidtitle = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs12\\q2}",
-    box = "{\\rDefault\\blur0\\bord1\\1c&H000000\\3c&HFFFFFF}",
+    box = "{\\rDefault\\blur0\\bord1\\1c&H362A28\\3c&HFFFFFF}",
 
     topButtonsBar = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs18\\fnmpv-osd-symbols}",
     smallButtonsBar = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs28\\fnmpv-osd-symbols}",
     timecodesBar = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs27}",
-    timePosBar = "{\\blur0\\bord".. user_opts.tooltipborder .."\\1c&HFFFFFF\\3c&H000000\\fs30}",
+    seekbarFillBar = "{\\blur0\\bord0\\1c&HF993BD\\3c&HF993BD\\fs27}",
+    timePosBar = "{\\blur0\\bord".. user_opts.tooltipborder .."\\1c&HFFFFFF\\3c&H362A28\\fs30}",
     vidtitleBar = "{\\blur0\\bord0\\1c&HFFFFFF\\3c&HFFFFFF\\fs18\\q2}",
 
     wcButtons = "{\\1c&HFFFFFF\\fs24\\fnmpv-osd-symbols}",
     wcTitle = "{\\1c&HFFFFFF\\fs24\\q2}",
-    wcBar = "{\\1c&H000000}",
+    wcBar = "{\\1c&H362A28}",
 }
 
 local function create_osd_overlay(...)
@@ -1808,7 +1809,7 @@ function bar_layout(direction)
 
     lo = add_layout("seekbar")
     lo.geometry = geo
-    lo.style = osc_styles.timecodesBar
+    lo.style = osc_styles.seekbarFillBar
     lo.slider.border = 0
     lo.slider.gap = 2
     lo.slider.tooltip_style = osc_styles.timePosBar
