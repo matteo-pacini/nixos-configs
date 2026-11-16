@@ -24,6 +24,8 @@ work) is in [AGENTS.md](AGENTS.md).
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
+- [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel,
+  which is not built yet)
 - [Tests](#tests)
 
 ## The session
@@ -1089,6 +1091,62 @@ rm /tmp/v
 
 with the JSON written to `/tmp/v` first.
 
+## Fleet: desk-fleet
+
+`desk-fleet` (`desk-fleet.py`, `desk-fleet.nix`) is the helper for the fleet
+panel: one long-running process, JSON lines on stdin and stdout like
+`desk-mqtt`. For each host it says what the host runs, what its comin is
+doing and what a reboot would change, picks the one chip that most wants
+attention, and lists the actions allowed now with a reason for each one that
+is not. It runs the panel's few deploy actions. The full protocol is the
+docstring at the top of `desk-fleet.py`; the rules for every line and chip
+are in `host_row()`.
+
+- **Hosts**: this machine, then the hosts it may SSH into (`lib/ssh-mesh.nix`),
+  with their kind and darwin flag from `lib/host-kinds.nix` (shared with the
+  herdr workbench), generated into the package at build time.
+- **Probing**: one read-only command per host (`PROBE`): this machine through
+  `sh`, the others through `ssh -o BatchMode=yes -o ConnectTimeout=5`, in
+  parallel, each row sent as it lands. GitHub (master, deploy, the testing
+  branches, the last `build.yml` run on master, how far deploy is behind)
+  through `gh`; a GitHub failure is its own event and the hosts are still read.
+  Every 5 minutes, every 60 s while the panel says it is open, on `refresh`,
+  and every 5 s for a host whose deploy the panel started, until comin has
+  been idle for 20 s (at most 30 minutes).
+- **Systems, not commits**: the running system's store path is looked up in
+  comin's deployments and generations (comin's "dummy" deployments for a
+  booted system it never deployed do not count). A newer commit that builds
+  the same system is up to date; a hand build or a testing branch is never
+  behind.
+- **Next boot** is read without root as follows. The boot loader's default is
+  set by whoever installed it last: comin's newest boot or switch deployment,
+  or a hand `nixos-rebuild switch`/`boot`, which also moves the readable
+  `/nix/var/nix/profiles/system` link (comin uses its own profile). So
+  comin's staged system is the next boot only while that link is older than
+  comin's deployment and no `LoaderEntryDefault`/`LoaderEntryOneShot` EFI
+  variable is set; otherwise the row says `unknown`. A hand switch run
+  straight from `switch-to-configuration` is not seen.
+- **Testing branches on a manual host** are held for confirmation like any
+  other commit (comin submits every built generation to its deploy
+  confirmer), and comin deploys them with `test` however they are released,
+  so `boot` is refused for a held testing generation.
+- **Actions**: `switch`, `boot`, `mode` and `reboot` run `comin-deploy` or
+  `sudo -n systemctl reboot` on the host, in a tmux session of their own on a
+  private socket (`$XDG_RUNTIME_DIR/desk-fleet/tmux.sock`, tmux pinned in the
+  package), with no window; `attach` shows that session in Ghostty, running
+  or finished, until the next action on the host replaces it. A reboot whose
+  sudo wants a password runs again as `sudo systemctl reboot` in the same
+  session, opened in Ghostty for the password. `diff`
+  (`nix store diff-closures`) and `ssh` open in Ghostty at once.
+- **Walls**: a host command runs only if the host's latest row allows it,
+  `switch` and `boot` only with the generation the row holds; anything else
+  is refused with a reason. The only strings that reach a host's shell are
+  fixed commands plus a generation uuid, a mode from the row's list, or a
+  system store path, each checked.
+- **From the system, not pinned**: `ssh` and `ghostty` (the ones the mesh
+  and the desktop are configured with), and `comin` and `comin-deploy` (each
+  host's own).
+
 ## Tests
 
 Flake checks, defined in `tests/default.nix`. All of them but `hypr-config`
@@ -1154,6 +1212,15 @@ GitHub's runners, cause not known.
   messages of each kind from the broker (ignored, the helper still
   reports), and the network thread dying (broker down, exit status 1).
   About 45 s.
+- `nix build .#checks.x86_64-linux.fleet-helper`: `tests/fleet/test-desk-fleet.py`
+  runs `desk-fleet`'s state model against three real probes cut down to the
+  fields it reads (`tests/fleet/fixtures/`) and cases built in the test (every
+  chip, the cases the old herdr panel read wrong, next boot unknown, Darwin,
+  no GitHub, the command gate), then the built helper against fake `ssh`,
+  `comin`, `comin-deploy`, `sudo`, `ghostty` and `gh`: refused commands run
+  nothing, a switch here is followed every 5 s until comin is idle, mode over
+  ssh, a failing action, a reboot whose sudo wants a password, attach, diff,
+  ssh, GitHub failing. About 40 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
