@@ -20,7 +20,7 @@ Times of day, setpoints, room names and people are house data. They live in HA a
 | Dashboard | The Climate dashboard's "Heat & air" section, in this order: the on/off toggle, the plan card, the breakfast slider and warm-up buttons, the five level buttons, and the two mould minimum buttons. |
 
 **The plan card is a `button-card`, not the Scheduler card.** On a dashboard, the Scheduler card only draws a list row; its timeline exists only inside its editor. The plan card is one JavaScript template, the `bar` custom field (the name is left from the timeline bar it replaced). It has two parts:
-- **A grid of periods by rooms.** Rows run in the order of the day, Breakfast first and Night last. Columns are the four planned rooms and the two mould minimum rooms; the two bedrooms are headed B1 (main) and B2. Each cell shows the temperature the plan gives that room in that period under the current presence and TV state, and the level it comes from, or "min" for a mould minimum. Warmer cells are tinted stronger. The current period's row is selected and says when it ends. The Breakfast row says when its block starts, which is what the breakfast helpers set. An arrow marks a cell a modifier raised, in that modifier's colour.
+- **A grid of timeline blocks by rooms.** There is one row per block of the Scheduler timeline, in the order of the day, so a period that occurs twice (Work, before and after Lunch) has two rows. Each row shows its time slot under the period name, read from the timeline. When the day starts and ends in Night, the early block is folded into the last row, which then reads as running past midnight to the first block of the morning. Columns are the four planned rooms and the two mould minimum rooms; the two bedrooms are headed B1 (main) and B2. Each cell shows the temperature the plan gives that room in that period under the current presence and TV state, and the level it comes from, or "min" for a mould minimum. Warmer cells are tinted stronger. The row of the block running now is selected. An arrow marks a cell a modifier raised, in that modifier's colour.
 - **One pill per modifier under the grid**, one per line: the first person (the work room only follows its level while they are home), the second person, and the TV.
 
 A pill has three states:
@@ -34,8 +34,8 @@ A pill has three states:
 Things to know about the card:
 - **The grid shows what the plan computes, not what the valves report.** A valve changed by hand does not show here; the Radiators list beside it does.
 - **It repeats the automation's rules.** The template's `resolve` function is a copy of the automation's `targets` logic. It does not apply the automation's 20 min away delay, so for 20 min after someone leaves the card can show a modifier as off while the valves still have it.
-- **Block times are not on the dashboard any more**, apart from the Breakfast start and the end of the current period. They are in the Scheduler editor: tapping the card opens a Bubble Card pop-up (`#heating-plan-times`) that holds the Scheduler card.
-- It reads `timeslots` and `actions` from `switch.schedule_heating_plan` for those two times, and uses `triggers_update: all`, because button-card has no timer.
+- **Times are shown on the card but changed elsewhere.** Tapping the card opens a Bubble Card pop-up (`#heating-plan-times`) that holds the Scheduler card, whose editor is where block times change. The morning is set by the breakfast helpers.
+- It reads `timeslots` and `actions` from `switch.schedule_heating_plan` for the rows, and uses `triggers_update: all`, because button-card has no timer.
 - The pattern is in the Nocturne design system as the PlanMatrix component.
 
 **Rooms in three groups.**
@@ -103,3 +103,5 @@ To go back without restoring it:
 | 2026-11-16 | The two mould minimums moved out of the automation into `input_number.heating_min_bedroom_2` and `input_number.heating_min_wc`, with a button each on the dashboard. The automation reads them and re-runs when one changes. Tested by raising one by 0.5 and back: the valve followed both times. |
 | 2026-11-16 | Replaced the timeline bar and the markdown level table with one plan card: a grid of periods by rooms with the current row selected, and a pill each for the two people and the TV. The 24 h strip, the room tiles and the table are gone. |
 | 2026-11-16 | The owner signed the plan card off. The two backup dashboards taken that day were deleted. |
+| 2026-11-16 | The plan card's grid now has one row per timeline block instead of one per period, each with its time slot, so the afternoon Work block has its own row. |
+| 2026-11-16 | Seen: the second person's UniFi tracker read home again after the phone returned, and the plan card showed it. |
