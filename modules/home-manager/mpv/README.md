@@ -29,7 +29,7 @@ the table is `JySzE/SoM-MPV-Config`.
 | `assets/scripts/persist-properties.lua` | SoM `scripts/persist-properties.lua`, SoM's edit of [d87/mpv-persist-properties](https://github.com/d87/mpv-persist-properties) | `b6b94c216b` | None |
 | `assets/scripts/smart-native-screenshot.lua` | SoM branch `main-linux-wip`, `scripts/smart-native-screenshot.lua` (Linux 1, based on 1.4) | `0146b7a44b` | None |
 | `assets/shaders/nnedi3-nns128-win8x6.hook` | SoM `shaders/`, itself [bjin/mpv-prescalers](https://github.com/bjin/mpv-prescalers) `master` | `b6b94c216b` (identical to prescalers `b3f0a59d68`) | None |
-| `config.nix`, `profiles.nix` | SoM `mpv.conf` 3.6; then, from `main-linux-wip`'s `mpv.conf` Linux 1.9 (= `main` 4.6), only the `PGS Scaling` profile, SD `scale-antiring=0` and HDR `screenshot-sw=yes` | `b6b94c216b`, then `0146b7a44b` | Translated by hand |
+| `config.nix`, `profiles.nix` | SoM `mpv.conf` 3.6; then, from `main-linux-wip`'s `mpv.conf` Linux 1.9 (= `main` 4.6), only the `PGS Scaling` profile, SD `scale-antiring=0`, HDR `screenshot-sw=yes` and the subtitle margins (`sub-use-margins=yes`, `sub-margin-y=50`, no `blend-subtitles`) | `b6b94c216b`, then `0146b7a44b` | Translated by hand |
 | `bindings.nix` | SoM `input.conf` 1.7 | `b6b94c216b` | Subset; right click left to mpv's default context menu |
 | `scripts.nix` (thumbfast options) | SoM `script-opts/thumbfast.conf` | `b6b94c216b` | Subset, same values |
 
@@ -56,6 +56,6 @@ local modifications in the table. Update the ref column in the same commit.
 Not taken from SoM `main` `10f9bf34a4`: the restyled `osc.lua` (it also
 sets the idle window title to "SoM MPV"), `gifit.lua`, `center_vol.lua`
 (it replaces the audio filter chain with a stereo downmix),
-`limit-srt-lines.lua`, `script-opts/console.conf`, the OSD restyle and
-subtitle margin changes in `mpv.conf`, and its two `8-Bit WEB-DL`
-profiles (they match release-group names in the file name).
+`limit-srt-lines.lua`, `script-opts/console.conf`, the OSD restyle in
+`mpv.conf`, and its two `8-Bit WEB-DL` profiles (they match release-group
+names in the file name).

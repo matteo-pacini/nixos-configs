@@ -87,12 +87,11 @@ in
         sub-border-size = 2.4;
         sub-shadow-offset = 1;
         sub-shadow-color = "#8C000000";
-        sub-use-margins = "no";
-        sub-margin-y = 42;
+        sub-use-margins = "yes";
+        sub-margin-y = 50;
         sub-margin-x = 80;
         sub-scale-with-window = "no";
         sub-ass-override = "no";
-        blend-subtitles = "yes";
         sub-gray = "yes";
         sub-gauss = 0.65;
         demuxer-mkv-subtitle-preroll = "yes";
