@@ -11,43 +11,45 @@ Times of day, setpoints, room names and people are house data. They live in HA a
 | `input_select.heating_period` | The period of the day: Night, Breakfast, Work, Lunch, Dinner, Bedtime. |
 | `switch.schedule_heating_plan` | One Scheduler timeline, every day, whose blocks set the period. Change the morning with the breakfast helpers below; change the other blocks in the Scheduler card's editor, by dragging block edges or typing start and end times. A Breakfast edge dragged by hand is overwritten the next time a breakfast helper changes. |
 | `input_number.heating_level_*` | Five temperature levels: `floor`, `base`, `comfy`, `office`, `bedtime`. |
+| `input_number.heating_min_bedroom_2`, `input_number.heating_min_wc` | The mould minimums of the two rooms the plan does not vary, held all day, home or away. Shown on the dashboard as "B2 min" and "WC min". |
 | `input_boolean.heating_plan` | On: the plan drives the valves. Off: every valve is switched off. This is the summer and long-trip switch. |
 | `input_number.heating_breakfast_time`, `input_number.heating_breakfast_warm_up` | Breakfast time (a slider in hours, 03:00–09:00 in 15-minute steps) and the warm-up before it (0.5–4 h). They move the morning of the timeline; see below. |
 | `automation.heating_plan_breakfast` | 10 s after either breakfast helper changes, it rewrites the timeline up to the first Work block with `scheduler.edit`. Breakfast runs from breakfast minus warm-up for one hour; any gap until 08:00 is Night; every block from Work on is kept as set in the timeline. |
 | `input_boolean.heating_tv_watching` | The TV modifier's flag. `automation.heating_plan` sets it once the TV and the Shield have both been on for 2 min, and clears it once either has been off for 10 min. It also clears a stale flag on HA start and at midnight. |
 | `automation.heating_plan` | Maps period, levels, presence and the TV flag to one setpoint per valve. |
-| Dashboard | The Climate dashboard's "Heat & air" section, in this order: the on/off toggle, the timeline bar, the breakfast slider and warm-up buttons, the level buttons, and a markdown table of which room gets which level. |
+| Dashboard | The Climate dashboard's "Heat & air" section, in this order: the on/off toggle, the plan card, the breakfast slider and warm-up buttons, the five level buttons, and the two mould minimum buttons. |
 
-**The timeline bar is a `button-card`, not the Scheduler card.** On a dashboard, the Scheduler card only draws a list row; its timeline exists only inside its editor. The bar reads `timeslots` and `actions` from `switch.schedule_heating_plan`, so it always draws the real schedule. All of it is one JavaScript template, the `bar` custom field. It shows:
-- a now marker;
-- the current period, when it ends, and who is home;
-- one tile per room with its live setpoint, and an arrow on a room that a modifier has raised, in that modifier's colour;
-- one chip per modifier (the second person, the TV), with a strip in the same colour under the blocks it applies to.
+**The plan card is a `button-card`, not the Scheduler card.** On a dashboard, the Scheduler card only draws a list row; its timeline exists only inside its editor. The plan card is one JavaScript template, the `bar` custom field (the name is left from the timeline bar it replaced). It has two parts:
+- **A grid of periods by rooms.** Rows run in the order of the day, Breakfast first and Night last. Columns are the four planned rooms and the two mould minimum rooms; the two bedrooms are headed B1 (main) and B2. Each cell shows the temperature the plan gives that room in that period under the current presence and TV state, and the level it comes from, or "min" for a mould minimum. Warmer cells are tinted stronger. The current period's row is selected and says when it ends. The Breakfast row says when its block starts, which is what the breakfast helpers set. An arrow marks a cell a modifier raised, in that modifier's colour.
+- **One pill per modifier under the grid**, one per line: the first person (the work room only follows its level while they are home), the second person, and the TV.
 
-A chip has three states, and the strip follows it:
+A pill has three states:
 
 | State | Looks like | Means |
 |-------|------------|-------|
-| On | Filled chip, solid strip | The modifier is changing a setpoint now. |
-| Armed | Outlined chip, hollow strip | It can apply later today. The chip says what it waits for. |
-| Off | Dim chip, no strip | It cannot apply as things stand: the person is away, nobody is home, or the plan is off. |
+| On | Filled | The modifier is changing a setpoint now. |
+| Armed | Outlined | It can apply later today. The pill says what it waits for. |
+| Off | Dim | It cannot apply as things stand: the person is away, nobody is home, or the plan is off. |
 
-The card works out those states itself, from the same helpers the automation reads. It does not apply the automation's 20 min away delay, so for 20 min after someone leaves the card can show a modifier as off while the valves still have it. Change the modifier rules in both places.
-
-The bar uses `triggers_update: all`, because button-card has no timer; that is what moves the now marker. Tapping it opens a Bubble Card pop-up (`#heating-plan-times`) that holds the Scheduler card, whose editor is where times change.
+Things to know about the card:
+- **The grid shows what the plan computes, not what the valves report.** A valve changed by hand does not show here; the Radiators list beside it does.
+- **It repeats the automation's rules.** The template's `resolve` function is a copy of the automation's `targets` logic. It does not apply the automation's 20 min away delay, so for 20 min after someone leaves the card can show a modifier as off while the valves still have it.
+- **Block times are not on the dashboard any more**, apart from the Breakfast start and the end of the current period. They are in the Scheduler editor: tapping the card opens a Bubble Card pop-up (`#heating-plan-times`) that holds the Scheduler card.
+- It reads `timeslots` and `actions` from `switch.schedule_heating_plan` for those two times, and uses `triggers_update: all`, because button-card has no timer.
+- The pattern is in the Nocturne design system as the PlanMatrix component.
 
 **Rooms in three groups.**
 - A work room that follows the `office` level during Work and Lunch, and only while the person it belongs to is home.
 - A living area of two rooms (where meals are eaten and cooked) that follows `base`, `comfy` or `floor` through the day.
 - The main bedroom follows `floor`, except in the Bedtime period, when it gets the `bedtime` level.
-- The damp-prone bedroom and the WC are fixed at their mould minimums in the automation, whatever the period.
+- The damp-prone bedroom and the WC are held at their mould minimums, whatever the period and whoever is home. Each minimum is a helper.
 
 **Modifiers on top of the timeline.**
 - **Presence.** One person is the base plan. The other person being home raises the living area from `base` to `comfy` during Work. Both away means `floor` everywhere, apart from the fixed mould minimums. A person counts as away only after 20 min, because a phone's GPS reports away for a minute at a time.
   - **Presence comes from Wi-Fi, not GPS.** Since 2026-11-16 each person entity has one tracker, the UniFi client tracker for that person's phone. HA is reachable from the LAN and the tailnet only, so a phone that leaves without Tailscale on cannot report its location: on 2026-11-16 the app's last report was from just inside the home zone, and the person stayed `home` for over an hour. The app's GPS tracker was removed from the person rather than kept beside the Wi-Fi one, because a person with both uses the GPS state whenever the Wi-Fi tracker is not `home`, and a stale GPS `home` would win. A UniFi tracker follows one MAC address, the phone's private address for the home network. If a phone ever gets a new private address, its person stays away until the tracker for the new address is enabled and set on the person.
 - **TV.** From 20:00 to midnight, with someone home, while the TV and the Shield are both on, the living room is held at `comfy` or above, whatever the period. Only the living room changes. The modifier ends 10 min after either device goes off, or at midnight. A period change while it is active keeps it, because the plan recomputes with the modifier included.
 
-**The room-to-level table lives in two places:** the automation's `targets` variable and the dashboard's markdown card. Change both together.
+**The room-to-level table lives in two places:** the automation's `targets` variable and the plan card's `resolve` function. Change both together.
 
 ## Why it is built this way
 
@@ -82,7 +84,8 @@ To go back without restoring it:
 ## Pending
 
 - Delete the scenes, and the backup dashboards `backup-20261114-climate`, `-2` and `-3`, after a few days of the plan running cleanly.
-- Delete the backup dashboard `backup-20261116-climate`, taken before the timeline bar was redrawn, once the owner has signed the new bar off.
+- Delete the backup dashboards `backup-20261116-climate` and `backup-20261116-climate-2`, taken before each of the two redesigns of the plan card on 2026-11-16, once the owner has signed the card off.
+- The plan card has only been seen in the dark theme at desktop width, in the Lunch period with one person home (2026-11-16). The light theme, phone width, the TV pill when on and the plan-off state are not verified.
 - The stale-flag check on HA start is not verified (2026-11-15). The same branch was tested through a temporary time trigger carrying the midnight id; a restart with the flag on has not been tried.
 
 ## Changelog
@@ -98,3 +101,5 @@ To go back without restoring it:
 | 2026-11-15 | Recorded that the owners set `comfy` back to 19: 18 was too low. Seen live on 2026-11-15, when the TV modifier held the living room at 19. |
 | 2026-11-16 | Redrew the timeline bar: modifier chips with three states, a strip per modifier, room tiles with an arrow on raised rooms. The grey status lines and the breakfast line are gone; the breakfast slider and warm-up cards below already show those. The level table is unchanged. |
 | 2026-11-16 | Both people's presence now comes from their phone's UniFi client tracker alone; the app's GPS tracker was removed from each person. The second person's UniFi tracker was enabled for this, and was seen to read away while the phone was out. The first person already had a UniFi tracker beside the GPS one. Not verified (2026-11-16): that the second person reads home again when the phone returns. |
+| 2026-11-16 | The two mould minimums moved out of the automation into `input_number.heating_min_bedroom_2` and `input_number.heating_min_wc`, with a button each on the dashboard. The automation reads them and re-runs when one changes. Tested by raising one by 0.5 and back: the valve followed both times. |
+| 2026-11-16 | Replaced the timeline bar and the markdown level table with one plan card: a grid of periods by rooms with the current row selected, and a pill each for the two people and the TV. The 24 h strip, the room tiles and the table are gone. |
