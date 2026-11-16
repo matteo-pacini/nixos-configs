@@ -57,6 +57,15 @@ Not themed, on purpose: subtitles (pure white), the window background and
 letterbox bars (black; no `background-color`), the OSC idle logo (mpv's
 brand colours), and the shim's player HUD panel (hard-coded in the shim).
 
+## GPU
+
+On Linux, the mpv wrapper (`default.nix`) and the shim's systemd unit
+(`jellyfin-shim.nix`) both set `MESA_VK_DEVICE_SELECT=discrete!`. The
+wrapper sets it with `--set` (not `--set-default`), which overrides the
+caller's environment, so testing on the integrated GPU needs the unwrapped binary the
+wrapper execs (`MESA_VK_DEVICE_SELECT='integrated!' <unwrapped mpv>
+--hwdec=vulkan <file>`); the variable in front of `mpv` has no effect.
+
 ## Checking for updates
 
 SoM has no releases; each file carries a version and date in its header.
