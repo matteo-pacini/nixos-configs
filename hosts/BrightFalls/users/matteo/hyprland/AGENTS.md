@@ -553,9 +553,7 @@ enabled implicitly is either declared (`desktop.nix`, `users/matteo/desktop.nix`
 `printer.nix`) or gone: GNOME Shell and Settings, ibus, power-profiles-daemon,
 accounts-daemon, colord, EDS and Online Accounts, geoclue, at-spi. Proven
 only by build and eval until the first boot without GNOME, which has to show:
-the automatic login and tuigreet after a logout; the keyring locked after
-the automatic login and unlocked by the first lock-screen unlock; the SSH
-agent; file dialogs, screen sharing and dark GTK apps through the portals;
+the automatic login and tuigreet after a logout; the SSH agent; file dialogs, screen sharing and dark GTK apps through the portals;
 the default apps; printing; the CPU's energy preference without
 power-profiles-daemon (it was `balance_performance`); no failed units.
 

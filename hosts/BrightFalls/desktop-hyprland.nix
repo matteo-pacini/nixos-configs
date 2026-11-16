@@ -253,7 +253,6 @@ in
 
   # The lock screen's password check (users/matteo/hyprland/user/quickshell/lock.qml):
   # the user's password through pam_unix, with no delay or lockout beyond
-  # pam_unix's own. pam_gnome_keyring then unlocks the running keyring daemon's
-  # login keyring with the same password; greetd's autologin leaves it locked.
+  # pam_unix's own.
   security.pam.services.desk-lock.enableGnomeKeyring = true;
 }

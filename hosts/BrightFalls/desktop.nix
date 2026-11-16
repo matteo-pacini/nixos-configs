@@ -6,9 +6,7 @@
 }:
 {
   # Hyprland on VT 1. The first login of each boot needs no password (the
-  # whole system is encrypted), so the login keyring stays locked until the
-  # lock screen unlocks it (desk-lock) or an app asks for it. After a logout,
-  # tuigreet asks for the password.
+  # whole system is encrypted). After a logout, tuigreet asks for the password.
   services.greetd = {
     enable = true;
     useTextGreeter = true;
