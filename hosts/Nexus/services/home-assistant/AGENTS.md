@@ -38,7 +38,7 @@ These describe parts of the system whose live half is not in git.
 |-----|--------|
 | [docs/zigbee-watchdog.md](docs/zigbee-watchdog.md) | The Zigbee network and the Zigbee Coordinator Watchdog automation (only in HA): what it detects, how it recovers, its guards, and what is still untested. |
 | [docs/blueprints.md](docs/blueprints.md) | The blueprints in `blueprints/automation/`, the UI automations built from them, and the device behaviour they rely on. |
-| [docs/heating.md](docs/heating.md) | Boiler, radiator valves, scenes and schedules: which piece lives where and what each entity really means. Also the venting advice sensors and their notifications. |
+| [docs/heating.md](docs/heating.md) | Boiler, radiator valves, scenes and schedules: which piece lives where and what each entity really means. Also the venting advice sensors. |
 | [docs/heating-plan.md](docs/heating-plan.md) | The heating plan (only in HA) that drives the valves: period timeline, temperature levels, presence, why it is built that way, and how to roll it back. |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard conventions, and card, chart and theme behaviour that cost time to find. |
 | [docs/metrics.md](docs/metrics.md) | How HA history reaches VictoriaMetrics, what the recorder keeps, and energy and cost data. |
