@@ -14,6 +14,7 @@
 #   nix build .#checks.<system>.bluetooth-agent
 #   nix build .#checks.<system>.audio-output-cycle
 #   nix build .#checks.<system>.fleet-helper
+#   nix build .#checks.<system>.fleet-panel
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -135,6 +136,13 @@ in
   # helper events, inline and from office-panel/fixtures/.
   office-panel = pkgs.runCommand "office-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${./office-panel}/test-office-panel.js ${../user/quickshell/office}
+    touch $out
+  '';
+
+  # The fleet panel's library (quickshell/fleet/fleet.js) against recorded
+  # desk-fleet lines in fleet-panel/fixtures/ and inline events.
+  fleet-panel = pkgs.runCommand "fleet-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./fleet-panel}/test-fleet-panel.js ${../user/quickshell/fleet}
     touch $out
   '';
 

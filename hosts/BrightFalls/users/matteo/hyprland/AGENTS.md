@@ -171,9 +171,10 @@ nix build .#checks.x86_64-linux.desk-unlock      # desk-unlock.sh against fake h
 nix build .#checks.x86_64-linux.bluetooth-agent  # desk-bt-agent against private D-Bus daemons
 nix build .#checks.x86_64-linux.audio-output-cycle  # audio-output-cycle against fake PipeWire tools
 nix build .#checks.x86_64-linux.fleet-helper     # desk-fleet's state model, then the helper against fake ssh, comin-deploy, gh
+nix build .#checks.x86_64-linux.fleet-panel      # fleet/fleet.js under node
 ```
 
-The calendar-panel, bluetooth-panel, tray-panel, office-panel and system-panel checks read the
+The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel and system-panel checks read the
 repository's `.js` files, so they fail until a live change to those files is pulled. All of them
 but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
 required check for merging into `master`. `hypr-config` is run by hand before a change to the
@@ -190,6 +191,7 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.display-layout .#checks.x86_64-linux.hypr-config \
   .#checks.x86_64-linux.desk-unlock .#checks.x86_64-linux.bluetooth-agent \
   .#checks.x86_64-linux.audio-output-cycle .#checks.x86_64-linux.fleet-helper \
+  .#checks.x86_64-linux.fleet-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -295,7 +297,7 @@ Each was learned the hard way or is one mistake away.
 - **No truncation of information.** Only a name may elide; everything else
   wraps.
 - **Anatomy of a drop-down panel** (network, audio, calendar, system,
-  Bluetooth, office): a root component, one line in `shell.qml`; a small singleton
+  Bluetooth, office, fleet): a root component, one line in `shell.qml`; a small singleton
   shared with the bar for placement and open state; an IPC target with
   `toggle`; a bind through `bind()`; footer key hints; Overlay layer,
   exclusive keyboard, namespace `desk-<name>`, card under its bar item
@@ -328,11 +330,11 @@ not.
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
 | `desk-mqtt.nix`, `desk-mqtt.py` | `desk-mqtt`, the office panel's MQTT client (JSON lines on stdin/stdout): watches the light, blind and sockets on Zigbee2MQTT, publishes only the light's and blind's `/set`; the device ids and labels are in the `.nix`, the broker and names in the `office-mqtt` agenix secret (README, "Office: desk-mqtt") |
-| `desk-fleet.nix`, `desk-fleet.py` | `desk-fleet`, the fleet panel's helper (JSON lines on stdin/stdout): probes this machine and its SSH mesh hosts read-only, reads the pipeline through `gh`, decides each host's row (`host_row()`, pure) and runs switch, boot, mode and reboot through `comin-deploy` in private tmux sessions; the host list is generated from `lib/ssh-mesh.nix` and `lib/host-kinds.nix` (README, "Fleet: desk-fleet"). No panel uses it yet |
+| `desk-fleet.nix`, `desk-fleet.py` | `desk-fleet`, the fleet panel's helper (JSON lines on stdin/stdout): probes this machine and its SSH mesh hosts read-only, reads the pipeline through `gh`, decides each host's row (`host_row()`, pure) and runs switch, boot, mode and reboot through `comin-deploy` in private tmux sessions; the host list is generated from `lib/ssh-mesh.nix` and `lib/host-kinds.nix` (README, "Fleet: desk-fleet"). Run by `fleet/FleetShared.qml` |
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -356,7 +358,7 @@ component. Root components, one per file:
 | `Osd.qml` | The pill |
 | `Cheatsheet.qml` | Keybinding sheet from `hyprctl -j binds` |
 | `SessionMenu.qml`, `Polkit.qml` | Centred modals |
-| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml` | The six drop-down panels (each the biggest file of its feature) |
+| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml` | The seven drop-down panels (each the biggest file of its feature) |
 | `Lockscreen.qml`, `LockState.qml` | The shell's side of the lock: IPC `lockscreen`, hold, sleep inhibitor; the launch command and `held` state |
 | `lock.qml` | The lock process itself (a separate Quickshell config) |
 
@@ -373,6 +375,7 @@ Directories (`import qs.<dir>`):
 | `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-tested), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
+| `fleet/` | `FleetShared.qml` (shared singleton: `screen`, `toggleRequested`, `said`, `readOnly`, runs `desk-fleet` and restarts it, `fleet` state, `send()`, `open`/`closed` to the helper), `fleet.js` (all fleet decisions: applying helper events, order, header, pipeline, row views and folding, info lines, keys lit, questions, key to command, navigation, footer texts, bar view; node-tested) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -416,9 +419,20 @@ panel (the DAC stack, per-program rows and levels, inputs, no-signal flag),
 clock and calendar (sync, export, reminders, digest), system panel,
 Bluetooth panel with pairing agent, lock screen with a recovery command,
 tray right-click menus drawn by the shell (`tray/`), office panel (light,
-blind, sockets' power through `desk-mqtt`; live, not read-only).
+blind, sockets' power through `desk-mqtt`; live, not read-only), fleet panel
+(Super+G: each host's system, comin, next boot, one chip, and switch, boot,
+mode, reboot, diff, ssh and output through `desk-fleet`; `readOnly: false` in
+the repository, read-only live until the deploy).
 
 **To do at the next deploy:**
+- The fleet panel goes live only by hand: the live
+  `~/.config/quickshell/fleet/FleetShared.qml` still has `readOnly: true`
+  and differs from the repository's (`false`), so activation leaves it and
+  puts the new copy in `incoming/`. When the user wants it live:
+  `desk-sync reset quickshell/fleet/FleetShared.qml` (the shell reloads
+  itself and restarts the helper without `--read-only`).
+- `hyprctl reload` (then `hyprctl configerrors`) for Super+G, and Super+O
+  from the office work, which the running Hyprland has not loaded yet.
 - `~/.config/mako/` is left over from before the shell was the notification
   daemon (`desk-sync` leaves dropped files alone); delete it.
 - `systemctl --user restart quickshell`: `shell.qml` no longer has
@@ -450,13 +464,16 @@ was written; check the reports of any newer work for its own.
   to a position, and that the sockets are not clickable. Never seen for real
   (simulated with recorded helper lines, and node-tested): the broker lost,
   Zigbee2MQTT offline, a device offline, a command not confirmed.
+- Fleet panel: seen for real only read-only, by an agent (the real fleet's
+  rows, the bar item, a refused switch, T and D on this computer). Never
+  done: real key presses and clicks, Super+G in a reloaded session, O, and
+  any real switch, boot, mode change, reboot or attach to a real session;
+  the user's first switch is the first. The helper's actions are proven only
+  against fakes (`fleet-helper`).
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 
 **Not built:**
-- The fleet panel's QML. Its helper, `desk-fleet`, is built and checked
-  (`fleet-helper`, fakes only); no real switch, boot, mode change or reboot
-  has gone through it yet.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.

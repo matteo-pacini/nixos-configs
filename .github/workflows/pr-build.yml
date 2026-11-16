@@ -108,7 +108,8 @@ jobs:
             .#checks.x86_64-linux.desk-unlock \
             .#checks.x86_64-linux.bluetooth-agent \
             .#checks.x86_64-linux.audio-output-cycle \
-            .#checks.x86_64-linux.fleet-helper
+            .#checks.x86_64-linux.fleet-helper \
+            .#checks.x86_64-linux.fleet-panel
 
   pr-build:
     needs: [eval]
