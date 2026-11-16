@@ -125,7 +125,9 @@ since the drawing turns with the plan.
 
 Not verified (2026-11-16): the car away, running, unlocked, low on fuel and
 without data; a bin turning "tomorrow" at noon; the letterbox when on; the
-weather drawings other than the sunny one; the light theme.
+weather drawings other than sunny and partly cloudy; the light theme; the
+phone layout and the car's tap on the deployed code (both were tested on a
+copy before the deploy).
 
 ### Coordinates
 
