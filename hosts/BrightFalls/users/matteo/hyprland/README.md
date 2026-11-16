@@ -20,12 +20,14 @@ work) is in [AGENTS.md](AGENTS.md).
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
-  [Tray menu](#tray-menu)
+  [Tailscale panel](#tailscale-panel), [Tray menu](#tray-menu)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
 - [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel)
+- [Tailscale: status and mesh hosts](#tailscale-status-and-mesh-hosts) (the
+  decisions behind the Tailscale panel)
 - [Tests](#tests)
 
 ## The session
@@ -87,9 +89,11 @@ a missing key. A colour must be `#` plus exactly six hex digits (QML and
 Hyprland read an alpha digit pair differently); a font must not be blank.
 
 Nix also generates read-only data the shell shows, under
-`~/.local/share/desk/` (`desktop-hyprland.nix` and `calendar.nix`):
-`network/`, `audio/`, `system/` and `bluetooth/locked.json` (values set in
-Nix, shown greyed with a `nix` tag) and `calendar/source.json`.
+`~/.local/share/desk/` (`desktop-hyprland.nix`, `calendar.nix` and
+`default.nix`): `network/`, `audio/`, `system/` and `bluetooth/locked.json`
+(values set in Nix, shown greyed with a `nix` tag), `calendar/source.json`
+and `tailscale/hosts.json` (see [Tailscale: status and mesh
+hosts](#tailscale-status-and-mesh-hosts)).
 
 ## Activation
 
@@ -167,8 +171,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The seven drop-down panels (network, audio, calendar, system, Bluetooth,
-office, fleet) behave alike: each opens under its bar item on that bar's monitor (or the
+The eight drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet, tailscale) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -228,7 +232,8 @@ switch); the focused window's title on that monitor; the clock (see
 right click opens the item's menu, see [Tray menu](#tray-menu)), the fleet
 item (a server glyph and the number of hosts that want attention, see
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
-[System panel](#system-panel)), Bluetooth, network, and audio. The audio item
+[System panel](#system-panel)), Bluetooth, the Tailscale item (see
+[Tailscale panel](#tailscale-panel)), network, and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
 steps, middle click opens the audio panel; a red dot on it means an input
@@ -782,6 +787,38 @@ chooser, action running, ok, failed and the sudo message, the GitHub banner,
 long texts. **Not done yet**: real key presses and clicks, Super+G in a
 reloaded session, O, and any real switch, boot, mode change or reboot.
 
+### Tailscale panel
+
+`Tailscale.qml`, with `tailscale/TailscaleShared.qml` (shared with the bar:
+placement, the `tailscale status` calls, the last answer, the mesh-host file)
+and `tailscale/tailscale.js` (every decision, see [Tailscale: status and mesh
+hosts](#tailscale-status-and-mesh-hosts)). Super+V, or a click on the bar
+item between Bluetooth and Network, opens it. It is read-only: it runs only
+`tailscale status --json` and never writes to the daemon.
+
+- **Bar item**: the Tailscale glyph, in the foreground while on, grey while
+  off, orange when something wants attention, purple with the open mark
+  while the panel is open.
+- **Contents**: the well shows this computer; MY HOSTS are the peers in
+  `~/.local/share/desk/tailscale/hosts.json`, under their repository names;
+  OTHER DEVICES are every other peer. Without the mesh-host file every peer
+  is under OTHER DEVICES and T is never offered.
+- **Keys**: ↑↓ J K Home End select, Enter unfolds the details, Y opens the
+  copy chooser (1 name, 2 DNS name, 3 IPv4, 4 IPv6; in the logged-out states
+  Y copies `sudo tailscale login`), T opens Ghostty with `ssh <alias>` on an
+  online mesh host that runs sshd, O opens the admin console (the login page
+  while a login is pending), F5 reads now, Esc goes back or closes.
+- **Polling**: `--peers=false` at shell start and every 30 s while the panel
+  is closed (for the bar item); the full call on open, every 5 s while open
+  and on F5; one call at a time; a call still running after 10 s gets
+  SIGTERM, then SIGKILL 2 s later.
+
+**Seen for real** (by the agent that built it, with the real daemon):
+Running, with real keys (F5, J, K, Home, End, Enter, Y, 2, Esc, T on
+Nexus). **Simulated** (fixture output through the real call): every other
+state, overlay and chip. **Not done yet**: O, the arrows, and Super+V in a
+reloaded session.
+
 ### Tray menu
 
 `tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
@@ -1220,6 +1257,46 @@ are in `host_row()`.
   and the desktop are configured with), and `comin` and `comin-deploy` (each
   host's own).
 
+## Tailscale: status and mesh hosts
+
+`user/quickshell/tailscale/tailscale.js` holds every decision of the
+Tailscale panel, a read-only view of this computer and every device in the
+tailnet. It takes the result of one `tailscale status --json` call (stdout,
+exit code, stderr, whether it timed out, whether it was the light
+`--peers=false` call) and returns what the panel and its bar item draw. The
+returned shapes are the comment at the top of the file.
+
+- **States**: no answer yet; the daemon not running; the call failing, hanging
+  or printing something that is not status JSON (the last good list is kept,
+  greyed, "as of" its time); and every `BackendState`, with logged out, login
+  started and this computer's key expired told apart. Rows are live only in
+  `Starting` and `Running`; in the other states with a map they are greyed.
+- **Lines over any state**: each `Health` string whole, this computer not
+  connected to control, its key within 14 days of expiry, an exit node in use
+  or offline, an urgent security update, a newer version (which comes only
+  with a flake update: `tailscale update` refuses on NixOS).
+- **Rows**: "My hosts" (peers whose MagicDNS name is in the mesh-host file,
+  under the repository's name and Fleet's glyph for their kind), then "Other
+  devices"; online first, then by name. One chip per row by priority
+  (Expired, Exit node down, Expiring, Offline, Exit node, Direct, Peer
+  relay, Relayed, No path, Idle), a second line, details, and what can be
+  copied. Peers `tailscale status` hides are hidden too (sharee nodes,
+  Mullvad exit nodes not in use).
+- **Never read**: `User` (login and display names), the tailnet's name,
+  capabilities, Taildrop, location, SSH host keys. No person's or tailnet's
+  name can reach the screen.
+- **Keys**: navigation by peer ID across reads, Enter folds, Y opens a copy
+  chooser (name, DNS name, IPv4, IPv6, each only when it exists) or copies
+  `sudo tailscale login` while logged out, T opens `ssh <alias>` in Ghostty
+  for an online mesh host that runs sshd, O opens the admin console (the
+  login page while one is pending), F5 reads again. A key that does not apply
+  gives the reason. Nothing writes to the daemon.
+- **Mesh hosts**: `~/.local/share/desk/tailscale/hosts.json`, generated in
+  `default.nix` from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`: for each
+  host with a `tailscale` name, `{ label, dns, alias, sshd, device }` (the
+  SSH alias is its `principal`; `sshd` is whether it has a `port`). With no
+  file, every peer is another device and T is never offered.
+
 ## Tests
 
 Flake checks, defined in `tests/default.nix`. All of them but `hypr-config`
@@ -1293,6 +1370,15 @@ GitHub's runners, cause not known.
   error, refusals, long texts) and inline events: order, header, pipeline,
   folding, keys lit, questions, the command each key sends (the switch's
   generation as given), navigation, footers and the bar item.
+- `nix build .#checks.x86_64-linux.tailscale-panel`: runs
+  `user/quickshell/tailscale/tailscale.js` under node
+  (`tests/tailscale-panel/test-tailscale-panel.js`) against hand-made status
+  answers in `tests/tailscale-panel/fixtures/` (invented names, documentation
+  address ranges): every panel state (failed calls as stdout, exit code and
+  stderr), every line over a state, every chip and second-line combination,
+  names, sort and hidden peers, the wording at each boundary, every key's
+  decision with the reasons it gives, the bar item for light and full
+  answers, and junk input. Under 1 s.
 - `nix build .#checks.x86_64-linux.fleet-helper`: `tests/fleet/test-desk-fleet.py`
   runs `desk-fleet`'s state model against three real probes cut down to the
   fields it reads (`tests/fleet/fixtures/`) and cases built in the test (every

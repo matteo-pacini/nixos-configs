@@ -1,0 +1,207 @@
+{
+  "nostate": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "NoState",
+    "AuthURL": "",
+    "TailscaleIPs": null,
+    "Self": { "ID": "", "HostName": "brightfalls", "DNSName": "", "OS": "linux", "UserID": 0, "TailscaleIPs": null, "Online": false },
+    "Health": [],
+    "MagicDNSSuffix": "",
+    "CurrentTailnet": null,
+    "Peer": null,
+    "ClientVersion": null
+  },
+  "nostate-health": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "NoState",
+    "AuthURL": "",
+    "TailscaleIPs": null,
+    "Self": { "ID": "", "HostName": "brightfalls", "DNSName": "", "OS": "linux", "UserID": 0, "TailscaleIPs": null, "Online": false },
+    "Health": ["The state store could not be read."],
+    "MagicDNSSuffix": "",
+    "CurrentTailnet": null,
+    "Peer": null,
+    "ClientVersion": null
+  },
+  "logged-out": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "NeedsLogin",
+    "AuthURL": "",
+    "TailscaleIPs": null,
+    "Self": { "ID": "", "HostName": "brightfalls", "DNSName": "", "OS": "linux", "UserID": 0, "TailscaleIPs": null, "Online": false },
+    "Health": [],
+    "MagicDNSSuffix": "",
+    "CurrentTailnet": null,
+    "Peer": null,
+    "ClientVersion": null
+  },
+  "login-started": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "NeedsLogin",
+    "AuthURL": "https://login.tailscale.com/a/0000aaaa",
+    "TailscaleIPs": null,
+    "Self": { "ID": "", "HostName": "brightfalls", "DNSName": "", "OS": "linux", "UserID": 0, "TailscaleIPs": null, "Online": false },
+    "Health": [],
+    "MagicDNSSuffix": "",
+    "CurrentTailnet": null,
+    "Peer": null,
+    "ClientVersion": null
+  },
+  "key-expired": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "NeedsLogin",
+    "AuthURL": "",
+    "TailscaleIPs": ["100.64.0.1"],
+    "Self": {
+      "ID": "nSelf",
+      "HostName": "BrightFalls",
+      "DNSName": "brightfalls-ts.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.0.1"],
+      "Online": false,
+      "Expired": true,
+      "KeyExpiry": "2026-11-13T12:00:00Z"
+    },
+    "Health": [],
+    "MagicDNSSuffix": "tail0000.ts.net",
+    "CurrentTailnet": { "MagicDNSSuffix": "tail0000.ts.net", "MagicDNSEnabled": true },
+    "Peer": {
+      "nodekey:0002": {
+        "ID": "nNexus",
+        "HostName": "Nexus",
+        "DNSName": "nexus-ts.tail0000.ts.net.",
+        "OS": "linux",
+        "UserID": 1,
+        "TailscaleIPs": ["100.64.0.2"],
+        "CurAddr": "192.0.2.10:41641",
+        "Relay": "lhr",
+        "Online": true,
+        "Active": true
+      }
+    },
+    "ClientVersion": null
+  },
+  "machine-auth": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "NeedsMachineAuth",
+    "AuthURL": "",
+    "TailscaleIPs": ["100.64.0.1"],
+    "Self": {
+      "ID": "nSelf",
+      "HostName": "BrightFalls",
+      "DNSName": "brightfalls-ts.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.0.1"],
+      "Online": false
+    },
+    "Health": [],
+    "MagicDNSSuffix": "tail0000.ts.net",
+    "CurrentTailnet": { "MagicDNSSuffix": "tail0000.ts.net", "MagicDNSEnabled": true },
+    "Peer": {
+      "nodekey:0002": {
+        "ID": "nNexus",
+        "HostName": "Nexus",
+        "DNSName": "nexus-ts.tail0000.ts.net.",
+        "OS": "linux",
+        "UserID": 1,
+        "TailscaleIPs": ["100.64.0.2"],
+        "CurAddr": "192.0.2.10:41641",
+        "Relay": "lhr",
+        "Online": true,
+        "Active": true
+      }
+    },
+    "ClientVersion": null
+  },
+  "stopped": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "Stopped",
+    "AuthURL": "",
+    "TailscaleIPs": ["100.64.0.1"],
+    "Self": {
+      "ID": "nSelf",
+      "HostName": "BrightFalls",
+      "DNSName": "brightfalls-ts.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.0.1"],
+      "Online": false
+    },
+    "Health": [],
+    "MagicDNSSuffix": "tail0000.ts.net",
+    "CurrentTailnet": { "MagicDNSSuffix": "tail0000.ts.net", "MagicDNSEnabled": true },
+    "Peer": {
+      "nodekey:0002": {
+        "ID": "nNexus",
+        "HostName": "Nexus",
+        "DNSName": "nexus-ts.tail0000.ts.net.",
+        "OS": "linux",
+        "UserID": 1,
+        "TailscaleIPs": ["100.64.0.2"],
+        "CurAddr": "192.0.2.10:41641",
+        "Relay": "lhr",
+        "Online": true,
+        "Active": true
+      },
+      "nodekey:0004": {
+        "ID": "nCauldronLake",
+        "HostName": "CauldronLake",
+        "DNSName": "cauldronlake-ts.tail0000.ts.net.",
+        "OS": "linux",
+        "UserID": 1,
+        "TailscaleIPs": ["100.64.0.4"],
+        "Relay": "lhr",
+        "LastSeen": "2026-11-11T12:00:00Z",
+        "Online": false,
+        "Active": false
+      }
+    },
+    "ClientVersion": null
+  },
+  "starting": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "Starting",
+    "AuthURL": "",
+    "TailscaleIPs": ["100.64.0.1"],
+    "Self": {
+      "ID": "nSelf",
+      "HostName": "BrightFalls",
+      "DNSName": "brightfalls-ts.tail0000.ts.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": ["100.64.0.1"],
+      "Online": true
+    },
+    "Health": [],
+    "MagicDNSSuffix": "tail0000.ts.net",
+    "CurrentTailnet": { "MagicDNSSuffix": "tail0000.ts.net", "MagicDNSEnabled": true },
+    "Peer": {
+      "nodekey:0002": {
+        "ID": "nNexus",
+        "HostName": "Nexus",
+        "DNSName": "nexus-ts.tail0000.ts.net.",
+        "OS": "linux",
+        "UserID": 1,
+        "TailscaleIPs": ["100.64.0.2"],
+        "Relay": "lhr",
+        "Online": true,
+        "Active": false
+      }
+    },
+    "ClientVersion": null
+  },
+  "unknown": {
+    "Version": "1.104.5-t0000000-g0000000",
+    "BackendState": "SomeNewState",
+    "AuthURL": "",
+    "TailscaleIPs": null,
+    "Self": { "ID": "", "HostName": "brightfalls", "DNSName": "", "OS": "linux", "UserID": 0, "TailscaleIPs": null, "Online": false },
+    "Health": [],
+    "MagicDNSSuffix": "",
+    "CurrentTailnet": null,
+    "Peer": null,
+    "ClientVersion": null
+  }
+}

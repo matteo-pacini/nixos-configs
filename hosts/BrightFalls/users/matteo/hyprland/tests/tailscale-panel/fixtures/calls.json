@@ -1,0 +1,62 @@
+{
+  "no-daemon": {
+    "stdout": "",
+    "exit": 1,
+    "stderr": "failed to connect to local tailscaled; it doesn't appear to be running (sudo systemctl start tailscaled ?)\n",
+    "timedOut": false
+  },
+  "socket-failed": {
+    "stdout": "",
+    "exit": 1,
+    "stderr": "failed to connect to local tailscaled (which appears to be running as tailscaled, pid 4242). Got error: connection refused\n",
+    "timedOut": false
+  },
+  "in-use": {
+    "stdout": "",
+    "exit": 1,
+    "stderr": "\n401 Unauthorized: Tailscale already in use by another user\nsecond line\n",
+    "timedOut": false
+  },
+  "silent-failure": {
+    "stdout": "",
+    "exit": 2,
+    "stderr": "",
+    "timedOut": false
+  },
+  "hung": {
+    "stdout": "",
+    "exit": 0,
+    "stderr": "",
+    "timedOut": true
+  },
+  "not-json": {
+    "stdout": "<html>not status</html>",
+    "exit": 0,
+    "stderr": "",
+    "timedOut": false
+  },
+  "array": {
+    "stdout": "[{\"BackendState\": \"Running\"}]",
+    "exit": 0,
+    "stderr": "",
+    "timedOut": false
+  },
+  "no-backend-state": {
+    "stdout": "{\"Self\": {\"HostName\": \"BrightFalls\"}}",
+    "exit": 0,
+    "stderr": "",
+    "timedOut": false
+  },
+  "backend-state-number": {
+    "stdout": "{\"BackendState\": 6}",
+    "exit": 0,
+    "stderr": "",
+    "timedOut": false
+  },
+  "json-null": {
+    "stdout": "null",
+    "exit": 0,
+    "stderr": "",
+    "timedOut": false
+  }
+}

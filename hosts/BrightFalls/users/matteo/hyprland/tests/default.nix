@@ -15,6 +15,7 @@
 #   nix build .#checks.<system>.audio-output-cycle
 #   nix build .#checks.<system>.fleet-helper
 #   nix build .#checks.<system>.fleet-panel
+#   nix build .#checks.<system>.tailscale-panel
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -145,6 +146,15 @@ in
     node ${./fleet-panel}/test-fleet-panel.js ${../user/quickshell/fleet}
     touch $out
   '';
+
+  # The Tailscale panel's library (quickshell/tailscale/tailscale.js) against
+  # hand-made status answers in tailscale-panel/fixtures/.
+  tailscale-panel =
+    pkgs.runCommand "tailscale-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; }
+      ''
+        node ${./tailscale-panel}/test-tailscale-panel.js ${../user/quickshell/tailscale}
+        touch $out
+      '';
 
   # The system panel's library (quickshell/system/decode.js) against invented
   # gpu_metrics blobs and /proc, sysfs, df and LACT texts.
