@@ -37,6 +37,19 @@ let
     ];
     text = builtins.readFile ./desk-unlock.sh;
   };
+
+  # The Tailscale panel's mesh hosts (README.md, "Tailscale: status and mesh
+  # hosts"): every host in
+  # lib/ssh-mesh.nix with a Tailscale name.
+  mesh = import ../../../../../lib/ssh-mesh.nix;
+  kinds = import ../../../../../lib/host-kinds.nix;
+  tailscaleHosts = lib.mapAttrsToList (name: host: {
+    label = name;
+    dns = host.tailscale;
+    alias = host.principal;
+    sshd = host ? port;
+    inherit (kinds.${name}) device;
+  }) (lib.filterAttrs (_: host: host ? tailscale) mesh.hosts);
 in
 {
   imports = [ ./calendar.nix ];
@@ -48,6 +61,7 @@ in
     source = ./defaults;
     recursive = true;
   };
+  xdg.dataFile."desk/tailscale/hosts.json".text = builtins.toJSON { hosts = tailscaleHosts; };
   home.activation.deskSync = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     run ${lib.getExe deskSync} activate ||
       echo "desk-sync: some files under ${config.xdg.configHome} were not installed, see above" >&2
