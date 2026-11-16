@@ -20,9 +20,7 @@ The **Herdr** design canvas is the visual reference:
   - Spaces sidebar (`space-cards`);
   - Agents and pane headers (`agent-list`, `pane-header`);
   - Menus and dialogs.
-- Its **Side panels** page holds an overview of `fleet` and `nixpkgs-prs`,
-  then a section per `fleet` part, each in every state: Deploy, Watch, and
-  its menus and dialogs.
+- Its **Side panels** page holds `nixpkgs-prs`.
 - Its **PR and CI status** page holds the status bar (`status-bar`) with
   the focused terminal's branch, PR and checks, and the two-line sidebar
   rows, as built.

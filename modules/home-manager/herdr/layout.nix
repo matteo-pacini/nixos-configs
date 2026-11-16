@@ -2,14 +2,13 @@
 # shipped `main` layout) adjusted for the mods that live in it. Pure: takes
 # which optional mods are on, returns the layout as an attrset.
 #
-#   import ./layout.nix { inherit lib; } { fleet = true; nixpkgsPrs = false; spaceCards = true; }
+#   import ./layout.nix { inherit lib; } { nixpkgsPrs = false; spaceCards = true; }
 #
 # The adjustments find nodes by id (`main`, `work-body`, `spaces`, `status`); if a
 # re-snapshot renames one, the matching adjustment silently stops applying;
 # tests/layout.nix (the herdr-layout check) fails on that.
 { lib }:
 {
-  fleet,
   nixpkgsPrs,
   spaceCards,
 }:
@@ -22,8 +21,7 @@ let
     min = 280;
     max = 600;
   };
-  sideBlocks =
-    lib.optional fleet (sideBlock "fleet") ++ lib.optional nixpkgsPrs (sideBlock "nixpkgs-prs");
+  sideBlocks = lib.optional nixpkgsPrs (sideBlock "nixpkgs-prs");
   adjust =
     node:
     if node.id or null == "main" then

@@ -56,9 +56,7 @@ symlinks, and activation copies each enabled mod into
 - **`lib/hosts.js` isn't in the repo.** It is generated per machine from
   `lib/ssh-mesh.nix` (repo root) and added to each installed `lib/`. It
   exports `SELF` (this machine's mesh principal), `HOSTS` (every mesh host
-  by principal: label, device, OS, nix-darwin or not) and `FLEET` (this
-  machine, then the hosts it may log into). `fleet` lists `FLEET`;
-  `space-cards` draws `HOSTS`. A new mesh host needs an entry in
+  by principal: label, device, OS). `space-cards` draws `HOSTS`. A new mesh host needs an entry in
   `hostKinds` in `workbench.nix`, which an assertion enforces.
 - **Trying a change live:** edit the installed copy under
   `~/.config/herdr-app/mods/`. The app reloads a mod on save, and a broken
@@ -79,7 +77,7 @@ edit is made in the snapshot itself: the `agents` block draws `agent-list`.
 `layout.nix` makes the rest at build time:
 
 - `pane-header` as `main`'s pane header and `pane-menu` as `terminal_menu`;
-- `fleet` and `nixpkgs-prs` appended to `work-body`, each when enabled;
+- `nixpkgs-prs` appended to `work-body`, when enabled;
 - `space-cards` in place of the `spaces` block's mod, when enabled;
 - `status-bar` in place of the `status` block's `workspace-status`.
 
@@ -118,5 +116,5 @@ CI runs all three on pull requests (the `herdr-tests` job in
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
   `hc` that logs its arguments.
 - **Not covered:** drawing (there's no headless gpui), and the parts of
-  `fleet/main.js`, `space-cards/main.js` and `status-bar/main.js` that need `lib/hosts.js` or the
+  `space-cards/main.js` and `status-bar/main.js` that need `lib/hosts.js` or the
   live app. For those, use `herdr-app check` and `herdr-app shot`.

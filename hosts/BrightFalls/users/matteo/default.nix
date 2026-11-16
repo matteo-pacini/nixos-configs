@@ -75,7 +75,6 @@
   custom.herdr.enable = true;
   custom.herdr.desktop = true;
   custom.herdr.workbench.enable = true;
-  custom.herdr.workbench.fleet.enable = true;
   custom.herdr.workbench.nixpkgsPrs.enable = true;
   custom.herdr.workbench.spaceCards.enable = true;
   custom.hex.enable = true;

@@ -4,12 +4,10 @@
 let
   layout = import ../layout.nix { inherit lib; };
   off = layout {
-    fleet = false;
     nixpkgsPrs = false;
     spaceCards = false;
   };
   on = layout {
-    fleet = true;
     nixpkgsPrs = true;
     spaceCards = true;
   };
@@ -63,10 +61,7 @@ lib.runTests {
   };
 
   testOffAddsNoBlocks = {
-    expr = lib.filter (id: lib.elem id (ids off)) [
-      "fleet"
-      "nixpkgs-prs"
-    ];
+    expr = lib.filter (id: lib.elem id (ids off)) [ "nixpkgs-prs" ];
     expected = [ ];
   };
   testOffKeepsShippedSpaces = {
@@ -78,14 +73,11 @@ lib.runTests {
     expr = lib.drop (lib.length ((find "work-body" off).children or [ ])) (
       map (n: n.id) ((find "work-body" on).children or [ ])
     );
-    expected = [
-      "fleet"
-      "nixpkgs-prs"
-    ];
+    expected = [ "nixpkgs-prs" ];
   };
   testSideBlockDrawsItsMod = {
-    expr = (find "fleet" on).content.mod or null;
-    expected = "fleet";
+    expr = (find "nixpkgs-prs" on).content.mod or null;
+    expected = "nixpkgs-prs";
   };
   testOnSwapsSpaces = {
     expr = (find "spaces" on).content.mod or null;
