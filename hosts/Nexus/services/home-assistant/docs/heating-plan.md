@@ -84,7 +84,6 @@ To go back without restoring it:
 ## Pending
 
 - Delete the scenes, and the backup dashboards `backup-20261114-climate`, `-2` and `-3`, after a few days of the plan running cleanly.
-- Delete the backup dashboards `backup-20261116-climate` and `backup-20261116-climate-2`, taken before each of the two redesigns of the plan card on 2026-11-16, once the owner has signed the card off.
 - The plan card has only been seen in the dark theme at desktop width, in the Lunch period with one person home (2026-11-16). The light theme, phone width, the TV pill when on and the plan-off state are not verified.
 - The stale-flag check on HA start is not verified (2026-11-15). The same branch was tested through a temporary time trigger carrying the midnight id; a restart with the flag on has not been tried.
 
@@ -103,3 +102,4 @@ To go back without restoring it:
 | 2026-11-16 | Both people's presence now comes from their phone's UniFi client tracker alone; the app's GPS tracker was removed from each person. The second person's UniFi tracker was enabled for this, and was seen to read away while the phone was out. The first person already had a UniFi tracker beside the GPS one. Not verified (2026-11-16): that the second person reads home again when the phone returns. |
 | 2026-11-16 | The two mould minimums moved out of the automation into `input_number.heating_min_bedroom_2` and `input_number.heating_min_wc`, with a button each on the dashboard. The automation reads them and re-runs when one changes. Tested by raising one by 0.5 and back: the valve followed both times. |
 | 2026-11-16 | Replaced the timeline bar and the markdown level table with one plan card: a grid of periods by rooms with the current row selected, and a pill each for the two people and the TV. The 24 h strip, the room tiles and the table are gone. |
+| 2026-11-16 | The owner signed the plan card off. The two backup dashboards taken that day were deleted. |
