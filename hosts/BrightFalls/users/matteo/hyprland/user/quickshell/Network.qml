@@ -364,8 +364,10 @@ Scope {
     // one became connected), then rebuilds the view if anything drawn moved.
     function syncWifi(): void {
         const rows = wifiIn.rows;
+        // Later: this runs inside wifiIn's update, and wifiIn reads
+        // wifiAnswered, so writing it now is a binding loop.
         if (scanning && !wifiAnswered && rows.some(r => !r.known && !r.connected))
-            wifiAnswered = true;
+            Qt.callLater(answerScan);
         if (!rescanning) {
             const seen = {};
             for (const r of rows)
@@ -391,6 +393,11 @@ Scope {
             wifiSeen = seen;
         }
         refreshWifi();
+    }
+
+    function answerScan(): void {
+        if (scanning)
+            wifiAnswered = true;
     }
 
     function refreshWifi(): void {
@@ -703,7 +710,12 @@ Scope {
 
     onWifiInChanged: syncWifi()
     onWifiChanged: refreshWifi()
-    onWifiRadioChanged: {
+    // Later, not inside wifiIn's update (wifiRadio is bound to it):
+    // syncScanner() writes wifiAnswered, and turning the scanner off drops
+    // the networks only a scan lists at once, both of which wifiIn reads.
+    onWifiRadioChanged: Qt.callLater(radioChanged)
+
+    function radioChanged(): void {
         if (!wifiRadio)
             wifiStep({
                 type: "radioOff"
