@@ -80,6 +80,12 @@ user's and are strict:
   close it, then send a second notification that the keyboard is free.
   Batch your looks into one window. Keys the user types otherwise land in
   your panel (it happened, and a speed test ran because of it).
+- **No notification, no focus.** Check the notification call's exit status
+  and read back the `uint32` id it returns before the 10 s wait starts. If
+  either fails, abort the batch and take no focus. Arm any timer that takes
+  focus only after that check. (A focus batch once armed its timer before a
+  failed notification call, and a password modal over test data held the
+  keyboard unannounced.)
 - **Prefer checks that need no focus**: an IPC function that returns state,
   a temporary no-focus preview mode, the service log, `hyprctl layers`. The
   bar takes no focus and can be screenshotted any time.
@@ -339,7 +345,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `user/desk/theme.json` | The palette |
@@ -374,7 +380,7 @@ Directories (`import qs.<dir>`):
 | `common/` | Shared by panels: `Style.qml` (singleton: bar metrics, `panelTop`, edge, radius, the cards' `growDuration`, surface, soft, track, scrim colours), `Dropdowns.qml` (singleton registry: `add()` a panel, `closeOthers()`, `anchor()`/`centre()` for placement), `DropCard.qml` (the card, shadow, placement and eased height), `KeyHints.qml` (the drop-downs' footer: hints that wrap, or a wrapped `message` in their place), `LockedList.qml` (loads `locked.json` for an area), `NixTag.qml`, `SectionHeader.qml` |
 | `launcher/` | `Calc.qml` (parser, evaluator), `Emoji.qml` (lazy list, search), `emoji.txt` (generated) |
 | `notifications/` | `Card.qml` (one card), `Entry.qml` (timeout, replacement, leave animation) |
-| `network/` | `NetworkPanel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml` |
+| `network/` | `NetworkPanel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml`, `PasswordModal.qml` (the Wi-Fi password modal: masked field, `take()` hands the text over once and empties it), `wifi.js` (all Wi-Fi decisions: section state, rows and order, security words, password check, the join/forget/cancel machine and its effects, hints, details, bar look; node-tested) |
 | `audio/` | `AudioPanel.qml` (shared singleton), `Stack.qml` (the DAC drawing), `Modi.qml` (`/proc/asound` reads), `Graph.qml` (`pw-dump`), `Level.qml` (level bar), `NoSignal.qml` (singleton, runs always) |
 | `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions; node-tested) |
 | `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode; node-tested), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
@@ -429,7 +435,10 @@ blind, sockets' power through `desk-mqtt`; live, not read-only), fleet panel
 (Super+G: each host's system, comin, next boot, one chip, and switch, boot,
 mode, reboot, diff, ssh and output through `desk-fleet`; `readOnly: false` in
 the repository, read-only live until the deploy), Tailscale panel (Super+V:
-this computer and every device in the tailnet, read-only).
+this computer and every device in the tailnet, read-only), Wi-Fi in the
+network panel (radio, scan, join, forget, the password modal, the bar mark;
+the radio off at every boot through `wifi-radio-off-at-boot` in
+`hosts/BrightFalls/networking.nix`).
 
 **To do at the next deploy:**
 - The fleet panel goes live only by hand: the live
@@ -482,13 +491,20 @@ was written; check the reports of any newer work for its own.
   (F5, J, K, Home, End, Enter, Y, 2, Esc, T on Nexus). Every other state,
   overlay and chip is simulated with fixtures; O, the arrows and Super+V in
   a reloaded session not done.
+- Wi-Fi: simulated only, through a data override in the live shell since
+  removed: all twelve designed states, the password modal, the bar's three
+  cases, and every key and event sequence (driven through the panel's key
+  function, not real key presses). Seen for real only `No Wi-Fi device.`
+  before the driver was enabled. Never done: a real radio toggle, scan,
+  join, wrong password or forget; real key presses in the panel; the modal
+  with keyboard focus; the 30 s watchdog firing on its own. Upstream
+  Quickshell has open crash reports around toggling the radio and access
+  points coming and going; whether 0.3.2 has them fixed is not confirmed,
+  so the first W is also the first test of those.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 
 **Not built:**
-- Wi-Fi in the network panel. Decided design: off at boot; scan, join,
-  forget; the password in the centred modal; the Wi-Fi boot specialisation
-  removed.
 - Friendly launcher category names, scrolling for panels taller than the screen (the audio panel runs
   off the bottom with many programs).
 
@@ -497,8 +513,9 @@ working live; the ones that change what the user sees need the user's
 look first). Its footer, height animation, naming, leftover and colour items
 are done; what is left:
 1. **Pure logic out of QML into node-tested `.js`** (2 to 3 h a panel):
-   Network (nmcli/route/duplex parsing, the `speedtests.jsonl` reduction,
-   done twice, `age()`), Audio (`facts()`, `details()`, path text),
+   Network's wired half (nmcli/route/duplex parsing, the `speedtests.jsonl`
+   reduction, done twice, `age()`; Wi-Fi's decisions are already in
+   `network/wifi.js`), Audio (`facts()`, `details()`, path text),
    Cheatsheet (grouping and column balancing), Bluetooth (`rowSub()`,
    `details()`, codec names), `SpeedTest.qml`'s parsers.
 2. **Shared drop-down window, row selection, bar open mark** (about 2 h):
