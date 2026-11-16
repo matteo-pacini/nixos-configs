@@ -31,11 +31,19 @@ in
         touch $out
       '';
 
-  herdr-js = pkgs.runCommand "herdr-js-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
-    cd ${src}/tests/js
-    node --import ./hooks.mjs --test
-    touch $out
-  '';
+  herdr-js =
+    pkgs.runCommand "herdr-js-tests"
+      {
+        nativeBuildInputs = [
+          pkgs.nodejs
+          pkgs.git
+        ];
+      }
+      ''
+        cd ${src}/tests/js
+        node --import ./hooks.mjs --test
+        touch $out
+      '';
 
   herdr-scripts =
     pkgs.runCommand "herdr-script-tests"

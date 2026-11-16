@@ -58,6 +58,12 @@ symlinks, and activation copies each enabled mod into
   exports `SELF` (this machine's mesh principal), `HOSTS` (every mesh host
   by principal: label, device, OS). `space-cards` draws `HOSTS`. A new mesh host needs an entry in
   `hostKinds` in `workbench.nix`, which an assertion enforces.
+- **Back to the default branch** (`lib/back.js`, `mods/back-to-master`):
+  `space-menu`'s item opens the dialog. Its probes and the run are each one
+  `sh -c`, so a remote space costs one round trip per step. The run (save,
+  switch, fast-forward, delete) must stay one exec: Esc closes the dialog
+  even while it runs, and that ends the dialog's tasks but not an exec
+  already started.
 - **Trying a change live:** edit the installed copy under
   `~/.config/herdr-app/mods/`. The app reloads a mod on save, and a broken
   save keeps the old version running and shows up in `herdr-app status`'s
@@ -113,6 +119,9 @@ CI runs all three on pull requests (the `herdr-tests` job in
   `mock({ exec, hc, ... })` and inspects `calls`. A herdr function with no
   handler throws, so a test can't depend on one by accident. To run them
   locally: `cd tests/js && node --import ./hooks.mjs --test`.
+  `back.test.mjs` is the exception: its `exec` runs real `sh` and `git` in
+  throwaway repos, so `lib/back.js`'s scripts are tested against git itself
+  (the check has `git` on its PATH).
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
   `hc` that logs its arguments.
 - **Not covered:** drawing (there's no headless gpui), and the parts of

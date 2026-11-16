@@ -21,6 +21,8 @@ The **Herdr** design canvas is the visual reference:
   - Agents and pane headers (`agent-list`, `pane-header`);
   - Menus and dialogs.
 - Its **Side panels** page holds `nixpkgs-prs`.
+- Its **Back to master** page holds the space menu's item and the
+  `back-to-master` dialog in every state.
 - Its **PR and CI status** page holds the status bar (`status-bar`) with
   the focused terminal's branch, PR and checks, and the two-line sidebar
   rows, as built.
@@ -169,6 +171,9 @@ Gotchas from doing this:
 - **Closing an overlay ends its tasks.** A `cx.spawn` started by a dialog
   stops when the dialog closes, so a dialog that runs a job closes itself only
   once the job is done.
+- **Esc closes a dialog that is still working.** Its `cx.spawn` tasks end,
+  but an `exec` already running finishes. Work that must not stop halfway
+  goes in one `sh -c` exec, with nothing after it that matters.
 - **`exec` limits.** It has a 30 s limit and no stdin. Wrap anything that
   needs a pipe, an env var or a temp index in `sh -c`, as the
   `lib/agents.js` `INSTALLED` script does.
