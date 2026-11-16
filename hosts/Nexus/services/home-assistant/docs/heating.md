@@ -15,7 +15,7 @@ Written 2026-11-13. The live pieces were last seen between 2026-11-08 and 2026-1
 | Heating plan | UI helpers, a Scheduler timeline and a UI automation | Sets every valve from the time of day and who is home. See [heating-plan.md](heating-plan.md). |
 | Scenes | UI | Named sets of room setpoints. Superseded by the heating plan on 2026-11-14, kept until it has run for a few days; their dashboard tiles are gone. |
 | Schedules | UI, Scheduler integration | They appear as `switch.schedule_*`. Only the heating plan timeline is left; the old scene schedules were deleted on 2026-11-14. |
-| Self-test | UI scripts and helpers | A test run of the valves, on its own dashboard tab. |
+| Self-test | UI scripts and helpers | A test run of the valves and the boiler relay, on its own dashboard tab. See "Self-test" below. |
 
 ## What to know before changing anything
 
@@ -23,7 +23,7 @@ Written 2026-11-13. The live pieces were last seen between 2026-11-08 and 2026-1
 - **Why `boiler_calling_for_heat` exists.** The relay goes `unavailable` for about 40 seconds on every HA restart, which would split one boiler run into two on a timeline. A trigger-based sensor only moves on a real on or off and restores its state across restarts.
 - **Editing a scene does not move the valves.** A saved scene applies the next time it runs. To change what the house is doing now, set the valves as well.
 - **Some rooms have a minimum setpoint for damp reasons.** Ask before lowering any room's floor in the heating plan.
-- **A schedule fires whatever the self-test is doing.** The self-test's lock only greys out dashboard buttons. The heating plan behaves the same way.
+- **The self-test pauses the heating plan and Boiler Control.** It turns both automations off while it runs and back on when it restores. Anything else that writes to a valve still gets through.
 - **The plan wins at the next change.** A valve set by hand holds until the next period, presence change or level change.
 
 ## TRVZB behaviour
@@ -41,6 +41,32 @@ Firmware 1.4.4 through Zigbee2MQTT 2.14.3. The external temperature source and i
 1. Compare the TRV's `current_temperature` with the room sensor. If they differ, the TRV is on its own sensor; see "Things to know when debugging" in [blueprints.md](blueprints.md).
 2. Check whether the Zigbee mesh is alive; see [zigbee-watchdog.md](zigbee-watchdog.md). The boiler relay is a Zigbee device, so a dead mesh means no call for heat can change.
 3. Check the heating plan: the current period, who counts as home, and whether a manual change was overwritten at the last period change. See [heating-plan.md](heating-plan.md).
+
+## Self-test
+
+All in HA. It checks that each radiator valve opens and raises the call for heat, and that the boiler relay switches. A run takes 10 to 15 minutes.
+
+| Piece | What it is |
+|-------|------------|
+| `script.heating_self_test` | The run. Refuses to start if a restore is still in progress, or a valve or the relay is unavailable. |
+| `script.heating_self_test_restore` | Puts everything back. The run ends with it, and Stop runs it. |
+| `automation.heating_self_test_watchdog` | Runs the restore if the script stops early, or if HA restarts in the middle of a test. |
+| `input_boolean.heating_self_test_active` | On from the snapshot until the restore has finished. |
+| `input_text.heating_self_test_snapshot` | Each valve's mode and setpoint, saved before anything is switched off. |
+| `input_text.heating_self_test_results` | Eight codes: six valves, the relay, the restore. `-` not reached, `run` in progress, `ok` passed, anything else names what failed. |
+| `input_text.heating_self_test_status` | One line of text: the current step, or the verdict with its time. |
+
+**The steps.**
+1. **Prepare.** Save the snapshot. Turn off `automation.boiler_off` (Boiler Control) and `automation.heating_plan`. Switch the relay off and every valve off. Wait up to 1 min for `binary_sensor.needs_heating` to clear; if it does not, restore and fail.
+2. **Each valve in turn.** Set it to heat at its maximum, wait up to 2 min for it to report heating and 30 s for the call for heat, then switch it off and wait for both to clear.
+3. **Relay.** While the last valve is open, switch the relay on for 20 s and off again.
+4. **Restore.** Turn both automations back on, put every valve back to its saved mode and setpoint, and set the relay to match the call for heat. If a heating plan input changed during the test (the period, the plan switch, a level, who is home, the TV flag), the plan is then run once, so the valves end on the current plan and not on the snapshot.
+
+**The dashboard card** on the Climate dashboard's Self-test tab is one `button-card`. It shows the last verdict, a nine-segment track (Prepare, the six valves, Relay, Restore) and the script's status line. The script reports no code for Prepare, so the card reads that segment from the status line: it relies on the status starting with "Preparing", and on the wording of the prepare failure. Tapping the card starts a test, or stops a running one; both ask to confirm. The pattern is in the Nocturne design system as the RunCard component.
+
+**Reading a failed valve.** `skip`: the call for heat was already on before the valve opened. `open`: it did not report heating within 2 min. `demand`: it opened but the call for heat did not come on. `close`: it did not stop heating. `clear`: the call for heat stayed on after it closed. For the relay, `on` and `off` name the switch that did not happen.
+
+**Not verified (2026-11-16).** The scripts were changed that day (the heating plan is paused, the prepare wait is 1 min, the plan re-runs after a restore when its inputs changed) and the card was replaced. No test has been run since. The card has only been seen showing the last pass from October.
 
 ## Venting advice
 
