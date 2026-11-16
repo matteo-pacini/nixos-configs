@@ -284,7 +284,9 @@ Each was learned the hard way or is one mistake away.
   Bluetooth agent: QML cannot export one) or a connection must be held and
   its loss reported (`desk-mqtt`, the MQTT client). Read when shown, never poll while
   hidden; measure the cost (`/proc/<pid>/stat` of the shell over 60 s), don't
-  assume it.
+  assume it. The one exception is the Tailscale bar item: `tailscale status
+  --json --peers=false` every 30 s while the panel is closed, chosen by the
+  user so the bar shows trouble without opening the panel.
 - **Say only what is true.** No figure without a source (no link
   saturation, no CPU-only power); no state claimed that is not observed
   ("playing here" only while a node is linked); a line for what is
@@ -298,7 +300,7 @@ Each was learned the hard way or is one mistake away.
 - **No truncation of information.** Only a name may elide; everything else
   wraps.
 - **Anatomy of a drop-down panel** (network, audio, calendar, system,
-  Bluetooth, office, fleet): a root component, one line in `shell.qml`; a small singleton
+  Bluetooth, office, fleet, tailscale): a root component, one line in `shell.qml`; a small singleton
   shared with the bar for placement and open state; an IPC target with
   `toggle`; a bind through `bind()`; footer key hints; Overlay layer,
   exclusive keyboard, namespace `desk-<name>`, card under its bar item
@@ -359,7 +361,7 @@ component. Root components, one per file:
 | `Osd.qml` | The pill |
 | `Cheatsheet.qml` | Keybinding sheet from `hyprctl -j binds` |
 | `SessionMenu.qml`, `Polkit.qml` | Centred modals |
-| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml` | The seven drop-down panels (each the biggest file of its feature) |
+| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml`, `Tailscale.qml` | The eight drop-down panels (each the biggest file of its feature) |
 | `Lockscreen.qml`, `LockState.qml` | The shell's side of the lock: IPC `lockscreen`, hold, sleep inhibitor; the launch command and `held` state |
 | `lock.qml` | The lock process itself (a separate Quickshell config) |
 
@@ -377,7 +379,7 @@ Directories (`import qs.<dir>`):
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
 | `fleet/` | `FleetShared.qml` (shared singleton: `screen`, `toggleRequested`, `said`, `readOnly`, runs `desk-fleet` and restarts it, `fleet` state, `send()`, `open`/`closed` to the helper), `fleet.js` (all fleet decisions: applying helper events, order, header, pipeline, row views and folding, info lines, keys lit, questions, key to command, navigation, footer texts, bar view; node-tested) |
-| `tailscale/` | `tailscale.js` (all Tailscale panel decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested). The panel's QML is not built yet |
+| `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -392,9 +394,9 @@ The lock (`lock.qml`, `lock/`) imports only `Theme.qml`, so a change to
 Names to know: the singleton each panel shares with the bar is
 `network/NetworkPanel.qml`, `audio/AudioPanel.qml`,
 `calendar/CalendarPanel.qml`, `system/SystemPanel.qml`,
-`bluetooth/BluetoothShared.qml` and `office/OfficeShared.qml` (which also
+`bluetooth/BluetoothShared.qml`, `office/OfficeShared.qml` (which also
 runs the helper, so the bar has the light and the watts while the panel is
-closed). "Panel" does not mean placement only:
+closed) and `tailscale/TailscaleShared.qml`. "Panel" does not mean placement only:
 `CalendarPanel` holds the export and the minute clock, and
 `BluetoothShared` the adapter, batteries and remembered answers, because the
 bar, the OSD and the reminders need them while the panel is closed.
@@ -424,7 +426,8 @@ tray right-click menus drawn by the shell (`tray/`), office panel (light,
 blind, sockets' power through `desk-mqtt`; live, not read-only), fleet panel
 (Super+G: each host's system, comin, next boot, one chip, and switch, boot,
 mode, reboot, diff, ssh and output through `desk-fleet`; `readOnly: false` in
-the repository, read-only live until the deploy).
+the repository, read-only live until the deploy), Tailscale panel (Super+V:
+this computer and every device in the tailnet, read-only).
 
 **To do at the next deploy:**
 - The fleet panel goes live only by hand: the live
@@ -435,6 +438,7 @@ the repository, read-only live until the deploy).
   itself and restarts the helper without `--read-only`).
 - `hyprctl reload` (then `hyprctl configerrors`) for Super+G, and Super+O
   from the office work, which the running Hyprland has not loaded yet.
+- `hyprctl reload` (then `hyprctl configerrors`) for Super+V.
 - `~/.config/mako/` is left over from before the shell was the notification
   daemon (`desk-sync` leaves dropped files alone); delete it.
 - `systemctl --user restart quickshell`: `shell.qml` no longer has
@@ -472,14 +476,14 @@ was written; check the reports of any newer work for its own.
   any real switch, boot, mode change, reboot or attach to a real session;
   the user's first switch is the first. The helper's actions are proven only
   against fakes (`fleet-helper`).
+- Tailscale panel: seen for real only Running, with an agent's real keys
+  (F5, J, K, Home, End, Enter, Y, 2, Esc, T on Nexus). Every other state,
+  overlay and chip is simulated with fixtures; O, the arrows and Super+V in
+  a reloaded session not done.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 
 **Not built:**
-- The Tailscale panel's QML (Super+V, read-only, every device; design
-  approved): `tailscale/TailscaleShared.qml`, `Tailscale.qml`, its bar item
-  and bind. Its decisions (`tailscale/tailscale.js`, `tailscale-panel`
-  check) and the mesh-host file are built.
 - Wi-Fi in the network panel. Decided design: off at boot; scan, join,
   forget; the password in the centred modal; the Wi-Fi boot specialisation
   removed.

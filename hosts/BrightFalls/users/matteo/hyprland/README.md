@@ -20,7 +20,7 @@ work) is in [AGENTS.md](AGENTS.md).
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
-  [Tray menu](#tray-menu)
+  [Tailscale panel](#tailscale-panel), [Tray menu](#tray-menu)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
@@ -171,8 +171,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The seven drop-down panels (network, audio, calendar, system, Bluetooth,
-office, fleet) behave alike: each opens under its bar item on that bar's monitor (or the
+The eight drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet, tailscale) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -232,7 +232,8 @@ switch); the focused window's title on that monitor; the clock (see
 right click opens the item's menu, see [Tray menu](#tray-menu)), the fleet
 item (a server glyph and the number of hosts that want attention, see
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
-[System panel](#system-panel)), Bluetooth, network, and audio. The audio item
+[System panel](#system-panel)), Bluetooth, the Tailscale item (see
+[Tailscale panel](#tailscale-panel)), network, and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
 steps, middle click opens the audio panel; a red dot on it means an input
@@ -785,6 +786,38 @@ chip, the cases the old herdr panel read wrong, the questions and the mode
 chooser, action running, ok, failed and the sudo message, the GitHub banner,
 long texts. **Not done yet**: real key presses and clicks, Super+G in a
 reloaded session, O, and any real switch, boot, mode change or reboot.
+
+### Tailscale panel
+
+`Tailscale.qml`, with `tailscale/TailscaleShared.qml` (shared with the bar:
+placement, the `tailscale status` calls, the last answer, the mesh-host file)
+and `tailscale/tailscale.js` (every decision, see [Tailscale: status and mesh
+hosts](#tailscale-status-and-mesh-hosts)). Super+V, or a click on the bar
+item between Bluetooth and Network, opens it. It is read-only: it runs only
+`tailscale status --json` and never writes to the daemon.
+
+- **Bar item**: the Tailscale glyph, in the foreground while on, grey while
+  off, orange when something wants attention, purple with the open mark
+  while the panel is open.
+- **Contents**: the well shows this computer; MY HOSTS are the peers in
+  `~/.local/share/desk/tailscale/hosts.json`, under their repository names;
+  OTHER DEVICES are every other peer. Without the mesh-host file every peer
+  is under OTHER DEVICES and T is never offered.
+- **Keys**: ↑↓ J K Home End select, Enter unfolds the details, Y opens the
+  copy chooser (1 name, 2 DNS name, 3 IPv4, 4 IPv6; in the logged-out states
+  Y copies `sudo tailscale login`), T opens Ghostty with `ssh <alias>` on an
+  online mesh host that runs sshd, O opens the admin console (the login page
+  while a login is pending), F5 reads now, Esc goes back or closes.
+- **Polling**: `--peers=false` at shell start and every 30 s while the panel
+  is closed (for the bar item); the full call on open, every 5 s while open
+  and on F5; one call at a time; a call still running after 10 s gets
+  SIGTERM, then SIGKILL 2 s later.
+
+**Seen for real** (by the agent that built it, with the real daemon):
+Running, with real keys (F5, J, K, Home, End, Enter, Y, 2, Esc, T on
+Nexus). **Simulated** (fixture output through the real call): every other
+state, overlay and chip. **Not done yet**: O, the arrows, and Super+V in a
+reloaded session.
 
 ### Tray menu
 
