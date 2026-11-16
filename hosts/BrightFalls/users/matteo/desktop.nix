@@ -21,12 +21,18 @@ in
 {
   dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
 
+  # XCursor only: the package has no hyprcursor files, so hyprcursor stays off.
+  home.pointerCursor = {
+    enable = true;
+    name = "Dracula-cursors";
+    package = pkgs.dracula-theme;
+    size = 24;
+    gtk.enable = true;
+    x11.enable = true;
+  };
+
   gtk = {
     enable = true;
-    cursorTheme = {
-      name = "Adwaita";
-      package = pkgs.gnome-themes-extra;
-    };
     # GTK 2/3 theme
     theme = {
       name = "Adwaita-dark";

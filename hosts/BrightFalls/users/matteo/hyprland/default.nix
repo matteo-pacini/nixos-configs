@@ -68,9 +68,13 @@ in
   '';
 
   # Sourced by UWSM only when it starts Hyprland. The links come from udev,
-  # because card numbers change between boots.
+  # because card numbers change between boots. The cursor variables are here
+  # because UWSM sources only /etc/profile and ~/.profile, and neither loads
+  # Home Manager's session variables.
   xdg.configFile."uwsm/env-hyprland".text = ''
     export AQ_DRM_DEVICES=/dev/dri/dgpu:/dev/dri/igpu
+    export XCURSOR_THEME=${config.home.pointerCursor.name}
+    export XCURSOR_SIZE=${toString config.home.pointerCursor.size}
   '';
 
   # Commands the binds in user/hypr/bindings.lua run.
