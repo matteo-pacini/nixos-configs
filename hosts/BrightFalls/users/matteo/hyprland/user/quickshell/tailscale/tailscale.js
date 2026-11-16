@@ -580,7 +580,8 @@ function overlayStrips(st, mesh, now) {
 
 function versionLine(st) {
     const cv = isObject(st.ClientVersion) ? st.ClientVersion : null;
-    if (cv && cv.RunningLatest === false && typeof cv.LatestVersion === "string" && cv.LatestVersion)
+    // RunningLatest is omitted when false (tailcfg.ClientVersion).
+    if (cv && !cv.RunningLatest && typeof cv.LatestVersion === "string" && cv.LatestVersion)
         return `${cv.LatestVersion} exists · comes with a flake update`;
     return "";
 }

@@ -28,10 +28,10 @@
     "ExitNodeStatus": { "ID": "nGone", "Online": false, "TailscaleIPs": [] }
   },
   "newer": {
-    "ClientVersion": { "RunningLatest": false, "LatestVersion": "1.106.0" }
+    "ClientVersion": { "LatestVersion": "1.106.0" }
   },
   "urgent": {
-    "ClientVersion": { "RunningLatest": false, "LatestVersion": "1.106.0", "UrgentSecurityUpdate": true }
+    "ClientVersion": { "LatestVersion": "1.106.0", "UrgentSecurityUpdate": true }
   },
   "latest": {
     "ClientVersion": { "RunningLatest": true }
@@ -40,6 +40,6 @@
     "Health": ["One warning."],
     "Self": { "Online": false, "KeyExpiry": "2026-11-21T12:00:00Z" },
     "ExitNodeStatus": { "ID": "nNexus", "Online": false, "TailscaleIPs": [] },
-    "ClientVersion": { "RunningLatest": false, "LatestVersion": "1.106.0", "UrgentSecurityUpdate": true }
+    "ClientVersion": { "LatestVersion": "1.106.0", "UrgentSecurityUpdate": true }
   }
 }
