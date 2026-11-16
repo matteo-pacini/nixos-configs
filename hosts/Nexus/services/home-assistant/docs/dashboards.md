@@ -32,7 +32,26 @@ These are the owner's stated preferences.
 - **Card visibility by template.** A card with a `condition: template` visibility rule was hidden unconditionally. Use `state` or `numeric_state` conditions, or a template binary sensor with a state condition. Seen on HA 2026.8.3; not re-tested on later versions.
 - **Scheduler card.** It needs the Scheduler integration's config entry, which is added in the UI; without it the card reports that it cannot reach the component. It only lists schedules for the entity domains its config includes, so a schedule for a new kind of entity is invisible until that domain is added. Its "on workdays" option needs a workday sensor, which this HA does not have, so tick the days.
 - **Bubble Card pop-ups are standalone.** Since Bubble Card 3.2.0 a pop-up is one `custom:bubble-card` card with `card_type: pop-up`, a `hash`, and its content under `cards:`. The legacy form, where a pop-up card at the top of a section swallows the section's other cards, still renders but shows a "needs to be migrated" banner. A standalone pop-up takes no space where it sits, so it can go at the end of any section; open it with a `navigate` tap action to its hash. First used on the Climate dashboard's Inside and Outside chips, 2026-11-14, on Bubble Card 3.4.2.
+- **A `button-card` is one tap target.** HTML returned by a `custom_fields` template cannot carry its own tap action, so a pill or button drawn there only looks tappable. For a control inside a card, give the field a real card: `custom_fields: { name: { card: { type: custom:button-card, ... } } }`, and place it with `styles.grid`. Seen on 2026-11-16.
+- **Templates in an embedded card run in the parent's context.** Inside `custom_fields.<name>.card`, `entity` is the parent card's entity, not the embedded card's own. A template there that reads `entity.state` gets the wrong entity and fails without an error. Read `states['<entity_id>'].state` instead. Seen on 2026-11-16.
+- **`button-card` actions.** `perform-action` works, with `perform_action`, `target`, `data` and `confirmation.text`, and each of those can be a `[[[ ]]]` template. Keyframes for an animation go in `extra_styles`; inline styles cannot define them. Seen on 2026-11-16.
 - **Camera cards.** Where a camera's live stream fails in HA but its snapshots load, show a refreshing snapshot. The cause was not investigated.
+
+## Composite cards
+
+Three places use one `button-card` in place of a group of tiles. Each is a JavaScript template that returns HTML, and each pattern is a component in the Nocturne design system.
+
+| Card | Where | Design system component | Notes |
+|------|-------|-------------------------|-------|
+| Heating plan | Climate, first tab | PlanMatrix | See [heating-plan.md](heating-plan.md). |
+| Heating self-test | Climate, Self-test tab | RunCard | See "Self-test" in [heating.md](heating.md). |
+| Fountain | Cats, Fountain tab | DeviceCard | Below. |
+
+**The fountain card** replaced thirteen tiles on 2026-11-16: the fountain's state, its maintenance countdowns and resets, its connection tiles, and the today and yesterday drinking tiles. It has a stylised drawing whose parts follow entities: the tank level and its refill mark, the stream while the pump runs, the dot for the indicator light, the battery. The drawing was made for this dashboard; it is not the manufacturer's artwork.
+- The mode pills, the light pill and the two Reset buttons are embedded cards, one per control. A mode pill calls `select.select_option`. The light pill presses the fountain's turn-on or turn-off button, since the integration has no switch for the light. Each Reset asks to confirm.
+- The refill mark's height comes from the capacity implied by the two water sensors (millilitres and percent), because no entity reports the capacity.
+- The automation tiles, the two drinking charts and the 48-hour chart are still separate cards.
+- Not verified (2026-11-16): the mode pills and the Reset buttons have not been tapped, and the card has not been seen with the pump stopped, on battery, or with unavailable sensors. The light pill was tested both ways.
 
 ## Charts
 
