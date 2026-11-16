@@ -27,6 +27,7 @@ ShellRoot {
     BluetoothPanel {}
     Office {}
     Fleet {}
+    Tailscale {}
     TrayMenu {}
     Reminders {}
     Lockscreen {}
