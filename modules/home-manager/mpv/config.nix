@@ -38,6 +38,16 @@ in
         input-ar-rate = 20;
       }
 
+      # OSD theme: Dracula, the palette in the BrightFalls desktop's Theme.qml.
+      # osd-color also colours the OSD bar, which has no colour option of its own.
+      {
+        osd-font = "Fira Sans";
+        osd-color = "#F8F8F2";
+        osd-outline-color = "#282A36";
+        osd-selected-color = "#BD93F9";
+        osd-selected-outline-color = "#282A36";
+      }
+
       # GPU video output (platform-specific)
       videoOutput
 

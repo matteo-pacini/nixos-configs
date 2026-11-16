@@ -24,11 +24,47 @@ let
     "fonts/GandhiSans-Italic.otf"
     "fonts/GandhiSans-Bold.otf"
     "fonts/GandhiSans-BoldItalic.otf"
+    "fonts/FiraSans-Regular.otf"
+    "fonts/FiraSans-Bold.otf"
     "script-opts/thumbfast.conf"
     "script-opts/smart-native-screenshot.conf"
+    "script-opts/console.conf"
+    "script-opts/context_menu.conf"
+    "script-opts/stats.conf"
   ];
 
+  # Library browser theme, merged by the shim over its built-in default.
+  # SUBTLE_FG keeps the shim's stock grey: Dracula's comment colour is too
+  # faint for the small metadata text it labels. browse_bg is the window
+  # colour while browsing only; the shim restores black for video.
+  draculaTheme = {
+    name = "Dracula";
+    palette = {
+      WINDOW_BG = "282a36";
+      CARD_BG = "44475a";
+      PANEL_BG = "44475a";
+      PLACEHOLDER_BG = "44475a";
+      BUTTON_BG = "44475a";
+      BUTTON_ACTIVE = "6272a4";
+      ENTRY_BG = "44475a";
+      BORDER = "6272a4";
+      TEXT_FG = "f8f8f2";
+      SUBTLE_FG = "9aa0a6";
+      ACCENT = "bd93f9";
+      ACCENT_HOVER = "ff79c6";
+      ACCENT_SOFT = "44475a";
+      ACCENT_FG = "282a36";
+      FAV_RED = "ff5555";
+      OK_GREEN = "50fa7b";
+      WARN_AMBER = "ffb86c";
+      PROGRESS_TRACK = "44475a";
+      WATCHED_GREEN = "50fa7b";
+    };
+    browse_bg = "#282a36";
+  };
+
   baseConf = {
+    theme = "dracula";
     shader_pack_enable = false;
     transcode_hdr = false;
     transcode_dolby_vision = false;
@@ -61,12 +97,16 @@ in
     home.packages = [ pkgs.jellyfin-mpv-shim ];
 
     # The shim runs mpv with its own config dir, so ~/.config/mpv is never read.
-    home.file = lib.listToAttrs (
-      map (f: {
-        name = "${shimConfigDir}/${f}";
-        value.source = config.xdg.configFile."mpv/${f}".source;
-      }) mpvFiles
-    );
+    home.file =
+      lib.listToAttrs (
+        map (f: {
+          name = "${shimConfigDir}/${f}";
+          value.source = config.xdg.configFile."mpv/${f}".source;
+        }) mpvFiles
+      )
+      // {
+        "${shimConfigDir}/themes/dracula.json".text = builtins.toJSON draculaTheme;
+      };
 
     # Seed conf.json only if missing: the shim rewrites it on every settings
     # save, so it has to stay a writable file. Login tokens live in users.json.

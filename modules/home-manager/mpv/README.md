@@ -25,7 +25,7 @@ the table is `JySzE/SoM-MPV-Config`.
 |------------|----------|-----------|---------------------|
 | `assets/fonts/GandhiSans-*.otf` | SoM `fonts/` | `b6b94c216b` | None |
 | `assets/menu.conf` | SoM `menu.conf` (1.0) | `b6b94c216b` | Open > Clipboard runs `update-clipboard text;` first, as mpv 0.42's stock `etc/menu.conf` does |
-| `assets/scripts/osc.lua` | SoM `scripts/osc.lua`, itself [po5/thumbfast](https://github.com/po5/thumbfast) branch `vanilla-osc`, `player/lua/osc.lua` | `b6b94c216b` (= vanilla-osc `9d78edc167`) | None |
+| `assets/scripts/osc.lua` | SoM `scripts/osc.lua`, itself [po5/thumbfast](https://github.com/po5/thumbfast) branch `vanilla-osc`, `player/lua/osc.lua` | `b6b94c216b` (= vanilla-osc `9d78edc167`) | Dracula colours in `osc_styles`: `box`, `timePosBar` outline and `wcBar` in background, `elementDown` in comment, and a new `seekbarFillBar` style (purple) that the bottombar `seekbar` uses instead of `timecodesBar` |
 | `assets/scripts/persist-properties.lua` | SoM `scripts/persist-properties.lua`, SoM's edit of [d87/mpv-persist-properties](https://github.com/d87/mpv-persist-properties) | `b6b94c216b` | None |
 | `assets/scripts/smart-native-screenshot.lua` | SoM branch `main-linux-wip`, `scripts/smart-native-screenshot.lua` (Linux 1, based on 1.4) | `0146b7a44b` | None |
 | `assets/shaders/nnedi3-nns128-win8x6.hook` | SoM `shaders/`, itself [bjin/mpv-prescalers](https://github.com/bjin/mpv-prescalers) `master` | `b6b94c216b` (identical to prescalers `b3f0a59d68`) | None |
@@ -35,6 +35,27 @@ the table is `JySzE/SoM-MPV-Config`.
 
 `thumbfast` and `autoload` come from nixpkgs (`pkgs.mpvScripts`), not from
 SoM, and update with the flake.
+
+## Theme
+
+The player chrome uses Dracula, with the palette of the BrightFalls desktop
+(`hosts/BrightFalls/users/matteo/hyprland/user/quickshell/Theme.qml`) and
+purple as the accent:
+
+- `config.nix`: OSD font (Fira Sans, shipped into `~~/fonts` by `scripts.nix`
+  so every host has it), text and outline colours, and the selected-item
+  colour. The OSD bar has no colour option and follows the OSD text colour.
+- `scripts.nix`: `osc.boxalpha`, and the colours of the console and select
+  menus, the right-click context menu and the stats graphs.
+- `assets/scripts/osc.lua`: the OSC's colours are hard-coded, so they are a
+  local modification (see the table above).
+- `jellyfin-shim.nix`: `themes/dracula.json` for the shim's library browser,
+  selected in the seeded `conf.json`. An existing `conf.json` is not changed;
+  pick the theme once in the shim's settings.
+
+Not themed, on purpose: subtitles (pure white), the window background and
+letterbox bars (black; no `background-color`), the OSC idle logo (mpv's
+brand colours), and the shim's player HUD panel (hard-coded in the shim).
 
 ## Checking for updates
 
