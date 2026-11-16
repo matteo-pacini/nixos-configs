@@ -156,5 +156,19 @@
         GI_SCANNER_DISABLE_CACHE = "1";
       };
     });
+
+    # jellyfin-mpv-shim, all platforms: the shim's health check only checks
+    # that its DeviceId is listed in GET /Sessions, but the server keeps a
+    # session listed after the WebSocket dies while dropping remote control
+    # with it. The half-dead session then reads as healthy forever: the
+    # device stays in the server's device list but vanishes from the cast
+    # menu. The patch also requires SupportsRemoteControl, so the existing
+    # reconnect path runs. See the patch header.
+    # WAIT-FOR closed: jellyfin/jellyfin-mpv-shim#461
+    jellyfin-mpv-shim = super.jellyfin-mpv-shim.overridePythonAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        ../patches/jellyfin-mpv-shim/001-health-check-remote-control.patch
+      ];
+    });
   }
 )

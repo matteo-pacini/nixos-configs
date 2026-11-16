@@ -80,6 +80,10 @@
   custom.hex.enable = true;
   custom.phone.scrcpy.enable = true;
   custom.mpv.enable = true;
+  custom.mpv.jellyfinShim.enable = true;
+  # The shim closes to the tray only when a tray host is up, and the
+  # Quickshell bar is it.
+  systemd.user.services.jellyfin-mpv-shim.Unit.After = [ "quickshell.service" ];
 
   dracula.eza.enable = true;
   dracula.fzf.enable = true;

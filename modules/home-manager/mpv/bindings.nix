@@ -9,9 +9,6 @@ in
 {
   config = lib.mkIf cfg.enable {
     programs.mpv.bindings = {
-      # Right-click → context menu
-      MBTN_RIGHT = "script-binding select/menu";
-
       # Playlist nav
       F12 = "playlist-next";
       F11 = "playlist-prev";
@@ -21,7 +18,7 @@ in
       PGDWN = "add chapter -1";
 
       # Aspect / rotation / ICC
-      a = ''cycle-values video-aspect-override "16:9" "4:3" "2.35:1" "-1"'';
+      a = ''cycle-values video-aspect-override "16:9" "4:3" "2.35:1" "no"'';
       "Ctrl+r" = "cycle-values video-rotate 90 180 270 0";
       "Ctrl+I" = "cycle icc-profile-auto";
 
