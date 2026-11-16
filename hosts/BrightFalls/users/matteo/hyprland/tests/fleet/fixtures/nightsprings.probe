@@ -1,0 +1,234 @@
+@@booted
+/private/var/run/booted-system
+@@current
+/nix/store/n703hysg4lf7kl7wzpvxlva20siqrl32-darwin-system-26.11.ff0e21a
+@@bkernel
+@@ckernel
+@@profile
+@@efi
+@@mode
+switch
+@@status
+{
+ "is_suspended": false,
+ "builder": {
+  "is_evaluating": false,
+  "is_building": false,
+  "generation": {
+   "uuid": "d4155daf-9d91-4de6-ab9e-42f5508da481",
+   "selected_branch_name": "deploy",
+   "selected_branch_is_testing": false,
+   "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "out_path": "/nix/store/n703hysg4lf7kl7wzpvxlva20siqrl32-darwin-system-26.11.ff0e21a",
+   "eval_err": "",
+   "build_status": "built",
+   "build_err": "",
+   "eval_started_at": "2026-11-16T08:05:28.304459Z",
+   "eval_ended_at": "2026-11-16T08:05:28.682180Z",
+   "build_started_at": "2026-11-16T08:05:28.682198Z",
+   "build_ended_at": "2026-11-16T08:05:28.682198Z"
+  }
+ },
+ "deployer": {
+  "is_deploying": false,
+  "is_suspended": false,
+  "operation": "",
+  "generation_to_deploy": null,
+  "deployment": {
+   "status": "done",
+   "operation": "switch",
+   "operation_submitted": "switch",
+   "created_at": "2026-11-16T08:04:20.155543Z",
+   "ended_at": "2026-11-16T08:04:27.596807Z",
+   "error_msg": "",
+   "current_inhibitors": {},
+   "new_inhibitors": {},
+   "generation": {
+    "uuid": "87da9460-f2db-4cbe-bc98-7e63b736369a",
+    "selected_branch_name": "deploy",
+    "selected_branch_is_testing": false,
+    "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+    "out_path": "/nix/store/n703hysg4lf7kl7wzpvxlva20siqrl32-darwin-system-26.11.ff0e21a",
+    "eval_err": "",
+    "build_status": "built",
+    "build_err": "",
+    "eval_started_at": "2026-11-16T08:03:25.802475Z",
+    "eval_ended_at": "2026-11-16T08:03:36.339879Z",
+    "build_started_at": "2026-11-16T08:03:36.340858Z",
+    "build_ended_at": "2026-11-16T08:03:36.801411Z"
+   }
+  }
+ },
+ "fetcher": {
+  "repository_status": {
+   "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "selected_branch_name": "deploy",
+   "selected_branch_is_testing": false,
+   "main_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "error_msg": "",
+   "remotes": [
+    {
+     "name": "origin",
+     "fetch_error_msg": "",
+     "fetched_at": "2026-11-16T08:44:28.204689Z",
+     "main": {
+      "commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200"
+     },
+     "testing": {
+      "name": "testing-NightSprings",
+      "commit_id": "",
+      "error_msg": "the branch 'origin/testing-NightSprings' doesn't exist"
+     }
+    }
+   ]
+  }
+ },
+ "store": {
+  "deployments": [
+   {
+    "status": "done",
+    "operation": "switch",
+    "operation_submitted": "switch",
+    "created_at": "2026-11-16T08:04:20.155543Z",
+    "ended_at": "2026-11-16T08:04:27.596807Z",
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "87da9460-f2db-4cbe-bc98-7e63b736369a",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+     "out_path": "/nix/store/n703hysg4lf7kl7wzpvxlva20siqrl32-darwin-system-26.11.ff0e21a",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-16T08:03:25.802475Z",
+     "eval_ended_at": "2026-11-16T08:03:36.339879Z",
+     "build_started_at": "2026-11-16T08:03:36.340858Z",
+     "build_ended_at": "2026-11-16T08:03:36.801411Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "switch",
+    "operation_submitted": "switch",
+    "created_at": "2026-11-16T00:45:18.432124Z",
+    "ended_at": "2026-11-16T00:45:25.276097Z",
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "368eae00-5ad8-4349-8131-7bbad658bc44",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "1059e7f344874d09f8498a458be9896c4849866d",
+     "out_path": "/nix/store/p6vgskq3w2xmv663fqb8mzdi6i3iclnl-darwin-system-26.11.ff0e21a",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-16T00:44:00.505591Z",
+     "eval_ended_at": "2026-11-16T00:44:10.013254Z",
+     "build_started_at": "2026-11-16T00:44:10.013358Z",
+     "build_ended_at": "2026-11-16T00:44:23.419543Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "switch",
+    "operation_submitted": "switch",
+    "created_at": "2026-11-15T22:02:51.430965Z",
+    "ended_at": "2026-11-15T22:02:59.872792Z",
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "ca32104b-6bcf-42e5-9262-5db7e2d912a6",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "2b8b7b9cd0442d97470433e565b7de8770e4aff0",
+     "out_path": "/nix/store/7ap5c0wzjk03rzcrrm17hjxj770lkrd9-darwin-system-26.11.ff0e21a",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-15T22:01:49.176436Z",
+     "eval_ended_at": "2026-11-15T22:02:16.112439Z",
+     "build_started_at": "2026-11-15T22:02:16.112562Z",
+     "build_ended_at": "2026-11-15T22:02:16.634985Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "switch",
+    "operation_submitted": "switch",
+    "created_at": "2026-11-14T18:06:42.098927Z",
+    "ended_at": "2026-11-14T18:06:48.757015Z",
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "d5a15491-b12e-48b5-b55a-25fdea8c21b9",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "05c3362beec2c222cf86bc26745a7344a7fd2039",
+     "out_path": "/nix/store/w7bwbdy0ap8b0p1y8r88n1dslvd2iaqw-darwin-system-26.11.ff0e21a",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-14T18:05:37.607890Z",
+     "eval_ended_at": "2026-11-14T18:05:43.194330Z",
+     "build_started_at": "2026-11-14T18:05:43.194435Z",
+     "build_ended_at": "2026-11-14T18:05:43.684185Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "",
+    "created_at": null,
+    "ended_at": null,
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "",
+     "selected_branch_name": "",
+     "selected_branch_is_testing": null,
+     "selected_commit_id": "",
+     "out_path": "",
+     "eval_err": "",
+     "build_status": "",
+     "build_err": "",
+     "eval_started_at": null,
+     "eval_ended_at": null,
+     "build_started_at": null,
+     "build_ended_at": null
+    }
+   }
+  ],
+  "generations": [
+   {
+    "uuid": "d4155daf-9d91-4de6-ab9e-42f5508da481",
+    "selected_branch_name": "deploy",
+    "selected_branch_is_testing": false,
+    "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+    "out_path": "/nix/store/n703hysg4lf7kl7wzpvxlva20siqrl32-darwin-system-26.11.ff0e21a",
+    "eval_err": "",
+    "build_status": "built",
+    "build_err": "",
+    "eval_started_at": "2026-11-16T08:05:28.304459Z",
+    "eval_ended_at": "2026-11-16T08:05:28.682180Z",
+    "build_started_at": "2026-11-16T08:05:28.682198Z",
+    "build_ended_at": "2026-11-16T08:05:28.682198Z"
+   }
+  ],
+  "deployer": {
+   "is_suspended": false,
+   "suspend_reason": ""
+  }
+ },
+ "deploy_confirmer": {
+  "submitted": ""
+ }
+}
+@@end

@@ -11,10 +11,12 @@ import qs.audio
 import qs.bluetooth
 import qs.calendar
 import qs.common
+import qs.fleet
 import qs.network
 import qs.office
 import qs.system
 import qs.tray
+import "fleet/fleet.js" as FleetView
 import "office/office.js" as OfficeView
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
@@ -32,6 +34,7 @@ Scope {
             bluetoothOff: "\u{f00b2}",
             lightbulb: "\u{f0335}",
             lightbulbOutline: "\u{f0336}",
+            serverNetwork: "\u{f048d}",
             ethernet: "\u{f0200}",
             wifi: "\u{f05a9}",
             noNetwork: "\u{f0319}",
@@ -469,6 +472,66 @@ Scope {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Item {
+                        id: fleet
+
+                        readonly property bool panelOpen: FleetShared.screen === bar.modelData.name
+                        readonly property var shown: FleetView.barView(FleetShared.fleet)
+
+                        width: fleetRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Dropdowns.anchor("fleet", bar.modelData.name, fleet, bar)
+
+                        Hover {
+                            hovered: fleetArea.containsMouse
+                        }
+
+                        // Marks the item whose panel is open.
+                        Rectangle {
+                            visible: fleet.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        Row {
+                            id: fleetRow
+
+                            height: parent.height
+                            spacing: 5
+
+                            // Dim until a host has been read.
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.glyph.serverNetwork
+                                color: fleet.shown.dim ? Theme.comment : fleet.panelOpen ? Theme.purple : Theme.foreground
+                            }
+
+                            // Hosts that want attention; none at zero.
+                            Text {
+                                visible: fleet.shown.count > 0
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: fleet.shown.count
+                                color: Theme.foreground
+                                font.family: Theme.fontMono
+                                font.pixelSize: root.fontSize
+                            }
+                        }
+
+                        MouseArea {
+                            id: fleetArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: FleetShared.toggleRequested(bar.modelData.name)
                         }
                     }
 

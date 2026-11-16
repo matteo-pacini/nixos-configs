@@ -1,0 +1,278 @@
+@@booted
+/nix/store/8n081125h3z0piiyx3bcnrn1r71gpl5c-nixos-system-Nexus-26.11.20261111.d4f25a3
+@@current
+/nix/store/ymxd53iy46krpmdc213sl8xhg4jzfdjr-nixos-system-Nexus-26.11.20261111.d4f25a3
+@@bkernel
+@@ckernel
+@@profile
+@@efi
+@@mode
+manual
+@@status
+{
+ "is_suspended": false,
+ "builder": {
+  "is_evaluating": false,
+  "is_building": false,
+  "generation": {
+   "uuid": "f0bce466-b669-45bc-81da-96e74341fea8",
+   "selected_branch_name": "deploy",
+   "selected_branch_is_testing": false,
+   "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "out_path": "/nix/store/ymxd53iy46krpmdc213sl8xhg4jzfdjr-nixos-system-Nexus-26.11.20261111.d4f25a3",
+   "eval_err": "",
+   "build_status": "built",
+   "build_err": "",
+   "eval_started_at": "2026-11-16T08:03:54.197986503Z",
+   "eval_ended_at": "2026-11-16T08:04:21.366196121Z",
+   "build_started_at": "2026-11-16T08:04:21.366216831Z",
+   "build_ended_at": "2026-11-16T08:04:21.366220531Z"
+  }
+ },
+ "deployer": {
+  "is_deploying": false,
+  "is_suspended": false,
+  "operation": "",
+  "generation_to_deploy": null,
+  "deployment": {
+   "status": "done",
+   "operation": "boot",
+   "operation_submitted": "boot",
+   "created_at": "2026-11-14T17:47:29.073650504Z",
+   "ended_at": "2026-11-14T17:47:29.373952428Z",
+   "error_msg": "",
+   "current_inhibitors": {
+    "dbus-implementation": "broker"
+   },
+   "new_inhibitors": {
+    "dbus-implementation": "broker"
+   },
+   "generation": {
+    "uuid": "3cf30996-60c5-41e9-aecb-9d35ed9732a1",
+    "selected_branch_name": "deploy",
+    "selected_branch_is_testing": false,
+    "selected_commit_id": "72a03c03bda921b915bc977ad5814207f5a89615",
+    "out_path": "/nix/store/72a37lpk38vjf1nb1vdlplba88w3l4yv-nixos-system-Nexus-26.11.20261111.d4f25a3",
+    "eval_err": "",
+    "build_status": "built",
+    "build_err": "",
+    "eval_started_at": "2026-11-14T17:46:30.617981304Z",
+    "eval_ended_at": "2026-11-14T17:46:53.693474210Z",
+    "build_started_at": "2026-11-14T17:46:53.693487125Z",
+    "build_ended_at": "2026-11-14T17:46:53.693488552Z"
+   }
+  }
+ },
+ "fetcher": {
+  "repository_status": {
+   "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "selected_branch_name": "deploy",
+   "selected_branch_is_testing": false,
+   "main_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+   "error_msg": "",
+   "remotes": [
+    {
+     "name": "origin",
+     "fetch_error_msg": "",
+     "fetched_at": "2026-11-16T08:43:54.218715748Z",
+     "main": {
+      "commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200"
+     },
+     "testing": {
+      "name": "testing-Nexus",
+      "commit_id": "",
+      "error_msg": "the branch 'origin/testing-Nexus' doesn't exist"
+     }
+    }
+   ]
+  }
+ },
+ "store": {
+  "deployments": [
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-14T17:47:29.073650504Z",
+    "ended_at": "2026-11-14T17:47:29.373952428Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "3cf30996-60c5-41e9-aecb-9d35ed9732a1",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "72a03c03bda921b915bc977ad5814207f5a89615",
+     "out_path": "/nix/store/72a37lpk38vjf1nb1vdlplba88w3l4yv-nixos-system-Nexus-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-14T17:46:30.617981304Z",
+     "eval_ended_at": "2026-11-14T17:46:53.693474210Z",
+     "build_started_at": "2026-11-14T17:46:53.693487125Z",
+     "build_ended_at": "2026-11-14T17:46:53.693488552Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-14T16:58:30.973979159Z",
+    "ended_at": "2026-11-14T16:58:31.359342633Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "1110b6d9-b84d-4e61-b16e-9a3634397634",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "b95a838437f9bd50cd252fef863f68f5c8573831",
+     "out_path": "/nix/store/72a37lpk38vjf1nb1vdlplba88w3l4yv-nixos-system-Nexus-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-14T15:34:30.585285759Z",
+     "eval_ended_at": "2026-11-14T15:34:52.545673382Z",
+     "build_started_at": "2026-11-14T15:34:52.545692258Z",
+     "build_ended_at": "2026-11-14T15:34:52.545694220Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-11T14:29:30.188661957Z",
+    "ended_at": "2026-11-11T14:29:30.610152290Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "26d0a56f-d18a-434d-8dc5-de7c8e5ddf04",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "3b8372a46d7f2a13b7e32234392d221d157ebf83",
+     "out_path": "/nix/store/2gr8jcbrh9ygzc136q2iiagin74qzp7h-nixos-system-Nexus-26.11.20261107.f4a03c0",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-11T13:33:01.078897442Z",
+     "eval_ended_at": "2026-11-11T13:33:22.115823724Z",
+     "build_started_at": "2026-11-11T13:33:22.115844491Z",
+     "build_ended_at": "2026-11-11T13:33:22.115846801Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "boot",
+    "created_at": "2026-11-10T13:34:31.915107736Z",
+    "ended_at": "2026-11-10T13:34:32.297762672Z",
+    "error_msg": "",
+    "current_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "new_inhibitors": {
+     "dbus-implementation": "broker"
+    },
+    "generation": {
+     "uuid": "519bfab5-0dad-4f80-90c6-ba318ab3c20a",
+     "selected_branch_name": "deploy",
+     "selected_branch_is_testing": false,
+     "selected_commit_id": "6bfbb9ca2d2f827d16f46320fadcb354ad52f443",
+     "out_path": "/nix/store/nvnfil4lcikr2wvcrgybb4pl99wnf7ij-nixos-system-Nexus-26.11.20261107.f4a03c0",
+     "eval_err": "",
+     "build_status": "built",
+     "build_err": "",
+     "eval_started_at": "2026-11-10T12:51:01.075786114Z",
+     "eval_ended_at": "2026-11-10T12:51:44.289371382Z",
+     "build_started_at": "2026-11-10T12:51:44.289531480Z",
+     "build_ended_at": "2026-11-10T12:51:58.456721690Z"
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "",
+    "created_at": null,
+    "ended_at": null,
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "",
+     "selected_branch_name": "",
+     "selected_branch_is_testing": null,
+     "selected_commit_id": "",
+     "out_path": "/nix/store/8n081125h3z0piiyx3bcnrn1r71gpl5c-nixos-system-Nexus-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "",
+     "build_err": "",
+     "eval_started_at": null,
+     "eval_ended_at": null,
+     "build_started_at": null,
+     "build_ended_at": null
+    }
+   },
+   {
+    "status": "done",
+    "operation": "boot",
+    "operation_submitted": "",
+    "created_at": null,
+    "ended_at": null,
+    "error_msg": "",
+    "current_inhibitors": {},
+    "new_inhibitors": {},
+    "generation": {
+     "uuid": "",
+     "selected_branch_name": "",
+     "selected_branch_is_testing": null,
+     "selected_commit_id": "",
+     "out_path": "/nix/store/wgl8vzx20p7whzr45bz5yqfp52m610f3-nixos-system-Nexus-26.11.20261111.d4f25a3",
+     "eval_err": "",
+     "build_status": "",
+     "build_err": "",
+     "eval_started_at": null,
+     "eval_ended_at": null,
+     "build_started_at": null,
+     "build_ended_at": null
+    }
+   }
+  ],
+  "generations": [
+   {
+    "uuid": "f0bce466-b669-45bc-81da-96e74341fea8",
+    "selected_branch_name": "deploy",
+    "selected_branch_is_testing": false,
+    "selected_commit_id": "073c52e6831804a69eae70f10a92ab3de29ff200",
+    "out_path": "/nix/store/ymxd53iy46krpmdc213sl8xhg4jzfdjr-nixos-system-Nexus-26.11.20261111.d4f25a3",
+    "eval_err": "",
+    "build_status": "built",
+    "build_err": "",
+    "eval_started_at": "2026-11-16T08:03:54.197986503Z",
+    "eval_ended_at": "2026-11-16T08:04:21.366196121Z",
+    "build_started_at": "2026-11-16T08:04:21.366216831Z",
+    "build_ended_at": "2026-11-16T08:04:21.366220531Z"
+   }
+  ],
+  "deployer": {
+   "is_suspended": false,
+   "suspend_reason": ""
+  }
+ },
+ "deploy_confirmer": {
+  "submitted": "f0bce466-b669-45bc-81da-96e74341fea8"
+ }
+}
+@@end

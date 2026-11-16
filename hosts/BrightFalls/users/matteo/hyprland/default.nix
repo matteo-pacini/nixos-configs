@@ -80,6 +80,12 @@ in
     (callPackage ./desk-mqtt.nix {
       configFile = osConfig.age.secrets."brightfalls/office-mqtt".path;
     })
+    (callPackage ./desk-fleet.nix {
+      self = config.custom.ssh.mesh.host;
+      repo = lib.removeSuffix ".git" (
+        lib.removePrefix "https://github.com/" (lib.head osConfig.services.comin.remotes).url
+      );
+    })
   ];
 
   # The desktop shell, from user/quickshell/ (installed at

@@ -13,6 +13,8 @@
 #   nix build .#checks.<system>.desk-unlock
 #   nix build .#checks.<system>.bluetooth-agent
 #   nix build .#checks.<system>.audio-output-cycle
+#   nix build .#checks.<system>.fleet-helper
+#   nix build .#checks.<system>.fleet-panel
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -137,6 +139,13 @@ in
     touch $out
   '';
 
+  # The fleet panel's library (quickshell/fleet/fleet.js) against recorded
+  # desk-fleet lines in fleet-panel/fixtures/ and inline events.
+  fleet-panel = pkgs.runCommand "fleet-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./fleet-panel}/test-fleet-panel.js ${../user/quickshell/fleet}
+    touch $out
+  '';
+
   # The system panel's library (quickshell/system/decode.js) against invented
   # gpu_metrics blobs and /proc, sysfs, df and LACT texts.
   system-panel = pkgs.runCommand "system-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
@@ -229,6 +238,18 @@ in
           ${pkgs.lib.getExe' pkgs.mosquitto "mosquitto"} "$PWD/work"
         touch $out
       '';
+
+  # desk-fleet (the fleet panel's helper): its state model against probe
+  # fixtures (fleet/fixtures, and cases built in the test), then the built
+  # helper against fake ssh, comin, comin-deploy, sudo, ghostty and gh. Takes
+  # about 50 s: it follows a deploy until comin has been idle for 20 s.
+  fleet-helper = pkgs.runCommand "fleet-helper-tests" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+    mkdir work
+    python3 -I ${./fleet/test-desk-fleet.py} \
+      ${pkgs.lib.getExe (pkgs.callPackage ../desk-fleet.nix { })} \
+      ${../desk-fleet.py} ${./fleet/fixtures} "$PWD/work"
+    touch $out
+  '';
 
   desk-sync =
     pkgs.runCommand "desk-sync-tests"

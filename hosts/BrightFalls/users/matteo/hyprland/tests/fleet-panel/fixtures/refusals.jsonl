@@ -1,0 +1,5 @@
+{"event":"action","id":21,"host":"Host1","action":"switch","state":"refused","reason":"read-only"}
+{"event":"action","id":22,"host":"Host1","action":"attach","state":"refused","reason":"no-session"}
+{"event":"action","id":23,"host":"Host1","action":"switch","state":"refused","reason":"stale","why":"the held generation is 00000004-0000-4000-8000-000000000000 now"}
+{"event":"action","id":24,"host":"Host1","action":"reboot","state":"refused","reason":"busy","why":"an action is running on this host"}
+{"event":"action","id":25,"host":"Host1","action":"diff","state":"failed","reason":"No such file or directory: 'ghostty'"}
