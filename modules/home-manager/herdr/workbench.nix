@@ -90,6 +90,7 @@ let
   ]
   ++ lib.optional cfg.workbench.nixpkgsPrs.enable "nixpkgs-prs"
   ++ lib.optionals cfg.workbench.spaceCards.enable [
+    "back-to-master"
     "space-cards"
     "space-menu"
   ];
@@ -126,7 +127,8 @@ in
       the `space-cards` Spaces list in the workbench layout, in place of the shipped one:
       each machine a card with its device icon, OS and connection state, each space
       with its branch badge, ahead/behind the default branch, and a worktree badge,
-      and its right-click menu (`space-menu`)
+      and its right-click menu (`space-menu`), whose "Back to <default branch>" opens
+      the `back-to-master` dialog
     '';
   };
 

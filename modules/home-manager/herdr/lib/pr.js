@@ -5,7 +5,7 @@
 import { exec } from "herdr";
 
 /** The fields asked of `gh pr view --json`. */
-export const FIELDS = "number,title,state,isDraft,reviewDecision,mergeStateStatus,statusCheckRollup,url,baseRefName";
+export const FIELDS = "number,title,state,isDraft,reviewDecision,mergeStateStatus,statusCheckRollup,url,baseRefName,headRefOid";
 
 // CheckRun conclusions that count as failed; SKIPPED and NEUTRAL count as nothing.
 const FAILED = new Set(["FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE"]);
@@ -22,7 +22,7 @@ export function check(c) {
 }
 
 /** `gh pr view --json FIELDS` output as what the bar draws:
- *  { number, title, url, base (the branch it merges into),
+ *  { number, title, url, base (the branch it merges into), head (its last commit),
  *    state: "open" | "draft" | "merged" | "closed",
  *    changes (changes requested), conflicts, checks: { failed: [{name, url}],
  *    running: [name], passed: n }, worst }.
@@ -41,7 +41,7 @@ export function parse(json) {
   }
   const worst = checks.failed.length ? "failed" : checks.running.length ? "running" : checks.passed ? "passed" : null;
   return {
-    number: json.number, title: json.title ?? "", url: json.url, base: json.baseRefName ?? null, state,
+    number: json.number, title: json.title ?? "", url: json.url, base: json.baseRefName ?? null, head: json.headRefOid ?? null, state,
     changes: live && json.reviewDecision === "CHANGES_REQUESTED",
     conflicts: live && json.mergeStateStatus === "DIRTY",
     checks, worst,

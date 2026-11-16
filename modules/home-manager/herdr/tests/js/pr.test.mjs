@@ -117,3 +117,9 @@ test("relation: same checkout from a subfolder, another worktree, another repo",
   assert.equal(relation({ ...space }, null), "repo");
   assert.equal(relation(null, space), "same");
 });
+
+test("head is the PR's last commit, for back-to-master's merged check", () => {
+  assert.ok(FIELDS.split(",").includes("headRefOid"));
+  assert.equal(parse({ ...fixture("pr-466"), state: "MERGED", headRefOid: "abc123" }).head, "abc123");
+  assert.equal(parse(fixture("pr-466")).head, null);
+});
