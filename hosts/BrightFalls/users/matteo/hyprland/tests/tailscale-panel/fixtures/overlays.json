@@ -1,0 +1,45 @@
+{
+  "_": "Top-level fields laid over running.json, one case each; Self is merged field by field.",
+  "health": {
+    "Health": [
+      "Some peers are advertising routes but --accept-routes is false.",
+      "A second warning gets its own strip."
+    ]
+  },
+  "control-lost": {
+    "Self": { "Online": false }
+  },
+  "self-expiring": {
+    "Self": { "KeyExpiry": "2026-11-21T12:00:00Z" }
+  },
+  "self-far": {
+    "Self": { "KeyExpiry": "2027-03-20T12:00:00Z" }
+  },
+  "exit-node": {
+    "ExitNodeStatus": { "ID": "nNexus", "Online": true, "TailscaleIPs": ["100.64.0.2/32"] }
+  },
+  "exit-node-down": {
+    "ExitNodeStatus": { "ID": "nNexus", "Online": false, "TailscaleIPs": ["100.64.0.2/32"] }
+  },
+  "exit-node-unknown": {
+    "ExitNodeStatus": { "ID": "nGone", "Online": true, "TailscaleIPs": [] }
+  },
+  "exit-node-unknown-down": {
+    "ExitNodeStatus": { "ID": "nGone", "Online": false, "TailscaleIPs": [] }
+  },
+  "newer": {
+    "ClientVersion": { "RunningLatest": false, "LatestVersion": "1.106.0" }
+  },
+  "urgent": {
+    "ClientVersion": { "RunningLatest": false, "LatestVersion": "1.106.0", "UrgentSecurityUpdate": true }
+  },
+  "latest": {
+    "ClientVersion": { "RunningLatest": true }
+  },
+  "all": {
+    "Health": ["One warning."],
+    "Self": { "Online": false, "KeyExpiry": "2026-11-21T12:00:00Z" },
+    "ExitNodeStatus": { "ID": "nNexus", "Online": false, "TailscaleIPs": [] },
+    "ClientVersion": { "RunningLatest": false, "LatestVersion": "1.106.0", "UrgentSecurityUpdate": true }
+  }
+}
