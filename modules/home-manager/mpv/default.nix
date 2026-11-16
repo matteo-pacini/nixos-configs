@@ -13,6 +13,7 @@ in
     ./profiles.nix
     ./bindings.nix
     ./scripts.nix
+    ./jellyfin-shim.nix
   ];
 
   options.custom.mpv = {
