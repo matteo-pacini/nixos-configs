@@ -15,8 +15,8 @@ A Hyprland 0.57 session under UWSM, the only desktop on the machine, started
 by greetd (automatic login once per boot, tuigreet after a logout), with a
 desktop shell written in
 QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
-session menu, polkit dialog, network, audio, calendar, system, Bluetooth and
-office panels, tray menus, and a lock screen.
+session menu, polkit dialog, network, audio, calendar, system, Bluetooth,
+office, fleet, Tailscale and token panels, tray menus, and a lock screen.
 
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
@@ -181,9 +181,11 @@ nix build .#checks.x86_64-linux.fleet-helper     # desk-fleet's state model, the
 nix build .#checks.x86_64-linux.fleet-panel      # fleet/fleet.js under node
 nix build .#checks.x86_64-linux.tailscale-panel  # tailscale/tailscale.js under node
 nix build .#checks.x86_64-linux.wifi-panel       # network/wifi.js under node
+nix build .#checks.x86_64-linux.tokens-helper    # desk-tokens' pure functions, then the helper on invented transcripts
+nix build .#checks.x86_64-linux.tokens-panel     # tokens/tokens.js under node, in New York time
 ```
 
-The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel, wifi-panel and system-panel checks read the
+The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel, wifi-panel, tokens-panel and system-panel checks read the
 repository's `.js` files, so they fail until a live change to those files is pulled. All of them
 but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
 required check for merging into `master`. `hypr-config` is run by hand before a change to the
@@ -201,7 +203,8 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.desk-unlock .#checks.x86_64-linux.bluetooth-agent \
   .#checks.x86_64-linux.audio-output-cycle .#checks.x86_64-linux.fleet-helper \
   .#checks.x86_64-linux.fleet-panel .#checks.x86_64-linux.tailscale-panel \
-  .#checks.x86_64-linux.wifi-panel \
+  .#checks.x86_64-linux.wifi-panel .#checks.x86_64-linux.tokens-helper \
+  .#checks.x86_64-linux.tokens-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -309,7 +312,7 @@ Each was learned the hard way or is one mistake away.
 - **No truncation of information.** Only a name may elide; everything else
   wraps.
 - **Anatomy of a drop-down panel** (network, audio, calendar, system,
-  Bluetooth, office, fleet, tailscale): a root component, one line in `shell.qml`; a small singleton
+  Bluetooth, office, fleet, tailscale, tokens): a root component, one line in `shell.qml`; a small singleton
   shared with the bar for placement and open state; an IPC target with
   `toggle`; a bind through `bind()`; footer key hints; Overlay layer,
   exclusive keyboard, namespace `desk-<name>`, card under its bar item
@@ -343,10 +346,11 @@ not.
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
 | `desk-mqtt.nix`, `desk-mqtt.py` | `desk-mqtt`, the office panel's MQTT client (JSON lines on stdin/stdout): watches the light, blind and sockets on Zigbee2MQTT, publishes only the light's and blind's `/set`; the device ids and labels are in the `.nix`, the broker and names in the `office-mqtt` agenix secret (README, "Office: desk-mqtt") |
 | `desk-fleet.nix`, `desk-fleet.py` | `desk-fleet`, the fleet panel's helper (JSON lines on stdin/stdout): probes this machine and its SSH mesh hosts read-only, reads the pipeline through `gh`, decides each host's row (`host_row()`, pure) and runs switch, boot, mode and reboot through `comin-deploy` in private tmux sessions; the host list is generated from `lib/ssh-mesh.nix` and `lib/host-kinds.nix` (README, "Fleet: desk-fleet"). Run by `fleet/FleetShared.qml` |
+| `desk-tokens.nix`, `desk-tokens.py`, `desk-tokens-prices.json` | `desk-tokens`, the token panel's helper (JSON lines on stdin/stdout): reads Claude Code's transcripts incrementally into a SQLite index of replies (counters, ids, model, time, working directory; never text), folds working directories into projects (`fold_cwd()`, pure) and answers the overview, projects, project and days pages; the price table is built in (README, "Tokens: desk-tokens") |
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
@@ -371,7 +375,7 @@ component. Root components, one per file:
 | `Osd.qml` | The pill |
 | `Cheatsheet.qml` | Keybinding sheet from `hyprctl -j binds` |
 | `SessionMenu.qml`, `Polkit.qml` | Centred modals |
-| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml`, `Tailscale.qml` | The eight drop-down panels (each the biggest file of its feature) |
+| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml`, `Tailscale.qml`, `Tokens.qml` | The nine drop-down panels (each the biggest file of its feature) |
 | `Lockscreen.qml`, `LockState.qml` | The shell's side of the lock: IPC `lockscreen`, hold, sleep inhibitor; the launch command and `held` state |
 | `lock.qml` | The lock process itself (a separate Quickshell config) |
 
@@ -390,6 +394,7 @@ Directories (`import qs.<dir>`):
 | `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
 | `fleet/` | `FleetShared.qml` (shared singleton: `screen`, `toggleRequested`, `said`, `readOnly`, runs `desk-fleet` and restarts it, `fleet` state, `send()`, `open`/`closed` to the helper), `fleet.js` (all fleet decisions: applying helper events, order, header, pipeline, row views and folding, info lines, keys lit, questions, key to command, navigation, footer texts, bar view; node-tested) |
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
+| `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`), `tokens.js` (all token-panel decisions: applying the helper's answers and events, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading and the bar look, the hand-set `PLAN`; node-tested) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -406,7 +411,8 @@ Names to know: the singleton each panel shares with the bar is
 `calendar/CalendarPanel.qml`, `system/SystemPanel.qml`,
 `bluetooth/BluetoothShared.qml`, `office/OfficeShared.qml` (which also
 runs the helper, so the bar has the light and the watts while the panel is
-closed) and `tailscale/TailscaleShared.qml`. "Panel" does not mean placement only:
+closed), `tailscale/TailscaleShared.qml` and `tokens/TokensShared.qml`
+(which also holds the limits reading the bar shows). "Panel" does not mean placement only:
 `CalendarPanel` holds the export and the minute clock, and
 `BluetoothShared` the adapter, batteries and remembered answers, because the
 bar, the OSD and the reminders need them while the panel is closed.
@@ -440,7 +446,9 @@ the repository, read-only live until the deploy), Tailscale panel (Super+V:
 this computer and every device in the tailnet, read-only), Wi-Fi in the
 network panel (radio, scan, join, forget, the password modal, the bar mark;
 the radio off at every boot through `wifi-radio-off-at-boot` in
-`hosts/BrightFalls/networking.nix`).
+`hosts/BrightFalls/networking.nix`), token panel (Super+U: Claude Code
+usage through `desk-tokens` and the plan limits from the status line's file,
+read-only).
 
 **To do at the next deploy:**
 - The fleet panel goes live only by hand: the live
@@ -452,6 +460,9 @@ the radio off at every boot through `wifi-radio-off-at-boot` in
 - `hyprctl reload` (then `hyprctl configerrors`) for Super+G, and Super+O
   from the office work, which the running Hyprland has not loaded yet.
 - `hyprctl reload` (then `hyprctl configerrors`) for Super+V.
+- `hyprctl reload` (then `hyprctl configerrors`) for Super+U; the cheat
+  sheet then lists "Tokens" in the Session group. With the panel closed,
+  `pgrep -a desk-tokens` prints nothing.
 - `~/.config/mako/` is left over from before the shell was the notification
   daemon (`desk-sync` leaves dropped files alone); delete it.
 - `systemctl --user restart quickshell`: `shell.qml` no longer has
@@ -503,6 +514,16 @@ was written; check the reports of any newer work for its own.
   Quickshell has open crash reports around toggling the radio and access
   points coming and going; whether 0.3.2 has them fixed is not confirmed,
   so the first W is also the first test of those.
+- Token panel: seen for real by an agent, with the real helper on a scratch
+  index (the first read's progress, every page from real answers, no helper
+  after closing) and the bar item on the real bar with a scratch limits
+  file. Simulated with a stand-in helper and keys over a temporary IPC
+  target: every page state, every key, the limits watch, the figures at API
+  prices on every page (unpriced and partly unpriced, the widest figures, S
+  in both orders) and every page from a helper without cost fields. Never
+  done: real key presses and clicks, the window with real keyboard focus,
+  Super+U in a reloaded session, the limits file written by a real Claude
+  Code session, the figures from the real helper's answers.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 

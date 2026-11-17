@@ -84,6 +84,8 @@ in
     recursive = true;
   };
   xdg.dataFile."desk/tailscale/hosts.json".text = builtins.toJSON { hosts = tailscaleHosts; };
+  # The shell's token panel and bar item read the file this writes.
+  custom.herdr.workbench.claudeLimitsFile.enable = true;
   home.activation.deskSync = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     run ${lib.getExe deskSync} activate ||
       echo "desk-sync: some files under ${config.xdg.configHome} were not installed, see above" >&2
@@ -126,6 +128,7 @@ in
         lib.removePrefix "https://github.com/" (lib.head osConfig.services.comin.remotes).url
       );
     })
+    (callPackage ./desk-tokens.nix { })
   ];
 
   # The desktop shell, from user/quickshell/ (installed at
