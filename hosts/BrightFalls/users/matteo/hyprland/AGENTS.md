@@ -518,9 +518,12 @@ was written; check the reports of any newer work for its own.
   index (the first read's progress, every page from real answers, no helper
   after closing) and the bar item on the real bar with a scratch limits
   file. Simulated with a stand-in helper and keys over a temporary IPC
-  target: every page state, every key, the limits watch. Never done: real
-  key presses and clicks, the window with real keyboard focus, Super+U in a
-  reloaded session, the limits file written by a real Claude Code session.
+  target: every page state, every key, the limits watch, the figures at API
+  prices on every page (unpriced and partly unpriced, the widest figures, S
+  in both orders) and every page from a helper without cost fields. Never
+  done: real key presses and clicks, the window with real keyboard focus,
+  Super+U in a reloaded session, the limits file written by a real Claude
+  Code session, the figures from the real helper's answers.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 

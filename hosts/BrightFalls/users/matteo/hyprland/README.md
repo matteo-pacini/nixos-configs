@@ -924,11 +924,24 @@ the plan limits as Claude Code last reported them. It is read-only.
 - **Overview** (what it opens on): the plan limits (the weekly row with its
   reset and a meter; a muted per-model row; the 5-hour row; a line saying
   what happens at 100 %, or that the reading is stale, or that none is known
-  yet), today's output and sessions with the context read from cache, the
-  last 14 days of output as bars (today purple, the peak named), 30 days
-  (the split by model family, cache hit, the sub-agents' share of output,
-  the cost at API prices beside the plan's price), and the 7-day top
-  projects.
+  yet), today's output and sessions with the context read from cache and
+  today at API prices, the last 14 days of output as bars (today purple, the
+  peak named), 30 days (the split by model family, cache hit, the
+  sub-agents' share of output, the total at API prices beside the plan's
+  price, then that total by token type, as a bar and a row per type with its
+  tokens, and by model family, a row per family with its share of tokens,
+  largest first), and the 7-day top projects, each with its output and,
+  muted before it, its figure at API prices.
+- **Figures at API prices**: every page that shows token quantities also
+  shows what they would cost at API list prices (`≈ $4.37`, `≈ $3,571`,
+  `≈ $12.3 k`), as priced by the helper reply by reply. Each such page
+  carries once, muted above the footer, `Estimates at API list prices; the
+  plan is a flat $200.` (the plan figure from `PLAN`). A quantity made only
+  of models missing from the price table says `unpriced` instead of a
+  figure; one partly so says `≈ $N + unpriced`, and the page names the
+  models once (`not priced: …`). A helper older than the cost fields gives
+  the pages as they were, without the rows, the column and the S key (the
+  overview still shows its old 30-day figure, and so the estimate line).
 - **First read**: the helper builds its index from the newest transcripts
   back, so today, 7, 14 and 30 days become complete in turn. Until then a
   progress block (files read, size, percentage) stands where the first
@@ -936,20 +949,28 @@ the plan limits as Claude Code last reported them. It is read-only.
   complete. The projects, detail and days pages show the same block until
   what they need is read.
 - **Projects** (P): one row per project for today, 7 days or 30 days (Tab),
-  by output: name, output and share, a share bar, a small bar of the model
-  split, sessions, last reply and the sub-agents' share. Eight rows a page.
-  Only a project name elides.
+  by output or, after S, by figure at API prices (largest first, unpriced
+  last; S again goes back, and each opening starts by output): name, output
+  and share, a share bar, a small bar of the model split, sessions, last
+  reply and the sub-agents' share, and the figure at API prices on the
+  right; when the line and the figure do not fit side by side the line
+  wraps. The summary says the order, the total output and the total at API
+  prices. Shares and share bars are shares of output in both orders. Eight
+  rows a page. Only a project name elides.
 - **Detail** (Enter on a project): the project's output and share,
-  sessions, sub-agents' share and model split for the period (Tab changes
-  it), its last 14 days, and its six latest sessions (start, last reply,
-  output, replies, active time).
+  sessions, sub-agents' share, figure at API prices and model split for the
+  period (Tab changes it), that figure by token type (bar and rows, as on
+  the overview), its last 14 days, and its six latest sessions (start, last
+  reply, output, figure at API prices over the session's whole life,
+  sub-agents included; replies and active time on a muted line under each).
 - **Days** (D): the last 14 days, newest first: output as a bar and a
-  number, sessions, and the day's top project.
+  number, the figure at API prices, sessions, and the day's top project.
 - **Keys**: on the overview P projects, D days, R reads what was appended
   since the panel opened (hidden during the first read, unless it failed),
   Esc closes. On projects ↑↓ select (past a page's end they turn the page),
-  PgUp/PgDn page (only with more than one page), Tab period, Enter detail,
-  D days, Esc back. In the detail Tab period, Esc back to the same project
+  PgUp/PgDn page (only with more than one page), Tab period, S sort (output
+  or API prices; the selected project stays selected), Enter detail, D
+  days, Esc back. In the detail Tab period, Esc back to the same project
   and page. On days P projects, Esc back. The footer lists exactly the keys
   that do something; Tab and the letters count only without modifiers.
   There is no mouse selection.
@@ -974,8 +995,8 @@ the plan limits as Claude Code last reported them. It is read-only.
   days" pace line (it would turn token counts into a share of a limit whose
   token budget is not published); no session titles (the index keeps
   counters, never message text); no scrolling (the shell has none for
-  panels; the projects list pages instead). The dollar figure is an
-  estimate at API list prices, not a bill.
+  panels; the projects list pages instead). The dollar figures are
+  estimates at API list prices, not a bill.
 
 **Seen for real** (by the agent that built it, with the real helper on a
 scratch index and the real transcripts): the cold first read's progress
@@ -988,7 +1009,11 @@ every page's states, the limits in every state, long names eliding, the
 helper missing and stopped and recovering, the limits watch with the
 directory and file created after the shell started and replaced by rename
 several times, every row of the key table and the keys that must do
-nothing, and no helper process after every close. **Not done yet**: real
+nothing, and no helper process after every close; then the figures at API
+prices on every page (priced, partly and wholly unpriced, the widest
+figures beside a 61-character name, both orders and S keeping the
+selection) and every page from a helper without cost fields. **Not done
+yet**: the figures from the real helper's answers, real
 key presses and clicks, the window with real keyboard focus, Super+U in a
 reloaded session, and the limits file written by a real Claude Code
 session.

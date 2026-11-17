@@ -80,7 +80,8 @@ Scope {
             [Qt.Key_Tab]: "Tab",
             [Qt.Key_P]: "P",
             [Qt.Key_D]: "D",
-            [Qt.Key_R]: "R"
+            [Qt.Key_R]: "R",
+            [Qt.Key_S]: "S"
         };
         const name = always[k] ?? (plain ? letters[k] : undefined);
         if (name === undefined)
@@ -226,18 +227,20 @@ Scope {
         }
     }
 
-    // A project name, which may elide, and a value that keeps its place.
+    // A project name, which may elide, and a value that keeps its place, with
+    // a muted note before it.
     component NameValue: Item {
         id: nv
 
         property string name
         property string value
+        property string note
 
         width: parent ? parent.width : 0
-        height: valueText.implicitHeight
+        height: values.implicitHeight
 
         Text {
-            width: nv.width - valueText.implicitWidth - 10
+            width: nv.width - values.implicitWidth - 10
             text: nv.name
             textFormat: Text.PlainText
             elide: Text.ElideRight
@@ -246,14 +249,28 @@ Scope {
             font.pixelSize: 13
         }
 
-        Text {
-            id: valueText
+        Row {
+            id: values
 
             anchors.right: parent.right
-            text: nv.value
-            color: Theme.foreground
-            font.family: Theme.fontUi
-            font.pixelSize: 13
+            spacing: 10
+
+            Text {
+                visible: nv.note !== ""
+                text: nv.note
+                textFormat: Text.PlainText
+                color: Theme.comment
+                font.family: Theme.fontUi
+                font.pixelSize: 13
+            }
+
+            Text {
+                text: nv.value
+                textFormat: Text.PlainText
+                color: Theme.foreground
+                font.family: Theme.fontUi
+                font.pixelSize: 13
+            }
         }
     }
 
@@ -592,9 +609,10 @@ Scope {
                 }
             }
 
+            // The line wraps, never the cost, when both do not fit.
             Item {
                 width: parent.width
-                height: Math.max(6, lineText.implicitHeight)
+                height: Math.max(6, lineText.implicitHeight, rowCost.implicitHeight)
 
                 SplitBar {
                     width: 40
@@ -608,11 +626,22 @@ Scope {
                     id: lineText
 
                     x: 46
-                    width: parent.width - 46
+                    width: parent.width - 46 - (rowCost.text !== "" ? rowCost.implicitWidth + 10 : 0)
                     text: pr.row.line
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
                     color: Theme.comment
+                    font.family: Theme.fontUi
+                    font.pixelSize: 11
+                }
+
+                Text {
+                    id: rowCost
+
+                    anchors.right: parent.right
+                    text: pr.row.cost
+                    textFormat: Text.PlainText
+                    color: Theme.foreground
                     font.family: Theme.fontUi
                     font.pixelSize: 11
                 }
@@ -737,6 +766,12 @@ Scope {
                             value: overview.o?.today?.cache ?? ""
                             colour: Theme.comment
                         }
+
+                        Pair {
+                            visible: value !== ""
+                            name: overview.o ? overview.o.labels.price : ""
+                            value: overview.o?.today?.cost ?? ""
+                        }
                     }
 
                     Building {
@@ -791,6 +826,46 @@ Scope {
                             note: last30.d ? last30.d.plan : ""
                         }
 
+                        // Cost by type, then by model family: each name in
+                        // its bar colour, tokens or share, the cost.
+                        Item {
+                            visible: last30.d !== null && last30.d.byType !== null
+                            width: 1
+                            height: 4
+                        }
+
+                        SplitBar {
+                            visible: last30.d !== null && last30.d.byType !== null
+                            barHeight: 8
+                            parts: last30.d?.byType?.bar ?? []
+                        }
+
+                        Repeater {
+                            model: last30.d?.byType?.rows ?? []
+
+                            GridRow {
+                                required property var modelData
+
+                                cells: [[modelData.label, 0, false, modelData.colour], [modelData.tokens, 64, true, "muted"], [modelData.cost, 148, true]]
+                            }
+                        }
+
+                        Item {
+                            visible: last30.d !== null && last30.d.families !== null
+                            width: 1
+                            height: 4
+                        }
+
+                        Repeater {
+                            model: last30.d?.families ?? []
+
+                            GridRow {
+                                required property var modelData
+
+                                cells: [[modelData.name, 0, false, modelData.colour], [modelData.share, 64, true, "muted"], [modelData.cost, 148, true]]
+                            }
+                        }
+
                         Small {
                             visible: text !== ""
                             text: last30.d ? last30.d.unpriced : ""
@@ -818,6 +893,7 @@ Scope {
 
                                 name: modelData.name
                                 value: modelData.value
+                                note: modelData.cost
                             }
                         }
 
@@ -883,6 +959,11 @@ Scope {
                         }
                     }
 
+                    Small {
+                        visible: text !== ""
+                        text: projects.p ? projects.p.unpriced : ""
+                    }
+
                     Section {
                         visible: projects.p !== null && projects.p.state === "empty"
 
@@ -918,6 +999,8 @@ Scope {
 
                     readonly property var d: root.v ? root.v.detail : null
                     readonly property bool shown: d !== null && d.state === "shown"
+                    // The Cost header is "" while no session has a cost.
+                    readonly property bool withCost: d !== null && d.columns[3] !== ""
 
                     visible: d !== null
                     width: parent.width
@@ -946,6 +1029,12 @@ Scope {
                         value: detail.d ? detail.d.subagents : ""
                     }
 
+                    Pair {
+                        visible: detail.shown && value !== ""
+                        name: detail.d ? detail.d.labels.cost : ""
+                        value: detail.d ? detail.d.cost : ""
+                    }
+
                     Item {
                         visible: detail.shown
                         width: 1
@@ -965,6 +1054,37 @@ Scope {
 
                     Item {
                         visible: detail.shown
+                        width: 1
+                        height: 6
+                    }
+
+                    Section {
+                        visible: detail.shown && detail.d.byType !== null
+                        label: detail.d ? detail.d.labels.byType : ""
+
+                        SplitBar {
+                            barHeight: 8
+                            parts: detail.d?.byType?.bar ?? []
+                        }
+
+                        Item {
+                            width: 1
+                            height: 2
+                        }
+
+                        Repeater {
+                            model: detail.d?.byType?.rows ?? []
+
+                            GridRow {
+                                required property var modelData
+
+                                cells: [[modelData.label, 0, false, modelData.colour], [modelData.tokens, 64, true, "muted"], [modelData.cost, 148, true]]
+                            }
+                        }
+                    }
+
+                    Item {
+                        visible: detail.shown && detail.d.byType !== null
                         width: 1
                         height: 6
                     }
@@ -992,16 +1112,32 @@ Scope {
                             readonly property var c: detail.d ? detail.d.columns : []
 
                             header: true
-                            cells: [[c[0] ?? "", 72, false], [c[1] ?? "", 0, false], [c[2] ?? "", 56, true], [c[3] ?? "", 56, true], [c[4] ?? "", 60, true]]
+                            cells: detail.withCost ? [[c[0], 72, false], [c[1], 76, false], [c[2], 56, true], [c[3], 0, true]] : [[c[0] ?? "", 72, false], [c[1] ?? "", 0, false], [c[2] ?? "", 56, true]]
                         }
 
+                        // The cost takes the spare width: "≈ $4.37 + unpriced"
+                        // is the widest cell. Without costs (an older helper)
+                        // the last reply takes it.
                         Repeater {
                             model: detail.d ? detail.d.rows : []
 
-                            GridRow {
+                            Column {
                                 required property var modelData
 
-                                cells: [[modelData.started, 72, false], [modelData.last, 0, false, "muted"], [modelData.output, 56, true], [modelData.replies, 56, true], [modelData.active, 60, true]]
+                                width: parent.width
+                                bottomPadding: 3
+
+                                GridRow {
+                                    cells: detail.withCost ? [[parent.modelData.started, 72, false], [parent.modelData.last, 76, false, "muted"], [parent.modelData.output, 56, true], [parent.modelData.cost, 0, true]] : [[parent.modelData.started, 72, false], [parent.modelData.last, 0, false, "muted"], [parent.modelData.output, 56, true]]
+                                }
+
+                                Text {
+                                    text: parent.modelData.line
+                                    textFormat: Text.PlainText
+                                    color: Theme.comment
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 11
+                                }
                             }
                         }
 
@@ -1009,6 +1145,12 @@ Scope {
                             topPadding: 4
                             text: detail.d ? detail.d.note : ""
                         }
+                    }
+
+                    Small {
+                        visible: detail.shown && text !== ""
+                        topPadding: 4
+                        text: detail.d ? detail.d.unpriced : ""
                     }
 
                     Building {
@@ -1046,6 +1188,7 @@ Scope {
                         DayRow {
                             header: true
                             cells: days.d ? days.d.columns : []
+                            withCost: days.d !== null && days.d.columns[3] !== ""
                         }
 
                         Repeater {
@@ -1055,6 +1198,7 @@ Scope {
                                 required property var modelData
 
                                 row: modelData
+                                withCost: days.d !== null && days.d.columns[3] !== ""
                             }
                         }
                     }
@@ -1069,6 +1213,13 @@ Scope {
                         text: days.d ? days.d.error : ""
                         font.pixelSize: 13
                     }
+                }
+
+                Small {
+                    readonly property var shown: root.v ? (root.v.overview ?? root.v.projects ?? root.v.detail ?? root.v.days) : null
+
+                    visible: text !== ""
+                    text: shown ? shown.estimate : ""
                 }
             }
 
@@ -1091,22 +1242,28 @@ Scope {
         colour: row ? root.tone(row.colour) : Theme.foreground
     }
 
-    // One day: name, a bar of its output, output, sessions, top project.
+    // One day: name, a bar of its output, output, cost, sessions, top
+    // project. A cost too wide for its column wraps.
     component DayRow: Item {
         id: dr
 
         property var row: null
         property bool header: false
         property var cells: []
+        // False drops the cost column (its header is "" while no day has a
+        // cost) and gives its width to the bar.
+        property bool withCost: true
 
         readonly property real dayWidth: 52
         readonly property real outputWidth: 52
-        readonly property real sessionsWidth: 58
-        readonly property real topWidth: 116
-        readonly property real barWidth: width - dayWidth - outputWidth - sessionsWidth - topWidth - 32
+        // -8 takes the gap after the column away too.
+        readonly property real costWidth: withCost ? 76 : -8
+        readonly property real sessionsWidth: 56
+        readonly property real topWidth: 76
+        readonly property real barWidth: width - dayWidth - outputWidth - costWidth - sessionsWidth - topWidth - 40
 
         width: parent ? parent.width : 0
-        height: dayText.implicitHeight + 2
+        height: Math.max(dayText.implicitHeight, costCell.implicitHeight) + 2
 
         Text {
             id: dayText
@@ -1130,7 +1287,7 @@ Scope {
         Rectangle {
             visible: !dr.header
             x: dr.dayWidth + 8
-            anchors.verticalCenter: parent.verticalCenter
+            y: (dayText.implicitHeight - height) / 2
             width: dr.header ? 0 : dr.barWidth * dr.row.frac
             height: 8
             radius: 2
@@ -1148,10 +1305,25 @@ Scope {
         }
 
         Text {
+            id: costCell
+
+            visible: dr.withCost
             x: dr.dayWidth + 8 + dr.barWidth + 8 + dr.outputWidth + 8
+            width: dr.costWidth
+            horizontalAlignment: Text.AlignRight
+            text: dr.header ? dr.cells[3] ?? "" : dr.row.cost
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            color: dr.header ? Theme.comment : Theme.foreground
+            font.family: Theme.fontMono
+            font.pixelSize: dr.header ? 11 : 12
+        }
+
+        Text {
+            x: dr.dayWidth + 8 + dr.barWidth + 8 + dr.outputWidth + 8 + dr.costWidth + 8
             width: dr.sessionsWidth
             horizontalAlignment: Text.AlignRight
-            text: dr.header ? dr.cells[3] ?? "" : dr.row.sessions
+            text: dr.header ? dr.cells[4] ?? "" : dr.row.sessions
             color: dr.header ? Theme.comment : Theme.foreground
             font.family: Theme.fontMono
             font.pixelSize: dr.header ? 11 : 12
@@ -1160,7 +1332,7 @@ Scope {
         Text {
             x: dr.width - dr.topWidth
             width: dr.topWidth
-            text: dr.header ? dr.cells[4] ?? "" : dr.row.top
+            text: dr.header ? dr.cells[5] ?? "" : dr.row.top
             textFormat: Text.PlainText
             elide: Text.ElideRight
             color: Theme.comment
