@@ -191,8 +191,11 @@ office, fleet, tailscale, tokens) behave alike: each opens under its bar item on
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
-others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
-<target> toggle`).
+others (`common/Dropdowns.qml`); opening the launcher, the cheat sheet or the
+session menu closes them too. Each has an IPC `toggle` (`qs ipc call
+<target> toggle`). In the drop-downs and the centred modals a held key acts
+once, except typing and the keys that move a selection, a slider or a page,
+which repeat (the pairing modal and the lock screen are not guarded).
 
 | Component | Open | IPC target |
 |-----------|------|------------|
@@ -321,7 +324,7 @@ focused monitor with the binds in groups over three columns and a filter.
 `SessionMenu.qml` (Super+Escape or the power key, `qs ipc call session
 toggle`): a modal on the focused monitor with Lock (the lock screen), Log out
 (`uwsm stop`, back to tuigreet), Reboot and Shut down. Up/Down and Enter, or the row's letter; Reboot and
-Shut down act on a second press. There is no suspend: the eGPU does not come
+Shut down act on a second press (a held key is one press). There is no suspend: the eGPU does not come
 back from it.
 
 ### Polkit dialog
@@ -329,7 +332,7 @@ back from it.
 `Polkit.qml`: the session's polkit authentication agent. Each request is a
 modal on the focused monitor with the message, the identity, a password field
 and the action id; Enter authenticates, Esc cancels, a wrong password clears
-the field and says so. Requests queue and show one at a time. `qs ipc call
+the field and says so, and the field is emptied whenever the dialog hides. Requests queue and show one at a time. `qs ipc call
 polkit cancel` cancels the one showing. Quickshell tries to register the
 agent once per process, when `Polkit.qml` first loads, and reloads keep that
 registration; if another agent held the session then, it takes a Quickshell
@@ -379,7 +382,8 @@ while Wi-Fi carries the default route.
   (`press F again to forget · Esc keeps it`), and a second F forgets it. Esc
   first cancels a join in progress (and forgets the profile of a network
   that was not saved before), then keeps an armed forget, then closes
-  Wi-Fi details, then does what it does elsewhere in the panel. While a join
+  Wi-Fi details (which also close on their own when that network stops
+  being connected), then does what it does elsewhere in the panel. While a join
   runs every other key says `joining · Esc cancels`. S is unchanged. A join
   that neither connects nor fails within 30 s is reported as `no answer
   after 30 s` and not cancelled: NetworkManager may still finish it.
@@ -642,8 +646,9 @@ calendar export into desktop notifications from the "Calendar" app.
   from LACT's socket and never writing anything. Hardware is found by name
   and device path, not hwmon numbers. While the panel is closed only the two
   bar temperatures are read, every 5 seconds; hovering reads the temperatures
-  each second (the memory modules and the NVMe every 10 seconds); the open panel reads about 30 small files a second and a few
-  every 10 seconds. A sleeping eGPU is not read until it wakes. Memory-module
+  each second (the memory modules and the NVMe no more often than every 10
+  seconds, hover or not); the open panel reads about 30 small files a second
+  and a few every 10 seconds. A sleeping eGPU is not read until it wakes. Memory-module
   alarm files are never read, because reading one clears it.
 - **Deliberately not shown**: link saturation, because no traffic counter
   exists for this card on this kernel (`pcie_bw` is absent on Navi 21, and
@@ -765,9 +770,11 @@ while it keeps failing).
   Zigbee2MQTT online and the retained state read; otherwise nothing.
 - **Light**: on or off, brightness as a slider in percent (Zigbee2MQTT's
   1..254 underneath). The fill is the confirmed value, the handle the one
-  asked for. An off light keeps its last brightness, greyed; moving the
-  slider then turns it on at that level. No slider until a brightness has
-  been reported.
+  asked for. An off light keeps its last brightness as a greyed fill with no
+  handle, and its slider takes no pointer input; ← or → steps from that
+  brightness, and the release sends the new level, which turns the light on
+  at it. With the light on, the slider is dragged with the mouse or stepped
+  with ← →. No slider until a brightness has been reported.
 - **Blind**: ▲ ■ ▼ (open, stop, close) and a position slider (0 closed, 100
   open). ▲ is off at 100 and ▼ at 0; ■ is lit while the motor runs, and the
   handle shows the target until it gets there. The state line reads
@@ -1102,8 +1109,10 @@ side in the shell).
   `systemd-inhibit --list`). When logind announces sleep it starts the lock
   and releases the inhibitor once the lock is up, so the machine wakes
   locked, whatever started the suspend. logind waits at most
-  `InhibitDelayMaxSec` (5 s) for that. Untested on this machine, whose eGPU
-  does not come back from sleep.
+  `InhibitDelayMaxSec` (5 s) for that. The watch for logind's announcement
+  (`gdbus monitor`) is started again 5 s after it ends, with a warning in
+  the shell's log. Untested on this machine, whose eGPU does not come back
+  from sleep.
 - **Preview.** With `DESK_LOCK_PREVIEW=1` in its environment, `lock.qml`
   shows the same faces as an overlay on DP-2, with no session lock and no
   keyboard, driven by its IPC preview functions.
@@ -1665,6 +1674,13 @@ config on GitHub's runners, cause not known.
   `user/quickshell/tray/menu.js` under node (`tests/tray/test-tray.js`): the
   header's name and the entries' check and radio marks, with the button-type
   values read from the installed Quickshell's `quickshell-core.qmltypes`.
+- `nix build .#checks.x86_64-linux.common-panel`: runs
+  `user/quickshell/common/notify.js` under node
+  (`tests/common-panel/test-common.js`): the `gdbus … Notify` arguments it
+  builds for the shell's notifications, read back the way gdbus parses them
+  (typed and untyped), so that names with quotes, backslashes, newlines or
+  the shape of a GVariant value reach the server unchanged. The reader is
+  a transcription of glib's parser; the check does not run gdbus. Under 1 s.
 - `nix build .#checks.x86_64-linux.office-panel`: runs
   `user/quickshell/office/office.js` under node
   (`tests/office-panel/test-office-panel.js`) against invented helper events,
@@ -1673,9 +1689,8 @@ config on GitHub's runners, cause not known.
   panel state; `"@-N"` in a time means N s before the test's fixed now):
   ages, brightness percent and raw values, steps, the row and header texts,
   locks and their footer texts, banners (connecting included), the sockets'
-  total, the bar item, and the pending, confirmed, not-confirmed (each
-  wording) and refused paths. A device list with no sockets throws (a
-  known, unreachable bug; see the test).
+  total, the bar item, the pending, confirmed, not-confirmed (each
+  wording) and refused paths, and a device list with no sockets.
 - `nix build .#checks.x86_64-linux.office-helper`: runs `desk-mqtt` against
   a Mosquitto on loopback, with `tests/office/test-desk-mqtt.py` playing
   Zigbee2MQTT under invented names and a spy on `#`: retained state at
