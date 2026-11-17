@@ -584,6 +584,15 @@ t("lines that are not answers or events change nothing", () => {
     assert.equal(T.key(c, "Esc").handled, false);
 });
 
+t("only answers and progress and error events count as the helper working", () => {
+    const st = overview();
+    const cut = progress(1, 5, R(true, false, false, false, false));
+    for (const line of ["", "not json", cut.slice(0, cut.length - 3), "Traceback (most recent call last):", "[]", "null", "42", JSON.stringify({ event: "bad-input" }), JSON.stringify({ answer: "nonsense", id: 1 }), JSON.stringify({ answer: "refresh", id: 1 }), JSON.stringify({ event: "hello" })])
+        assert.equal(T.event(st, line).took, false, line);
+    for (const line of [cut, JSON.stringify({ event: "error", kind: "OperationalError" }), JSON.stringify(Object.assign(fx("overview-full.json"), { id: st.asked.overview })), JSON.stringify(Object.assign(fx("overview-full.json"), { id: 999 }))])
+        assert.equal(T.event(st, line).took, true, line);
+});
+
 // ---- projects ------------------------------------------------------------
 
 t("projects: 7 days, page 1 of 2, as drawn", () => {

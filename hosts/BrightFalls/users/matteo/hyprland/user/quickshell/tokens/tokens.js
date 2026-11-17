@@ -653,23 +653,26 @@ function onAnswer(st, ev) {
 // overview is asked again whenever a period it lacked becomes ready, and the
 // shown page whenever a sync that read files finishes. Lines that are not
 // JSON objects, bad-input events and the refresh answer change nothing.
-// Returns { state, effects }.
+// Returns { state, effects, took }: `took` is true for a progress or error
+// event or an answer to a page, the lines that show the helper working.
 function event(st, line) {
     let ev = null;
     try {
         ev = JSON.parse(line);
     } catch (e) {
-        return same(st);
+        return Object.assign(same(st), { took: false });
     }
-    if (!st.open || !ev || typeof ev !== "object" || Array.isArray(ev))
-        return same(st);
-    if (ev.event === "progress")
-        return onProgress(st, ev);
-    if (ev.event === "error")
-        return same(copy(st, { error: String(ev.kind || "error") }));
-    if (typeof ev.answer === "string")
-        return onAnswer(st, ev);
-    return same(st);
+    if (!ev || typeof ev !== "object" || Array.isArray(ev))
+        return Object.assign(same(st), { took: false });
+    const took = ev.event === "progress" || ev.event === "error" || typeof PAGE_OF[ev.answer] === "string";
+    let r = same(st);
+    if (st.open && ev.event === "progress")
+        r = onProgress(st, ev);
+    else if (st.open && ev.event === "error")
+        r = same(copy(st, { error: String(ev.kind || "error") }));
+    else if (st.open && typeof ev.answer === "string")
+        r = onAnswer(st, ev);
+    return Object.assign(r, { took });
 }
 
 // ---- what each page shows ------------------------------------------------

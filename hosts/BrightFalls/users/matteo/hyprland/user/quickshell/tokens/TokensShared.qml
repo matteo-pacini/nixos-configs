@@ -99,11 +99,20 @@ Singleton {
         stdinEnabled: true
         stdout: SplitParser {
             onRead: line => {
-                restart.interval = 2000;
-                root.run(T.event(root.st, line));
+                const r = T.event(root.st, line);
+                if (r.took)
+                    restart.interval = 2000;
+                root.run(r);
             }
         }
+        stderr: SplitParser {
+            onRead: line => console.warn("tokens helper:", line)
+        }
         onStarted: {
+            // A process told to stop before it had started: requests from a
+            // reopened panel wait for the next one.
+            if (root.stopping)
+                return;
             root.started = true;
             root.alive = true;
             const lines = root.pending;
@@ -137,7 +146,7 @@ Singleton {
     }
 
     // 2 s, doubling up to a minute while it keeps failing; back to 2 s once
-    // the helper has written a line.
+    // the helper has written a line tokens.js takes.
     Timer {
         id: restart
 
