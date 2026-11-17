@@ -66,8 +66,14 @@ Scope {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
         WlrLayershell.namespace: "desk-polkit"
 
-        onVisibleChanged: if (visible)
-            input.forceActiveFocus()
+        // A request can end without a submit (cancelled by its caller, timed
+        // out); what was typed must not wait in the hidden field.
+        onVisibleChanged: {
+            if (visible)
+                input.forceActiveFocus();
+            else
+                input.text = "";
+        }
 
         // Swallows clicks on the scrim: a stray click must not cancel.
         MouseArea {
