@@ -71,6 +71,12 @@ in
     Unit.Description = "Calendar sync (read-only) and export for the panel";
     Service = {
       Type = "oneshot";
+      # A oneshot has no start timeout by default, so a hung sync would keep
+      # the unit active and the timer could never start it again. systemd
+      # restarts this limit for each of ExecStartPre, ExecStart and
+      # ExecStartPost, so it bounds the export too.
+      # Far above a first sync of the whole account on a slow link.
+      TimeoutStartSec = "15min";
       # pimsync expects the vdir directory to exist (pimsync(1), `check`).
       ExecStartPre = "${lib.getExe' pkgs.coreutils "mkdir"} -p ${vdir}";
       ExecStart = "${lib.getExe pkgs.pimsync} sync";
