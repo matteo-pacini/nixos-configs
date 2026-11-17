@@ -285,6 +285,19 @@ t("overview: normal, as drawn", () => {
     assert.equal(v.single, "");
     assert.equal(o.title, "Claude usage");
     assert.equal(o.meta, "Ultra · this host");
+    assert.deepEqual(o.labels, {
+        limits: "Plan limits",
+        chip: "from Claude Code",
+        today: "Today",
+        output: "Output",
+        cache: "Context read from cache",
+        last14: "Last 14 days · output tokens",
+        last30: "30 days",
+        cacheHit: "Cache hit",
+        subagents: "Sub-agents",
+        price: "At API prices",
+        top7: "Projects · 7 days output"
+    });
     assert.equal(o.limits, LIM.panel);
     assert.equal(o.loading, false);
     assert.deepEqual(o.today, { output: "463 k tokens · 14 sessions", cache: "96.8 M" });
@@ -764,6 +777,8 @@ t("detail: Enter asks for the selected project; drawn as designed", () => {
     assert.equal(d.title, "‹ alpha");
     assert.deepEqual(d.periods.map(x => x.on), [false, true, false]);
     assert.equal(d.state, "shown");
+    assert.deepEqual(d.labels, { output: "Output", sessions: "Sessions", subagents: "Sub-agents", last14: "Last 14 days · output", rows: "Last sessions" });
+    assert.deepEqual(d.columns, ["Started", "Last reply", "Output", "Replies", "Active"]);
     assert.equal(d.output, "8.83 M · 47% of all");
     assert.equal(d.sessions, "131");
     assert.equal(d.subagents, "10% of output");

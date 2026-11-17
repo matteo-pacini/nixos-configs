@@ -128,7 +128,7 @@ Scope {
         id: section
 
         property string label
-        property bool chip: false
+        property string chip
         default property alias body: inner.data
 
         width: parent ? parent.width : 0
@@ -156,7 +156,7 @@ Scope {
             }
 
             Rectangle {
-                visible: section.chip
+                visible: section.chip !== ""
                 anchors.verticalCenter: parent.verticalCenter
                 width: chipText.implicitWidth + 10
                 height: chipText.implicitHeight + 2
@@ -169,7 +169,7 @@ Scope {
                     id: chipText
 
                     anchors.centerIn: parent
-                    text: "from Claude Code"
+                    text: section.chip
                     color: Theme.comment
                     font.family: Theme.fontUi
                     font.pixelSize: 11
@@ -518,7 +518,6 @@ Scope {
                 horizontalAlignment: modelData[2] ? Text.AlignRight : Text.AlignLeft
                 text: modelData[0]
                 textFormat: Text.PlainText
-                elide: Text.ElideRight
                 color: gr.header ? Theme.comment : root.tone(modelData[3] ?? "fg")
                 font.family: Theme.fontMono
                 font.pixelSize: gr.header ? 11 : gr.size
@@ -680,8 +679,8 @@ Scope {
 
                         readonly property var l: overview.o ? overview.o.limits : null
 
-                        label: "Plan limits"
-                        chip: l ? l.chip : false
+                        label: overview.o ? overview.o.labels.limits : ""
+                        chip: l && l.chip ? overview.o.labels.chip : ""
 
                         Text {
                             visible: limitsSection.l !== null && !limitsSection.l.known
@@ -707,7 +706,7 @@ Scope {
                             row: limitsSection.l ? limitsSection.l.model : null
                         }
 
-                        // As drawn: the 5-hour row in the small size.
+                        // The 5-hour row in the small size.
                         LimitRow {
                             row: limitsSection.l ? limitsSection.l.fiveHour : null
                             size: 12
@@ -726,15 +725,15 @@ Scope {
 
                     Section {
                         visible: overview.o !== null && overview.o.today !== null
-                        label: "Today"
+                        label: overview.o ? overview.o.labels.today : ""
 
                         Pair {
-                            name: "Output"
+                            name: overview.o ? overview.o.labels.output : ""
                             value: overview.o?.today?.output ?? ""
                         }
 
                         Pair {
-                            name: "Context read from cache"
+                            name: overview.o ? overview.o.labels.cache : ""
                             value: overview.o?.today?.cache ?? ""
                             colour: Theme.comment
                         }
@@ -747,7 +746,7 @@ Scope {
 
                     Section {
                         visible: overview.o !== null && overview.o.last14 !== null
-                        label: "Last 14 days · output tokens"
+                        label: overview.o ? overview.o.labels.last14 : ""
 
                         Bars {
                             info:overview.o ? overview.o.last14 : null
@@ -765,7 +764,7 @@ Scope {
                         readonly property var d: overview.o ? overview.o.last30 : null
 
                         visible: d !== null
-                        label: "30 days"
+                        label: overview.o ? overview.o.labels.last30 : ""
 
                         SplitBar {
                             parts: last30.d ? last30.d.split : []
@@ -777,17 +776,17 @@ Scope {
                         }
 
                         Pair {
-                            name: "Cache hit"
+                            name: overview.o ? overview.o.labels.cacheHit : ""
                             value: last30.d ? last30.d.cacheHit : ""
                         }
 
                         Pair {
-                            name: "Sub-agents"
+                            name: overview.o ? overview.o.labels.subagents : ""
                             value: last30.d ? last30.d.subagents : ""
                         }
 
                         Pair {
-                            name: "At API prices"
+                            name: overview.o ? overview.o.labels.price : ""
                             value: last30.d ? last30.d.price : ""
                             note: last30.d ? last30.d.plan : ""
                         }
@@ -809,7 +808,7 @@ Scope {
                         readonly property var d: overview.o ? overview.o.top7 : null
 
                         visible: d !== null
-                        label: "Projects · 7 days output"
+                        label: overview.o ? overview.o.labels.top7 : ""
 
                         Repeater {
                             model: top7.d ? top7.d.rows : []
@@ -931,19 +930,19 @@ Scope {
 
                     Pair {
                         visible: detail.shown
-                        name: "Output"
+                        name: detail.d ? detail.d.labels.output : ""
                         value: detail.d ? detail.d.output : ""
                     }
 
                     Pair {
                         visible: detail.shown
-                        name: "Sessions"
+                        name: detail.d ? detail.d.labels.sessions : ""
                         value: detail.d ? detail.d.sessions : ""
                     }
 
                     Pair {
                         visible: detail.shown
-                        name: "Sub-agents"
+                        name: detail.d ? detail.d.labels.subagents : ""
                         value: detail.d ? detail.d.subagents : ""
                     }
 
@@ -972,7 +971,7 @@ Scope {
 
                     Section {
                         visible: detail.shown
-                        label: "Last 14 days · output"
+                        label: detail.d ? detail.d.labels.last14 : ""
 
                         Bars {
                             info:detail.d ? detail.d.last14 : null
@@ -987,11 +986,13 @@ Scope {
 
                     Section {
                         visible: detail.shown
-                        label: "Last sessions"
+                        label: detail.d ? detail.d.labels.rows : ""
 
                         GridRow {
+                            readonly property var c: detail.d ? detail.d.columns : []
+
                             header: true
-                            cells: [["Started", 72, false], ["Last reply", 0, false], ["Output", 56, true], ["Replies", 56, true], ["Active", 60, true]]
+                            cells: [[c[0] ?? "", 72, false], [c[1] ?? "", 0, false], [c[2] ?? "", 56, true], [c[3] ?? "", 56, true], [c[4] ?? "", 60, true]]
                         }
 
                         Repeater {

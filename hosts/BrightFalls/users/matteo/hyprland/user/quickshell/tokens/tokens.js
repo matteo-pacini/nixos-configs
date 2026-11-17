@@ -623,6 +623,19 @@ function overviewView(st, lim) {
     const out = {
         title: TEXT.title,
         meta: reading ? TEXT.reading : `${PLAN.name} · this host`,
+        labels: {
+            limits: "Plan limits",
+            chip: "from Claude Code",
+            today: "Today",
+            output: "Output",
+            cache: "Context read from cache",
+            last14: "Last 14 days · output tokens",
+            last30: "30 days",
+            cacheHit: "Cache hit",
+            subagents: "Sub-agents",
+            price: "At API prices",
+            top7: "Projects · 7 days output"
+        },
         limits: lim ? lim.panel : limits(null, 0).panel,
         loading: !a,
         today: null,
@@ -748,6 +761,8 @@ function detailView(st) {
     const out = {
         title: `‹ ${st.detail ? st.detail.name : ""}`,
         periods: periodControl(st.period),
+        labels: { output: "Output", sessions: "Sessions", subagents: "Sub-agents", last14: "Last 14 days · output", rows: "Last sessions" },
+        columns: ["Started", "Last reply", "Output", "Replies", "Active"],
         state: "loading",
         output: "",
         sessions: "",
@@ -931,8 +946,9 @@ function hints(st) {
 // shows its panel section). Returns { single, page, hints, overview,
 // projects, detail, days }: single is the one line that replaces the panel
 // ("" when none); only the current page's view is filled, the others null.
-//   overview: { title, meta, limits (limits().panel), loading (no answer
-//     yet), today: null | { output, cache }, last14: null | bars, last30:
+//   overview: { title, meta, labels: { limits, chip, today, output, cache,
+//     last14, last30, cacheHit, subagents, price, top7 } (the sections' and
+//     rows' names), limits (limits().panel), loading (no answer yet), today: null | { output, cache }, last14: null | bars, last30:
 //     null | { split, sentence, cacheHit, subagents, price, plan, unpriced },
 //     top7: null | { rows: [{ name, value }], more, empty }, older: null |
 //     { label, line, pct, frac, note }, olderBefore, unreadable, error }
@@ -942,8 +958,9 @@ function hints(st) {
 //     output, share, shareFrac, split: [{ frac, colour }], line, selected }]
 //     (this page only), empty (two lines), building: null | { label, line,
 //     pct, frac, note }, error }
-//   detail: { title, periods, state: "loading" | "shown" | "building" |
-//     "error", output, sessions, subagents, split, sentence, last14: null |
+//   detail: { title, periods, labels: { output, sessions, subagents, last14,
+//     rows }, columns (the sessions grid's five headers), state: "loading" |
+//     "shown" | "building" | "error", output, sessions, subagents, split, sentence, last14: null |
 //     bars, rows: [{ started, last, output, replies, active }], note,
 //     building, error }
 //   days: { title, meta, columns, state: "loading" | "shown" | "building" |
