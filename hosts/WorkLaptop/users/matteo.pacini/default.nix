@@ -48,6 +48,7 @@
   custom.hex.enable = true;
   custom.sleepmode.enable = true;
   custom.mpv.enable = true;
+  custom.mpv.jellyfinShim.enable = true;
 
   home.stateVersion = "26.05";
 

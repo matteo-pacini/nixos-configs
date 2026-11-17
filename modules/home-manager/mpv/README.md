@@ -12,7 +12,29 @@ Windows-first mpv config pack. Options are under `custom.mpv`; see
 | `profiles.nix` | Auto-profiles (SD upscale, primaries fixes, HDR and Dolby Vision tone mapping) |
 | `bindings.nix` | `input.conf` bindings that differ from mpv's defaults |
 | `scripts.nix` | Script options and the vendored files linked into `~/.config/mpv` |
+| `jellyfin-shim.nix` | `custom.mpv.jellyfinShim`: jellyfin-mpv-shim, its config files and login autostart (see below) |
 | `assets/` | Vendored files, listed below |
+
+## jellyfin-mpv-shim
+
+Enabled on BrightFalls, NightSprings and WorkLaptop. The package comes from
+nixpkgs with a local patch (`overlays/shared.nix`, health check). The module
+links the mpv files from `~/.config/mpv` into the shim's config directory,
+because the shim gives mpv its own config directory and never reads
+`~/.config/mpv`. It also writes the Dracula theme and seeds `conf.json` once.
+It starts the shim minimised at login.
+
+| | Linux (BrightFalls) | macOS (NightSprings, WorkLaptop) |
+|---|---|---|
+| Config directory | `~/.config/jellyfin-mpv-shim` | `~/Library/Application Support/jellyfin-mpv-shim` |
+| Autostart | systemd user service on `graphical-session.target`, `Restart=on-failure` | launchd agent in the Aqua session, restarted unless it exits cleanly (Quit) |
+| Player | libmpv inside the shim | an external `mpv` process (the shim's default on macOS), nixpkgs' mpv from the package wrapper's `PATH` |
+| GPU | `MESA_VK_DEVICE_SELECT=discrete!` in the unit | none |
+| Tray | the Quickshell bar (the unit is ordered after it) | the menu bar |
+| Package | nixpkgs plus the patch | also lifts nixpkgs' Linux-only platform list and skips python-mpv's tests, which cannot run in the Darwin build sandbox |
+
+The player in both cases is nixpkgs' plain mpv, not the `programs.mpv`
+wrapper, so `thumbfast` and `autoload` do not load in the shim.
 
 ## Provenance
 
