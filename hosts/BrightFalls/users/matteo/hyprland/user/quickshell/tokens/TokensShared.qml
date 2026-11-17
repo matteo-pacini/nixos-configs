@@ -29,6 +29,9 @@ Singleton {
     // Epoch seconds, for the limits reading only.
     property real now: Date.now() / 1000
     readonly property var limits: T.limits(limitsText, now)
+    // The footer line for a few seconds after R, or "". Bound, so it shows
+    // the limits file as re-read, which loads after the key.
+    readonly property string said: saying.running ? T.refreshLine(limits.reading, now) : ""
 
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ""
     readonly property string limitsPath: runtimeDir !== "" ? runtimeDir + "/desk/claude-limits.json" : ""
@@ -44,10 +47,10 @@ Singleton {
     // Asks Tokens.qml to open the panel on `screen`, or close it.
     signal toggleRequested(string screen)
 
-    // A key name from T.KEY_NAMES pressed in the open panel. Returns whether
-    // the panel used it.
-    function key(name: string): bool {
-        const r = T.key(st, name);
+    // A key name from T.KEY_NAMES pressed in the open panel; `repeat`: a held
+    // key's auto-repeat. Returns whether the panel used it.
+    function key(name: string, repeat: bool): bool {
+        const r = T.key(st, name, repeat);
         run(r);
         return r.handled;
     }
@@ -56,10 +59,16 @@ Singleton {
     function run(r: var): void {
         st = r.state;
         for (const e of r.effects) {
-            if (e.do === "send")
+            if (e.do === "send") {
                 send(JSON.stringify(e.req) + "\n");
-            else if (e.do === "close")
+            } else if (e.do === "reloadLimits") {
+                // Also covers a change the file watch missed.
+                now = Date.now() / 1000;
+                limitsFile.reload();
+                saying.restart();
+            } else if (e.do === "close") {
                 screen = "";
+            }
         }
     }
 
@@ -88,8 +97,16 @@ Singleton {
             proc.running = true;
         } else {
             stop();
+            saying.stop();
             st = T.closed(st);
         }
+    }
+
+    // How long the footer line after R shows; runs only after R.
+    Timer {
+        id: saying
+
+        interval: 4000
     }
 
     Process {
@@ -99,11 +116,20 @@ Singleton {
         stdinEnabled: true
         stdout: SplitParser {
             onRead: line => {
-                restart.interval = 2000;
-                root.run(T.event(root.st, line));
+                const r = T.event(root.st, line);
+                if (r.took)
+                    restart.interval = 2000;
+                root.run(r);
             }
         }
+        stderr: SplitParser {
+            onRead: line => console.warn("tokens helper:", line)
+        }
         onStarted: {
+            // A process told to stop before it had started: requests from a
+            // reopened panel wait for the next one.
+            if (root.stopping)
+                return;
             root.started = true;
             root.alive = true;
             const lines = root.pending;
@@ -137,7 +163,7 @@ Singleton {
     }
 
     // 2 s, doubling up to a minute while it keeps failing; back to 2 s once
-    // the helper has written a line.
+    // the helper has written a line tokens.js takes.
     Timer {
         id: restart
 

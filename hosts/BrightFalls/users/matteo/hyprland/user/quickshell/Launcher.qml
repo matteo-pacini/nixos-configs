@@ -63,6 +63,7 @@ Scope {
 
         function toggle(): void {
             if (!root.open) {
+                Dropdowns.closeOthers("");
                 // Picked once per open, so the launcher stays put if the
                 // pointer crosses to another monitor while it is up.
                 const name = Hyprland.focusedMonitor?.name;
@@ -205,6 +206,11 @@ Scope {
                         Keys.onPressed: event => {
                             const ctrl = event.modifiers & Qt.ControlModifier;
                             const count = root.results.length;
+                            // A held Esc or Enter acts once; the rest repeat.
+                            if (event.isAutoRepeat && [Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
+                                event.accepted = true;
+                                return;
+                            }
                             if (event.key === Qt.Key_Escape) {
                                 root.open = false;
                             } else if (event.key === Qt.Key_Backspace && text === "" && root.mode !== "apps") {
@@ -333,6 +339,7 @@ Scope {
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: row.mode !== "calc" ? row.modelData.name : row.hint ? row.modelData.hint : row.modelData.text
+                                textFormat: Text.PlainText
                                 elide: Text.ElideRight
                                 color: row.hint ? Theme.comment : Theme.foreground
                                 font.family: result ? Theme.fontMono : Theme.fontUi
@@ -347,6 +354,7 @@ Scope {
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: row.mode === "apps" ? Apps.mainCategory(row.modelData) : row.selected ? "Enter copies" : ""
+                                textFormat: Text.PlainText
                                 color: row.selected ? Theme.purple : Theme.comment
                                 font.family: Theme.fontMono
                                 font.pixelSize: 12

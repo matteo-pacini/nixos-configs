@@ -33,6 +33,10 @@ Scope {
     // moves there.
     property var blindTarget: null
     property string flash: ""
+    // The ← or → whose press this panel saw, until its release, or 0. A
+    // release whose press went to another surface (a modal closed by it,
+    // say) is not this panel's to act on.
+    property int heldArrow: 0
 
     readonly property string single: O.single(office)
     readonly property var banner: O.banner(office, now)
@@ -56,6 +60,7 @@ Scope {
         selected = 0;
         lightDraft = null;
         blindDraft = null;
+        heldArrow = 0;
         flash = "";
         OfficeShared.screen = window.screen.name;
     }
@@ -63,6 +68,7 @@ Scope {
     function close(): void {
         lightDraft = null;
         blindDraft = null;
+        heldArrow = 0;
         OfficeShared.screen = "";
     }
 
@@ -143,6 +149,10 @@ Scope {
     function key(event: var): bool {
         const k = event.key;
         const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
+        // Of a held key's auto-repeats, only the arrows' act (↑↓ select, ←→
+        // step a slider).
+        if (event.isAutoRepeat && ![Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down].includes(k))
+            return true;
         if (k === Qt.Key_Escape)
             close();
         else if (single !== "")
@@ -151,9 +161,10 @@ Scope {
             commitLight();
             commitBlind();
             selected = k === Qt.Key_Up ? 0 : 1;
-        } else if (k === Qt.Key_Left || k === Qt.Key_Right)
+        } else if (k === Qt.Key_Left || k === Qt.Key_Right) {
+            heldArrow = k;
             nudge(k === Qt.Key_Left ? -1 : 1);
-        else if (k === Qt.Key_Return || k === Qt.Key_Enter)
+        } else if (k === Qt.Key_Return || k === Qt.Key_Enter)
             toggleLight();
         else if (k === Qt.Key_U && plain)
             blindAction("open");
@@ -167,12 +178,12 @@ Scope {
     }
 
     function release(event: var): void {
-        if (event.isAutoRepeat || (event.key !== Qt.Key_Left && event.key !== Qt.Key_Right))
+        if (event.isAutoRepeat || event.key !== heldArrow)
             return;
+        heldArrow = 0;
         commitLight();
         commitBlind();
     }
-
 
     Timer {
         id: flashTimer
@@ -355,6 +366,7 @@ Scope {
 
             width: parent.width - ageText.implicitWidth - 8
             text: parent.text
+            textFormat: Text.PlainText
             wrapMode: Text.Wrap
             color: parent.tone === "bad" ? Theme.red : parent.tone === "note" ? Theme.orange : parent.tone === "dim" || parent.grey ? Theme.comment : root.soft
             font.family: Theme.fontUi
@@ -475,6 +487,7 @@ Scope {
                             y: 6
                             width: parent.width - 16
                             text: root.banner.text
+                            textFormat: Text.PlainText
                             wrapMode: Text.Wrap
                             color: root.banner.tone === "err" ? Theme.red : Theme.orange
                             font.family: Theme.fontUi
@@ -489,8 +502,6 @@ Scope {
 
                     // The light.
                     Rectangle {
-                        id: lightRow
-
                         visible: root.light !== null
                         x: 8
                         width: parent.width - 16

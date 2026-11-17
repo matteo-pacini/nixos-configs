@@ -38,7 +38,7 @@ Scope {
     readonly property var pipe: F.pipeline(fleet)
     readonly property string runUrl: fleet.github?.state === "ok" ? (fleet.github.run?.url ?? "") : ""
     readonly property string spinner: "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[frame % 10]
-    readonly property bool spinning: names.some(n => fleet.rows[n].chip.id === "deploying" || fleet.rows[n].chip.id === "building" || ["started", "running"].includes(fleet.actions[n]?.state))
+    readonly property bool spinning: F.spinning(fleet)
 
     readonly property color soft: Style.soft
 
@@ -80,10 +80,10 @@ Scope {
         selected = host;
     }
 
-    // Runs what fleet.js decided for a key.
-    function act(name: string): void {
+    // Runs what fleet.js decided for a key; `repeat`: a held key's auto-repeat.
+    function act(name: string, repeat: bool): void {
         const row = fleet.rows[current] ?? null;
-        const d = F.decide(row, ask, name, runUrl);
+        const d = F.decide(row, ask, name, runUrl, repeat);
         switch (d.kind) {
         case "send":
             if (!FleetShared.send(d.cmd))
@@ -130,8 +130,9 @@ Scope {
     function key(event: var): bool {
         const k = event.key;
         const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
+        const repeat = event.isAutoRepeat;
         if (k === Qt.Key_Escape) {
-            act("Esc");
+            act("Esc", repeat);
             return true;
         }
         if (single !== "")
@@ -150,11 +151,11 @@ Scope {
             return true;
         }
         if (k === Qt.Key_Return || k === Qt.Key_Enter) {
-            act("Enter");
+            act("Enter", repeat);
             return true;
         }
         if (k === Qt.Key_F5) {
-            act("F5");
+            act("F5", repeat);
             return true;
         }
         if (!plain)
@@ -175,7 +176,7 @@ Scope {
         };
         if (!(k in letters))
             return false;
-        act(letters[k]);
+        act(letters[k], repeat);
         return true;
     }
 

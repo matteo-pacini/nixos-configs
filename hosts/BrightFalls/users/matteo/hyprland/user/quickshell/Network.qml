@@ -351,17 +351,19 @@ Scope {
         }, psk);
     }
 
-    function wifiKey(k: string): bool {
+    function wifiKey(k: string, repeat: bool): bool {
         return wifiStep({
             type: "key",
             key: k,
             row: wifiSelected,
-            section: wifiSection
+            section: wifiSection,
+            repeat: repeat
         }).handled;
     }
 
     // Turns changes in the rows into the machine's events (a network left,
-    // one became connected), then rebuilds the view if anything drawn moved.
+    // one became connected or disconnected), then rebuilds the view if
+    // anything drawn moved.
     function syncWifi(): void {
         const rows = wifiIn.rows;
         // Later: this runs inside wifiIn's update, and wifiIn reads
@@ -388,6 +390,11 @@ Scope {
                     // The address, gateway and DNS arrive with the link.
                     if (open)
                         infoQuery.running = true;
+                } else if (!seen[name] && wifiSeen[name]) {
+                    wifiStep({
+                        type: "disconnected",
+                        name
+                    });
                 }
             }
             wifiSeen = seen;
@@ -435,12 +442,30 @@ Scope {
         if (row.kind === "nix") {
             say(`Set in ${row.entry.file}. Change it there and deploy.`);
         } else if (row.kind === "wifi") {
-            wifiKey("Enter");
+            wifiKey("Enter", false);
         } else if (row.device.connected) {
             expanded = expanded === row.device.name ? "" : row.device.name;
         } else {
             say(row.device.hasLink ? `${row.device.name} is not connected.` : `No cable in ${row.device.name}.`);
         }
+    }
+
+    // Outside text for a StyledText string.
+    function esc(text: var): string {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    // The selected wired or Nix row's Enter, as the footer hints it: what
+    // activate() does there.
+    function rowKeys(): var {
+        const row = rows[current];
+        if (!row || row.kind === "wifi")
+            return [];
+        if (row.kind === "nix")
+            return [["Enter", "show file"]];
+        if (!row.device.connected)
+            return [];
+        return [["Enter", expanded === row.device.name ? "close details" : "details"]];
     }
 
     function linkText(mbps: int): string {
@@ -523,6 +548,9 @@ Scope {
         if (!open || phase !== "list")
             return;
         expanded = "";
+        // The route may have moved since the panel opened (a cable plugged
+        // in); a run is filed under the route read here.
+        infoQuery.running = true;
         const last = sessionChoice || historyChoice;
         chosen = Math.max(0, choices.indexOf(last));
         phase = "out";
@@ -650,7 +678,8 @@ Scope {
         id: startTimer
 
         interval: 380
-        onTriggered: root.runTest()
+        // Waits for the route read openChooser() started.
+        onTriggered: infoQuery.running ? startTimer.restart() : root.runTest()
     }
 
     Timer {
@@ -968,15 +997,18 @@ Scope {
         })
     }
 
-    // Returns true when the key was used.
-    function key(k: int, modifiers: int): bool {
+    // Returns true when the key was used. `repeat`: a held key's auto-repeat,
+    // which only ↑↓ act on.
+    function key(k: int, modifiers: int, repeat: bool): bool {
         const plain = (modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
         const enter = k === Qt.Key_Return || k === Qt.Key_Enter;
         if (phase === "list") {
             const name = k === Qt.Key_Escape ? "Esc" : enter ? "Enter" : k === Qt.Key_F5 ? "F5" : !plain ? "" : k === Qt.Key_W ? "W" : k === Qt.Key_C ? "C" : k === Qt.Key_F ? "F" : "";
-            if (wifiKey(name || "other"))
+            if (wifiKey(name || "other", repeat))
                 return true;
         }
+        if (repeat && k !== Qt.Key_Up && k !== Qt.Key_Down)
+            return true;
         if (k === Qt.Key_Escape) {
             if (phase === "list") {
                 if (expanded !== "")
@@ -1049,7 +1081,7 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
-                if (root.key(event.key, event.modifiers))
+                if (root.key(event.key, event.modifiers, event.isAutoRepeat))
                     event.accepted = true;
             }
         }
@@ -1141,6 +1173,7 @@ Scope {
                                         width: parent.width
                                         elide: Text.ElideRight
                                         text: wiredRow.modelData.name
+                                        textFormat: Text.PlainText
                                         color: Theme.foreground
                                         font.family: Theme.fontUi
                                         font.pixelSize: 15
@@ -1196,6 +1229,8 @@ Scope {
                             }
 
                             Column {
+                                id: wiredDetails
+
                                 visible: root.expanded === wiredRow.modelData.name && wiredRow.up
                                 x: 28
                                 width: parent.width - 28
@@ -1211,12 +1246,13 @@ Scope {
 
                                         x: 12
                                         y: 2
+                                        width: wiredDetails.width - 12
 
                                         Repeater {
                                             model: {
                                                 const d = wiredRow.modelData, nm = wiredRow.nm;
                                                 const duplex = root.duplex[d.name];
-                                                return [["address", nm?.addresses.join(", ") || "–"], ["gateway", nm?.gateway || "–"], ["dns", nm?.dns.join(", ") || "–"], ["mac", d.address.toLowerCase() || "–"], ["link", d.linkSpeed > 0 ? `${d.linkSpeed} Mb/s${duplex === "full" || duplex === "half" ? ` ${duplex} duplex` : ""}` : "–"]];
+                                                return [["address", nm?.addresses.join(", ") || "–"], ["gateway", nm?.gateway || "–"], ["dns", nm?.dns.join(", ") || "–"], ["mac", d.address.toLowerCase() || "–"], ["link", d.linkSpeed > 0 ? `${root.linkText(d.linkSpeed)}${duplex === "full" || duplex === "half" ? ` ${duplex} duplex` : ""}` : "–"]];
                                             }
 
                                             Row {
@@ -1232,7 +1268,9 @@ Scope {
                                                 }
 
                                                 Text {
+                                                    width: details.width - 72
                                                     text: parent.modelData[1]
+                                                    wrapMode: Text.Wrap
                                                     color: root.soft
                                                     font.family: Theme.fontMono
                                                     font.pixelSize: 12
@@ -1359,7 +1397,7 @@ Scope {
                                     anchors.fill: parent
                                     onClicked: {
                                         root.select(root.rows.findIndex(r => r.key === "f:" + wifiRow.v.name));
-                                        root.wifiKey("Enter");
+                                        root.wifiKey("Enter", false);
                                     }
                                 }
 
@@ -1389,6 +1427,7 @@ Scope {
                                         width: parent.width
                                         elide: Text.ElideRight
                                         text: wifiRow.v.name
+                                        textFormat: Text.PlainText
                                         color: wifiRow.v.dim ? Theme.comment : Theme.foreground
                                         font.family: Theme.fontUi
                                         font.pixelSize: 15
@@ -1536,7 +1575,7 @@ Scope {
                                 anchors.right: tag.left
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                elide: Text.ElideRight
+                                wrapMode: Text.Wrap
                                 text: lockedRow.modelData.label
                                 color: Theme.comment
                                 font.family: Theme.fontUi
@@ -1558,7 +1597,7 @@ Scope {
                     keys: Wifi.hints(root.wifi, root.wifiSection, root.wifiSelected, {
                         moves: root.rows.length > (root.current >= 0 ? 1 : 0),
                         speedTest: true,
-                        rowKeys: root.current >= 0 ? [["Enter", "select"]] : [],
+                        rowKeys: root.rowKeys(),
                         esc: root.expanded !== "" ? "back" : "close"
                     })
                     message: root.flash
@@ -1727,9 +1766,12 @@ Scope {
 
                 Item {
                     width: parent.width
-                    height: root.allMode ? root.gaugeHeightAll : root.gaugeHeight
+                    // Grows only for a failure text too long for the fixed height.
+                    height: Math.max(root.allMode ? root.gaugeHeightAll : root.gaugeHeight, gaugeBody.implicitHeight + 8)
 
                     Column {
+                        id: gaugeBody
+
                         anchors.centerIn: parent
                         width: parent.width - 24
                         spacing: 4
@@ -1784,7 +1826,7 @@ Scope {
                             topPadding: 10
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
-                            text: pairs.map(p => `${p[0]}&nbsp;<font color="${root.soft}">${String(p[1]).replace(/ /g, "&nbsp;")}</font>`).join("&nbsp; ")
+                            text: pairs.map(p => `${root.esc(p[0])}&nbsp;<font color="${root.soft}">${root.esc(p[1]).replace(/ /g, "&nbsp;")}</font>`).join("&nbsp; ")
                             textFormat: Text.StyledText
                             color: Theme.comment
                             font.family: Theme.fontMono
@@ -1797,9 +1839,8 @@ Scope {
                             topPadding: root.allMode ? 4 : 10
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
-                            maximumLineCount: root.allMode ? 2 : 4
-                            elide: Text.ElideRight
                             text: root.allMode ? root.failure : `${root.failure}. Enter retries, Esc returns.`
+                            textFormat: Text.PlainText
                             color: Theme.red
                             font.family: Theme.fontMono
                             font.pixelSize: 12

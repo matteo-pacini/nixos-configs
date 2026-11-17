@@ -49,7 +49,8 @@ Singleton {
         root.light = light;
         timedOut = false;
         exitSeen = false;
-        proc.command = light ? ["tailscale", "status", "--json", "--peers=false"] : ["tailscale", "status", "--json"];        proc.running = true;
+        proc.command = light ? ["tailscale", "status", "--json", "--peers=false"] : ["tailscale", "status", "--json"];
+        proc.running = true;
         watchdog.restart();
     }
 

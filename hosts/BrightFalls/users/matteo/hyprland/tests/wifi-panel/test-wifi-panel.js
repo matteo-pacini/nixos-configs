@@ -508,7 +508,45 @@ t("forget: F arms, F again forgets, Esc or moving off disarms", () => {
     assert.deepEqual([r.state.expanded, ops(r)], [null, ["forget"]]);
 });
 
+t("forget: a held F arms once and never forgets", () => {
+    const h = net("Harbour Loft");
+    const held = (m, key, row) => W.step(m, { type: "key", key, row, section: LIST, repeat: true });
+    let r = press(W.initial(), "F", h);
+    const armed = r.state;
+    for (let i = 0; i < 3; i++) {
+        r = held(r.state, "F", h);
+        assert.deepEqual([r.state, r.effects, r.handled], [armed, [], true]);
+    }
+    // Only a second press forgets.
+    assert.deepEqual(press(r.state, "F", h).effects, [{ do: "forget", name: "Harbour Loft" }]);
+});
+
 // ---- keys ------------------------------------------------------------------
+
+t("a held key's repeats: Wi-Fi's keys do nothing, the panel's stay the panel's", () => {
+    const c = net("Harbour Loft", { connected: true, state: "Connected" });
+    const held = (m, key, row, sec) => W.step(m, { type: "key", key, row: row === undefined ? null : row, section: sec || LIST, repeat: true });
+    const cases = [
+        [W.initial(), "W", null, OFF],
+        [W.initial(), "F5", null, LIST],
+        [W.initial(), "Enter", net("Harbour Loft")],
+        [W.initial(), "C", net("Harbour Loft")],
+        [W.initial(), "C", c],
+        [W.initial(), "Enter", c],
+        [Object.assign(W.initial(), { expanded: "Harbour Loft" }), "Esc", c],
+        [Object.assign(W.initial(), { armed: "Harbour Loft" }), "Esc", c],
+        [press(W.initial(), "Enter", net("Harbour Loft")).state, "Esc", null],
+        // Esc and Enter that would fall to the panel (close, wired details).
+        [W.initial(), "Esc", null],
+        [W.initial(), "Enter", null]
+    ];
+    for (const [m, key, row, sec] of cases) {
+        const r = held(m, key, row, sec);
+        assert.deepEqual([r.state, r.effects, r.handled], [m, [], true], key);
+    }
+    for (const k of ["S", "Up", "Down", "other"])
+        assert.equal(held(W.initial(), k, net("Harbour Loft")).handled, false, k);
+});
 
 t("W: radio on and off, with no row selected; refused without a device or with the switch off", () => {
     assert.deepEqual(press(W.initial(), "W", null, OFF).effects, [{ do: "radio", on: true }]);
@@ -570,6 +608,31 @@ t("hints: per selection and state, only keys that work", () => {
     const hw = W.section({ device: true, hardware: false, radio: true, answered: true, rows: [] });
     for (const sec of [none, hw])
         assert.deepEqual(h(W.initial(), sec, null, { moves: true, speedTest: true }), [["↑↓", "select"], ["S", "speed test"], ["Esc", "close"]]);
+});
+
+t("hints: Esc says what Esc does, whichever row is selected", () => {
+    const esc = (m, row, panelEsc) => W.hints(m, LIST, row, { moves: true, speedTest: true, rowKeys: [], esc: panelEsc }).slice(-1)[0];
+    const c = net("Harbour Loft", { connected: true, state: "Connected" });
+    const open = Object.assign(W.initial(), { expanded: "Harbour Loft" });
+    // Wired details open, a Wi-Fi row selected: Esc closes the wired details.
+    assert.deepEqual(esc(W.initial(), net("Fernhill 5G"), "back"), ["Esc", "back"]);
+    // Wi-Fi details open, a wired row selected: Esc closes the Wi-Fi details.
+    assert.deepEqual(esc(open, null, "close"), ["Esc", "back"]);
+    // Wi-Fi details open, another Wi-Fi row selected: the same.
+    assert.deepEqual(esc(open, net("Fernhill 5G"), "close"), ["Esc", "back"]);
+    assert.deepEqual(esc(open, c, "close"), ["Esc", "back"]);
+    // Nothing open anywhere.
+    assert.deepEqual(esc(W.initial(), c, "close"), ["Esc", "close"]);
+    assert.deepEqual(esc(W.initial(), null, "close"), ["Esc", "close"]);
+    // The expanded row disconnected or gone: its details went, Esc closes.
+    for (const type of ["disconnected", "vanished"]) {
+        const r = W.step(open, { type, name: "Harbour Loft" });
+        assert.equal(r.state.expanded, null, type);
+        assert.deepEqual(esc(r.state, net("Harbour Loft"), "close"), ["Esc", "close"], type);
+        assert.equal(press(r.state, "Esc", null).handled, false, type);
+    }
+    // Another network disconnecting leaves the details open.
+    assert.equal(W.step(open, { type: "disconnected", name: "Fernhill 5G" }).state.expanded, "Harbour Loft");
 });
 
 // ---- details ---------------------------------------------------------------

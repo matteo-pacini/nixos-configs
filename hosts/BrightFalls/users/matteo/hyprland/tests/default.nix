@@ -157,6 +157,13 @@ pkgs.lib.fix (self: {
     touch $out
   '';
 
+  # The shared notification sender (quickshell/common/notify.js): names that
+  # gdbus would read as GVariant syntax reach the server unchanged.
+  common-panel = pkgs.runCommand "common-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./common-panel/test-common.js} ${../user/quickshell/common}
+    touch $out
+  '';
+
   # The office panel's library (quickshell/office/office.js) against invented
   # helper events, inline and from office-panel/fixtures/.
   office-panel = pkgs.runCommand "office-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''

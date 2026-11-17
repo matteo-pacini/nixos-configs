@@ -265,6 +265,13 @@ function lactFan(text, pciAddress) {
     return mode === "static" ? "LACT, fixed speed" : "LACT";
 }
 
+// Whether a source of `rate` last read at `last` (ms, 0 for never) may be
+// read again at `now`. A slow source waits 10 s: NVMe temperature reads are
+// admin commands to the drive.
+function due(last, now, rate) {
+    return rate !== "slow" || last === 0 || now - last >= 10000;
+}
+
 // 0 normal, 1 warm (orange), 2 hot (red).
 function heat(t, warm, hot) {
     if (t === null || t === undefined)
@@ -318,6 +325,7 @@ if (typeof module !== "undefined")
         linkState,
         aerTotal,
         lactFan,
+        due,
         heat,
         gib,
         diskPair,

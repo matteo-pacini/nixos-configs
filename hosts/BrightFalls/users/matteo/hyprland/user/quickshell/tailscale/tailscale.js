@@ -37,9 +37,10 @@
 // ui: { selected, unfolded: [id], chooser: id | null }, held by the QML,
 // replaced by what decide() returns. initialUi() is the first one.
 //
-// decide(v, ui, key) -> { kind, ui, ... }, v = view(...). Keys: "Up",
-//   "Down", "J", "K", "Home", "End", "Enter", "Y", "T", "O", "F5", "Esc",
-//   "1".."4". Kinds:
+// decide(v, ui, key, repeat) -> { kind, ui, ... }, v = view(...). Keys:
+//   "Up", "Down", "J", "K", "Home", "End", "Enter", "Y", "T", "O", "F5",
+//   "Esc", "1".."4". repeat: true for a held key's auto-repeat, which only
+//   the navigation keys act on. Kinds:
 //   { kind: "ui", ui }                       selection, fold, chooser changed
 //   { kind: "copy", ui, text, command, say } run command, flash `say`
 //   { kind: "open", ui, url, command }
@@ -791,8 +792,12 @@ function copyAction(ui, text, say) {
     return { kind: "copy", ui, text, command: ["wl-copy", "--", text], say };
 }
 
-function decide(v, ui, key) {
+const NAV_KEYS = ["Up", "Down", "J", "K", "Home", "End"];
+
+function decide(v, ui, key, repeat) {
     const u = withUi(ui || initialUi(), { selected: v.selected });
+    if (repeat && !NAV_KEYS.includes(key))
+        return { kind: "none", ui: u };
     if (v.chooser) {
         if (key === "Esc")
             return { kind: "ui", ui: withUi(u, { chooser: null }) };
@@ -811,7 +816,7 @@ function decide(v, ui, key) {
         const url = v.authUrl || ADMIN_URL;
         return { kind: "open", ui: u, url, command: ["uwsm", "app", "--", "xdg-open", url] };
     }
-    if (["Up", "Down", "J", "K", "Home", "End"].includes(key)) {
+    if (NAV_KEYS.includes(key)) {
         if (v.ids.length < 2)
             return { kind: "none", ui: u };
         return { kind: "ui", ui: withUi(u, { selected: move(v.ids, v.selected, key) }) };
