@@ -316,4 +316,6 @@ pkgs.lib.fix (self: {
         bash ${./run.sh} ${../desk-sync.sh}
         touch $out
       '';
+
+  quickshell-lint = import ./quickshell-lint { inherit pkgs; };
 })
