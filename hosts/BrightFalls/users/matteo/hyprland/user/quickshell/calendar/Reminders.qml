@@ -153,6 +153,9 @@ Scope {
 
         path: root.statePath
         blockLoading: true
+        // run() reads the state back with text(), which an asynchronous
+        // write updates only once it finishes.
+        blockWrites: true
         printErrors: false
     }
 
