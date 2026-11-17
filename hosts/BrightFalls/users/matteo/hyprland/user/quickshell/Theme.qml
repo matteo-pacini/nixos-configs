@@ -5,9 +5,11 @@ import Quickshell
 import Quickshell.Io
 
 // The desktop palette: ~/.config/desk/theme.json over the built-in Dracula
-// values, re-read when the file changes. A missing or unparsable file, a
-// missing key, or a value of the wrong form gives the built-in value for that
-// key, the same rule as ~/.local/share/desk/hypr/theme.lua.
+// values, re-read when the file changes. A missing key or a value of the
+// wrong form gives the built-in value for that key, the same rule as
+// ~/.local/share/desk/hypr/theme.lua. A missing or unparsable file gives the
+// whole built-in palette here, where theme.lua still takes every pair it can
+// read before the fault.
 Singleton {
     id: root
 

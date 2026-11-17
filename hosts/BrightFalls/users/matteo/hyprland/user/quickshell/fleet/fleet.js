@@ -354,7 +354,7 @@ function allowed(row, name) {
 // `ask` is the open question ({ host, what }) or null; `row` the selected
 // host's row or null; `runUrl` the build run's address or "".
 // Returns { kind: "send", cmd, keepAsk } | { kind: "ask", what } |
-// { kind: "cancel" } | { kind: "close" } | { kind: "say", text } |
+// { kind: "cancel" } | { kind: "close" } | { kind: "say", text, cancel? } |
 // { kind: "info" } | { kind: "open", url } | { kind: "refresh" } |
 // { kind: "none" }.
 function decide(row, ask, key, runUrl) {

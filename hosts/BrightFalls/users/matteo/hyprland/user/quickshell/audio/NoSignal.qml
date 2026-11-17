@@ -13,8 +13,11 @@ import Quickshell.Services.Pipewire
 //
 // /proc is read only while an input runs (a program or a level monitor
 // records from it), and once when an input appears (shell start included),
-// by opening it for about 1.5 s through a level monitor. A flag lasts until
-// samples flow or the input goes away, and sends one desktop notification.
+// by opening it for about 1.5 s through a level monitor. Reads stop once two
+// of them decide, so an input that hangs later in the same run is not seen
+// until it starts running again. A flagged input is read on while it runs.
+// A flag lasts until samples flow or the input goes away, and sends one
+// desktop notification.
 Singleton {
     id: root
 

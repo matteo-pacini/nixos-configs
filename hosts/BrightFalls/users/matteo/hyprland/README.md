@@ -198,6 +198,7 @@ others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
 | Office | Super+O, bar light bulb and watts | `office` |
 | Fleet | Super+G, bar server glyph and count | `fleet` |
+| Tailscale | Super+V, bar Tailscale glyph | `tailscale` |
 | Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
@@ -286,7 +287,8 @@ hidden under fullscreen.
 
 `Osd.qml`: a pill under the bar, centred on the focused monitor, for about a
 second after a change: output volume and mute, microphone mute, the default
-output changing (its name), Bluetooth turned on or off. It takes no input and
+output changing (its name), Bluetooth turned on or off (or a failure to turn
+it on or off, or no adapter). It takes no input and
 does not show for the values present at startup. No IPC.
 
 ### Cheat sheet
@@ -513,7 +515,9 @@ check.
   - `/proc` is read only while one of the input's links is active (a program
     or a level monitor records from it), and once when the input appears
     (shell start or reload, replug), by opening it for about 1.5 s with a
-    level monitor.
+    level monitor. The reads stop once two of them decide, so a microphone
+    that hangs in the middle of a recording is flagged only when it next
+    starts running; a flagged input is read on while it runs.
   - The row then says `no signal · replug the cable` in red, its level is
     flat with no monitor, and Enter explains in the footer instead of making
     it the default. The bar's audio item gets a red dot.
@@ -578,7 +582,7 @@ calendar export into desktop notifications from the "Calendar" app.
   for part-day events" and "Default reminder for full-day events", which the
   sync cannot read, so change them together with those.
 - A reminder card shows the title, then the time range, how long until the
-  start, and the calendar, for example "11:00 – 12:00 · in 60 min · Work".
+  start, and the calendar, for example "11:00 – 12:00 · in 1 h · Work".
   It stays until dismissed or until 5 minutes after the start. A later
   reminder for the same event replaces it. **Open** shows the day in the
   calendar panel. A reminder whose moment passed while the PC was off still
@@ -630,7 +634,7 @@ calendar export into desktop notifications from the "Calendar" app.
   from LACT's socket and never writing anything. Hardware is found by name
   and device path, not hwmon numbers. While the panel is closed only the two
   bar temperatures are read, every 5 seconds; hovering reads the temperatures
-  each second; the open panel reads about 30 small files a second and a few
+  each second (the memory modules and the NVMe every 10 seconds); the open panel reads about 30 small files a second and a few
   every 10 seconds. A sleeping eGPU is not read until it wakes. Memory-module
   alarm files are never read, because reading one clears it.
 - **Deliberately not shown**: link saturation, because no traffic counter
@@ -799,12 +803,6 @@ while it keeps failing).
   --read-only`, which refuses every command and publishes nothing; the save
   restarts the helper. It is `false`: the panel is live.
 
-**Verified by the user, with the real light and blind:** the light on and
-off; brightness by keys and by mouse; the blind up, stop, down and to a
-position; the sockets not clickable. **Never seen for real** (simulated with
-recorded helper lines, and node-tested): the broker lost, Zigbee2MQTT
-offline, a device offline, a command not confirmed.
-
 ### Fleet panel
 
 `Fleet.qml`, with `fleet/FleetShared.qml` (shared with the bar: placement,
@@ -855,20 +853,10 @@ helper's.
   stays true; while open every 60 s, with the header and spinner ticking.
 - **Read-only for development**: `readonly property bool readOnly` in
   `fleet/FleetShared.qml`. `true` starts the helper as `desk-fleet
-  --read-only`, which refuses switch, boot, mode and reboot and runs nothing
-  on any host; the save restarts the helper. It is `false` in the
-  repository: the panel is live once deployed.
-
-**Seen for real** (by the agent that built it, with the helper read-only):
-the panel with the real fleet (BrightFalls Pending on a hand build, Nexus
-Pending with the same system held, NightSprings up to date, CauldronLake
-offline), the bar item with its count and dim, a switch sent with the row's
-generation and refused read-only, A with no session, F5, T and D windows on
-this computer, the helper-not-found line. **Fixtures and node only**: every
-chip, the cases the old herdr panel read wrong, the questions and the mode
-chooser, action running, ok, failed and the sudo message, the GitHub banner,
-long texts. **Not done yet**: real key presses and clicks, Super+G in a
-reloaded session, O, and any real switch, boot, mode change or reboot.
+  --read-only`, which refuses switch, boot, mode and reboot (they run
+  nothing), while probes, diff, ssh and attach work as usual; the save
+  restarts the helper. It is `false` in the repository: the panel is live
+  once deployed.
 
 ### Tailscale panel
 
@@ -895,12 +883,6 @@ item between Bluetooth and Network, opens it. It is read-only: it runs only
   is closed (for the bar item); the full call on open, every 5 s while open
   and on F5; one call at a time; a call still running after 10 s gets
   SIGTERM, then SIGKILL 2 s later.
-
-**Seen for real** (by the agent that built it, with the real daemon):
-Running, with real keys (F5, J, K, Home, End, Enter, Y, 2, Esc, T on
-Nexus). **Simulated** (fixture output through the real call): every other
-state, overlay and chip. **Not done yet**: O, the arrows, and Super+V in a
-reloaded session.
 
 ### Token panel
 
@@ -997,26 +979,6 @@ the plan limits as Claude Code last reported them. It is read-only.
   counters, never message text); no scrolling (the shell has none for
   panels; the projects list pages instead). The dollar figures are
   estimates at API list prices, not a bill.
-
-**Seen for real** (by the agent that built it, with the real helper on a
-scratch index and the real transcripts): the cold first read's progress
-states, then the overview, projects (two pages), a project's detail and the
-days page from the real answers; Esc, Esc closing it with no helper left
-running; the bar item in each of its states on the real bar (with a scratch
-limits file). **Simulated** (a stand-in helper answering with invented
-fixtures, a scratch limits file, keys sent over a temporary IPC target):
-every page's states, the limits in every state, long names eliding, the
-helper missing and stopped and recovering, the limits watch with the
-directory and file created after the shell started and replaced by rename
-several times, every row of the key table and the keys that must do
-nothing, and no helper process after every close; then the figures at API
-prices on every page (priced, partly and wholly unpriced, the widest
-figures beside a 61-character name, both orders and S keeping the
-selection) and every page from a helper without cost fields. **Not done
-yet**: the figures from the real helper's answers, real
-key presses and clicks, the window with real keyboard focus, Super+U in a
-reloaded session, and the limits file written by a real Claude Code
-session.
 
 ### Tray menu
 

@@ -3,7 +3,7 @@
 // JavaScript so node can run it too. Times are milliseconds since the epoch;
 // clock times in texts are local.
 
-// The light's slider step, in percent.
+// The light's and the blind's slider step, in percent.
 const STEP = 10;
 
 // The state before the helper has said anything. `helper` is whether its
