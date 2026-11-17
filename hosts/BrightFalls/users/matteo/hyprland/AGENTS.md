@@ -20,7 +20,8 @@ office panels, tray menus, and a lock screen.
 
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
-  secrets, PAM, and generates read-only data the shell shows.
+  secrets, PAM, and generates read-only data the shell shows. The
+  wallpapers (`wallpapers/`) are Nix-only too: never edited live.
 - **The config files** are ordinary writable files under `~/.config`, copied
   from `user/` here at activation and hot-reloaded. They are developed live
   and brought back to this directory with `desk-sync pull`. README:
@@ -336,7 +337,7 @@ not.
 | Path | What |
 |------|------|
 | `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
-| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` user service, the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
+| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` and `hyprpaper` user services (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
@@ -348,6 +349,7 @@ not.
 | `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
+| `wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
 | `user/desk/theme.json` | The palette |
 | `../../../audio/` | PipeWire and WirePlumber settings the audio panel reports, Bluetooth codecs |
 

@@ -1,5 +1,5 @@
 # The user side of the Hyprland session (UWSM): the desktop's config files,
-# its helpers and the Quickshell service.
+# its helpers, the Quickshell service and the wallpapers.
 {
   config,
   osConfig,
@@ -50,6 +50,28 @@ let
     sshd = host ? port;
     inherit (kinds.${name}) device;
   }) (lib.filterAttrs (_: host: host ? tailscale) mesh.hosts);
+
+  # Monitors matched by description, not connector: connector numbers are
+  # shared between the two GPUs and follow probe order. hyprpaper compares
+  # `desc:` as a prefix of the wl_output description ("make model serial")
+  # with the trailing "(port)" removed. "##" is hyprlang's escape for a
+  # literal "#", which otherwise starts a comment.
+  hyprpaperConf = pkgs.writeText "hyprpaper.conf" ''
+    splash = false
+    ipc = false
+
+    wallpaper {
+        monitor = desc:ASUSTek COMPUTER INC ROG PG278QR ##ASO0f7HLJ+Pd
+        path = ${./wallpapers/left.png}
+        fit_mode = cover
+    }
+
+    wallpaper {
+        monitor = desc:Dell Inc. DELL U2719D 7CGY223
+        path = ${./wallpapers/right.png}
+        fit_mode = cover
+    }
+  '';
 in
 {
   imports = [ ./calendar.nix ];
@@ -123,4 +145,11 @@ in
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
+
+  # Wallpapers (README.md, "Wallpaper"). The config goes by store path rather
+  # than through `settings`, so ~/.config/hypr holds only desk-sync's files;
+  # a new picture changes ExecStart, which restarts the unit on a switch.
+  services.hyprpaper.enable = true;
+  systemd.user.services.hyprpaper.Service.ExecStart =
+    lib.mkForce "${lib.getExe pkgs.hyprpaper} -c ${hyprpaperConf}";
 }

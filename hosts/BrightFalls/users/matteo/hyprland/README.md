@@ -21,6 +21,7 @@ work) is in [AGENTS.md](AGENTS.md).
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
   [Tailscale panel](#tailscale-panel), [Tray menu](#tray-menu)
+- [Wallpaper](#wallpaper)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
@@ -920,6 +921,35 @@ application, or opens the menu if the icon has only a menu.
   application rebuilds its menu while a submenu is shown, the menu goes back
   to the top level; if it leaves the tray, the menu closes.
 - No IPC target and no key: a tray menu is opened from its icon only.
+
+## Wallpaper
+
+One picture per monitor, drawn by hyprpaper on the Background layer, run as
+the `hyprpaper` user service (Hyprland session only, `default.nix`). The
+pictures are `wallpapers/left.png` (DP-1, the left monitor) and
+`wallpapers/right.png` (DP-2, the right one), 2560×1440 like the monitors,
+so `fit_mode = cover` shows them 1:1: ASCII renders of two paintings in the
+Dracula palette.
+
+- **Matching** is by monitor description, not connector name, because the
+  connector numbers are shared between the two GPUs and follow probe order.
+  Each `monitor = desc:…` value is the monitor's `make model serial` as
+  `hyprctl -j monitors` reports it in `description`; hyprpaper compares it as
+  a prefix of the description. A `#` in a serial is written `##` (in
+  hyprpaper's config a single `#` starts a comment). A monitor with no match
+  shows `misc.background_color`.
+- **The config** is generated in `default.nix` and passed to hyprpaper by
+  store path (`-c`); nothing is written under `~/.config/hypr`, which stays
+  desk-sync's. Splash text and hyprpaper's IPC are off.
+- **To change a picture**, replace the PNG here (same size, or the crop
+  changes), rebuild and switch: the new store path changes the unit, and the
+  switch restarts it. A new monitor needs its description copied into
+  `default.nix`.
+- **At login** the first frames show `misc.background_color` (Dracula
+  background, `looknfeel.lua`) until hyprpaper starts with the graphical
+  session and draws the pictures. Game mode and `single-monitor` turn DP-2
+  off; hyprpaper drops that monitor and draws it again when it returns.
+- The lock screen covers the wallpaper; it is not shown while locked.
 
 ## Lock screen
 
