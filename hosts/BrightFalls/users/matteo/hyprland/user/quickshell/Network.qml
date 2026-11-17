@@ -1205,6 +1205,8 @@ Scope {
                             }
 
                             Column {
+                                id: wiredDetails
+
                                 visible: root.expanded === wiredRow.modelData.name && wiredRow.up
                                 x: 28
                                 width: parent.width - 28
@@ -1220,6 +1222,7 @@ Scope {
 
                                         x: 12
                                         y: 2
+                                        width: wiredDetails.width - 12
 
                                         Repeater {
                                             model: {
@@ -1241,7 +1244,9 @@ Scope {
                                                 }
 
                                                 Text {
+                                                    width: details.width - 72
                                                     text: parent.modelData[1]
+                                                    wrapMode: Text.Wrap
                                                     color: root.soft
                                                     font.family: Theme.fontMono
                                                     font.pixelSize: 12
@@ -1546,7 +1551,7 @@ Scope {
                                 anchors.right: tag.left
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                elide: Text.ElideRight
+                                wrapMode: Text.Wrap
                                 text: lockedRow.modelData.label
                                 color: Theme.comment
                                 font.family: Theme.fontUi
@@ -1737,9 +1742,12 @@ Scope {
 
                 Item {
                     width: parent.width
-                    height: root.allMode ? root.gaugeHeightAll : root.gaugeHeight
+                    // Grows only for a failure text too long for the fixed height.
+                    height: Math.max(root.allMode ? root.gaugeHeightAll : root.gaugeHeight, gaugeBody.implicitHeight + 8)
 
                     Column {
+                        id: gaugeBody
+
                         anchors.centerIn: parent
                         width: parent.width - 24
                         spacing: 4
@@ -1807,8 +1815,6 @@ Scope {
                             topPadding: root.allMode ? 4 : 10
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
-                            maximumLineCount: root.allMode ? 2 : 4
-                            elide: Text.ElideRight
                             text: root.allMode ? root.failure : `${root.failure}. Enter retries, Esc returns.`
                             color: Theme.red
                             font.family: Theme.fontMono

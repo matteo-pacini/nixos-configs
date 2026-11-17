@@ -1111,7 +1111,7 @@ Scope {
                                 x: 14
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - x - tag.width - 18
-                                elide: Text.ElideRight
+                                wrapMode: Text.Wrap
                                 text: lockedRow.modelData.label
                                 color: Theme.comment
                                 font.family: Theme.fontUi
