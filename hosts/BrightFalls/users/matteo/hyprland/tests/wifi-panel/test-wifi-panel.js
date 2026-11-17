@@ -610,6 +610,31 @@ t("hints: per selection and state, only keys that work", () => {
         assert.deepEqual(h(W.initial(), sec, null, { moves: true, speedTest: true }), [["↑↓", "select"], ["S", "speed test"], ["Esc", "close"]]);
 });
 
+t("hints: Esc says what Esc does, whichever row is selected", () => {
+    const esc = (m, row, panelEsc) => W.hints(m, LIST, row, { moves: true, speedTest: true, rowKeys: [], esc: panelEsc }).slice(-1)[0];
+    const c = net("Harbour Loft", { connected: true, state: "Connected" });
+    const open = Object.assign(W.initial(), { expanded: "Harbour Loft" });
+    // Wired details open, a Wi-Fi row selected: Esc closes the wired details.
+    assert.deepEqual(esc(W.initial(), net("Fernhill 5G"), "back"), ["Esc", "back"]);
+    // Wi-Fi details open, a wired row selected: Esc closes the Wi-Fi details.
+    assert.deepEqual(esc(open, null, "close"), ["Esc", "back"]);
+    // Wi-Fi details open, another Wi-Fi row selected: the same.
+    assert.deepEqual(esc(open, net("Fernhill 5G"), "close"), ["Esc", "back"]);
+    assert.deepEqual(esc(open, c, "close"), ["Esc", "back"]);
+    // Nothing open anywhere.
+    assert.deepEqual(esc(W.initial(), c, "close"), ["Esc", "close"]);
+    assert.deepEqual(esc(W.initial(), null, "close"), ["Esc", "close"]);
+    // The expanded row disconnected or gone: its details went, Esc closes.
+    for (const type of ["disconnected", "vanished"]) {
+        const r = W.step(open, { type, name: "Harbour Loft" });
+        assert.equal(r.state.expanded, null, type);
+        assert.deepEqual(esc(r.state, net("Harbour Loft"), "close"), ["Esc", "close"], type);
+        assert.equal(press(r.state, "Esc", null).handled, false, type);
+    }
+    // Another network disconnecting leaves the details open.
+    assert.equal(W.step(open, { type: "disconnected", name: "Fernhill 5G" }).state.expanded, "Harbour Loft");
+});
+
 // ---- details ---------------------------------------------------------------
 
 t("details of the connected row", () => {

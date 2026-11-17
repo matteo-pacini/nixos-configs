@@ -362,7 +362,8 @@ Scope {
     }
 
     // Turns changes in the rows into the machine's events (a network left,
-    // one became connected), then rebuilds the view if anything drawn moved.
+    // one became connected or disconnected), then rebuilds the view if
+    // anything drawn moved.
     function syncWifi(): void {
         const rows = wifiIn.rows;
         // Later: this runs inside wifiIn's update, and wifiIn reads
@@ -389,6 +390,11 @@ Scope {
                     // The address, gateway and DNS arrive with the link.
                     if (open)
                         infoQuery.running = true;
+                } else if (!seen[name] && wifiSeen[name]) {
+                    wifiStep({
+                        type: "disconnected",
+                        name
+                    });
                 }
             }
             wifiSeen = seen;
@@ -442,6 +448,19 @@ Scope {
         } else {
             say(row.device.hasLink ? `${row.device.name} is not connected.` : `No cable in ${row.device.name}.`);
         }
+    }
+
+    // The selected wired or Nix row's Enter, as the footer hints it: what
+    // activate() does there.
+    function rowKeys(): var {
+        const row = rows[current];
+        if (!row || row.kind === "wifi")
+            return [];
+        if (row.kind === "nix")
+            return [["Enter", "show file"]];
+        if (!row.device.connected)
+            return [];
+        return [["Enter", expanded === row.device.name ? "close details" : "details"]];
     }
 
     function linkText(mbps: int): string {
@@ -1228,7 +1247,7 @@ Scope {
                                             model: {
                                                 const d = wiredRow.modelData, nm = wiredRow.nm;
                                                 const duplex = root.duplex[d.name];
-                                                return [["address", nm?.addresses.join(", ") || "–"], ["gateway", nm?.gateway || "–"], ["dns", nm?.dns.join(", ") || "–"], ["mac", d.address.toLowerCase() || "–"], ["link", d.linkSpeed > 0 ? `${d.linkSpeed} Mb/s${duplex === "full" || duplex === "half" ? ` ${duplex} duplex` : ""}` : "–"]];
+                                                return [["address", nm?.addresses.join(", ") || "–"], ["gateway", nm?.gateway || "–"], ["dns", nm?.dns.join(", ") || "–"], ["mac", d.address.toLowerCase() || "–"], ["link", d.linkSpeed > 0 ? `${root.linkText(d.linkSpeed)}${duplex === "full" || duplex === "half" ? ` ${duplex} duplex` : ""}` : "–"]];
                                             }
 
                                             Row {
@@ -1573,7 +1592,7 @@ Scope {
                     keys: Wifi.hints(root.wifi, root.wifiSection, root.wifiSelected, {
                         moves: root.rows.length > (root.current >= 0 ? 1 : 0),
                         speedTest: true,
-                        rowKeys: root.current >= 0 ? [["Enter", "select"]] : [],
+                        rowKeys: root.rowKeys(),
                         esc: root.expanded !== "" ? "back" : "close"
                     })
                     message: root.flash

@@ -1146,7 +1146,7 @@ Scope {
                         if (row.kind === "input" && NoSignal.has(row.node))
                             return move.concat([["←→", "gain"], ["M", "mute"], ["Enter", "why"], ["Esc", "close"]]);
                         if (row.kind === "input")
-                            return move.concat([["←→", "gain"], ["M", "mute"], ["Enter", "make default"], ["Esc", "close"]]);
+                            return move.concat([["←→", "gain"], ["M", "mute"]], Pipewire.defaultAudioSource === row.node ? [] : [["Enter", "make default"]], [["Esc", "close"]]);
                         if (root.expanded === row.key)
                             return move.concat([["Enter", "close details"], ["←→", "volume"], ["M", "mute"], ["Esc", "back"]]);
                         return move.concat([["←→", "volume"], ["M", "mute"], ["Enter", "details"], ["Esc", "close"]]);

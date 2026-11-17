@@ -340,6 +340,8 @@ function key(m, e) {
 //   { type: "failed", name, reason, security }  connectionFailed: the
 //       reason's name and the network's WifiSecurityType name
 //   { type: "connected", name }         a network became connected
+//   { type: "disconnected", name }      a listed network stopped being
+//                                       connected
 //   { type: "vanished", name }          a network left the list
 //   { type: "watchdog" }                the watchdog fired
 //   { type: "radioOff" }                wifiEnabled became false
@@ -399,6 +401,9 @@ function step(m, e) {
             return settle(m, { failed }, [{ do: "closeModal" }]);
         return { state: withState(m, { failed }), effects: [], handled: true };
     }
+    case "disconnected":
+        // Details show only on a connected row.
+        return { state: m.expanded === e.name ? withState(m, { expanded: null }) : m, effects: [], handled: true };
     case "vanished": {
         const changes = {
             failed: withFailed(m, e.name, ""),
@@ -432,7 +437,8 @@ function step(m, e) {
 // now. m: the machine; sec: section(); row: the selected Wi-Fi row or null;
 // ctx: { moves (↑↓ has somewhere to go), speedTest (S works), rowKeys (the
 // selected wired or Nix row's own pairs, when row is null), esc (the
-// panel's Esc label when row is null: "close" | "back") }.
+// panel's own Esc label, used when no Wi-Fi details are open: "close" |
+// "back") }.
 function hints(m, sec, row, ctx) {
     if (m.phase === "joining")
         return [["Esc", "cancel"]];
@@ -441,9 +447,9 @@ function hints(m, sec, row, ctx) {
     const out = [];
     if (ctx.moves)
         out.push(["↑↓", "select"]);
-    let esc = ctx.esc || "close";
+    // Esc closes open Wi-Fi details first, whichever row is selected.
+    const esc = m.expanded ? "back" : ctx.esc || "close";
     if (row) {
-        esc = m.expanded === row.name && row.connected ? "back" : "close";
         if (row.connected) {
             out.push(["Enter", m.expanded === row.name ? "close details" : "details"]);
             out.push(["C", "disconnect"]);
