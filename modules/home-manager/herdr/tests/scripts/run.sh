@@ -145,21 +145,80 @@ check "claude-limits: no temporary file left" "claude-limits.json" "$(command ls
 check "claude-limits: outside herdr, labels nothing" "" "$(cat "$HC_LOG")"
 check "claude-limits: writer prints nothing on stderr" "" "$(cat "$work/lim.err")"
 
+rm "$lfile"
 lim 1100 <<<"$(sl "$week")" >/dev/null
 check "claude-limits: only seven_day, written at once" \
   '{"written_at":1100,"seven_day":{"used_percentage":34,"resets_at":1795078800},"five_hour":null}' "$(cat "$lfile")"
 
-before=$(stat -c %i "$lfile")
-cp "$lfile" "$work/lim.before"
-lim 1399 <<<"$(sl "$week")" >/dev/null
-check "claude-limits: same reading within 300 s, not rewritten" "$before same" \
-  "$(stat -c %i "$lfile") $(cmp -s "$lfile" "$work/lim.before" && echo same || echo differs)"
-lim 1400 <<<"$(sl "$week")" >/dev/null
-check "claude-limits: same reading after 300 s, rewritten" \
-  '{"written_at":1400,"seven_day":{"used_percentage":34,"resets_at":1795078800},"five_hour":null}' "$(cat "$lfile")"
-lim 1401 <<<"$(sl '{"seven_day":{"used_percentage":35,"resets_at":1795078800}}')" >/dev/null
-check "claude-limits: changed percentage, rewritten at once" \
-  '{"written_at":1401,"seven_day":{"used_percentage":35,"resets_at":1795078800},"five_hour":null}' "$(cat "$lfile")"
+# The merge. A file the writer leaves alone keeps its inode and the mtime
+# `put` and `step` give it (epoch 100); a write replaces both.
+R=1795078800 R2=$((1795078800 + 604800)) R0=$((1795078800 - 604800)) F=1794920000
+w() { printf '{"used_percentage":%s,"resets_at":%s}' "$1" "$2"; }
+in7() { printf '{"seven_day":%s}' "$(w "$1" "$2")"; }
+in5() { printf '{"five_hour":%s}' "$(w "$1" "$2")"; }
+in75() { printf '{"seven_day":%s,"five_hour":%s}' "$(w "$1" "$2")" "$(w "$3" "$4")"; }
+fl() { printf '{"written_at":%s,"seven_day":%s,"five_hour":%s}' "$1" "$2" "$3"; }
+put() {
+  printf '%s' "$1" >"$lfile"
+  touch -d @100 "$lfile"
+}
+# Runs the writer at time $1 with rate_limits $2; prints written or untouched.
+step() {
+  local was=absent
+  if [ -e "$lfile" ]; then was=$(stat -c %i "$lfile"); fi
+  lim "$1" <<<"$(sl "$2")" >/dev/null
+  if [ -e "$lfile" ] && [ "$(stat -c '%i %Y' "$lfile")" = "$was 100" ]; then echo untouched; else echo written; fi
+  if [ -e "$lfile" ]; then touch -d @100 "$lfile"; fi
+}
+
+put "$(fl 2000 "$(w 50 $R)" null)"
+check "claude-limits: same resets_at, lower, untouched" "untouched" "$(step 2010 "$(in7 40 $R)")"
+check "claude-limits: same resets_at, higher, written" "written $(fl 2020 "$(w 55 $R)" null)" \
+  "$(step 2020 "$(in7 55 $R)") $(cat "$lfile")"
+check "claude-limits: later resets_at, lower, accepted" "written $(fl 2030 "$(w 5 $R2)" null)" \
+  "$(step 2030 "$(in7 5 $R2)") $(cat "$lfile")"
+check "claude-limits: earlier resets_at, higher, ignored" "untouched" "$(step 2040 "$(in7 99 $R)")"
+check "claude-limits: earlier resets_at at 900 s, not refreshed" "untouched $(fl 2030 "$(w 5 $R2)" null)" \
+  "$(step 2930 "$(in7 99 $R)") $(cat "$lfile")"
+
+put "$(fl 3000 "$(w 30 $R)" "$(w 10 $F)")"
+check "claude-limits: five_hour absent from the input keeps the file's" \
+  "written $(fl 3010 "$(w 31 $R)" "$(w 10 $F)")" "$(step 3010 "$(in7 31 $R)") $(cat "$lfile")"
+check "claude-limits: seven_day absent from the input keeps the file's" \
+  "written $(fl 3020 "$(w 31 $R)" "$(w 12 $F)")" "$(step 3020 "$(in5 12 $F)") $(cat "$lfile")"
+check "claude-limits: present window lower, absent one kept, untouched" "untouched" "$(step 3030 "$(in5 11 $F)")"
+check "claude-limits: windows merge independently in one call" \
+  "written $(fl 3040 "$(w 35 $R)" "$(w 12 $F)")" "$(step 3040 "$(in75 35 $R 8 $F)") $(cat "$lfile")"
+check "claude-limits: only five_hour, lower, at 900 s, refreshed" \
+  "written $(fl 3940 "$(w 35 $R)" "$(w 12 $F)")" "$(step 3940 "$(in5 8 $F)") $(cat "$lfile")"
+
+rm "$lfile"
+check "claude-limits: 77, 80, 78, 73 writes twice" "written written untouched untouched" \
+  "$(step 4000 "$(in7 77 $R)") $(step 4010 "$(in7 80 $R)") $(step 4020 "$(in7 78 $R)") $(step 4030 "$(in7 73 $R)")"
+check "claude-limits: 77, 80, 78, 73 ends at 80" "$(fl 4010 "$(w 80 $R)" null)" "$(cat "$lfile")"
+check "claude-limits: identical reading 1 s and 899 s later, untouched" "untouched untouched" \
+  "$(step 4011 "$(in7 80 $R)") $(step 4909 "$(in7 80 $R)")"
+check "claude-limits: identical reading at 900 s, refreshed" "written $(fl 4910 "$(w 80 $R)" null)" \
+  "$(step 4910 "$(in7 80 $R)") $(cat "$lfile")"
+check "claude-limits: lower reading at 900 s, refreshed at the max" "written $(fl 5810 "$(w 80 $R)" null)" \
+  "$(step 5810 "$(in7 73 $R)") $(cat "$lfile")"
+check "claude-limits: only an earlier resets_at at 900 s, not refreshed" "untouched" \
+  "$(step 6710 "$(in7 90 $R0)")"
+
+put "$(fl 6800 "$(w 78 $R)" null)"
+check "claude-limits: a lost update is repaired" "written $(fl 6810 "$(w 80 $R)" null)" \
+  "$(step 6810 "$(in7 80 $R)") $(cat "$lfile")"
+
+for old in missing '' garbage '[1,2]' "$(fl 7000 '{"used_percentage":"90","resets_at":"1795078800"}' null)" \
+  '{"seven_day":{"used_percentage":34,"resets_at":1795078800},"five_hour":null}'; do
+  if [ "$old" = missing ]; then rm -f "$lfile"; else put "$old"; fi
+  check "claude-limits: file ${old:-empty}, written from the input" "written $(fl 7010 "$(w 34 $R)" null)" \
+    "$(step 7010 "$(in7 34 $R)") $(cat "$lfile")"
+done
+
+put "$(fl 99999 "$(w 80 $R)" null)"
+check "claude-limits: written_at in the future, refreshed" "written $(fl 8000 "$(w 80 $R)" null)" \
+  "$(step 8000 "$(in7 80 $R)") $(cat "$lfile")"
 
 cp "$lfile" "$work/lim.before"
 for input in "$(sl)" "$(sl '{}')" "$(sl '{"seven_day":{"used_percentage":"34","resets_at":1795078800}}')" \
@@ -197,6 +256,7 @@ for case in locked lockeddesk; do
 done
 
 : >"$HC_LOG"
+rm "$lfile"
 sl "$both" | HC_TERMINAL_ID=t3 PATH="$work/limbin:$PATH" FAKE_NOW=1900 \
   bash -euo pipefail "$scripts/claude-limits.sh" >/dev/null
 check "claude-limits: inside herdr, labels still set" "label t3" "$(head -n 2 "$HC_LOG" | paste -sd ' ')"

@@ -915,8 +915,9 @@ the plan limits as Claude Code last reported them. It is read-only.
 
 - **Bar item**: a pie glyph and the weekly all-models percentage, rounded
   down, from the limits file. Foreground below 80 %, orange from 80 %, red at
-  100 % (compared before rounding). Dimmed, value kept, when the last reading
-  is an hour old or more; an empty ring and a dash, dimmed, with no reading
+  100 % (compared before rounding). Dimmed, value kept, when no running
+  Claude Code session has reported the current window for an hour (while one
+  does, the file is refreshed every 15 minutes); an empty ring and a dash, dimmed, with no reading
   (no file, or the week it was written in has reset). Purple with the open
   mark while the panel is open. It changes when the file does, and on a
   minute tick while a reading exists; it never starts the helper.

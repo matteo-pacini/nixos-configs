@@ -49,9 +49,18 @@ becomes `claude-statusline-limits` (`scripts/claude-limits.sh`), which writes
 `$XDG_RUNTIME_DIR/desk/claude-limits.json` and then hands the same input to the
 unchanged `claude-statusline`. The file is one JSON line holding `written_at`
 and the `seven_day` and `five_hour` windows reduced to `used_percentage` and
-`resets_at` (`null` when absent), and nothing else. It is replaced atomically
-when the reading changes or is 300 s old, never when the input has no usable
-window, and never deleted. It is written inside and outside herdr terminals;
+`resets_at` (`null` when absent), and nothing else. Every session on the
+machine writes it, each with the reading its own session last received, so
+each window is merged with the file's: a window missing from the input keeps
+the file's, a later `resets_at` wins even if lower, the same `resets_at` keeps
+the higher `used_percentage`, and an earlier one is ignored. The file is
+replaced atomically when the merged windows differ from it, and otherwise
+only every 900 s while a session reports the current window, so `written_at`
+is the last time a running session reported it. Identical or lower readings
+write nothing; an input with no usable window never writes, and the file is
+never deleted. Read-merge-write is not locked: a lower value written over a
+higher one lasts until the next status-line call of a session holding the
+higher. It is written inside and outside herdr terminals;
 every failure is silent. BrightFalls's Quickshell token panel and bar item read
 it (`hosts/BrightFalls/users/matteo/hyprland/`). With the option off, the
 statusLine command is `claude-statusline` as before.

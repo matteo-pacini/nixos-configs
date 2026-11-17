@@ -5,10 +5,21 @@
 #
 # The file is one JSON line:
 #   {"written_at":<epoch s>,"seven_day":{"used_percentage":N,"resets_at":N}|null,"five_hour":…}
+# Every session on the host writes the same file, each with the reading its
+# own session last received, so idle sessions carry older, lower values. Each
+# window is therefore merged with the file's: a window missing from the input
+# keeps the file's; a later resets_at wins (a new window, even if lower); the
+# same resets_at keeps the higher used_percentage (usage only grows within a
+# window); an earlier resets_at is ignored.
+#
 # It is written only when the input has at least one usable window, and then
-# only when the reading differs from the file's or the file is 300 s old,
-# missing or unreadable, so a file watch wakes on a change and at most every
-# 5 minutes otherwise. It is never deleted or emptied.
+# only when the merged windows differ from the file's (or the file is missing
+# or not a valid file), or, as a liveness refresh, when written_at is 900 s
+# old or in the future and the input carries a window whose resets_at is the
+# merged one's. So written_at is the last time a running session reported the
+# current window, and identical or lower readings write nothing. It is never
+# deleted or emptied. Read-merge-write is not locked: a lower value written
+# over a higher one lasts until the next call of a session holding the higher.
 input=$(cat)
 
 record() {
@@ -19,21 +30,34 @@ record() {
   now=$(date +%s) || return 0
   old=$(cat "$file" 2>/dev/null) || old=""
 
-  # Prints the line to write, or nothing when there is no usable window or
-  # the file already holds this reading and is younger than 300 s.
+  # Prints the line to write, or nothing (see the header for when).
   line=$(printf '%s' "$input" | jq -c --argjson now "$now" --arg old "$old" '
     def win: if type == "object" and (.used_percentage | type) == "number"
                 and (.resets_at | type) == "number"
              then {used_percentage, resets_at} else null end;
-    (.rate_limits | if type == "object" then . else {} end) as $r
-    | {seven_day: ($r.seven_day | win), five_hour: ($r.five_hour | win)} as $w
+    def merge($i; $f):
+      if $i == null then $f
+      elif $f == null then $i
+      elif $i.resets_at > $f.resets_at then $i
+      elif $i.resets_at == $f.resets_at then
+        (if $i.used_percentage > $f.used_percentage then $i else $f end)
+      else $f end;
+    def windows: {seven_day: (.seven_day | win), five_hour: (.five_hour | win)};
+    def current($i; $m): $i != null and $i.resets_at == $m.resets_at;
+    (.rate_limits | if type == "object" then . else {} end | windows) as $w
     | if $w.seven_day == null and $w.five_hour == null then empty else
         (try ($old | fromjson) catch null) as $o
-        | if ($o | type) == "object" and ($o.written_at | type) == "number"
-             and ($now - $o.written_at) >= 0 and ($now - $o.written_at) < 300
-             and $o.seven_day == $w.seven_day and $o.five_hour == $w.five_hour
-          then empty
-          else {written_at: $now} + $w end
+        | (($o | type) == "object" and ($o.written_at | type) == "number") as $valid
+        | (if $valid then $o | windows else {} end) as $f
+        | {seven_day: merge($w.seven_day; $f.seven_day),
+           five_hour: merge($w.five_hour; $f.five_hour)} as $m
+        | if ($valid | not) or $o.seven_day != $m.seven_day
+             or $o.five_hour != $m.five_hour
+             or ((($now - $o.written_at) >= 900 or ($now - $o.written_at) < 0)
+                 and (current($w.seven_day; $m.seven_day)
+                      or current($w.five_hour; $m.five_hour)))
+          then {written_at: $now} + $m
+          else empty end
       end') || return 0
   [ -n "$line" ] || return 0
 
