@@ -306,6 +306,25 @@ t("limits: the weekly figure says when it was reported, today or before", () => 
     assert.deepEqual([stale.bar.dim, stale.panel.main.value, stale.panel.main.note], [true, "34%", "as of 08:15"]);
 });
 
+t("limits: the writer's per-window form; as of when the figure was seen", () => {
+    // Seen at 06:15 (the transcript's time); a session reported it at 09:14.
+    const l = T.limits(fxText("limits-evidence.json"), NOW);
+    assert.deepEqual(l.bar, { text: "42%", glyph: "low", colour: "fg", dim: false });
+    assert.deepEqual(l.panel.main, { label: "Weekly · all models", value: "42% · resets Thu 09:00", note: "as of 06:15", colour: "fg" });
+    assert.deepEqual(l.panel.fiveHour, { label: "5-hour", value: "12% · resets Tue 12:00", note: "", colour: "fg" });
+    assert.equal(T.refreshLine(l.reading, NOW), "Counting tokens again from the transcripts · quota as reported 06:15");
+    // No evidence: as of when it was written, as for the old writer's file.
+    const n = T.limits(fxText("limits-no-evidence.json"), NOW);
+    assert.equal(n.panel.main.note, "as of 09:14");
+    assert.equal(n.panel.fiveHour.value, T.PLAN.fiveHour);
+    assert.deepEqual(n.panel.main, T.limits(fxText("limits-normal.json"), NOW).panel.main);
+    // Neither window: no reading.
+    assert.equal(T.limits(fxText("limits-no-windows.json"), NOW).reading, null);
+    // Seen in the future (a clock step): as of now at the latest.
+    const ahead = file(34, { seven_day: { used_percentage: 34, resets_at: 1795096800, evidence_at: NOW + 3600 } });
+    assert.equal(lim(ahead).panel.main.note, "as of 09:15");
+});
+
 t("refresh: R re-reads the limits file and says what it refreshed", () => {
     const r = T.key(overview(), "R");
     assert.deepEqual(r.effects, [{ do: "send", req: { req: "refresh", id: 2 } }, { do: "reloadLimits" }]);

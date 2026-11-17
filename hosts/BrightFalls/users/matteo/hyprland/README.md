@@ -912,8 +912,9 @@ the plan limits as Claude Code last reported them. It is read-only.
   mark while the panel is open. It changes when the file does, and on a
   minute tick while a reading exists; it never starts the helper.
 - **Overview** (what it opens on): the plan limits (the weekly row with its
-  reset, when Claude Code reported it, `as of 17:58` today or `as of Mon
-  17:58` before, and a meter; a muted per-model row; the 5-hour row; a line saying
+  reset, when the figure was seen (the file's `evidence_at`, the reporting
+  session's transcript time, else when it was written), `as of 17:58` today
+  or `as of Mon 17:58` before, and a meter; a muted per-model row; the 5-hour row; a line saying
   what happens at 100 %, or that the reading is stale, or that none is known
   yet), today's output and sessions with the context read from cache and
   today at API prices, the last 14 days of output as bars (today purple, the
@@ -985,8 +986,9 @@ the plan limits as Claude Code last reported them. It is read-only.
   name and price and the 5-hour row's text when Claude Code reports no
   5-hour window. Nothing reads them from the account.
 - **What it does not show, and why**: no per-model weekly percentage (the
-  status line does not pass it on and the panel never reads credentials or
-  calls the account's endpoints; the row says it is not reported); no
+  status line's input carries only `five_hour`, `seven_day`, the all-models
+  week, and a gateway's `spend_limit`, and the panel never reads credentials
+  or calls the account's endpoints; the row says it is not reported); no
   5-hour meter unless Claude Code reports a 5-hour window; no "full in N
   days" pace line (it would turn token counts into a share of a limit whose
   token budget is not published); no session titles (the index keeps

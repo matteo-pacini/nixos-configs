@@ -413,10 +413,14 @@ function reading(text, now) {
     if (!week || week.resetsAt <= now)
         return null;
     const five = window_(o.five_hour);
+    // When the weekly figure was seen (its session's transcript time), if
+    // the writer knew it; written_at is when a session last reported it.
+    const seen = typeof o.seven_day.evidence_at === "number" ? Math.min(o.seven_day.evidence_at, now) : o.written_at;
     return {
         pct: week.pct,
         resetsAt: week.resetsAt,
         writtenAt: o.written_at,
+        seenAt: seen,
         stale: now - o.written_at >= STALE_SECONDS,
         fiveHour: five && five.resetsAt > now ? five : null
     };
@@ -441,7 +445,7 @@ function limitRow(label, w, r, now, dated) {
     return {
         label,
         value: r.stale ? shownPercent(w.pct) : `${shownPercent(w.pct)} · ${resets(w.resetsAt)}`,
-        note: r.stale || dated ? `as of ${reported(r.writtenAt, now)}` : "",
+        note: r.stale || dated ? `as of ${reported(r.seenAt, now)}` : "",
         colour: level(w.pct).colour
     };
 }
@@ -449,13 +453,14 @@ function limitRow(label, w, r, now, dated) {
 // The footer line after R, from limits().reading: what R re-reads, and the
 // quota as last reported, which only Claude Code's status line updates.
 function refreshLine(r, now) {
-    return `Counting tokens again from the transcripts · ${r ? `quota as reported ${reported(r.writtenAt, now)}` : "no quota reported yet"}`;
+    return `Counting tokens again from the transcripts · ${r ? `quota as reported ${reported(r.seenAt, now)}` : "no quota reported yet"}`;
 }
 
 // The limits file's text (null or "" when there is none) read at `now`.
 // Returns:
 //   reading: null (no reading: no file, not JSON, no usable seven_day, or
-//     its reset has passed) | { pct, resetsAt, writtenAt, stale, fiveHour:
+//     its reset has passed) | { pct, resetsAt, writtenAt, seenAt (the weekly
+//     figure's evidence_at, else writtenAt; the "as of" time), stale, fiveHour:
 //     null | { pct, resetsAt } (only with a reset still ahead) }
 //   bar: { text, glyph: "none" | "low" | "high" | "full", colour, dim }
 //   panel: the overview's Plan limits section:
