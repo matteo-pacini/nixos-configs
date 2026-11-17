@@ -637,8 +637,12 @@ From the token panel's deploy, done or not by now, no report says:
   Super+U in a reloaded session, the limits file written by a real Claude
   Code session, the figures from the real helper's answers.
 - The sweep's fixes (2026-11-17): live and loading cleanly (the agent's
-  check of the log), none seen working. Expected only, from the code and
-  the checks: the OSD's Bluetooth glyph from the state; outside names drawn
+  check of the log). Seen for real by the user at the keyboard, 2026-11-17,
+  and nothing wider: M held in the audio panel mutes once; R in the session
+  menu arms once, then Esc; Super+K over the open system panel closes the
+  panel; the network footer's Enter and Esc labels; the token panel's `as
+  of` time and the line after R. Expected only, from the code and the
+  checks: the OSD's Bluetooth glyph from the state; outside names drawn
   as plain text (bar, OSD, notification cards, the calendar, network,
   audio, office, system, Bluetooth, launcher and polkit panels, the speed
   test); the one notification sender (`common/notify.js`) in the Bluetooth,
@@ -646,13 +650,13 @@ From the token panel's deploy, done or not by now, no report says:
   the token helper's stderr in the log, its back-off and a close before it
   started; reminders sent once; slow sensors read at most every 10 s; the
   logind watch restarted after it ends; the fleet spinner; a held key
-  acting once except the moving keys, in every panel and modal; the centred
-  modals closing the drop-downs; the speed test reading the route when the
-  chooser opens, and a cancelled run's end ignored; wrapping in the wired
-  details, Nix labels and speed-test failure; Network's and Audio's
-  footers; the polkit field cleared on hide; Office's release only after its
-  own press; the token panel's `as of` note, `R refresh counts` and the
-  line after R.
+  acting once except the moving keys in the other panels and modals; the
+  other centred modals closing the drop-downs; the speed test reading the
+  route when the chooser opens, and a cancelled run's end ignored; wrapping
+  in the wired details, Nix labels and speed-test failure; Audio's footer;
+  the polkit field cleared on hide; Office's release only after its own
+  press; `R refresh counts`; the bar's weekly figure from the new limits
+  writer, which is not live until the switch.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 
