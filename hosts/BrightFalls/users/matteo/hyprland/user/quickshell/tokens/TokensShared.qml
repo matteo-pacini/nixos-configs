@@ -44,10 +44,10 @@ Singleton {
     // Asks Tokens.qml to open the panel on `screen`, or close it.
     signal toggleRequested(string screen)
 
-    // A key name from T.KEY_NAMES pressed in the open panel. Returns whether
-    // the panel used it.
-    function key(name: string): bool {
-        const r = T.key(st, name);
+    // A key name from T.KEY_NAMES pressed in the open panel; `repeat`: a held
+    // key's auto-repeat. Returns whether the panel used it.
+    function key(name: string, repeat: bool): bool {
+        const r = T.key(st, name, repeat);
         run(r);
         return r.handled;
     }

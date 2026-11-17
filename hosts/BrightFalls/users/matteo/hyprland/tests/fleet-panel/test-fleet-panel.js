@@ -352,6 +352,25 @@ t("keys: a question whose action went away says why and closes", () => {
     assert.deepEqual(F.decide(st.rows.Nexus, { host: "Nexus", what: "switch" }, "Enter", ""), { kind: "say", text: "switch: nothing held, staged or failed", cancel: true });
 });
 
+t("keys: a held key's repeats never ask, confirm or send", () => {
+    const st = load("hero");
+    const row = st.rows.BrightFalls;
+    const none = { kind: "none" };
+    for (const key of ["S", "B", "D", "M", "R", "T", "A", "I", "O", "F5", "Esc", "Enter"])
+        assert.deepEqual(F.decide(row, null, key, "https://x", true), none, key);
+    // Held S then held Enter: the first Enter press confirms, its repeats
+    // and the S repeats do nothing.
+    const ask = { host: "BrightFalls", what: "switch" };
+    assert.deepEqual(F.decide(row, ask, "S", "", true), none);
+    assert.deepEqual(F.decide(row, ask, "Enter", "", true), none);
+    assert.deepEqual(F.decide(row, ask, "Esc", "", true), none);
+    assert.deepEqual(F.decide(row, { host: "BrightFalls", what: "reboot" }, "Enter", "", true), none);
+    assert.deepEqual(F.decide(row, { host: "BrightFalls", what: "mode" }, "3", "", true), none);
+    // The first press of each still acts.
+    assert.deepEqual(F.decide(row, ask, "Enter", "", false).kind, "send");
+    assert.deepEqual(F.decide(row, null, "B", "", false).kind, "send");
+});
+
 t("navigation: up, down, home, end, clamps, unknown selection", () => {
     const names = ["A", "B", "C"];
     assert.equal(F.move(names, "B", "Up"), "A");

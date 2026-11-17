@@ -353,12 +353,16 @@ function allowed(row, name) {
 
 // What a key does. `key` is "S" … "A", "Enter", "Esc", "1".."3", "F5".
 // `ask` is the open question ({ host, what }) or null; `row` the selected
-// host's row or null; `runUrl` the build run's address or "".
+// host's row or null; `runUrl` the build run's address or ""; `repeat` true
+// for a held key's auto-repeat, which does nothing: every key here acts once
+// per press (navigation, which may repeat, is move()'s).
 // Returns { kind: "send", cmd, keepAsk } | { kind: "ask", what } |
 // { kind: "cancel" } | { kind: "close" } | { kind: "say", text, cancel? } |
 // { kind: "info" } | { kind: "open", url } | { kind: "refresh" } |
 // { kind: "none" }.
-function decide(row, ask, key, runUrl) {
+function decide(row, ask, key, runUrl, repeat) {
+    if (repeat)
+        return { kind: "none" };
     if (ask && row && ask.host === row.host) {
         if (key === "Esc")
             return { kind: "cancel" };

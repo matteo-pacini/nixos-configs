@@ -954,6 +954,9 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
+                // Of a held key's auto-repeats, only the arrows' act.
+                if (event.isAutoRepeat && event.key !== Qt.Key_Up && event.key !== Qt.Key_Down)
+                    return;
                 const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
                 if (root.key(event.key, plain))
                     event.accepted = true;

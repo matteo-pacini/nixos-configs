@@ -508,7 +508,45 @@ t("forget: F arms, F again forgets, Esc or moving off disarms", () => {
     assert.deepEqual([r.state.expanded, ops(r)], [null, ["forget"]]);
 });
 
+t("forget: a held F arms once and never forgets", () => {
+    const h = net("Harbour Loft");
+    const held = (m, key, row) => W.step(m, { type: "key", key, row, section: LIST, repeat: true });
+    let r = press(W.initial(), "F", h);
+    const armed = r.state;
+    for (let i = 0; i < 3; i++) {
+        r = held(r.state, "F", h);
+        assert.deepEqual([r.state, r.effects, r.handled], [armed, [], true]);
+    }
+    // Only a second press forgets.
+    assert.deepEqual(press(r.state, "F", h).effects, [{ do: "forget", name: "Harbour Loft" }]);
+});
+
 // ---- keys ------------------------------------------------------------------
+
+t("a held key's repeats: Wi-Fi's keys do nothing, the panel's stay the panel's", () => {
+    const c = net("Harbour Loft", { connected: true, state: "Connected" });
+    const held = (m, key, row, sec) => W.step(m, { type: "key", key, row: row === undefined ? null : row, section: sec || LIST, repeat: true });
+    const cases = [
+        [W.initial(), "W", null, OFF],
+        [W.initial(), "F5", null, LIST],
+        [W.initial(), "Enter", net("Harbour Loft")],
+        [W.initial(), "C", net("Harbour Loft")],
+        [W.initial(), "C", c],
+        [W.initial(), "Enter", c],
+        [Object.assign(W.initial(), { expanded: "Harbour Loft" }), "Esc", c],
+        [Object.assign(W.initial(), { armed: "Harbour Loft" }), "Esc", c],
+        [press(W.initial(), "Enter", net("Harbour Loft")).state, "Esc", null],
+        // Esc and Enter that would fall to the panel (close, wired details).
+        [W.initial(), "Esc", null],
+        [W.initial(), "Enter", null]
+    ];
+    for (const [m, key, row, sec] of cases) {
+        const r = held(m, key, row, sec);
+        assert.deepEqual([r.state, r.effects, r.handled], [m, [], true], key);
+    }
+    for (const k of ["S", "Up", "Down", "other"])
+        assert.equal(held(W.initial(), k, net("Harbour Loft")).handled, false, k);
+});
 
 t("W: radio on and off, with no row selected; refused without a device or with the switch off", () => {
     assert.deepEqual(press(W.initial(), "W", null, OFF).effects, [{ do: "radio", on: true }]);

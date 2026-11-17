@@ -287,6 +287,9 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
+                // Of a held key's auto-repeats, only the moving keys' act.
+                if (event.isAutoRepeat && ![Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown].includes(event.key))
+                    return;
                 const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
                 if (root.key(event.key, plain))
                     event.accepted = true;

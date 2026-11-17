@@ -205,6 +205,11 @@ Scope {
                         Keys.onPressed: event => {
                             const ctrl = event.modifiers & Qt.ControlModifier;
                             const count = root.results.length;
+                            // A held Esc or Enter acts once; the rest repeat.
+                            if (event.isAutoRepeat && [Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
+                                event.accepted = true;
+                                return;
+                            }
                             if (event.key === Qt.Key_Escape) {
                                 root.open = false;
                             } else if (event.key === Qt.Key_Backspace && text === "" && root.mode !== "apps") {

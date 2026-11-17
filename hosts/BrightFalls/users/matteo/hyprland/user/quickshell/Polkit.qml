@@ -182,6 +182,12 @@ Scope {
                         }
 
                         Keys.onPressed: event => {
+                            // A held Enter would answer the next prompt (after
+                            // a wrong password) with the emptied field.
+                            if (event.isAutoRepeat && [Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
+                                event.accepted = true;
+                                return;
+                            }
                             if (event.key === Qt.Key_Escape)
                                 root.cancel();
                             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)

@@ -351,12 +351,13 @@ Scope {
         }, psk);
     }
 
-    function wifiKey(k: string): bool {
+    function wifiKey(k: string, repeat: bool): bool {
         return wifiStep({
             type: "key",
             key: k,
             row: wifiSelected,
-            section: wifiSection
+            section: wifiSection,
+            repeat: repeat
         }).handled;
     }
 
@@ -435,7 +436,7 @@ Scope {
         if (row.kind === "nix") {
             say(`Set in ${row.entry.file}. Change it there and deploy.`);
         } else if (row.kind === "wifi") {
-            wifiKey("Enter");
+            wifiKey("Enter", false);
         } else if (row.device.connected) {
             expanded = expanded === row.device.name ? "" : row.device.name;
         } else {
@@ -968,15 +969,18 @@ Scope {
         })
     }
 
-    // Returns true when the key was used.
-    function key(k: int, modifiers: int): bool {
+    // Returns true when the key was used. `repeat`: a held key's auto-repeat,
+    // which only ↑↓ act on.
+    function key(k: int, modifiers: int, repeat: bool): bool {
         const plain = (modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
         const enter = k === Qt.Key_Return || k === Qt.Key_Enter;
         if (phase === "list") {
             const name = k === Qt.Key_Escape ? "Esc" : enter ? "Enter" : k === Qt.Key_F5 ? "F5" : !plain ? "" : k === Qt.Key_W ? "W" : k === Qt.Key_C ? "C" : k === Qt.Key_F ? "F" : "";
-            if (wifiKey(name || "other"))
+            if (wifiKey(name || "other", repeat))
                 return true;
         }
+        if (repeat && k !== Qt.Key_Up && k !== Qt.Key_Down)
+            return true;
         if (k === Qt.Key_Escape) {
             if (phase === "list") {
                 if (expanded !== "")
@@ -1049,7 +1053,7 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
-                if (root.key(event.key, event.modifiers))
+                if (root.key(event.key, event.modifiers, event.isAutoRepeat))
                     event.accepted = true;
             }
         }
@@ -1360,7 +1364,7 @@ Scope {
                                     anchors.fill: parent
                                     onClicked: {
                                         root.select(root.rows.findIndex(r => r.key === "f:" + wifiRow.v.name));
-                                        root.wifiKey("Enter");
+                                        root.wifiKey("Enter", false);
                                     }
                                 }
 

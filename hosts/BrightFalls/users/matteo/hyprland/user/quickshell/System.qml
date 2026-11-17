@@ -387,6 +387,9 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
+                // Of a held key's auto-repeats, only the arrows' act.
+                if (event.isAutoRepeat && event.key !== Qt.Key_Up && event.key !== Qt.Key_Down)
+                    return;
                 if (root.key(event.key))
                     event.accepted = true;
             }

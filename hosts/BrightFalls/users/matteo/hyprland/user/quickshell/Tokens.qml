@@ -86,7 +86,7 @@ Scope {
         const name = always[k] ?? (plain ? letters[k] : undefined);
         if (name === undefined)
             return false;
-        return TokensShared.key(name);
+        return TokensShared.key(name, event.isAutoRepeat);
     }
 
     Component.onCompleted: Dropdowns.add("tokens", TokensShared)

@@ -331,7 +331,7 @@ Scope {
                             }
 
                             Keys.onPressed: event => {
-                                if (event.key !== Qt.Key_Escape)
+                                if (event.key !== Qt.Key_Escape || event.isAutoRepeat)
                                     return;
                                 if (input.text !== "")
                                     input.text = "";

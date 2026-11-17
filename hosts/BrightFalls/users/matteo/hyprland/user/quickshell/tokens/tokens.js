@@ -1103,17 +1103,20 @@ function table(st) {
 }
 
 // A key pressed in the open panel. `key` is one of KEY_NAMES ("Up", "Down",
-// "PgUp", "PgDn", "Tab", "Enter", "Esc", "P", "D", "R", "S"). Returns { state,
-// effects, handled }; handled is false for a key the footer does not offer
-// in this state, which then changes nothing. Effects: { do: "send", req }
-// (write req as one JSON line to the helper) and { do: "close" } (close the
-// panel, then call closed()).
-function key(st, k) {
+// "PgUp", "PgDn", "Tab", "Enter", "Esc", "P", "D", "R", "S"); `repeat` is true
+// for a held key's auto-repeat, which only the moving keys (arrows, paging)
+// act on. Returns { state, effects, handled }; handled is false for a key the
+// footer does not offer in this state, which then changes nothing. Effects:
+// { do: "send", req } (write req as one JSON line to the helper) and
+// { do: "close" } (close the panel, then call closed()).
+function key(st, k, repeat) {
     if (!st.open)
         return { state: st, effects: [], handled: false };
     const entry = table(st).find(e => e.keys.includes(k));
     if (!entry)
         return { state: st, effects: [], handled: false };
+    if (repeat && !["Up", "Down", "PgUp", "PgDn"].includes(k))
+        return { state: st, effects: [], handled: true };
     const r = entry.run(st, k);
     return { state: r.state, effects: r.effects, handled: true };
 }

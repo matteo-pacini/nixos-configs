@@ -556,6 +556,10 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
+                // Of a held key's auto-repeats, only the arrows' act (↑↓
+                // select, ←→ step the volume).
+                if (event.isAutoRepeat && ![Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down].includes(event.key))
+                    return;
                 const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
                 if (root.key(event.key, plain))
                     event.accepted = true;

@@ -267,6 +267,8 @@ function failLine(reason, password) {
 function key(m, e) {
     const none = { state: m, effects: [], handled: true };
     const say = text => ({ state: m, effects: [{ do: "say", text }], handled: true });
+    if (e.repeat && ["W", "F5", "Esc", "Enter", "C", "F"].includes(e.key))
+        return none;
     if (m.phase === "joining") {
         if (e.key !== "Esc")
             return say(TEXT.busy);
@@ -323,11 +325,13 @@ function key(m, e) {
 
 // The reducer: step(state, event) -> { state, effects, handled }.
 // Events:
-//   { type: "key", key, row, section }  key "W" | "F5" | "Enter" | "C" |
-//       "F" | "Esc" | any other; row the selected Wi-Fi row (plain) or null
-//       when a wired or Nix row or nothing is selected; section as section()
-//       returns. handled false: the key is not Wi-Fi's, the panel's own
-//       handling applies (Esc: wired details, then close).
+//   { type: "key", key, row, section, repeat }  key "W" | "F5" | "Enter" |
+//       "C" | "F" | "Esc" | any other; row the selected Wi-Fi row (plain) or
+//       null when a wired or Nix row or nothing is selected; section as
+//       section() returns; repeat true for a held key's auto-repeat, which
+//       none of these keys acts on (handled, so the panel's Esc and Enter do
+//       not act on it either). handled false: the key is not Wi-Fi's, the
+//       panel's own handling applies (Esc: wired details, then close).
 //   { type: "select", name }            the selection moved (name or null)
 //   { type: "submit", row }             the modal's Enter, after
 //       passwordCheck() allowed it; row the network as it is now, or null

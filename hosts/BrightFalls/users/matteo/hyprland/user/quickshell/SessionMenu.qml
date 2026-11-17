@@ -132,6 +132,10 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
+                // Of a held key's auto-repeats, only the arrows' act: a held
+                // R or S must not arm and then confirm.
+                if (event.isAutoRepeat && event.key !== Qt.Key_Up && event.key !== Qt.Key_Down)
+                    return;
                 const letter = root.entries.findIndex(e => e.key.charCodeAt(0) === event.key);
                 if (event.key === Qt.Key_Escape)
                     root.open = false;

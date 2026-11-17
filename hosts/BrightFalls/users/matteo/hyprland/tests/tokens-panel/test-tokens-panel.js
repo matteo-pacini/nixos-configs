@@ -742,6 +742,20 @@ t("projects: ↑↓ move and turn the page; both ends do nothing", () => {
     assert.deepEqual(end.effects, []);
 });
 
+t("keys: a held key's repeats move and page, and do nothing else", () => {
+    const ov = overview();
+    for (const k of ["R", "P", "D", "Esc"])
+        assert.deepEqual(T.key(ov, k, true), { state: ov, effects: [], handled: true }, k);
+    const st = projects();
+    for (const k of ["Enter", "Tab", "S", "D", "Esc"])
+        assert.deepEqual(T.key(st, k, true), { state: st, effects: [], handled: true }, k);
+    assert.equal(T.key(st, "Down", true).state.selected, T.key(st, "Down").state.selected);
+    assert.equal(T.key(st, "PgDn", true).state.selected, T.key(st, "PgDn").state.selected);
+    assert.notEqual(T.key(st, "PgDn", true).state, st);
+    // A key the footer does not offer stays unhandled.
+    assert.equal(T.key(ov, "S", true).handled, false);
+});
+
 t("projects: PgUp/PgDn, selection to the page's first row", () => {
     let st = T.key(projects(), "Down").state;
     let r = T.key(st, "PgDn");

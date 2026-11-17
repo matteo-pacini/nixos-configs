@@ -654,6 +654,21 @@ t("keys: F5, Esc, and keys with nothing selected", () => {
     assert.equal(T.decide(empty, T.initialUi(), "F5").kind, "refresh");
 });
 
+t("keys: a held key's repeats move the selection and do nothing else", () => {
+    const ui = { selected: "nNexus", unfolded: [], chooser: null };
+    const v = view(running(), ui);
+    for (const key of ["Enter", "Y", "T", "O", "F5", "Esc"])
+        assert.deepEqual(T.decide(v, ui, key, true), { kind: "none", ui }, key);
+    const chooser = { selected: "nNexus", unfolded: [], chooser: "nNexus" };
+    for (const key of ["1", "2", "Esc"])
+        assert.equal(T.decide(view(running(), chooser), chooser, key, true).kind, "none", key);
+    assert.equal(T.decide(view(answer(STATES["logged-out"])), T.initialUi(), "Y", true).kind, "none");
+    assert.equal(T.decide(v, ui, "Down", true).ui.selected, "nNightSprings");
+    assert.equal(T.decide(v, ui, "J", true).ui.selected, "nNightSprings");
+    assert.equal(T.decide(v, { selected: "nNightSprings", unfolded: [], chooser: null }, "K", true).ui.selected, "nNexus");
+    assert.equal(T.decide(v, ui, "End", true).ui.selected, "nPhone");
+});
+
 t("selection is kept by peer ID across reads; a gone one falls back to the first", () => {
     const ui = { selected: "nNightSprings", unfolded: ["nNightSprings"], chooser: "nNightSprings" };
     const st = fixture("running");
