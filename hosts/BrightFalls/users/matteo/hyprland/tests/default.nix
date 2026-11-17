@@ -121,9 +121,10 @@ pkgs.lib.fix (self: {
       '';
 
   # The tray menu's library (quickshell/tray/menu.js): the header's name and
-  # the entries' marks.
+  # the entries' marks, by the installed Quickshell's button-type values.
   tray-panel = pkgs.runCommand "tray-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
-    node ${./tray/test-tray.js} ${../user/quickshell/tray}
+    node ${./tray/test-tray.js} ${../user/quickshell/tray} \
+      ${pkgs.quickshell}/lib/qt-6/qml/Quickshell/quickshell-core.qmltypes
     touch $out
   '';
 
@@ -152,9 +153,12 @@ pkgs.lib.fix (self: {
       '';
 
   # The Network panel's Wi-Fi library (quickshell/network/wifi.js) against
-  # invented networks in wifi-panel/fixtures/ and Quickshell's enum names.
+  # invented networks in wifi-panel/fixtures/ and Quickshell's enum names;
+  # those names, and Network.qml's copies, against the installed Quickshell.
   wifi-panel = pkgs.runCommand "wifi-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
-    node ${./wifi-panel}/test-wifi-panel.js ${../user/quickshell/network}
+    node ${./wifi-panel}/test-wifi-panel.js ${../user/quickshell/network} \
+      ${pkgs.quickshell}/lib/qt-6/qml/Quickshell/Networking/quickshell-network.qmltypes \
+      ${../user/quickshell/Network.qml}
     touch $out
   '';
 
