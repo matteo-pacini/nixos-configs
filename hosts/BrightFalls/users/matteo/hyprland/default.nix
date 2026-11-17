@@ -126,6 +126,7 @@ in
         lib.removePrefix "https://github.com/" (lib.head osConfig.services.comin.remotes).url
       );
     })
+    (callPackage ./desk-tokens.nix { })
   ];
 
   # The desktop shell, from user/quickshell/ (installed at

@@ -27,6 +27,8 @@ work) is in [AGENTS.md](AGENTS.md).
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
 - [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel)
+- [Tokens: desk-tokens](#tokens-desk-tokens) (the helper behind the token
+  panel)
 - [Tailscale: status and mesh hosts](#tailscale-status-and-mesh-hosts) (the
   decisions behind the Tailscale panel)
 - [Tests](#tests)
@@ -1362,6 +1364,84 @@ are in `host_row()`.
   and the desktop are configured with), and `comin` and `comin-deploy` (each
   host's own).
 
+## Tokens: desk-tokens
+
+`desk-tokens` (`desk-tokens.py`, `desk-tokens.nix`) is the helper for the
+token panel: JSON lines on stdin and stdout like `desk-fleet`, started when
+the panel opens and stopped when it closes. It counts Claude Code's replies
+from the transcripts into an index of its own and answers the panel's pages:
+the overview, the projects of a period, one project, and the last 14 days.
+The full protocol is the docstring at the top of `desk-tokens.py`.
+
+- **What it reads**: only `*.jsonl` files at three places under
+  `$CLAUDE_CONFIG_DIR/projects` (else `~/.claude/projects`): a session's main
+  transcript `<key>/<session>.jsonl`, a sub-agent's
+  `<key>/<session>/subagents/agent-*.jsonl` and a workflow sub-agent's
+  `<key>/<session>/subagents/workflows/<name>/agent-*.jsonl`. A line is
+  parsed only if its bytes contain `"usage"`; from an assistant record it
+  keeps the six usage counters, the model, the timestamp, `message.id`,
+  `requestId`, `sessionId`, `isSidechain` and `cwd`, and drops the rest.
+- **What it never reads**: message content, tool input or output, titles,
+  slugs, branch names; a workflow's journal, `.meta.json`, `tool-results/`,
+  `memory/`; Claude Code's account files. It has no network code and starts
+  no process. Nothing from a transcript is printed: errors are counts.
+- **The index**: SQLite at `$XDG_STATE_HOME/desk/tokens/index.sqlite` (else
+  `~/.local/state/desk/tokens/`), the directory 0700, the file 0600, with a
+  schema version (another version is rebuilt from scratch). One row per
+  reply, keyed `message.id:requestId`, holding only ids, a working
+  directory's row, model name, time and counters; a row per transcript (path,
+  inode, the byte after the last complete line read); folds and projects.
+  Each sync reads a file from that byte; a file that shrank or got a new
+  inode is read again from 0. A reply seen again (the streaming lines of one
+  reply, a resumed or forked session) merges by per-field maximum, so reading
+  twice never counts twice, and the smallest session id keeps it. Lines
+  without both ids and `<synthetic>` replies are skipped and counted. A
+  transcript Claude Code deletes keeps its replies in the index. Sessions,
+  active time and projects are computed from the reply rows at each request,
+  so they are the same however the files were read.
+- **Sub-agents** count in their parent session (`sessionId`) and its
+  project, flagged: they add to the session's output, not to its replies or
+  its active time (the gaps under 10 minutes between main-conversation
+  replies).
+- **Days** are calendar days in the local time zone; "7 days" is today and
+  the 6 days before it, and so on. A first run reads the newest files first,
+  so today, 7, 14 and 30 days become complete in turn (a file last written
+  before a period began cannot hold its replies); a page asked before its
+  period is complete gets a "not ready" answer with the progress. It commits
+  between files, at least every half second, and before saying a period is
+  complete; a SIGTERM rolls back what was read since the last commit, which
+  the next run reads again.
+- **Projects** (`fold_cwd()`): a session belongs to the project of the
+  working directory of its first main-conversation reply. `/tmp/tmp.*` is
+  one project, "temporary directories". A `/tmp/claude-<uid>/<key>/…`
+  scratch directory folds by name on `<key>`. An existing directory folds
+  to its nearest `.git`: a `.git` directory is the project, a `.git` file
+  pointing into `<repo>/.git/worktrees/` folds into `<repo>`, any other
+  `.git` file (a submodule) is its own project; with no `.git` it is its own
+  project. A gone `<repo>/.claude/worktrees/<name>` folds as `<repo>`. Any
+  other gone directory is encoded like Claude Code's keys (every character
+  but ASCII letters and digits to `-`) and folds into the known checkout
+  whose encoded path is its longest prefix followed by `-`; with none it is
+  its own project. A fold read from the file system is kept for good, so a
+  worktree removed later stays with its repository; a fold by name is tried
+  again at every sync, as more checkouts become known.
+- **Known wrong folds**: a removed separate repository `repo-x` folds into
+  a checkout `repo` (as does `repo.x`); a repository with no checkout left
+  stands alone under its directory; a renamed repository splits in two; a
+  session that changes directory stays with its first; a scratch key whose
+  directory had no git (the home folder, say) stands alone under its
+  encoded key.
+- **Prices**: `desk-tokens-prices.json`, built in (`--prices` overrides it):
+  USD per million tokens for input, output, 5-minute and 1-hour cache
+  writes and cache reads, with the page they were read from and the date. A
+  model id with a `-YYYYMMDD` suffix takes its base id's row. A tier
+  (`above`, Haiku 5.5's prompts over 100,000 tokens) applies to a whole reply
+  whose prompt (input, cache reads and both cache writes) is longer; there is
+  no other tier. Batch, data-residency and fast-mode multipliers are not
+  applied. A model missing from the table is reported by name and its tokens
+  are not priced. The dollar figure is an estimate of what the same use
+  would cost at API list prices, not a bill.
+
 ## Tailscale: status and mesh hosts
 
 `user/quickshell/tailscale/tailscale.js` holds every decision of the
@@ -1505,6 +1585,19 @@ GitHub's runners, cause not known.
   `first`; and a second run with `--read-only` in which every write is
   refused and runs nothing while probes, diff, ssh and attach still work.
   About 50 s.
+- `nix build .#checks.x86_64-linux.tokens-helper`:
+  `tests/tokens/test-desk-tokens.py` runs `desk-tokens`' pure functions
+  (line parsing, the read plan, active time, prices and tiers, folding on a
+  real directory tree, day boundaries across both daylight-saving changes),
+  then the built helper against invented transcript trees: streaming and
+  forked duplicates, an offset falling inside a reply, a truncated last line,
+  sub-agent and workflow files (journals, `.meta.json`, `tool-results/` and
+  `memory/` made unreadable and never opened), skipped lines, shrunk,
+  replaced and deleted files, London and Auckland days, distinct sessions,
+  active time read in three pieces, folds kept and re-tried, prices, a first
+  run's order and readiness with a page asked too early, SIGTERM mid-sync,
+  stdin EOF, the index's mode and columns, and a source with no network or
+  process code. About 10 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the

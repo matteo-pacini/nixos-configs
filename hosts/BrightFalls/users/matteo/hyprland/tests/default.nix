@@ -17,6 +17,7 @@
 #   nix build .#checks.<system>.fleet-panel
 #   nix build .#checks.<system>.tailscale-panel
 #   nix build .#checks.<system>.wifi-panel
+#   nix build .#checks.<system>.tokens-helper
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -268,6 +269,23 @@ in
       ${../desk-fleet.py} ${./fleet/fixtures} "$PWD/work"
     touch $out
   '';
+
+  # desk-tokens (the token panel's helper): its pure functions, then the
+  # built helper against invented transcripts in temporary trees, with the
+  # clock fixed and the time zone set per case.
+  tokens-helper =
+    pkgs.runCommand "tokens-helper-tests"
+      {
+        nativeBuildInputs = [ pkgs.python3 ];
+        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
+      }
+      ''
+        mkdir work
+        python3 -I ${./tokens/test-desk-tokens.py} \
+          ${pkgs.lib.getExe (pkgs.callPackage ../desk-tokens.nix { })} \
+          ${../desk-tokens.py} ${../desk-tokens-prices.json} "$PWD/work"
+        touch $out
+      '';
 
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
