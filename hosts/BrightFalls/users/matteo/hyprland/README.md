@@ -611,9 +611,10 @@ panel's selected day.
   dimmed by the shell and blurred by Hyprland (a layer rule for
   `desk-calendar-full` in `hypr/rules.lua`). Game mode turns Hyprland's blur
   off, and then it is only dimmed. A critical notification card or the OSD
-  appearing while it is open is drawn above it, sharp: both are Overlay
-  surfaces mapped later, as over the drop-downs. Other notification cards
-  are on the Top layer, under it.
+  is drawn above it, sharp, when its window appears after the big view
+  opens (both are Overlay surfaces, stacked in the order they appear, as
+  over the drop-downs); one already up when it opens stays under it, as do
+  the other notification cards, on the Top layer.
 - It is not a drop-down, but it is in `common/Dropdowns.qml`: opening it
   closes any open drop-down, and opening a drop-down, the launcher, the
   cheat sheet or the session menu closes it. Like them it is an Overlay
