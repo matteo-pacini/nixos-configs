@@ -1,6 +1,6 @@
 // What a device asks for when BlueZ's agent gets AuthorizeService: the
 // service's name in plain words and the question the modal puts. Plain
-// JavaScript so node can run it too (tests beside the panel's report).
+// JavaScript so node can run it too (the `bluetooth-panel` check).
 //
 // The UUID is the service on this computer that the device wants to use, so
 // "Audio Sink" means this computer would play the device's audio. Names of

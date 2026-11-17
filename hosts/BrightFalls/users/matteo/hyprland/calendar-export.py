@@ -99,7 +99,12 @@ def mirror(src_root, dst_root):
 
     khal rescans a calendar only when its directory's mtime changes, so a
     rewrite goes through a new file and a rename, which changes it; writing
-    in place would leave an edited event stale in khal's kept database."""
+    in place would leave an edited event stale in khal's kept database.
+
+    An .ics that does not decode as UTF-8 or does not parse as iCalendar is
+    left out of dst_root (its old copy removed), so neither khal nor the
+    readers below meet it. Returns how many were left out."""
+    skipped = 0
     stamp = dst_root / ".format"
     if dst_root.exists() and (
         not stamp.exists() or stamp.read_text() != COPY_FORMAT
@@ -126,12 +131,19 @@ def mirror(src_root, dst_root):
                 continue
             tmp = dst / f".{fname}.tmp"
             if fname.endswith(".ics"):
-                text = sp.read_bytes().decode("utf-8")
-                tmp.write_bytes(derive(text).encode("utf-8"))
+                try:
+                    text = derive(sp.read_bytes().decode("utf-8"))
+                    icalendar.Calendar.from_ical(text)
+                except ValueError:
+                    dp.unlink(missing_ok=True)
+                    skipped += 1
+                    continue
+                tmp.write_bytes(text.encode("utf-8"))
             else:
                 tmp.write_bytes(sp.read_bytes())
             os.utime(tmp, ns=(st.st_atime_ns, st.st_mtime_ns))
             os.replace(tmp, dp)
+    return skipped
 
 
 def known_tzid(tzid):
@@ -295,7 +307,11 @@ def main():
     ).replace(microsecond=0)
 
     derived = workdir / "vdir"
-    mirror(vdir, derived)
+    skipped = mirror(vdir, derived)
+    if skipped:
+        # A count only: a file's name or text can carry event details.
+        print(f"calendar-export: .ics files skipped (not UTF-8 or not iCalendar): {skipped}",
+              file=sys.stderr)
     bad = unresolved_uids(derived)
     tz = local_zone(khal_config)
     alarms = alarm_index(derived, tz)

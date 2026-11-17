@@ -15,7 +15,8 @@ Singleton {
     id: root
 
     // Starts the helper with --read-only: it then refuses switch, boot, mode
-    // and reboot and runs nothing on any host.
+    // and reboot (they run nothing); probes, diff, ssh and attach work as
+    // usual.
     readonly property bool readOnly: false
 
     // Name of the monitor the panel is open on, or "" while it is closed.

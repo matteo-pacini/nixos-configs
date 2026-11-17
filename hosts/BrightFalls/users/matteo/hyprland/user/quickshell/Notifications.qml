@@ -127,7 +127,7 @@ Scope {
     }
 
     // While the lock screen holds the session nothing is shown and nothing
-    // times out; the cards appear on unlock with their full time left.
+    // times out; the cards appear on unlock with the time they had left.
     Binding {
         target: LockState
         property: "waiting"

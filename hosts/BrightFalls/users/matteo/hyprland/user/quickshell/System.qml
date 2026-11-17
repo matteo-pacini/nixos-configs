@@ -12,7 +12,8 @@ import "system/decode.js" as D
 //   qs ipc call system toggle
 // The machine drawn with its fans turning at the card's speed, the eGPU link,
 // then CPU, memory, eGPU, iGPU, storage and network. Read-only: figures come
-// from Sensors, which reads sysfs and procfs only while the panel is open.
+// from Sensors, which reads sysfs and procfs; with the panel closed it reads
+// only what the bar item and its hover list show (see its header).
 Scope {
     id: root
 

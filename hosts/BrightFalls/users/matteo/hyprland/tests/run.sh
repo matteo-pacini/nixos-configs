@@ -147,6 +147,10 @@ cp "$work/gen2/hypr/d.lua" "$repo/$sub/hypr/d.lua"
 git -C "$repo" init -q
 git -C "$repo" add .
 git -C "$repo" -c user.name=t -c user.email=t@t commit -qm init
+# d.lua is edited again on top of gen2, so nothing is incoming for it and
+# pull copies it (an edit with a newer version incoming is under home3).
+ds "$work/gen2" reset hypr/d.lua
+printf 'd1 edited\n' >"$cfg/hypr/d.lua"
 
 ds "$work/gen2" pull
 check "pull needs a directory" 2 "$rc"
@@ -226,5 +230,60 @@ ds "$work/r2" pull "$repo2"
 check "pull: every secret line listed; letters-only and digits-only runs pass" "1 desk-sync: not copying hypr/x.lua: line 2, 3, 4 of $cfg/hypr/x.lua looks like a secret
 copied quickshell/y.qml
 ?? $sub/" "$rc $out"
+
+# ---- pull against a newer generation, and the scan of changed lines ----
+export HOME="$work/home3"
+mkdir -p "$HOME"
+cfg=$HOME/.config
+state=$HOME/.local/state/desk
+manifest p1 hypr/e.lua=e1 hypr/f.lua=f1 quickshell/t.js=$'x\ntokens: n\ny'
+manifest p2 hypr/e.lua=e2 hypr/f.lua=f1 quickshell/t.js=$'x\ntokens: n\ny'
+ds "$work/p1" activate
+printf 'e1 edited\n' >"$cfg/hypr/e.lua"
+printf 'f1 edited\n' >"$cfg/hypr/f.lua"
+ds "$work/p2" activate
+repo3=$work/repo3
+mkdir -p "$repo3/$sub"
+cp -r --no-preserve=mode "$work/p2/." "$repo3/$sub/"
+git -C "$repo3" init -q
+git -C "$repo3" add .
+git -C "$repo3" -c user.name=t -c user.email=t@t commit -qm init
+
+printf 'x\nlet z = 1\ntokens: n\ny\n' >"$cfg/quickshell/t.js"
+ds "$work/p2" pull "$repo3"
+check "pull: an edit on an older version is not copied; the rest are" "1 desk-sync: not copying hypr/e.lua: it was edited on an older version; the newer one is in $state/incoming/hypr/e.lua (see desk-sync status -v)
+copied hypr/f.lua
+copied quickshell/t.js
+ M $sub/hypr/f.lua
+ M $sub/quickshell/t.js" "$rc $out"
+check "pull: the checkout keeps the newer version" e2 "$(cat "$repo3/$sub/hypr/e.lua")"
+check "pull: an edit with nothing incoming is copied" "f1 edited" "$(cat "$repo3/$sub/hypr/f.lua")"
+
+ds "$work/p2" reset hypr/e.lua
+printf 'x\nlet z = 1\ntokens: n\ntoken = "abcdef"\ny\n' >"$cfg/quickshell/t.js"
+ds "$work/p2" pull "$repo3"
+check "pull: a secret added beside a shipped look-alike, by its live line" "1 copied hypr/f.lua
+desk-sync: not copying quickshell/t.js: line 4 of $cfg/quickshell/t.js looks like a secret
+ M $sub/hypr/f.lua
+ M $sub/quickshell/t.js" "$rc $out"
+
+# ---- activation with a live symlink out of the store, or a directory ----
+export HOME="$work/home4"
+mkdir -p "$HOME"
+cfg=$HOME/.config
+state=$HOME/.local/state/desk
+manifest l1 hypr/l.lua=l1 hypr/m.lua=m1
+manifest l2 hypr/l.lua=l2 hypr/m.lua=m2
+mkdir -p "$cfg/hypr/m.lua" "$work/mine"
+printf 'mine\n' >"$work/mine/l.lua"
+ln -s "$work/mine/l.lua" "$cfg/hypr/l.lua"
+ds "$work/l1" activate
+check "symlink out of the store, directory: kept, store copies in incoming" "0 desk-sync: hypr/l.lua: kept the live edit; the new version is in $state/incoming/hypr/l.lua
+desk-sync: hypr/m.lua: kept the live edit; the new version is in $state/incoming/hypr/m.lua" "$rc $out"
+ds "$work/l2" activate
+check "symlink and directory after a new generation: still kept, never written through" \
+  "0 desk-sync: hypr/l.lua: kept the live edit; the new version is in $state/incoming/hypr/l.lua
+desk-sync: hypr/m.lua: kept the live edit; the new version is in $state/incoming/hypr/m.lua mine $work/mine/l.lua directory l2 m2" \
+  "$rc $out $(cat "$work/mine/l.lua") $(readlink "$cfg/hypr/l.lua") $(stat -c %F "$cfg/hypr/m.lua") $(cat "$state/incoming/hypr/l.lua") $(cat "$state/incoming/hypr/m.lua")"
 
 exit "$failed"

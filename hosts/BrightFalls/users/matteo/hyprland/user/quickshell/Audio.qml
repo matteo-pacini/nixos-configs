@@ -13,8 +13,8 @@ import qs.common
 // The Magni 2 / Modi 2 stack with the Modi's state, the path to it, one row
 // per playback stream, every input with a live level, then the settings Nix
 // fixes (from ~/.local/share/desk/audio/locked.json, absent with no file).
-// Nothing here runs while the panel is closed: no binding, no pw-dump, no
-// level capture.
+// Nothing here polls or captures while the panel is closed: no pw-dump, no
+// pw-top, no level capture.
 Scope {
     id: root
 

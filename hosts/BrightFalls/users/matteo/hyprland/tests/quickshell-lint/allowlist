@@ -1,0 +1,64 @@
+# Warnings quickshell-lint accepts. One regular expression (jq's syntax) per
+# line, matched against "<file>: <message> [<category>]", the file relative to
+# user/quickshell; lines starting with # and blank lines are ignored. Keep each
+# to one type and member, and to one file where the cause is the file's own.
+# A line that matches nothing fails the check, so a Quickshell update that
+# closes a gap shows which line to remove. When qmllint has a suggestion, its
+# first line follows the category; an "Unqualified access" warning also names
+# the identifier, in quotes.
+
+# Style: delegates and inline components read ids of the enclosing component
+# (root, mostly) without `pragma ComponentBehavior: Bound`. qmllint offers
+# that pragma only when the name is an id somewhere in the file, so a
+# misspelt name still fails. Members read through such an id are not checked.
+^[^:]+: Unqualified access "\w+" \[unqualified\] Set "pragma ComponentBehavior: Bound" in order to use IDs from outer components in nested components\.$
+# The same for the id `content`, which DropCard also has as a member; QML
+# resolves the id first (see id-shadows-member in run.sh).
+^Tailscale\.qml: Unqualified access "content" \[unqualified\] content is a member of a parent element\.$
+
+# Quickshell's .qmltypes: each module's file carries an opaque stub (no
+# members) for a type defined in another module, and qmllint takes the stub.
+# QuickshellScreenInfo (ShellScreen), UntypedObjectModel, Margins, PopupAnchor:
+^.*: Member "name" not found on type "QuickshellScreenInfo" \[missing-property\]$
+^lock\.qml: Redundant optional chaining for lookup on non-voidable and non-nullable type QuickshellScreenInfo \[redundant-optional-chaining\] Consider using non-optional chaining instead: '\?\.' -> '\.'$
+^.*: Member "values" not found on type "UntypedObjectModel" \[missing-property\]$
+^(Bar|Notifications|Osd)\.qml: Could not find property "(top|left|right)"\. \[missing-property\]$
+^system/Temperatures\.qml: Could not find property "(item|gravity)"\. \[missing-property\]$
+^system/Temperatures\.qml: Type rect is used but it is not resolved \[unresolved-type\]$
+^system/Temperatures\.qml: unknown grouped property scope rect\. "rect" \[unqualified\]$
+
+# Quickshell's .qmltypes: PanelWindow is exported only as the uncreatable
+# interface; the creatable type is registered at run time.
+^.*: Type PanelWindow is not creatable\. \[uncreatable-type\]$
+
+# Quickshell's .qmltypes: property types written without their C++ namespace
+# (BluetoothAdapter for qs::bluetooth::BluetoothAdapter, and Polkit's AuthFlow
+# and Identity), so qmllint cannot find them.
+^bluetooth/BluetoothShared\.qml: Type "BluetoothAdapter" of property "defaultAdapter" not found\..* \[unresolved-type\]$
+^Polkit\.qml: Type "(AuthFlow|Identity)" of property "(flow|selectedIdentity)" not found\..* \[unresolved-type\]$
+
+# Not Quickshell's: the shell types the wired rows' modelData as NetworkDevice,
+# and hasLink and linkSpeed are WiredDevice's. Works, as QML looks the member
+# up on the real object; `required property WiredDevice modelData` would clear it.
+^Network\.qml: Member "(hasLink|linkSpeed)" not found on type "qs::network::NetworkDevice" \[missing-property\]$
+
+# qmllint types `parent` as the parent in the document; at run time a
+# Repeater's delegate is parented to the Repeater's parent (Dots, a Row), and
+# a Battery's inner Rectangle's parent.parent is the Battery.
+^Calendar\.qml: Member "onToday" not found on type "Repeater" \[missing-property\]$
+^BluetoothPanel\.qml: Member "percent" not found on type "QQuickItem" \[missing-property\] Did you mean "parent"\?$
+^BluetoothPanel\.qml: Member "tone" not found on type "QQuickItem" \[missing-property\] Did you mean "top"\?$
+
+# qmllint types appName[0] ?? "?" as a primitive of unknown kind; it is a string.
+^notifications/Card\.qml: Member "toUpperCase" not found on type "QJSPrimitiveValue" \[missing-property\]$
+
+# `property real enter: 0` with `NumberAnimation on enter`: qmllint counts the
+# initial value as a binding; the engine applies the value, then the animation.
+^Notifications\.qml: Cannot combine value source and binding on property "enter" \[duplicate-property-binding\]$
+
+# Real: a property declared with the name of one of the base type's own
+# properties, which it replaces (Grid's rows, Item's state). Loads and works
+# today, since neither component uses the base property; renaming them would
+# clear these.
+^System\.qml: Property "rows" already exists in base type "QQuickGrid", use a different name\. \[property-override\]$
+^lock/LockFace\.qml: Property "state" already exists in base type "QQuickItem", use a different name\. \[property-override\]$
