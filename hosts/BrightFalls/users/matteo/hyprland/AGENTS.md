@@ -601,8 +601,6 @@ rename leaves stale live files; the naming rule is under "Names to know").
   to `gdbus … Notify` unquoted (quotes stripped, `\n` a newline, a trailing
   `\` loses the notification); `calendar/Reminders.qml` quotes with `gv()`.
   One shared, node-tested sender for the three.
-- `office/office.js:412`: no sockets in the config throws (also under
-  "Known bugs").
 - `tokens/TokensShared.qml:95-115`: the helper's stderr is discarded, the
   back-off resets on any line, and `onStarted` ignores `stopping`.
 - `Network.qml:1234-1240,1539`, `Audio.qml:1105`: wired details do not
@@ -678,8 +676,7 @@ runs.
 
 **Known bugs, pinned by the checks and not fixed** (each check says what
 to change once the bug is fixed):
-- Latent, unreachable with the shipped data: `office.js` throws for a
-  device list with no sockets (`office-panel`); `queries.js` `parse`
+- Latent, unreachable with the shipped data: `queries.js` `parse`
   throws on a broken day line instead of returning null (`calendar-panel`).
 
 **Known quirks:**
