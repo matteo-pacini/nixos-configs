@@ -115,7 +115,7 @@ in `~/.local/state/desk/hashes/<path>`:
 | a symlink into `/nix/store` (left by an older generation) | replaced with a writable copy, hash recorded |
 | identical to the new store copy | hash recorded |
 | matches the recorded hash (not edited since it was installed) | replaced with the new store copy, hash recorded |
-| anything else (edited live) | left untouched; a new store copy goes to `~/.local/state/desk/incoming/<path>`, hash not recorded |
+| anything else (edited live, including a symlink out of the store or a directory at the file's path) | left untouched; a new store copy goes to `~/.local/state/desk/incoming/<path>`, hash not recorded |
 
 A file dropped from the manifest is left in place, and activation says so
 once. One file failing is reported and does not stop the others or Home
@@ -132,10 +132,18 @@ Manager's activation.
   relative to `~/.config` (`hypr/bindings.lua`) or the live path.
 - `desk-sync pull <checkout-dir>`: copy edited live files into
   `<checkout-dir>/hosts/BrightFalls/users/matteo/hyprland/user/` and print
-  `git status --short` for that subtree. No commit. A file with something that
-  looks like a secret (a private key block, `password=`/`token:`-style
-  assignment, a bearer token, a run of 40 or more letters and digits without
-  `-`, `/` or `.`) is not copied; the file and line are named and it exits 1.
+  `git status --short` for that subtree. No commit. Two kinds of file are
+  not copied, each named on stderr, and pull exits 1 after copying the rest:
+  - one whose newer store copy is waiting in `incoming/` (`incoming-pending`):
+    it was edited on an older version, and the checkout may already hold the
+    newer one. Merge by hand and `desk-sync reset` it, or reset it and edit
+    again, then pull.
+  - one where a line the edit added or changed (against the store copy, by
+    `diff`'s alignment) looks like a secret: a private key block, a
+    `password=`/`token:`-style assignment, a bearer token, or a run of 40 or
+    more letters, digits, `_`, `+` or `=` holding at least one letter and
+    one digit. Lines shipped in the store copy are not scanned. The message
+    gives the live file's line numbers.
 
 `desk-sync` knows the manifest of the generation it was built with, which is
 the one activation installed. Files created live are not in it, so `status`
@@ -198,6 +206,7 @@ others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
 | Office | Super+O, bar light bulb and watts | `office` |
 | Fleet | Super+G, bar server glyph and count | `fleet` |
+| Tailscale | Super+V, bar Tailscale glyph | `tailscale` |
 | Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
@@ -286,7 +295,8 @@ hidden under fullscreen.
 
 `Osd.qml`: a pill under the bar, centred on the focused monitor, for about a
 second after a change: output volume and mute, microphone mute, the default
-output changing (its name), Bluetooth turned on or off. It takes no input and
+output changing (its name), Bluetooth turned on or off (or a failure to turn
+it on or off, or no adapter). It takes no input and
 does not show for the values present at startup. No IPC.
 
 ### Cheat sheet
@@ -513,7 +523,9 @@ check.
   - `/proc` is read only while one of the input's links is active (a program
     or a level monitor records from it), and once when the input appears
     (shell start or reload, replug), by opening it for about 1.5 s with a
-    level monitor.
+    level monitor. The reads stop once two of them decide, so a microphone
+    that hangs in the middle of a recording is flagged only when it next
+    starts running; a flagged input is read on while it runs.
   - The row then says `no signal · replug the cable` in red, its level is
     flat with no monitor, and Enter explains in the footer instead of making
     it the default. The bar's audio item gets a red dot.
@@ -578,7 +590,7 @@ calendar export into desktop notifications from the "Calendar" app.
   for part-day events" and "Default reminder for full-day events", which the
   sync cannot read, so change them together with those.
 - A reminder card shows the title, then the time range, how long until the
-  start, and the calendar, for example "11:00 – 12:00 · in 60 min · Work".
+  start, and the calendar, for example "11:00 – 12:00 · in 1 h · Work".
   It stays until dismissed or until 5 minutes after the start. A later
   reminder for the same event replaces it. **Open** shows the day in the
   calendar panel. A reminder whose moment passed while the PC was off still
@@ -630,7 +642,7 @@ calendar export into desktop notifications from the "Calendar" app.
   from LACT's socket and never writing anything. Hardware is found by name
   and device path, not hwmon numbers. While the panel is closed only the two
   bar temperatures are read, every 5 seconds; hovering reads the temperatures
-  each second; the open panel reads about 30 small files a second and a few
+  each second (the memory modules and the NVMe every 10 seconds); the open panel reads about 30 small files a second and a few
   every 10 seconds. A sleeping eGPU is not read until it wakes. Memory-module
   alarm files are never read, because reading one clears it.
 - **Deliberately not shown**: link saturation, because no traffic counter
@@ -799,12 +811,6 @@ while it keeps failing).
   --read-only`, which refuses every command and publishes nothing; the save
   restarts the helper. It is `false`: the panel is live.
 
-**Verified by the user, with the real light and blind:** the light on and
-off; brightness by keys and by mouse; the blind up, stop, down and to a
-position; the sockets not clickable. **Never seen for real** (simulated with
-recorded helper lines, and node-tested): the broker lost, Zigbee2MQTT
-offline, a device offline, a command not confirmed.
-
 ### Fleet panel
 
 `Fleet.qml`, with `fleet/FleetShared.qml` (shared with the bar: placement,
@@ -855,20 +861,10 @@ helper's.
   stays true; while open every 60 s, with the header and spinner ticking.
 - **Read-only for development**: `readonly property bool readOnly` in
   `fleet/FleetShared.qml`. `true` starts the helper as `desk-fleet
-  --read-only`, which refuses switch, boot, mode and reboot and runs nothing
-  on any host; the save restarts the helper. It is `false` in the
-  repository: the panel is live once deployed.
-
-**Seen for real** (by the agent that built it, with the helper read-only):
-the panel with the real fleet (BrightFalls Pending on a hand build, Nexus
-Pending with the same system held, NightSprings up to date, CauldronLake
-offline), the bar item with its count and dim, a switch sent with the row's
-generation and refused read-only, A with no session, F5, T and D windows on
-this computer, the helper-not-found line. **Fixtures and node only**: every
-chip, the cases the old herdr panel read wrong, the questions and the mode
-chooser, action running, ok, failed and the sudo message, the GitHub banner,
-long texts. **Not done yet**: real key presses and clicks, Super+G in a
-reloaded session, O, and any real switch, boot, mode change or reboot.
+  --read-only`, which refuses switch, boot, mode and reboot (they run
+  nothing), while probes, diff, ssh and attach work as usual; the save
+  restarts the helper. It is `false` in the repository: the panel is live
+  once deployed.
 
 ### Tailscale panel
 
@@ -895,12 +891,6 @@ item between Bluetooth and Network, opens it. It is read-only: it runs only
   is closed (for the bar item); the full call on open, every 5 s while open
   and on F5; one call at a time; a call still running after 10 s gets
   SIGTERM, then SIGKILL 2 s later.
-
-**Seen for real** (by the agent that built it, with the real daemon):
-Running, with real keys (F5, J, K, Home, End, Enter, Y, 2, Esc, T on
-Nexus). **Simulated** (fixture output through the real call): every other
-state, overlay and chip. **Not done yet**: O, the arrows, and Super+V in a
-reloaded session.
 
 ### Token panel
 
@@ -997,26 +987,6 @@ the plan limits as Claude Code last reported them. It is read-only.
   counters, never message text); no scrolling (the shell has none for
   panels; the projects list pages instead). The dollar figures are
   estimates at API list prices, not a bill.
-
-**Seen for real** (by the agent that built it, with the real helper on a
-scratch index and the real transcripts): the cold first read's progress
-states, then the overview, projects (two pages), a project's detail and the
-days page from the real answers; Esc, Esc closing it with no helper left
-running; the bar item in each of its states on the real bar (with a scratch
-limits file). **Simulated** (a stand-in helper answering with invented
-fixtures, a scratch limits file, keys sent over a temporary IPC target):
-every page's states, the limits in every state, long names eliding, the
-helper missing and stopped and recovering, the limits watch with the
-directory and file created after the shell started and replaced by rename
-several times, every row of the key table and the keys that must do
-nothing, and no helper process after every close; then the figures at API
-prices on every page (priced, partly and wholly unpriced, the widest
-figures beside a 61-character name, both orders and S keeping the
-selection) and every page from a helper without cost fields. **Not done
-yet**: the figures from the real helper's answers, real
-key presses and clicks, the window with real keyboard focus, Super+U in a
-reloaded session, and the limits file written by a real Claude Code
-session.
 
 ### Tray menu
 
@@ -1204,6 +1174,15 @@ CalDAV server ──pimsync, one way──▶ ~/.local/share/calendars/       (v
   `~/.config/pimsync/pimsync.conf`, then, only if that succeeded,
   `calendar-export` as `ExecStartPost`. A failed or offline sync leaves the
   last export in place. pimsync's state is in `~/.local/state/pimsync/`.
+  `TimeoutStartSec=15min`, which systemd applies to the sync and to the
+  export separately: a run that hangs fails, and the timer starts the next
+  one.
+- An `.ics` file that is not UTF-8 or not iCalendar is skipped and the rest
+  are exported; one already exported drops out of the export once it turns
+  bad. When any is skipped, the export prints
+  `calendar-export: .ics files skipped (not UTF-8 or not iCalendar): N` to
+  the unit's journal, with no file or calendar name. A skipped file is tried
+  again on every run.
 - `calendar-sync.timer`: 1 minute after the graphical session starts, then at
   every tenth minute of the clock, catching up after suspend (`Persistent`).
 - Force a sync: `systemctl --user start calendar-sync.service` (the panel's
@@ -1471,7 +1450,12 @@ are in `host_row()`.
   (`nix store diff-closures`) and `ssh` open in Ghostty at once.
 - **Walls**: a host command runs only if the host's latest row allows it,
   `switch` and `boot` only with the generation the row holds; anything else
-  is refused with a reason. The only strings that reach a host's shell are
+  is refused with a reason. A host with an action running is `busy` for
+  every action but `diff` and `ssh`, also while its tmux session from an
+  earlier helper still runs without an exit code, so a restart of the shell
+  (which restarts the helper) cannot start a second action over the first.
+  A restarted helper does not follow or report that earlier action;
+  `attach` still shows it. The only strings that reach a host's shell are
   fixed commands plus a generation uuid, a mode from the row's list, or a
   system store path, each checked. `--read-only` refuses `switch`, `boot`,
   `mode` and `reboot` ("read-only") and runs nothing for them; probes, `diff`,
@@ -1621,15 +1605,21 @@ returned shapes are the comment at the top of the file.
 
 ## Tests
 
-Flake checks, defined in `tests/default.nix`. All of them but `hypr-config`
-run on every pull request in the `brightfalls-tests` job
-(`.github/workflows/pr-build.yml`), a required check for merging into
-`master`. `hypr-config` is run by hand before a change to the Hyprland
-config, not in CI: Hyprland's verify crashes (exit 139) on the full config on
-GitHub's runners, cause not known.
+Flake checks, defined in `tests/default.nix`; one is built with `nix build
+.#checks.x86_64-linux.<name>`. `nix build -L
+.#checks.x86_64-linux.brightfalls-tests` builds all of them but
+`hypr-config`; a check added to `tests/default.nix` is in it with no other
+edit. That attribute is what the `brightfalls-tests` job builds on every
+pull request (`.github/workflows/pr-build.yml`), a required check for
+merging into `master`. `hypr-config` is run by hand before a change to the
+Hyprland config, not in CI: Hyprland's verify crashes (exit 139) on the full
+config on GitHub's runners, cause not known.
 
 - `nix build .#checks.x86_64-linux.desk-sync`: runs `tests/run.sh` against a
-  temporary HOME.
+  temporary HOME: activation's table (a live symlink out of the store and a
+  live directory at a file's path included), `status`, `reset`, and `pull`
+  (a file with a newer copy in `incoming/` refused, the rest copied; the
+  secret scan on added lines only, with the live file's line numbers).
 - `nix build .#checks.x86_64-linux.calendar-export`: exports
   `tests/calendar/fixtures/` (five calendars: a weekly series with an
   EXDATE, a moved and a cancelled occurrence; New York; all-day, multi-day
@@ -1643,7 +1633,10 @@ GitHub's runners, cause not known.
   from scratch, and checks that a copy made by an older format is rebuilt,
   that a run with nothing changed leaves a calendar's directory mtime alone
   and that a later edit to an already copied file still reaches the export.
-  No network, no secrets. About 5 s. To regenerate the expected file after an intended
+  Last, a calendar with a file that is not UTF-8 and one that is not
+  iCalendar must export the same as without them and print the skipped
+  count with no file name, and an exported file turned unreadable must drop
+  out. No network, no secrets. About 5 s. To regenerate the expected file after an intended
   change, run the built `calendar-export` with
   `CALENDAR_NOW=2026-11-15T10:00:00+00:00`, a khal config from
   `calendar-export.nix` and that file as the output, and review the diff.
@@ -1652,7 +1645,8 @@ GitHub's runners, cause not known.
   (`tests/calendar/panel/`, written by `make-fixture.js` and
   `make-reminders-fixture.js` there, plus a small export built inline for
   markup in titles and calendar names, unlisted calendars and long
-  summaries), dates in London time.
+  summaries), in London time (the test first asserts the zone, so a run in
+  UTC fails rather than pass the daylight-saving cases vacuously).
 - `nix build .#checks.x86_64-linux.bluetooth-panel`: runs
   `user/quickshell/bluetooth/services.js` and `devices.js` under node
   against invented devices and links (`tests/bluetooth/test-bluetooth.js`):
@@ -1661,11 +1655,13 @@ GitHub's runners, cause not known.
   calls included.
 - `nix build .#checks.x86_64-linux.tray-panel`: runs
   `user/quickshell/tray/menu.js` under node (`tests/tray/test-tray.js`): the
-  header's name and the entries' check and radio marks.
+  header's name and the entries' check and radio marks, with the button-type
+  values read from the installed Quickshell's `quickshell-core.qmltypes`.
 - `nix build .#checks.x86_64-linux.office-panel`: runs
   `user/quickshell/office/office.js` under node
   (`tests/office-panel/test-office-panel.js`) against invented helper events,
-  inline and as recorded lines in `tests/office-panel/fixtures/` (one file per
+  inline and as lines hand-written in the helper's format in
+  `tests/office-panel/fixtures/` (one file per
   panel state; `"@-N"` in a time means N s before the test's fixed now):
   ages, brightness percent and raw values, steps, the row and header texts,
   locks and their footer texts, banners (connecting included), the sockets'
@@ -1686,8 +1682,8 @@ GitHub's runners, cause not known.
   About 45 s.
 - `nix build .#checks.x86_64-linux.fleet-panel`: runs
   `user/quickshell/fleet/fleet.js` under node
-  (`tests/fleet-panel/test-fleet-panel.js`) against recorded `desk-fleet`
-  lines in `tests/fleet-panel/fixtures/` (built from the helper's example
+  (`tests/fleet-panel/test-fleet-panel.js`) against `desk-fleet` lines
+  hand-written in the helper's format in `tests/fleet-panel/fixtures/` (built from the helper's example
   rows: every chip, the cases the old panel read wrong, actions, GitHub
   error, refusals, long texts) and inline events: order, header, pipeline,
   folding, keys lit, questions, the command each key sends (the switch's
@@ -1704,7 +1700,9 @@ GitHub's runners, cause not known.
 - `nix build .#checks.x86_64-linux.wifi-panel`: runs
   `user/quickshell/network/wifi.js` under node
   (`tests/wifi-panel/test-wifi-panel.js`) against invented networks in
-  `tests/wifi-panel/fixtures/` and the module's enum names copied by hand:
+  `tests/wifi-panel/fixtures/` and the module's enum names, copied by hand
+  and checked, with `Network.qml`'s four name arrays, against the installed
+  Quickshell's `quickshell-network.qmltypes`:
   the section's states, signal tiers, security words, order and the order
   held during a join, the password check, every key and event of the join,
   forget and cancel machine with its effects, footer hints, details and the
@@ -1719,8 +1717,11 @@ GitHub's runners, cause not known.
   nothing, a switch here is followed every 5 s until comin is idle, mode over
   ssh, a failing action, a reboot whose sudo wants a password, this machine's
   reboot without sudo, attach, diff, ssh, GitHub failing; a multi-line error's
-  `first`; and a second run with `--read-only` in which every write is
-  refused and runs nothing while probes, diff, ssh and attach still work.
+  `first`; a second run with `--read-only` in which every write is
+  refused and runs nothing while probes, diff, ssh and attach still work; a
+  helper restarted while an action runs, which refuses a second action on
+  that host as busy; and shell text in a host's comin answer, which is
+  refused and never run.
   About 50 s.
 - `nix build .#checks.x86_64-linux.tokens-helper`:
   `tests/tokens/test-desk-tokens.py` runs `desk-tokens`' pure functions
@@ -1733,8 +1734,18 @@ GitHub's runners, cause not known.
   replaced and deleted files, London and Auckland days, distinct sessions,
   active time read in three pieces, folds kept and re-tried, prices, a first
   run's order and readiness with a page asked too early, SIGTERM mid-sync,
-  stdin EOF, the index's mode and columns, and a source with no network or
-  process code. About 10 s.
+  stdin EOF, the index's mode and columns, a source with no network or
+  process code, and no line the helper prints (stdout or stderr) holding
+  text from a transcript. About 10 s.
+- `nix build .#checks.x86_64-linux.tokens-panel`: runs
+  `user/quickshell/tokens/tokens.js` under node in New York time
+  (`tests/tokens-panel/test-tokens-panel.js`) against `desk-tokens` answers
+  hand-written from the helper's contract in `tests/tokens-panel/fixtures/`,
+  and progress events and limits files built in the test: every page's view
+  and texts, the figures at API prices, keys, footers, the limits file's
+  reading and the bar item, with days that cross the daylight-saving change
+  of 1 November 2026; the plan's name and price come from `PLAN` itself.
+  Under 1 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
@@ -1756,12 +1767,56 @@ GitHub's runners, cause not known.
   `Hyprland --verify-config` on `hyprland.lua` and on `rescue.lua` and
   `theme.lua` alone, checks that `hyprland.lua` reaches both of those at
   their installed paths (it loads them through `pcall`, so a missing one is
-  silent), and runs `theme.lua` under Lua 5.5 against the shipped
-  `theme.json` and broken ones (alpha, short and named colours, blank fonts,
-  unknown keys, an escaped quote, a truncated file, no file, no
-  `XDG_CONFIG_HOME`) (`tests/hypr/run.sh`). A misspelt key name in a bind
+  silent) (`tests/hypr/run.sh verify`). A misspelt key name in a bind
   fails it (`Unknown key`); a mouse button code out of range does not.
-  About 1 s once Hyprland is in the store.
+  About 1 s once Hyprland is in the store. Not in CI (see above).
+- `nix build .#checks.x86_64-linux.hypr-theme`: runs `theme.lua` under Lua
+  5.5, with no Hyprland, against the shipped `theme.json` and broken ones
+  (alpha, short and named colours, blank fonts, unknown keys, an escaped
+  quote, a truncated file, no file, no `XDG_CONFIG_HOME`)
+  (`tests/hypr/run.sh theme`). Under 1 s.
+- `nix build .#checks.x86_64-linux.quickshell-lint`
+  (`tests/quickshell-lint/`): lays `user/quickshell` out as Quickshell's
+  scanner does (a `qmldir` per directory, module `qs.<dir>`, `singleton`
+  from `pragma Singleton`) and runs Qt's `qmllint` on every QML file with
+  Quickshell's installed type files; then checks every `qs ipc call` in
+  `bindings.lua`, `rescue.lua` and the QML against the `IpcHandler`s (the
+  target and function exist, the argument count matches, every handler
+  parameter has a type Quickshell carries, no target is declared twice);
+  then plants fifteen faults in copies and fails if any of them passes.
+  About 10 s.
+  - Catches: syntax errors, an unknown `qs.` import, component or `.js`
+    file, a misspelt id, Qt or Quickshell property or singleton member, a
+    bind or QML call to a missing target or function or with an argument
+    too many, an untyped IPC parameter.
+  - Cannot catch: anything at run time (binding loops, JS errors inside
+    functions, wrong values or logic, layout, a process that fails to
+    start); members read through an outer id inside a delegate (the files
+    have no `pragma ComponentBehavior: Bound`, so `root.opne` there passes
+    while a misspelt id does not); members of the types the allowlist
+    accepts broadly (`screen`, `UntypedObjectModel` values, `margins.*` in
+    `Bar.qml`, `Notifications.qml` and `Osd.qml`, the popup anchor in
+    `system/Temperatures.qml`); which process an IPC call reaches, calls
+    from outside the repository, and argument types; the `.js` libraries'
+    own code (the node checks cover their logic). Quickshell's `//@ pragma
+    Internal`, `.qml.json`, `//@ if` and hand-written `qmldir` files are
+    not reproduced (none is used); one would make the check misreport, not
+    pass.
+  - Reading a failure: `file:line:col: message [category]` for `qmllint`
+    (paths relative to `user/quickshell`), `ipc: file:line: …` for the IPC
+    part, `FAIL <plant>` when the check stopped catching a fault class, and
+    `allowlist line N matches no warning (remove it)` when an upstream gap
+    has closed.
+  - Accepted warnings are in `tests/quickshell-lint/allowlist`: one regex
+    per line, matched against `file: message [category]` plus the first
+    line of qmllint's first suggestion (for "Unqualified access", the
+    identifier in quotes after the message), anchored, narrowed to the type
+    and member (and the file when the cause is local), with a comment naming
+    the upstream gap or qmllint limit. No `// qmllint disable` in the QML.
+    After a Quickshell or Qt update, delete the lines reported unused and
+    check each new warning against the new `.qmltypes` before allowing it.
+  - It reads the repository's `user/quickshell`: a live edit is checked
+    after `desk-sync pull`.
 - `nix build .#checks.x86_64-linux.desk-unlock`: runs `desk-unlock.sh`
   against fake `hyprctl`, `systemctl` and `pkill`
   (`tests/desk-unlock/run.sh`): a crashed lock cleared at once, a stuck one

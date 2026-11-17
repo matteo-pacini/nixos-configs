@@ -9,8 +9,8 @@ import qs.common
 
 // The volume OSD: a pill under the bar on the focused monitor. Shows on a
 // change to the default output's volume, mute or device, to the default
-// input's mute, or to Bluetooth power from its bind, and hides 1.2 s after
-// the last change. Clicks pass through.
+// input's mute, or to Bluetooth power from its bind (or a failure to change
+// it), and hides 1.2 s after the last change. Clicks pass through.
 Scope {
     id: root
 

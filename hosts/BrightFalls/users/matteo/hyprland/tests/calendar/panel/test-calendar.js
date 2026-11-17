@@ -13,6 +13,10 @@ const data = q.parse(fs.readFileSync(path.join(__dirname, "fixture-events.jsonl"
 const D = (s) => { const p = s.split(/[- :T]/).map(Number); return new Date(p[0], p[1] - 1, p[2], p[3] || 0, p[4] || 0); };
 const names = (cals) => cals.map((c) => c.name);
 
+// The DST cases below prove nothing unless the zone has daylight saving.
+assert.strictEqual(D("2026-01-15").getTimezoneOffset(), 0, "January is at UTC: run with TZ=Europe/London");
+assert.strictEqual(D("2026-07-15").getTimezoneOffset(), -60, "July is an hour ahead of UTC: run with TZ=Europe/London");
+
 // Header and parse.
 assert.deepStrictEqual(names(data.calendars), ["Work", "Home", "Family", "Sport"]);
 assert.strictEqual(q.ymd(data.first), "2026-08-01");

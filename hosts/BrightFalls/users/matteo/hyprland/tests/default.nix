@@ -1,28 +1,7 @@
-# The BrightFalls desktop's tests, as flake checks (each says below what it
-# covers):
-#   nix build .#checks.<system>.desk-sync
-#   nix build .#checks.<system>.calendar-export
-#   nix build .#checks.<system>.calendar-panel
-#   nix build .#checks.<system>.bluetooth-panel
-#   nix build .#checks.<system>.tray-panel
-#   nix build .#checks.<system>.office-panel
-#   nix build .#checks.<system>.office-helper
-#   nix build .#checks.<system>.system-panel
-#   nix build .#checks.<system>.display-layout
-#   nix build .#checks.<system>.hypr-config
-#   nix build .#checks.<system>.desk-unlock
-#   nix build .#checks.<system>.bluetooth-agent
-#   nix build .#checks.<system>.audio-output-cycle
-#   nix build .#checks.<system>.fleet-helper
-#   nix build .#checks.<system>.fleet-panel
-#   nix build .#checks.<system>.tailscale-panel
-#   nix build .#checks.<system>.wifi-panel
-#   nix build .#checks.<system>.tokens-helper
-#   nix build .#checks.<system>.tokens-panel
-# All but hypr-config run in CI (the brightfalls-tests job in
-# .github/workflows/pr-build.yml). hypr-config is run by hand before a change
-# to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
-# full hyprland.lua on GitHub's runners, cause not known.
+# The BrightFalls desktop's tests, as flake checks; each says below what it
+# covers. One check: nix build .#checks.x86_64-linux.<name>
+# All but hypr-config, through one attribute (what CI builds):
+#   nix build -L .#checks.x86_64-linux.brightfalls-tests
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -32,7 +11,18 @@ let
     timeZone = "Europe/London";
   };
 in
-{
+pkgs.lib.fix (self: {
+  # Every check in this set but hypr-config (and itself). hypr-config is run
+  # by hand before a change to the Hyprland config: Hyprland --verify-config
+  # crashes (exit 139) on the full hyprland.lua on GitHub's runners, cause
+  # not known.
+  brightfalls-tests = pkgs.linkFarm "brightfalls-tests" (
+    builtins.removeAttrs self [
+      "brightfalls-tests"
+      "hypr-config"
+    ]
+  );
+
   # The export of calendar/fixtures/ as of CALENDAR_NOW must equal
   # calendar/expected.jsonl. Regenerating it: README.md, "Calendar events".
   calendar-export =
@@ -87,6 +77,35 @@ in
         sed -i 's/^SUMMARY:FX renamed$/SUMMARY:FX renamed twice/' vdir/fixB/midnight.ics
         run vdir "$PWD/inc" edited.jsonl
         grep -q '"title": "FX renamed twice"' edited.jsonl
+
+        # A file that is not UTF-8 and one that is not iCalendar are left
+        # out, counted on stderr without their names; the rest of their
+        # calendar is exported as without them.
+        mkdir good bad
+        cp -r --no-preserve=mode ${./calendar/fixtures}/fixE good/
+        cp -r good/fixE bad/
+        printf 'BEGIN:VCALENDAR\r\nSUMMARY:caf\351\r\nEND:VCALENDAR\r\n' >bad/fixE/latin1.ics
+        printf 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nBEGIN:VALARM\nno colon here\n' >bad/fixE/broken.ics
+        run good "$PWD/good-work" good.jsonl
+        run bad "$PWD/bad-work" bad.jsonl 2>bad.err || {
+          cat bad.err
+          exit 1
+        }
+        diff -u good.jsonl bad.jsonl
+        grep -qx 'calendar-export: .ics files skipped (not UTF-8 or not iCalendar): 2' bad.err
+        if grep -q 'latin1\|broken' bad.err; then
+          echo "a skipped file is named on stderr"
+          exit 1
+        fi
+        # A file already exported that turns unreadable drops out.
+        grep -q '"uid": "fx-alarm-single"' bad.jsonl
+        printf 'BEGIN:VCALENDAR\r\nSUMMARY:caf\351\r\nEND:VCALENDAR\r\n' >bad/fixE/single.ics
+        run bad "$PWD/bad-work" bad2.jsonl 2>bad2.err
+        grep -q 'skipped (not UTF-8 or not iCalendar): 3$' bad2.err
+        if grep -q 'fx-alarm-single' bad2.jsonl; then
+          echo "a file that turned unreadable is still exported"
+          exit 1
+        fi
         touch $out
       '';
 
@@ -96,10 +115,11 @@ in
     pkgs.runCommand "calendar-panel-tests"
       {
         nativeBuildInputs = [ pkgs.nodejs ];
-        TZ = "Europe/London";
         TZDIR = "${pkgs.tzdata}/share/zoneinfo";
       }
       ''
+        # Set here: the builder's setup sets TZ=UTC over the derivation's own.
+        export TZ=Europe/London
         node ${./calendar/panel}/test-calendar.js \
           ${../user/quickshell/calendar/queries.js}
         touch $out
@@ -130,9 +150,10 @@ in
       '';
 
   # The tray menu's library (quickshell/tray/menu.js): the header's name and
-  # the entries' marks.
+  # the entries' marks, by the installed Quickshell's button-type values.
   tray-panel = pkgs.runCommand "tray-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
-    node ${./tray/test-tray.js} ${../user/quickshell/tray}
+    node ${./tray/test-tray.js} ${../user/quickshell/tray} \
+      ${pkgs.quickshell}/lib/qt-6/qml/Quickshell/quickshell-core.qmltypes
     touch $out
   '';
 
@@ -143,8 +164,9 @@ in
     touch $out
   '';
 
-  # The fleet panel's library (quickshell/fleet/fleet.js) against recorded
-  # desk-fleet lines in fleet-panel/fixtures/ and inline events.
+  # The fleet panel's library (quickshell/fleet/fleet.js) against desk-fleet
+  # lines hand-written in the helper's format in fleet-panel/fixtures/, and
+  # inline events.
   fleet-panel = pkgs.runCommand "fleet-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${./fleet-panel}/test-fleet-panel.js ${../user/quickshell/fleet}
     touch $out
@@ -160,9 +182,12 @@ in
       '';
 
   # The Network panel's Wi-Fi library (quickshell/network/wifi.js) against
-  # invented networks in wifi-panel/fixtures/ and Quickshell's enum names.
+  # invented networks in wifi-panel/fixtures/ and Quickshell's enum names;
+  # those names, and Network.qml's copies, against the installed Quickshell.
   wifi-panel = pkgs.runCommand "wifi-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
-    node ${./wifi-panel}/test-wifi-panel.js ${../user/quickshell/network}
+    node ${./wifi-panel}/test-wifi-panel.js ${../user/quickshell/network} \
+      ${pkgs.quickshell}/lib/qt-6/qml/Quickshell/Networking/quickshell-network.qmltypes \
+      ${../user/quickshell/Network.qml}
     touch $out
   '';
 
@@ -191,18 +216,19 @@ in
       '';
 
   # The Hyprland config, laid out as installed, through Hyprland
-  # --verify-config, and theme.lua's reading of theme.json.
-  hypr-config =
-    pkgs.runCommand "hypr-config-tests"
-      {
-        nativeBuildInputs = [ pkgs.jq ];
-      }
-      ''
-        # lua5_5: the Lua the Hyprland package embeds.
-        bash ${./hypr/run.sh} ${pkgs.lib.getExe' pkgs.hyprland "Hyprland"} \
-          ${pkgs.lib.getExe pkgs.lua5_5} ${../user} ${../defaults}
-        touch $out
-      '';
+  # --verify-config.
+  hypr-config = pkgs.runCommand "hypr-config-tests" { } ''
+    bash ${./hypr/run.sh} verify ${pkgs.lib.getExe' pkgs.hyprland "Hyprland"} \
+      ${../user} ${../defaults}
+    touch $out
+  '';
+
+  # theme.lua's reading of theme.json, under Lua alone (no Hyprland).
+  hypr-theme = pkgs.runCommand "hypr-theme-tests" { nativeBuildInputs = [ pkgs.jq ]; } ''
+    # lua5_5: the Lua the Hyprland package embeds.
+    bash ${./hypr/run.sh} theme ${pkgs.lib.getExe pkgs.lua5_5} ${../user} ${../defaults}
+    touch $out
+  '';
 
   # desk-unlock (the recovery when the lock screen dies) against fake
   # hyprctl, systemctl and pkill.
@@ -319,4 +345,6 @@ in
         bash ${./run.sh} ${../desk-sync.sh}
         touch $out
       '';
-}
+
+  quickshell-lint = import ./quickshell-lint { inherit pkgs; };
+})

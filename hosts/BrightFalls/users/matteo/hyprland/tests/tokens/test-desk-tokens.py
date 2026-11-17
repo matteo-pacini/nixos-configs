@@ -34,6 +34,11 @@ spec.loader.exec_module(tok)
 FAILURES = []
 CHECKS = [0]
 NOW = "2026-11-17T12:00:00Z"
+# In the transcripts' reply and user text; never in anything the helper prints.
+SENTINEL = "sentinel-transcript-text-5d1f"
+# Every line any helper run wrote to stdout or stderr, and the threads reading them.
+PRINTED = []
+PUMPS = []
 
 
 def check(name, cond, detail=""):
@@ -71,7 +76,7 @@ def rec(mid, rid, ts, session, out=0, inp=1, read=0, w5=0, w1=0, model="claude-o
     if parts:
         usage["cache_creation"] = {"ephemeral_5m_input_tokens": w5, "ephemeral_1h_input_tokens": w1}
     message = {"model": model, "role": "assistant", "usage": usage,
-               "content": [{"type": "text", "text": "an invented reply"}]}
+               "content": [{"type": "text", "text": f"an invented reply {SENTINEL}"}]}
     if mid:
         message["id"] = mid
     obj = {"type": "assistant", "timestamp": ts, "sessionId": session, "isSidechain": side,
@@ -100,16 +105,25 @@ class Helper:
         args = [HELPER, "--projects", projects, "--state", state, "--now", now]
         if not default_prices:
             args += ["--prices", prices or TEST_PRICES]
-        self.p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, env=env, text=True)
+        self.p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, env=env, text=True)
         self.q = queue.Queue()
         self.events, self.seen, self.times = [], [], []
         self.next_id = 1
-        threading.Thread(target=self.pump, daemon=True).start()
+        for target in (self.pump, self.pump_stderr):
+            PUMPS.append(threading.Thread(target=target, daemon=True))
+            PUMPS[-1].start()
 
     def pump(self):
         for line in self.p.stdout:
+            PRINTED.append(line)
             self.q.put(json.loads(line))
         self.q.put(None)
+
+    def pump_stderr(self):
+        for line in self.p.stderr:
+            PRINTED.append(line)
+            sys.stderr.write(line)
 
     def get(self, timeout=60):
         m = self.q.get(timeout=timeout)
@@ -321,7 +335,8 @@ put(main1,
     rec("msg_01", "req_01", "2026-11-17T10:00:00.000Z", S1, out=5, inp=3, read=1000),
     rec("msg_01", "req_01", "2026-11-17T10:00:01.000Z", S1, out=30, inp=3, read=1000),
     rec("msg_01", "req_01", "2026-11-17T10:00:02.000Z", S1, out=20, inp=3, read=1000),
-    json.dumps({"type": "user", "sessionId": S1, "message": {"role": "user", "content": "usage"}}) + "\n",
+    json.dumps({"type": "user", "sessionId": S1, "message": {"role": "user", "content": [
+        {"type": "text", "text": "usage"}, {"type": "text", "text": SENTINEL}]}}) + "\n",
     json.dumps({"type": "user", "sessionId": S1, "requestId": "req_u1",
                 "message": {"id": "msg_u1", "usage": {"output_tokens": 5000}}}) + "\n",
     rec("msg_02", "req_02", "2026-11-17T10:05:00.000Z", S1, out=10, w1=500),
@@ -787,6 +802,14 @@ i = h.send({"req": "days"})
 rc = h.close()
 eq("EOF: exit 0", rc, 0)
 eq("EOF: the request was answered", any(m.get("answer") == "days" and m.get("id") == i for m in h.seen), True)
+
+# --- Nothing from a transcript's text is printed -----------------------------
+
+for pump in PUMPS:
+    pump.join(timeout=30)
+check("the helper's output was collected", len(PRINTED) > 100, f"{len(PRINTED)} lines")
+eq("no transcript text in any line the helper printed, on stdout or stderr",
+   [line for line in PRINTED if SENTINEL in line], [])
 
 print(f"{CHECKS[0] - len(FAILURES)}/{CHECKS[0]} checks passed")
 sys.exit(1 if FAILURES else 0)

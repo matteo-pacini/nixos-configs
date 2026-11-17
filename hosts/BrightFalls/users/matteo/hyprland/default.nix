@@ -101,7 +101,8 @@ in
     export XCURSOR_SIZE=${toString config.home.pointerCursor.size}
   '';
 
-  # Commands the binds in user/hypr/bindings.lua run.
+  # Commands the binds in user/hypr/bindings.lua and the shell's panels run,
+  # with desk-sync and desk-unlock.
   home.packages = with pkgs; [
     deskSync
     deskUnlock

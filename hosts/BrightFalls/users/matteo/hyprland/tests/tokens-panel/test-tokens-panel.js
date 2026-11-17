@@ -28,6 +28,8 @@ const DST_NOW = 1793638800;
 const fx = name => JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", name), "utf8"));
 const fxText = name => fs.readFileSync(path.join(__dirname, "fixtures", name), "utf8");
 const sends = r => r.effects.filter(e => e.do === "send").map(e => e.req);
+const PLAN_META = `${T.PLAN.name} · this host`;
+const PLAN_PRICE = `$${T.count(T.PLAN.usd)}`;
 // The fixture as the answer to the state's last request for `page`.
 const answer = (st, file, page, changes) => T.event(st, JSON.stringify(Object.assign(fx(file), { id: st.asked[page] }, changes || {})));
 const R = (today, d7, d14, d30, all) => ({ today, "7d": d7, "14d": d14, "30d": d30, all });
@@ -211,7 +213,7 @@ t("limits: normal, as drawn", () => {
         main: { label: "Weekly · all models", value: "34% · resets Thu 09:00", note: "", colour: "fg" },
         meter: { frac: 0.34, colour: "purple" },
         model: { label: "Weekly · Fable", value: "per-model cap not reported", note: "", colour: "muted" },
-        fiveHour: { label: "5-hour", value: "none on this plan", note: "", colour: "muted" },
+        fiveHour: { label: "5-hour", value: T.PLAN.fiveHour, note: "", colour: "muted" },
         foot: ""
     });
 });
@@ -287,7 +289,7 @@ t("limits: a five_hour reading shows in every state that has a reading", () => {
     const stale = lim(file(34, { written_at: NOW - 3600, five_hour: five })).panel.fiveHour;
     assert.deepEqual(stale, { label: "5-hour", value: "85%", note: "as of 1 h ago", colour: "orange" });
     // Its reset passed: back to the drawn text.
-    assert.equal(lim(file(34, { five_hour: { used_percentage: 85, resets_at: NOW } })).panel.fiveHour.value, "none on this plan");
+    assert.equal(lim(file(34, { five_hour: { used_percentage: 85, resets_at: NOW } })).panel.fiveHour.value, T.PLAN.fiveHour);
 });
 
 // ---- overview ------------------------------------------------------------
@@ -299,7 +301,7 @@ t("opened: overview, asks the overview", () => {
     assert.deepEqual(r.effects, [{ do: "send", req: { req: "overview", id: 1 } }]);
     const v = T.view(r.state, LIM);
     assert.equal(v.overview.loading, true);
-    assert.equal(v.overview.meta, "Ultra · this host");
+    assert.equal(v.overview.meta, PLAN_META);
     assert.equal(v.overview.today, null);
     assert.equal(v.overview.older, null);
 });
@@ -309,7 +311,7 @@ t("overview: normal, as drawn", () => {
     const o = v.overview;
     assert.equal(v.single, "");
     assert.equal(o.title, "Claude usage");
-    assert.equal(o.meta, "Ultra · this host");
+    assert.equal(o.meta, PLAN_META);
     assert.deepEqual(o.labels, {
         limits: "Plan limits",
         chip: "from Claude Code",
@@ -339,7 +341,7 @@ t("overview: normal, as drawn", () => {
     assert.equal(o.last30.cacheHit, "98.4%");
     assert.equal(o.last30.subagents, "22% of output");
     assert.equal(o.last30.price, "≈ $3,571");
-    assert.equal(o.last30.plan, "(plan $200)");
+    assert.equal(o.last30.plan, `(plan ${PLAN_PRICE})`);
     assert.equal(o.last30.unpriced, "");
     assert.deepEqual(o.top7, {
         rows: [{ name: "alpha", value: "8.83 M", cost: "≈ $1,204" }, { name: "beta", value: "5.12 M", cost: "≈ $690" }, { name: "gamma", value: "1.71 M", cost: "≈ $202" }, { name: "temporary directories", value: "1.53 M", cost: "≈ $180" }],
@@ -349,7 +351,7 @@ t("overview: normal, as drawn", () => {
     assert.equal(o.older, null);
     assert.equal(o.olderBefore, "");
     assert.equal(o.unreadable, "");
-    assert.equal(o.estimate, "Estimates at API list prices; the plan is a flat $200.");
+    assert.equal(o.estimate, `Estimates at API list prices; the plan is a flat ${PLAN_PRICE}.`);
     assert.equal(o.error, "");
     assert.deepEqual(v.hints, [["P", "projects"], ["D", "days"], ["R", "refresh"], ["Esc", "close"]]);
 });
@@ -500,7 +502,7 @@ t("overview: first run, as drawn, then filling section by section", () => {
     r = answer(r.state, "overview-full.json", "overview");
     v = T.view(r.state, LIM);
     assert.equal(v.overview.older, null);
-    assert.equal(v.overview.meta, "Ultra · this host");
+    assert.equal(v.overview.meta, PLAN_META);
     assert.deepEqual(v.hints.map(h => h[0]), ["P", "D", "R", "Esc"]);
     // The done event of that sync read files: asked once more.
     r = T.event(r.state, DONE(826));

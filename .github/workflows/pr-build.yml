@@ -89,31 +89,10 @@ jobs:
             sandbox = true
             sandbox-fallback = false
 
-      # Every check in tests/default.nix except hypr-config, which is run by
-      # hand before a change to the Hyprland config: Hyprland --verify-config
-      # crashes (exit 139) on the full hyprland.lua on these runners, cause
-      # not known.
+      # Every check in the BrightFalls desktop's tests/default.nix but the
+      # ones it leaves out of this attribute, with the reason, there.
       - name: Run BrightFalls desktop tests
-        run: |
-          nix build -L \
-            .#checks.x86_64-linux.desk-sync \
-            .#checks.x86_64-linux.calendar-export \
-            .#checks.x86_64-linux.calendar-panel \
-            .#checks.x86_64-linux.bluetooth-panel \
-            .#checks.x86_64-linux.tray-panel \
-            .#checks.x86_64-linux.office-helper \
-            .#checks.x86_64-linux.office-panel \
-            .#checks.x86_64-linux.system-panel \
-            .#checks.x86_64-linux.display-layout \
-            .#checks.x86_64-linux.desk-unlock \
-            .#checks.x86_64-linux.bluetooth-agent \
-            .#checks.x86_64-linux.audio-output-cycle \
-            .#checks.x86_64-linux.fleet-helper \
-            .#checks.x86_64-linux.fleet-panel \
-            .#checks.x86_64-linux.tailscale-panel \
-            .#checks.x86_64-linux.wifi-panel \
-            .#checks.x86_64-linux.tokens-helper \
-            .#checks.x86_64-linux.tokens-panel
+        run: nix build -L .#checks.x86_64-linux.brightfalls-tests
 
   pr-build:
     needs: [eval]

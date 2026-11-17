@@ -1,12 +1,16 @@
 // The Network panel's Wi-Fi library (quickshell/network/wifi.js) against
 // invented networks in fixtures/networks.json and Quickshell's enum names in
-// fixtures/enums.js.
+// fixtures/enums.js; those names, and Network.qml's copies of them, against
+// the installed Quickshell's type file.
 // Run: node test-wifi-panel.js <directory holding wifi.js>
+//        <Quickshell/Networking/quickshell-network.qmltypes> <Network.qml>
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const W = require(path.join(path.resolve(process.argv[2]), "wifi.js"));
 const ENUMS = require("./fixtures/enums.js");
+const QMLTYPES = fs.readFileSync(process.argv[3], "utf8");
+const NETWORK_QML = fs.readFileSync(process.argv[4], "utf8");
 let n = 0;
 const t = (name, f) => {
     try {
@@ -38,6 +42,36 @@ const run = (events, m) => {
 };
 const last = rs => rs[rs.length - 1];
 const view = (rows, m, prev, ctx) => W.list(rows, m || W.initial(), prev || null, ctx || CTX);
+
+// ---- enum names --------------------------------------------------------------
+
+// An enum's names in value order, from the type file's component for
+// qs::network::<type>. The values are implicit there, so this relies on
+// enums.hpp numbering each enum from 0 without gaps (true in 0.3.2).
+const installed = type => {
+    const block = QMLTYPES.split("Component {").find(b => b.includes(`name: "qs::network::${type}"`));
+    assert.ok(block, `${type} is not in the type file`);
+    return JSON.parse(`[${block.match(/values: \[([^\]]*)\]/)[1]}]`);
+};
+
+t("enums.js equals the installed Quickshell's enums", () => {
+    for (const type of Object.keys(ENUMS))
+        assert.deepEqual(ENUMS[type], installed(type), type);
+});
+
+t("Network.qml's name arrays equal the installed Quickshell's enums", () => {
+    const names = {
+        securityNames: "WifiSecurityType",
+        stateNames: "ConnectionState",
+        failNames: "ConnectionFailReason",
+        connectivityNames: "NetworkConnectivity"
+    };
+    for (const [prop, type] of Object.entries(names)) {
+        const m = NETWORK_QML.match(new RegExp(`readonly property var ${prop}: (\\[.*\\])`));
+        assert.ok(m, `${prop} not found in Network.qml`);
+        assert.deepEqual(JSON.parse(m[1]), installed(type), prop);
+    }
+});
 
 // ---- section ---------------------------------------------------------------
 
