@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
 import "devices.js" as D
+import "../common/notify.js" as Notify
 
 // What Bar.qml and BluetoothPanel.qml share: where the panel is open, the
 // adapter and its devices, signal strengths from the agent, and the
@@ -38,8 +39,9 @@ Singleton {
 
     // Asks BluetoothPanel.qml to open the panel on `screen`, or close it.
     signal toggleRequested(string screen)
-    // A line for the OSD pill (Osd.qml), such as "Bluetooth on".
-    signal announce(string text)
+    // A line for the OSD pill (Osd.qml), such as "Bluetooth on", and whether
+    // Bluetooth is on, which picks the pill's glyph.
+    signal announce(string text, bool on)
 
     function recordAnswer(device: string, uuid: string, allowed: bool): void {
         const all = Object.assign({}, answers);
@@ -58,7 +60,7 @@ Singleton {
         const result = D.lowBattery(devices, persist.notified.split(",").filter(a => a !== ""));
         persist.notified = result.notified.join(",");
         for (const n of result.send)
-            Quickshell.execDetached(["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path", "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.Notify", "Bluetooth", "0", n.icon || "bluetooth", n.name, `Battery at ${n.percent}%`, "[]", "{'urgency': <byte 2>}", "int32 -1"]);
+            Quickshell.execDetached(Notify.command("Bluetooth", 0, n.icon || "bluetooth", n.name, `Battery at ${n.percent}%`, "[]", "{'urgency': <byte 2>}", "int32 -1"));
     }
 
     onBatteryKeyChanged: checkBatteries()

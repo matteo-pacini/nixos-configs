@@ -43,7 +43,6 @@ Singleton {
         const line = Object.assign({
             id
         }, cmd);
-        fleet = F.sent(fleet, id, cmd);
         console.info("fleet helper: send", JSON.stringify(line));
         proc.write(JSON.stringify(line) + "\n");
         return true;

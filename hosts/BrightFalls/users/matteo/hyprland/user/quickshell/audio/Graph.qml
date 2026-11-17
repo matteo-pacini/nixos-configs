@@ -17,13 +17,10 @@ Scope {
     // Client id -> client.api, "" for a native PipeWire client.
     property var clients: ({})
     property bool known: false
-    property bool again: false
 
+    // On a running Process this only queues one more run for when it ends.
     function refresh(): void {
-        if (dump.running)
-            again = true;
-        else
-            dump.running = true;
+        dump.running = true;
     }
 
     function parse(text: string): void {
@@ -68,10 +65,6 @@ Scope {
         onExited: code => {
             if (code !== 0)
                 console.warn("audio: pw-dump exited with", code);
-            if (root.again) {
-                root.again = false;
-                running = true;
-            }
         }
     }
 }

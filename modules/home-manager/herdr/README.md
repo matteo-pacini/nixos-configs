@@ -48,19 +48,35 @@ its status line receives, for a desktop shell to show. The statusLine command
 becomes `claude-statusline-limits` (`scripts/claude-limits.sh`), which writes
 `$XDG_RUNTIME_DIR/desk/claude-limits.json` and then hands the same input to the
 unchanged `claude-statusline`. The file is one JSON line holding `written_at`
-and the `seven_day` and `five_hour` windows reduced to `used_percentage` and
-`resets_at` (`null` when absent), and nothing else. Every session on the
-machine writes it, each with the reading its own session last received, so
-each window is merged with the file's: a window missing from the input keeps
-the file's, a later `resets_at` wins even if lower, the same `resets_at` keeps
-the higher `used_percentage`, and an earlier one is ignored. The file is
-replaced atomically when the merged windows differ from it, and otherwise
+and the `seven_day` and `five_hour` windows (`null` when absent), each with
+`used_percentage`, `resets_at`, `evidence_at`, its own `written_at` and `kind`,
+and nothing else. Every session on the machine writes it, each with the
+reading its own session last received, and an idle session keeps reporting
+the figure from its last API answer (status lines re-run every 10 s), so each
+window is merged with the file's by **newest evidence**. A reading's evidence
+time is the modification time of the session's transcript
+(`transcript_path` in the status line's input), written at about that
+answer; the script takes the mtime and never opens the file. A time in the
+future counts as now; no transcript, or one that cannot be stat'ed, is no
+evidence, older than any. `kind` is `fresh` when the evidence was at most
+60 s old at the write, else `stale`. A window missing from the input keeps
+the file's; a later `resets_at` wins (a new window); an earlier one is
+ignored; the same `resets_at` goes to the newer evidence even when its value
+is lower, since a limit can be reset within a window. Evidence times at most
+60 s apart, or both absent, are a tie, and a tie keeps the higher value: two
+live sessions answering seconds apart report slightly different figures, and
+60 s is far above that gap and far below the hours between an idle session's
+answer and a live one's. A file from before `evidence_at` is read as having
+no evidence and rewritten in the new form at the next call. One weakness: a
+session writes the user's next prompt to its transcript before the API
+answers, so for that moment it reports its old figure with a new mtime and
+can win; its own status line corrects it once the answer arrives. The file
+is replaced atomically when the merged windows differ from it, and otherwise
 only every 900 s while a session reports the current window, so `written_at`
-is the last time a running session reported it. Identical or lower readings
-write nothing; an input with no usable window never writes, and the file is
-never deleted. Read-merge-write is not locked: a lower value written over a
-higher one lasts until the next status-line call of a session holding the
-higher. It is written inside and outside herdr terminals;
+is the last time a running session reported it. An input with no usable
+window never writes, and the file is never deleted. Read-merge-write is not
+locked: two sessions writing at once can lose one update, until the loser's
+next status line. It is written inside and outside herdr terminals;
 every failure is silent. BrightFalls's Quickshell token panel and bar item read
 it (`hosts/BrightFalls/users/matteo/hyprland/`). With the option off, the
 statusLine command is `claude-statusline` as before.

@@ -210,7 +210,7 @@ t("limits: normal, as drawn", () => {
     assert.deepEqual(l.bar, { text: "34%", glyph: "low", colour: "fg", dim: false });
     assert.deepEqual(l.panel, {
         known: true, chip: true, line: "",
-        main: { label: "Weekly · all models", value: "34% · resets Thu 09:00", note: "", colour: "fg" },
+        main: { label: "Weekly · all models", value: "34% · resets Thu 09:00", note: "as of 09:14", colour: "fg" },
         meter: { frac: 0.34, colour: "purple" },
         model: { label: "Weekly · Fable", value: "per-model cap not reported", note: "", colour: "muted" },
         fiveHour: { label: "5-hour", value: T.PLAN.fiveHour, note: "", colour: "muted" },
@@ -255,7 +255,7 @@ t("limits: stale from exactly 3,600 s, as drawn", () => {
     const drawn = lim(file(34, { written_at: NOW - 3 * 3600 }));
     assert.deepEqual(drawn.panel, {
         known: true, chip: false, line: "",
-        main: { label: "Weekly · all models", value: "34%", note: "as of 3 h ago", colour: "fg" },
+        main: { label: "Weekly · all models", value: "34%", note: "as of 06:15", colour: "fg" },
         meter: { frac: 0.34, colour: "grey" },
         model: null,
         fiveHour: null,
@@ -287,9 +287,52 @@ t("limits: a five_hour reading shows in every state that has a reading", () => {
     assert.equal(lim(file(86, { five_hour: five })).panel.fiveHour.colour, "orange");
     assert.ok(lim(file(100, { five_hour: five })).panel.fiveHour);
     const stale = lim(file(34, { written_at: NOW - 3600, five_hour: five })).panel.fiveHour;
-    assert.deepEqual(stale, { label: "5-hour", value: "85%", note: "as of 1 h ago", colour: "orange" });
+    assert.deepEqual(stale, { label: "5-hour", value: "85%", note: "as of 08:15", colour: "orange" });
     // Its reset passed: back to the drawn text.
     assert.equal(lim(file(34, { five_hour: { used_percentage: 85, resets_at: NOW } })).panel.fiveHour.value, T.PLAN.fiveHour);
+});
+
+t("limits: the weekly figure says when it was reported, today or before", () => {
+    const note = written => lim(file(34, { written_at: written })).panel.main.note;
+    // NOW is Tue 09:15 in New York.
+    assert.equal(note(NOW - 60), "as of 09:14");
+    assert.equal(note(NOW - 9 * 3600 - 15 * 60), "as of 00:00");
+    assert.equal(note(NOW - 9 * 3600 - 15 * 60 - 60), "as of Mon 23:59");
+    assert.equal(note(NOW - 6 * 86400), "as of Wed 09:15");
+    // Seven days back is the same weekday: the date instead.
+    assert.equal(note(NOW - 7 * 86400), "as of 10 Nov 09:15");
+    // The stale rule is unchanged: from an hour, dimmed and without the reset.
+    const stale = lim(file(34, { written_at: NOW - 3600 }));
+    assert.deepEqual([stale.bar.dim, stale.panel.main.value, stale.panel.main.note], [true, "34%", "as of 08:15"]);
+});
+
+t("limits: the writer's per-window form; as of when the figure was seen", () => {
+    // Seen at 06:15 (the transcript's time); a session reported it at 09:14.
+    const l = T.limits(fxText("limits-evidence.json"), NOW);
+    assert.deepEqual(l.bar, { text: "42%", glyph: "low", colour: "fg", dim: false });
+    assert.deepEqual(l.panel.main, { label: "Weekly · all models", value: "42% · resets Thu 09:00", note: "as of 06:15", colour: "fg" });
+    assert.deepEqual(l.panel.fiveHour, { label: "5-hour", value: "12% · resets Tue 12:00", note: "", colour: "fg" });
+    assert.equal(T.refreshLine(l.reading, NOW), "Counting tokens again from the transcripts · quota as reported 06:15");
+    // No evidence: as of when it was written, as for the old writer's file.
+    const n = T.limits(fxText("limits-no-evidence.json"), NOW);
+    assert.equal(n.panel.main.note, "as of 09:14");
+    assert.equal(n.panel.fiveHour.value, T.PLAN.fiveHour);
+    assert.deepEqual(n.panel.main, T.limits(fxText("limits-normal.json"), NOW).panel.main);
+    // Neither window: no reading.
+    assert.equal(T.limits(fxText("limits-no-windows.json"), NOW).reading, null);
+    // Seen in the future (a clock step): as of now at the latest.
+    const ahead = file(34, { seven_day: { used_percentage: 34, resets_at: 1795096800, evidence_at: NOW + 3600 } });
+    assert.equal(lim(ahead).panel.main.note, "as of 09:15");
+});
+
+t("refresh: R re-reads the limits file and says what it refreshed", () => {
+    const r = T.key(overview(), "R");
+    assert.deepEqual(r.effects, [{ do: "send", req: { req: "refresh", id: 2 } }, { do: "reloadLimits" }]);
+    const line = (text, now) => T.refreshLine(T.limits(text, now === undefined ? NOW : now).reading, now === undefined ? NOW : now);
+    assert.equal(line(fxText("limits-normal.json")), "Counting tokens again from the transcripts · quota as reported 09:14");
+    assert.equal(line(JSON.stringify(file(34, { written_at: NOW - 10 * 3600 }))), "Counting tokens again from the transcripts · quota as reported Mon 23:15");
+    assert.equal(line(JSON.stringify(file(34, { written_at: NOW - 3 * 3600 }))), "Counting tokens again from the transcripts · quota as reported 06:15");
+    assert.equal(line(null), "Counting tokens again from the transcripts · no quota reported yet");
 });
 
 // ---- overview ------------------------------------------------------------
@@ -353,7 +396,7 @@ t("overview: normal, as drawn", () => {
     assert.equal(o.unreadable, "");
     assert.equal(o.estimate, `Estimates at API list prices; the plan is a flat ${PLAN_PRICE}.`);
     assert.equal(o.error, "");
-    assert.deepEqual(v.hints, [["P", "projects"], ["D", "days"], ["R", "refresh"], ["Esc", "close"]]);
+    assert.deepEqual(v.hints, [["P", "projects"], ["D", "days"], ["R", "refresh counts"], ["Esc", "close"]]);
 });
 
 t("overview: costs by type and by family, as laid out", () => {
@@ -535,7 +578,7 @@ t("refresh: sends refresh; its answer changes nothing; a sync that read files re
     let st = overview();
     let r = T.key(st, "R");
     assert.equal(r.handled, true);
-    assert.deepEqual(r.effects, [{ do: "send", req: { req: "refresh", id: 2 } }]);
+    assert.deepEqual(r.effects, [{ do: "send", req: { req: "refresh", id: 2 } }, { do: "reloadLimits" }]);
     st = r.state;
     r = T.event(st, JSON.stringify({ answer: "refresh", id: 2, now: NOW }));
     assert.equal(r.state, st);
@@ -582,6 +625,15 @@ t("lines that are not answers or events change nothing", () => {
     const c = T.closed(st);
     assert.equal(T.event(c, fs.readFileSync(path.join(__dirname, "fixtures", "overview-full.json"), "utf8")).state, c);
     assert.equal(T.key(c, "Esc").handled, false);
+});
+
+t("only answers and progress and error events count as the helper working", () => {
+    const st = overview();
+    const cut = progress(1, 5, R(true, false, false, false, false));
+    for (const line of ["", "not json", cut.slice(0, cut.length - 3), "Traceback (most recent call last):", "[]", "null", "42", JSON.stringify({ event: "bad-input" }), JSON.stringify({ answer: "nonsense", id: 1 }), JSON.stringify({ answer: "refresh", id: 1 }), JSON.stringify({ event: "hello" })])
+        assert.equal(T.event(st, line).took, false, line);
+    for (const line of [cut, JSON.stringify({ event: "error", kind: "OperationalError" }), JSON.stringify(Object.assign(fx("overview-full.json"), { id: st.asked.overview })), JSON.stringify(Object.assign(fx("overview-full.json"), { id: 999 }))])
+        assert.equal(T.event(st, line).took, true, line);
 });
 
 // ---- projects ------------------------------------------------------------
@@ -731,6 +783,20 @@ t("projects: ↑↓ move and turn the page; both ends do nothing", () => {
     assert.equal(end.state, r.state);
     assert.equal(end.handled, true);
     assert.deepEqual(end.effects, []);
+});
+
+t("keys: a held key's repeats move and page, and do nothing else", () => {
+    const ov = overview();
+    for (const k of ["R", "P", "D", "Esc"])
+        assert.deepEqual(T.key(ov, k, true), { state: ov, effects: [], handled: true }, k);
+    const st = projects();
+    for (const k of ["Enter", "Tab", "S", "D", "Esc"])
+        assert.deepEqual(T.key(st, k, true), { state: st, effects: [], handled: true }, k);
+    assert.equal(T.key(st, "Down", true).state.selected, T.key(st, "Down").state.selected);
+    assert.equal(T.key(st, "PgDn", true).state.selected, T.key(st, "PgDn").state.selected);
+    assert.notEqual(T.key(st, "PgDn", true).state, st);
+    // A key the footer does not offer stays unhandled.
+    assert.equal(T.key(ov, "S", true).handled, false);
 });
 
 t("projects: PgUp/PgDn, selection to the page's first row", () => {

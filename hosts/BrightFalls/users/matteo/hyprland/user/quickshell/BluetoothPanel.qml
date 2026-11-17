@@ -296,7 +296,7 @@ Scope {
 
     function power(): void {
         if (!usable) {
-            BluetoothShared.announce(blocked ? "Bluetooth is blocked" : "No Bluetooth adapter");
+            BluetoothShared.announce(blocked ? "Bluetooth is blocked" : "No Bluetooth adapter", false);
             return;
         }
         powerPending = true;
@@ -512,7 +512,7 @@ Scope {
         if (powerPending) {
             powerPending = false;
             powerTimer.stop();
-            BluetoothShared.announce(on ? "Bluetooth on" : "Bluetooth off");
+            BluetoothShared.announce(on ? "Bluetooth on" : "Bluetooth off", on);
         }
         if (!on) {
             scanUntil = 0;
@@ -681,7 +681,7 @@ Scope {
         onTriggered: {
             if (root.powerPending) {
                 root.powerPending = false;
-                BluetoothShared.announce(root.on ? "Bluetooth did not turn off" : "Bluetooth did not turn on");
+                BluetoothShared.announce(root.on ? "Bluetooth did not turn off" : "Bluetooth did not turn on", root.on);
             }
         }
     }
@@ -826,6 +826,7 @@ Scope {
                     width: parent.width
                     elide: Text.ElideRight
                     text: deviceRow.d.name
+                    textFormat: Text.PlainText
                     color: deviceRow.sub[1] === "dim" ? Theme.comment : Theme.foreground
                     font.family: Theme.fontUi
                     font.pixelSize: 15
@@ -837,6 +838,7 @@ Scope {
                     width: parent.width
                     wrapMode: Text.Wrap
                     text: deviceRow.sub[0]
+                    textFormat: Text.PlainText
                     color: deviceRow.tone
                 }
             }
@@ -914,6 +916,7 @@ Scope {
                             width: detailLines.width - 72
                             wrapMode: Text.Wrap
                             text: parent.modelData[1]
+                            textFormat: Text.PlainText
                             color: root.soft
                             lineHeight: 1.6
                         }
@@ -954,6 +957,9 @@ Scope {
 
             focus: true
             Keys.onPressed: event => {
+                // Of a held key's auto-repeats, only the arrows' act.
+                if (event.isAutoRepeat && event.key !== Qt.Key_Up && event.key !== Qt.Key_Down)
+                    return;
                 const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
                 if (root.key(event.key, plain))
                     event.accepted = true;
@@ -1049,6 +1055,7 @@ Scope {
                     bottomPadding: 4
                     wrapMode: Text.Wrap
                     text: `This computer shows as ${root.adapter?.name ?? "this computer"} to devices nearby. Pick it on the other device; nothing pairs without your yes here.`
+                    textFormat: Text.PlainText
                     color: Theme.cyan
                 }
 

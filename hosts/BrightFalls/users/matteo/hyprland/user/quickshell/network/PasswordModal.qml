@@ -180,7 +180,10 @@ PanelWindow {
                     }
 
                     Keys.onPressed: event => {
-                        if (modal.key(event.key))
+                        // A held Esc, Enter or Tab acts once; typing repeats.
+                        if (event.isAutoRepeat && [Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Tab, Qt.Key_Backtab].includes(event.key))
+                            event.accepted = true;
+                        else if (modal.key(event.key))
                             event.accepted = true;
                     }
 

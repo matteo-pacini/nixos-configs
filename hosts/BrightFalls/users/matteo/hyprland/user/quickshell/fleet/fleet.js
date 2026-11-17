@@ -28,9 +28,7 @@ function initial(helper) {
         // action this run.
         actions: {},
         // Host -> the helper's message text while its action runs.
-        messages: {},
-        // Command id -> { cmd, host }, until its final action event.
-        commands: {}
+        messages: {}
     };
 }
 
@@ -61,11 +59,6 @@ function short(sha) {
     return typeof sha === "string" ? sha.slice(0, 7) : "";
 }
 
-// Records a command written to the helper.
-function sent(st, id, cmd) {
-    return copy(st, { commands: withEntry(st.commands, id, { cmd: cmd.cmd, host: cmd.host || null }) });
-}
-
 // The state after one event from the helper.
 function apply(st, ev) {
     switch (ev.event) {
@@ -81,8 +74,6 @@ function apply(st, ev) {
         return copy(st, { messages: withEntry(st.messages, ev.host, ev.text) });
     case "action": {
         const out = copy(st, {});
-        if (ev.id !== null && ev.id !== undefined && ["ok", "failed", "refused"].includes(ev.state))
-            out.commands = without(st.commands, ev.id);
         if (!ev.host || !SESSION_ACTIONS.includes(ev.action) || ev.state === "refused")
             return out;
         const before = st.actions[ev.host];
@@ -256,6 +247,16 @@ function keys(row, action) {
     return out;
 }
 
+function chipBusy(chip) {
+    return chip.id === "deploying" || chip.id === "building";
+}
+
+// Whether any drawn row shows something under way (a busy chip or a running
+// session action), which keeps the spinner turning.
+function spinning(st) {
+    return order(st).some(n => chipBusy(st.rows[n].chip) || (actionLine(st.actions[n]) || {}).busy === true);
+}
+
 // The row as drawn. `unfolded`: I was pressed on it.
 function rowView(row, unfolded, action, message) {
     const runs = row.runs;
@@ -273,7 +274,7 @@ function rowView(row, unfolded, action, message) {
         local: !!row.local,
         dim: !row.online,
         mode: modePill(row.mode),
-        chip: { label: row.chip.label, colour: row.chip.colour, busy: row.chip.id === "deploying" || row.chip.id === "building" },
+        chip: { label: row.chip.label, colour: row.chip.colour, busy: chipBusy(row.chip) },
         lines,
         action: act,
         // The helper's message about the running action, under it.
@@ -352,12 +353,16 @@ function allowed(row, name) {
 
 // What a key does. `key` is "S" … "A", "Enter", "Esc", "1".."3", "F5".
 // `ask` is the open question ({ host, what }) or null; `row` the selected
-// host's row or null; `runUrl` the build run's address or "".
+// host's row or null; `runUrl` the build run's address or ""; `repeat` true
+// for a held key's auto-repeat, which does nothing: every key here acts once
+// per press (navigation, which may repeat, is move()'s).
 // Returns { kind: "send", cmd, keepAsk } | { kind: "ask", what } |
 // { kind: "cancel" } | { kind: "close" } | { kind: "say", text, cancel? } |
 // { kind: "info" } | { kind: "open", url } | { kind: "refresh" } |
 // { kind: "none" }.
-function decide(row, ask, key, runUrl) {
+function decide(row, ask, key, runUrl, repeat) {
+    if (repeat)
+        return { kind: "none" };
     if (ask && row && ask.host === row.host) {
         if (key === "Esc")
             return { kind: "cancel" };
@@ -482,4 +487,4 @@ function barView(st) {
 }
 
 if (typeof module !== "undefined")
-    module.exports = { SESSION_ACTIONS, MODES, initial, apply, sent, single, order, checking, checked, liveText, pipeline, glyph, modePill, infoLines, actionLine, keys, rowView, question, decide, move, footer, closesPanel, escLabel, barView };
+    module.exports = { SESSION_ACTIONS, MODES, initial, apply, single, order, spinning, checking, checked, liveText, pipeline, glyph, modePill, infoLines, actionLine, keys, rowView, question, decide, move, footer, closesPanel, escLabel, barView };

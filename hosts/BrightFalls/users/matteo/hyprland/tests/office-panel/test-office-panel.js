@@ -468,10 +468,9 @@ t("bar: broker up, no socket counted yet", () => {
     assert.equal(O.barView(st, NOW).watts, "— W");
 });
 
-t("KNOWN BUG: a device list with no sockets throws", () => {
-    // socketsView takes Math.min() of no report times (Infinity) and turns
-    // it into a date. The shipped list (desk-mqtt.nix) has five sockets, so
-    // nothing reaches this today. When fixed, expect "0 sockets…" here.
+t("a device list with no sockets: no line, no watts", () => {
+    // The panel hides its Power section with no sockets, so the line is
+    // never drawn; it must still not throw, nor take the bar item with it.
     let st = O.initial(true);
     for (const ev of [
         { event: "config", state: "ok", read_only: false, devices: DEVICES.filter(d => d.kind !== "socket") },
@@ -480,8 +479,10 @@ t("KNOWN BUG: a device list with no sockets throws", () => {
         dev("lamp", "light", "Lamp", { state: "ON", brightness: 140 }),
         { event: "synced" }])
         st = O.apply(st, ev);
-    assert.throws(() => O.socketsView(st, NOW), RangeError);
-    assert.throws(() => O.barView(st, NOW), RangeError);
+    const sockets = O.socketsView(st, NOW);
+    assert.equal(sockets.all, 0);
+    assert.equal(sockets.text, "");
+    assert.equal(O.barView(st, NOW).watts, "— W");
 });
 
 console.log(`ok: ${n} tests`);

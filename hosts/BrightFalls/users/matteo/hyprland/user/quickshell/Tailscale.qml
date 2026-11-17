@@ -76,9 +76,10 @@ Scope {
         });
     }
 
-    // Runs what tailscale.js decided for a key.
-    function act(name: string): void {
-        const d = T.decide(v, ui, name);
+    // Runs what tailscale.js decided for a key; `repeat`: a held key's
+    // auto-repeat.
+    function act(name: string, repeat: bool): void {
+        const d = T.decide(v, ui, name, repeat);
         ui = d.ui;
         switch (d.kind) {
         case "copy":
@@ -134,7 +135,7 @@ Scope {
         const name = always[k] ?? (plain ? letters[k] : undefined);
         if (name === undefined)
             return false;
-        act(name);
+        act(name, event.isAutoRepeat);
         return true;
     }
 

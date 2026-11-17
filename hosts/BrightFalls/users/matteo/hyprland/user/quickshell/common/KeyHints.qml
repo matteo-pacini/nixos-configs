@@ -56,6 +56,7 @@ Column {
             width: parent.width - 28
             visible: root.message !== ""
             text: root.message
+            textFormat: Text.PlainText
             wrapMode: Text.Wrap
             color: root.messageColor
             font.family: Theme.fontMono

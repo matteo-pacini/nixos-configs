@@ -125,8 +125,8 @@ Scope {
     Connections {
         target: BluetoothShared
 
-        function onAnnounce(text) {
-            root.glyph = text === "Bluetooth on" ? "\u{f00af}" : "\u{f00b2}";
+        function onAnnounce(text, on) {
+            root.glyph = on ? "\u{f00af}" : "\u{f00b2}";
             root.device = text;
             root.show();
         }
@@ -247,6 +247,7 @@ Scope {
                     visible: root.device !== ""
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.device
+                    textFormat: Text.PlainText
                     color: Theme.foreground
                     font.family: Theme.fontUi
                     font.pixelSize: 12

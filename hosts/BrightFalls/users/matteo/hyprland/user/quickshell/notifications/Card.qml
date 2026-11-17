@@ -76,7 +76,7 @@ Rectangle {
     }
 
     implicitHeight: main.height + (strip.visible ? strip.height : 0) + 2
-    radius: 10
+    radius: Style.radius
     color: Style.surface
     border.width: 1
     border.color: critical ? Theme.red : Theme.purple
@@ -243,6 +243,7 @@ Rectangle {
                 visible: card.more > 0
                 topPadding: 2
                 text: card.more + " more from " + card.notification.appName
+                textFormat: Text.PlainText
                 color: Theme.purple
                 font.family: Theme.fontMono
                 font.pixelSize: 11
@@ -297,6 +298,7 @@ Rectangle {
                         width: parent.width - 16
                         horizontalAlignment: Text.AlignHCenter
                         text: action.modelData.text
+                        textFormat: Text.PlainText
                         elide: Text.ElideRight
                         color: area.containsMouse ? Theme.foreground : Theme.cyan
                         font.family: Theme.fontUi

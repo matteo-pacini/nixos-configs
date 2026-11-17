@@ -26,6 +26,11 @@ Scope {
         input.text = "";
     }
 
+    // Outside text for a StyledText string.
+    function esc(text: string): string {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
     function cancel() {
         input.text = "";
         flow?.cancelAuthenticationRequest();
@@ -66,8 +71,14 @@ Scope {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
         WlrLayershell.namespace: "desk-polkit"
 
-        onVisibleChanged: if (visible)
-            input.forceActiveFocus()
+        // A request can end without a submit (cancelled by its caller, timed
+        // out); what was typed must not wait in the hidden field.
+        onVisibleChanged: {
+            if (visible)
+                input.forceActiveFocus();
+            else
+                input.text = "";
+        }
 
         // Swallows clicks on the scrim: a stray click must not cancel.
         MouseArea {
@@ -140,6 +151,7 @@ Scope {
                         Text {
                             width: parent.width
                             text: root.flow?.message ?? ""
+                            textFormat: Text.PlainText
                             wrapMode: Text.Wrap
                             color: root.soft
                             font.family: Theme.fontUi
@@ -182,6 +194,12 @@ Scope {
                         }
 
                         Keys.onPressed: event => {
+                            // A held Enter would answer the next prompt (after
+                            // a wrong password) with the emptied field.
+                            if (event.isAutoRepeat && [Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
+                                event.accepted = true;
+                                return;
+                            }
                             if (event.key === Qt.Key_Escape)
                                 root.cancel();
                             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
@@ -207,6 +225,7 @@ Scope {
                         anchors.rightMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.flow?.selectedIdentity?.string ?? ""
+                        textFormat: Text.PlainText
                         color: Theme.comment
                         font.family: Theme.fontMono
                         font.pixelSize: 12
@@ -217,6 +236,7 @@ Scope {
                     width: parent.width
                     visible: text !== ""
                     text: root.flow?.supplementaryIsError && root.flow.supplementaryMessage !== "" ? root.flow.supplementaryMessage : root.flow?.failed ? "Wrong password, try again." : ""
+                    textFormat: Text.PlainText
                     wrapMode: Text.Wrap
                     color: Theme.red
                     font.family: Theme.fontMono
@@ -237,7 +257,7 @@ Scope {
                     // details, which is where pkexec puts it.
                     Text {
                         width: parent.width
-                        text: "action <font color=\"" + root.soft + "\">" + (root.flow?.actionId ?? "") + "</font>"
+                        text: "action <font color=\"" + root.soft + "\">" + root.esc(root.flow?.actionId ?? "") + "</font>"
                         textFormat: Text.StyledText
                         wrapMode: Text.WrapAnywhere
                         color: Theme.comment

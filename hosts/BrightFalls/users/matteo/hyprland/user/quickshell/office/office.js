@@ -402,7 +402,7 @@ function socketsView(st, now) {
     const counted = rows.filter(r => r.counted);
     const watts = Math.round(counted.reduce((sum, r) => sum + (r.state === "on" ? r.power || 0 : 0), 0));
     let text;
-    if (neverUp(st))
+    if (neverUp(st) || rows.length === 0)
         text = "";
     else if (stale(st))
         text = `${span(st.broker.state !== "up" ? st.broker.since : st.bridge && st.bridge.since, now) || "some time"} ago`;

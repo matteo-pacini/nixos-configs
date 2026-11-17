@@ -53,6 +53,10 @@ Scope {
     property var run: ({})
     property bool exited: false
     property bool cancelled: false
+    // A cancelled run's process still exiting when the next run started: its
+    // output and end are not the new run's. Quickshell starts the new process
+    // only once the old one has finished.
+    property bool superseded: false
 
     function find(id: string): var {
         return providers.find(p => p.id === id) ?? null;
@@ -63,6 +67,7 @@ Scope {
         buffer = "";
         run = {};
         exited = false;
+        superseded = process.running;
         cancelled = false;
         process.command = provider.command;
         process.running = true;
@@ -188,7 +193,7 @@ Scope {
             // stream is split here on both.
             splitMarker: ""
             onRead: data => {
-                if (root.cancelled)
+                if (root.cancelled || root.superseded)
                     return;
                 const parts = (root.buffer + data).split(/[\r\n]/);
                 root.buffer = parts.pop();
@@ -201,6 +206,8 @@ Scope {
         }
 
         onExited: (code, status) => {
+            if (root.superseded)
+                return;
             root.exited = true;
             if (root.cancelled)
                 return;
@@ -214,8 +221,16 @@ Scope {
             const last = root.errorText();
             root.failed(code !== 0 ? `${root.provider.tool} exited with ${code}${last ? ": " + last : ""}` : `${root.provider.tool} gave no result`);
         }
-        // A command that cannot start ends with no exited signal.
-        onRunningChanged: if (!running && !root.exited && !root.cancelled)
-            root.failed(`${root.provider.tool} not found`)
+        // A command that cannot start ends with no exited signal. The
+        // superseded process's end comes after its exited signal, before the
+        // new process starts.
+        onRunningChanged: {
+            if (running)
+                return;
+            if (root.superseded)
+                root.superseded = false;
+            else if (!root.exited && !root.cancelled)
+                root.failed(`${root.provider.tool} not found`);
+        }
     }
 }
