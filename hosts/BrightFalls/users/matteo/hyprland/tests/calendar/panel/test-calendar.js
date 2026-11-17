@@ -351,6 +351,15 @@ assert.deepStrictEqual(Object.keys(pruned), ["b|2026-11-10 09:00", "c|2026-11-01
     assert.deepStrictEqual(q.cellView(null, D("2026-11-16"), 3), { chips: [], more: 0 }, "no export");
     assert.deepStrictEqual(q.cellView(null, D("2026-11-16"), 0), { chips: [], more: 0 });
 
+    // The clocks go back in the night of 24 to 25 October 2026.
+    const odata = q.parse([
+        JSON.stringify({ version: 1, window_start: "2026-10-24", days: 2, calendars: [{ name: "Garden", color: "#33aa66" }] }),
+        JSON.stringify([ev("2026-10-24 00:00", "2026-10-24 00:30", "Night bus", "Garden")]),
+        JSON.stringify([ev("2026-10-25 10:00", "2026-10-25 11:00", "Bell ringing", "Garden")]),
+    ].join("\n"));
+    assert.deepStrictEqual(q.cellView(odata, D("2026-10-24"), 3), { chips: [{ title: "Night bus", color: "#33aa66", time: "00:00", filled: false }], more: 0 }, "a timed event starting at midnight is timed, not filled");
+    assert.deepStrictEqual(q.cellView(odata, D("2026-10-25"), 3), { chips: [{ title: "Bell ringing", color: "#33aa66", time: "10:00", filled: false }], more: 0 }, "a timed event on the autumn DST day");
+
     assert.strictEqual(q.moreText(3), "3 more");
     assert.strictEqual(q.moreText(1), "1 more");
 
@@ -361,6 +370,8 @@ assert.deepStrictEqual(Object.keys(pruned), ["b|2026-11-10 09:00", "c|2026-11-01
     assert.strictEqual(q.fitRows(0, 20, 4), 0);
     assert.strictEqual(q.fitRows(-10, 20, 4), 0, "never negative");
     assert.strictEqual(q.fitRows(100, 25, 0), 4);
+    assert.strictEqual(q.fitRows(67.5, 20, 4), 2, "a fractional height rounds down");
+    assert.strictEqual(q.fitRows(68.4, 20, 4), 3);
 
     const today = D("2026-11-17 09:00");
     assert.strictEqual(q.headerNote(true, D("2026-11-20"), today), "syncing…");
@@ -402,6 +413,12 @@ assert.deepStrictEqual(Object.keys(pruned), ["b|2026-11-10 09:00", "c|2026-11-01
     assert.strictEqual(mv("2027-05-03", "T", "2026-11-17 09:00"), "2026-11-17", "today");
     assert.strictEqual(q.hm(q.bigViewMove(D("2027-05-03"), act("T"), D("2026-11-17 09:00"))), "00:00", "today at midnight, like every selected day");
     assert.strictEqual(mv("2026-03-28", "Right"), "2026-03-29", "across the spring DST change");
+    assert.strictEqual(mv("2026-10-24", "Right"), "2026-10-25", "across the autumn DST change");
+    assert.strictEqual(mv("2026-10-25", "Right"), "2026-10-26");
+    assert.strictEqual(mv("2026-10-26", "Left"), "2026-10-25");
+    assert.strictEqual(mv("2026-10-21", "Down"), "2026-10-28", "a week on across the autumn DST change");
+    assert.strictEqual(mv("2026-10-28", "Up"), "2026-10-21");
+    assert.strictEqual(q.hm(q.bigViewMove(D("2026-10-25"), act("Right"), D("2026-11-17 09:00"))), "00:00", "still midnight after the 25-hour day");
     for (const k of ["Esc", "R", "Enter", "F", "Tab"])
         assert.strictEqual(mv("2026-11-20", k), "2026-11-20", "a key that does not move keeps the day: " + k);
 
