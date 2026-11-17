@@ -13,6 +13,7 @@ let
       memoryMiB
       fullscreen
       pinVcpus
+      wineRepair
       ;
   };
 in
@@ -72,6 +73,15 @@ in
         Refresh rate, in Hz, that the guest display advertises to games.
         Nothing paces frames to it; it matters to games and limiters that
         cap at the display's refresh rate.
+      '';
+    };
+    wineRepair = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Build upstream's optional Wine ntdll repair. A launch uses it only
+        with LEGION_WINE_REPAIR=1, and only with a Proton whose ntdll matches
+        upstream's, such as "GE-Proton11-11 (Legion)".
       '';
     };
     users = lib.mkOption {

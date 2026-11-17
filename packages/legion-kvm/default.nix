@@ -30,6 +30,10 @@
   # Pin each vCPU to the host CPU at the same position in the topology the
   # guest is given, so guest SMT siblings are host siblings.
   pinVcpus ? false,
+  # Build upstream's optional Wine ntdll repair. A session uses it only with
+  # LEGION_WINE_REPAIR=1, and only with a Proton whose ntdll matches
+  # upstream's config/compatibility.json.
+  wineRepair ? false,
 }:
 assert resolution.width >= 64 && resolution.width <= 3840;
 assert resolution.height >= 64 && resolution.height <= 2160;
@@ -46,8 +50,10 @@ let
       memoryMiB
       fullscreen
       pinVcpus
+      wineRepair
       ;
   };
+  wine = if wineRepair then callPackage ./wine.nix { inherit legionSource proton; } else null;
   kernel = callPackage ./kernel.nix { inherit legionSource; };
   virgl = callPackage ./virglrenderer.nix { inherit virglrenderer legionSource; };
   qemu = callPackage ./qemu.nix {
@@ -60,6 +66,7 @@ let
       legionSource
       rust
       proton
+      wine
       ;
   };
 
@@ -95,7 +102,7 @@ let
   build = builtins.toJSON {
     build_id = legionSource.src.rev;
     toolchain_image = "";
-    optional_wine_repair = false;
+    optional_wine_repair = wineRepair;
   };
   workload = builtins.toJSON {
     schema = 1;
@@ -169,6 +176,7 @@ stdenv.mkDerivation {
       virgl
       qemu
       guest
+      wine
       ;
   };
 
