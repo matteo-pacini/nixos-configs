@@ -926,10 +926,11 @@ application, or opens the menu if the icon has only a menu.
 
 One picture per monitor, drawn by hyprpaper on the Background layer, run as
 the `hyprpaper` user service (Hyprland session only, `default.nix`). The
-pictures are `wallpapers/left.png` (DP-1, the left monitor) and
-`wallpapers/right.png` (DP-2, the right one), 2560×1440 like the monitors,
-so `fit_mode = cover` shows them 1:1: ASCII renders of two paintings in the
-Dracula palette.
+pictures are `assets/wallpapers/left.png` at the repo root (DP-1, the left
+monitor) and `assets/wallpapers/right.png` (DP-2, the right one), 2560×1440
+like the monitors, so `fit_mode = cover` shows them 1:1: ASCII renders of
+two paintings in the Dracula palette. The two Macs show the same two
+pictures on the same monitors (`modules/home-manager/darwin/desk-wallpaper/README.md`).
 
 - **Matching** is by monitor description, not connector name, because the
   connector numbers are shared between the two GPUs and follow probe order.
@@ -941,9 +942,9 @@ Dracula palette.
 - **The config** is generated in `default.nix` and passed to hyprpaper by
   store path (`-c`); nothing is written under `~/.config/hypr`, which stays
   desk-sync's. Splash text and hyprpaper's IPC are off.
-- **To change a picture**, replace the PNG here (same size, or the crop
-  changes), rebuild and switch: the new store path changes the unit, and the
-  switch restarts it. A new monitor needs its description copied into
+- **To change a picture**, replace the PNG in `assets/wallpapers/` (same
+  size, or the crop changes), rebuild and switch: the new store path changes
+  the unit, and the switch restarts it. The Macs pick up the same file. A new monitor needs its description copied into
   `default.nix`.
 - **At login** the first frames show `misc.background_color` (Dracula
   background, `looknfeel.lua`) until hyprpaper starts with the graphical

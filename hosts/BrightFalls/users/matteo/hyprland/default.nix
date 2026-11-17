@@ -62,13 +62,13 @@ let
 
     wallpaper {
         monitor = desc:ASUSTek COMPUTER INC ROG PG278QR ##ASO0f7HLJ+Pd
-        path = ${./wallpapers/left.png}
+        path = ${../../../../../assets/wallpapers/left.png}
         fit_mode = cover
     }
 
     wallpaper {
         monitor = desc:Dell Inc. DELL U2719D 7CGY223
-        path = ${./wallpapers/right.png}
+        path = ${../../../../../assets/wallpapers/right.png}
         fit_mode = cover
     }
   '';

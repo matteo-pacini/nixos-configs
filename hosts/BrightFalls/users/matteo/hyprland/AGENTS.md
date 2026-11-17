@@ -21,7 +21,7 @@ office panels, tray menus, and a lock screen.
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
   secrets, PAM, and generates read-only data the shell shows. The
-  wallpapers (`wallpapers/`) are Nix-only too: never edited live.
+  wallpapers (`assets/wallpapers/` at the repo root) are Nix-only too: never edited live.
 - **The config files** are ordinary writable files under `~/.config`, copied
   from `user/` here at activation and hot-reloaded. They are developed live
   and brought back to this directory with `desk-sync pull`. README:
@@ -349,7 +349,7 @@ not.
 | `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
-| `wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
+| `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
 | `user/desk/theme.json` | The palette |
 | `../../../audio/` | PipeWire and WirePlumber settings the audio panel reports, Bluetooth codecs |
 
