@@ -7,8 +7,11 @@
 let
   cfg = config.custom.mpv;
   shimCfg = cfg.jellyfinShim;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
-  shimConfigDir = ".config/jellyfin-mpv-shim";
+  # Where the shim's conffile.py looks; it ignores XDG on macOS.
+  shimConfigDir =
+    if isDarwin then "Library/Application Support/jellyfin-mpv-shim" else ".config/jellyfin-mpv-shim";
 
   # Files we generate via programs.mpv + xdg.configFile in the sibling modules.
   # We symlink them into the shim's config dir so both clients share one source of truth.
@@ -77,23 +80,22 @@ let
 in
 {
   options.custom.mpv.jellyfinShim = {
-    enable = lib.mkEnableOption "jellyfin-mpv-shim cast receiver (Linux only)";
+    enable = lib.mkEnableOption "jellyfin-mpv-shim cast receiver";
 
     autoStart = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Launch the shim on login, minimized, as a systemd user service.";
+      description = ''
+        Launch the shim on login, minimized: a systemd user service on Linux,
+        a launchd agent in the Aqua session on Darwin.
+      '';
     };
   };
 
+  # On Darwin the shim plays through an external mpv process (its mpv_ext
+  # default there), found on the PATH its package wrapper suffixes with
+  # nixpkgs' mpv, so conf.json needs no mpv_ext keys.
   config = lib.mkIf (cfg.enable && shimCfg.enable) {
-    assertions = [
-      {
-        assertion = pkgs.stdenv.hostPlatform.isLinux;
-        message = "custom.mpv.jellyfinShim is Linux only.";
-      }
-    ];
-
     home.packages = [ pkgs.jellyfin-mpv-shim ];
 
     # The shim runs mpv with its own config dir, so ~/.config/mpv is never read.
@@ -118,7 +120,7 @@ in
       fi
     '';
 
-    systemd.user.services.jellyfin-mpv-shim = lib.mkIf shimCfg.autoStart {
+    systemd.user.services.jellyfin-mpv-shim = lib.mkIf (!isDarwin && shimCfg.autoStart) {
       Unit = {
         Description = "Jellyfin MPV Shim";
         After = [ "graphical-session.target" ];
@@ -135,6 +137,23 @@ in
         Environment = [ "MESA_VK_DEVICE_SELECT=discrete!" ];
       };
       Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    # No GPU pin: the Macs have one GPU. No network gate either: the shim's
+    # connect_retry_mins and health check retry a server it missed at login.
+    launchd.agents.jellyfin-mpv-shim = lib.mkIf (isDarwin && shimCfg.autoStart) {
+      enable = true;
+      config = {
+        ProgramArguments = [
+          "${pkgs.jellyfin-mpv-shim}/bin/jellyfin-mpv-shim"
+          "--minimized"
+        ];
+        RunAtLoad = true;
+        # Restart after a crash, stay down after Quit from the menu bar icon.
+        KeepAlive.SuccessfulExit = false;
+        ProcessType = "Interactive";
+        LimitLoadToSessionType = "Aqua";
+      };
     };
   };
 }

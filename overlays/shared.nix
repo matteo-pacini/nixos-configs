@@ -165,10 +165,43 @@
     # menu. The patch also requires SupportsRemoteControl, so the existing
     # reconnect path runs. See the patch header.
     # WAIT-FOR closed: jellyfin/jellyfin-mpv-shim#461
-    jellyfin-mpv-shim = super.jellyfin-mpv-shim.overridePythonAttrs (old: {
-      patches = (old.patches or [ ]) ++ [
-        ../patches/jellyfin-mpv-shim/001-health-check-remote-control.patch
-      ];
-    });
+    #
+    # Darwin only, on top of that: nixpkgs marks the package Linux-only, and
+    # no python-mpv test can pass in the Darwin build sandbox. Most need an
+    # Xvfb display that nixpkgs provides only on Linux, and the rest abort
+    # in mpv_initialize, where libmpv 0.42 sets up its Touch Bar through
+    # AppKit. Hydra has no aarch64-darwin python-mpv for that reason. Skip
+    # its tests (the import check still runs) and lift the platform gate.
+    # Drop this half once nixpkgs lists darwin in
+    # pkgs/by-name/je/jellyfin-mpv-shim/package.nix.
+    # WAIT-FOR manual: none (checked 2026-11-17)
+    jellyfin-mpv-shim =
+      let
+        isDarwin = super.stdenv.hostPlatform.isDarwin;
+
+        # .override re-runs the package function and would discard anything
+        # added by overridePythonAttrs, so it has to come first.
+        base =
+          if isDarwin then
+            super.jellyfin-mpv-shim.override {
+              python3Packages = super.python3Packages.overrideScope (
+                _: pysuper: {
+                  mpv = pysuper.mpv.overridePythonAttrs { doCheck = false; };
+                }
+              );
+            }
+          else
+            super.jellyfin-mpv-shim;
+      in
+      base.overridePythonAttrs (old: {
+        patches = (old.patches or [ ]) ++ [
+          ../patches/jellyfin-mpv-shim/001-health-check-remote-control.patch
+        ];
+        meta =
+          old.meta
+          // super.lib.optionalAttrs isDarwin {
+            platforms = old.meta.platforms ++ super.lib.platforms.darwin;
+          };
+      });
   }
 )
