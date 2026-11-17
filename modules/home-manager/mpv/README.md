@@ -36,6 +36,17 @@ It starts the shim minimised at login.
 The player in both cases is nixpkgs' plain mpv, not the `programs.mpv`
 wrapper, so `thumbfast` and `autoload` do not load in the shim.
 
+Activation also repairs an existing `conf.json` in one way: if
+`mpv_ext_path` holds a `/nix/store/` path, it is set to `null`, which makes
+the shim take `mpv` from its `PATH`. An older version of this module seeded
+that key with a store path; since Nix does not track the file, the path
+outlives its store entry, and on macOS the shim then fails to start its
+external mpv and launchd restarts it every 10 seconds. Every other key is
+kept, the file keeps its mode, and a missing or unparsable file is left
+alone. The step runs before Home Manager (re)loads the launchd agent or the
+systemd units, on both platforms (on Linux the key is unused while the shim
+plays through libmpv, but a store path there would be just as stale).
+
 ## Provenance
 
 The Nix files are a hand translation of SoM's config, with deliberate
@@ -72,8 +83,8 @@ purple as the accent:
 - `assets/scripts/osc.lua`: the OSC's colours are hard-coded, so they are a
   local modification (see the table above).
 - `jellyfin-shim.nix`: `themes/dracula.json` for the shim's library browser,
-  selected in the seeded `conf.json`. An existing `conf.json` is not changed;
-  pick the theme once in the shim's settings.
+  selected in the seeded `conf.json`. An existing `conf.json` keeps its
+  theme; pick it once in the shim's settings.
 
 Not themed, on purpose: subtitles (pure white), the window background and
 letterbox bars (black; no `background-color`), the OSC idle logo (mpv's

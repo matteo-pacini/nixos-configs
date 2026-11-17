@@ -77,6 +77,35 @@ let
   };
 
   baseConfFile = pkgs.writeText "jellyfin-mpv-shim-conf.json" (builtins.toJSON baseConf);
+
+  # Usage: jellyfin-shim-repair-conf <conf.json>. Sets mpv_ext_path to null
+  # when it holds a Nix store path (null means "mpv from PATH"); a store path
+  # in a file Nix does not track dies at the next garbage collection, and the
+  # shim then fails to start its external mpv. Leaves a missing, unparsable or
+  # already clean file untouched. Replaces the file atomically, keeping its mode.
+  repairConf = pkgs.writeShellApplication {
+    name = "jellyfin-shim-repair-conf";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.coreutils
+    ];
+    text = ''
+      conf=$1
+      [ -e "$conf" ] || exit 0
+      if ! jq -e 'type == "object"' "$conf" >/dev/null 2>&1; then
+        echo "jellyfin-mpv-shim: $conf is not a JSON object; left as is"
+        exit 0
+      fi
+      jq -e '(.mpv_ext_path | strings | startswith("/nix/store/")) // false' "$conf" >/dev/null || exit 0
+      # Same directory, so the mv is a rename on one filesystem.
+      tmp=$(mktemp "$(dirname "$conf")/.conf.json.XXXXXX")
+      trap 'rm -f "$tmp"' EXIT
+      jq '.mpv_ext_path = null' "$conf" >"$tmp"
+      chmod --reference="$conf" "$tmp"
+      mv -f "$tmp" "$conf"
+      echo "jellyfin-mpv-shim: reset mpv_ext_path (a Nix store path) to null in $conf"
+    '';
+  };
 in
 {
   options.custom.mpv.jellyfinShim = {
@@ -112,13 +141,20 @@ in
 
     # Seed conf.json only if missing: the shim rewrites it on every settings
     # save, so it has to stay a writable file. Login tokens live in users.json.
-    home.activation.jellyfinShimSeedConf = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      run mkdir -p "$HOME/${shimConfigDir}"
-      if [ ! -e "$HOME/${shimConfigDir}/conf.json" ]; then
-        run cp ${baseConfFile} "$HOME/${shimConfigDir}/conf.json"
-        run chmod 600 "$HOME/${shimConfigDir}/conf.json"
-      fi
-    '';
+    # An existing file is only repaired (see repairConf). Ordered before the
+    # agent or unit is (re)started, so the shim reads the repaired file.
+    home.activation.jellyfinShimConf =
+      lib.hm.dag.entryBetween [ "setupLaunchAgents" "reloadSystemd" ] [ "writeBoundary" ]
+        ''
+          run mkdir -p "$HOME/${shimConfigDir}"
+          if [ ! -e "$HOME/${shimConfigDir}/conf.json" ]; then
+            run cp ${baseConfFile} "$HOME/${shimConfigDir}/conf.json"
+            run chmod 600 "$HOME/${shimConfigDir}/conf.json"
+          else
+            run ${lib.getExe repairConf} "$HOME/${shimConfigDir}/conf.json" \
+              || warnEcho "jellyfin-mpv-shim: could not repair conf.json; left as is"
+          fi
+        '';
 
     systemd.user.services.jellyfin-mpv-shim = lib.mkIf (!isDarwin && shimCfg.autoStart) {
       Unit = {
