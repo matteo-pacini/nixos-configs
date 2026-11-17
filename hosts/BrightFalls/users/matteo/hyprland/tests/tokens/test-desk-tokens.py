@@ -227,23 +227,27 @@ eq("plan: starts (shrunk, new, appended, replaced)", [p[5] for p in plan], [0, 0
 B = {"today": 2500, "7d": 1500, "14d": 800, "30d": 0}
 eq("plan: period cuts", tok.period_cuts(plan, B), {"today": 2, "7d": 3, "14d": 3, "30d": 4})
 
-rows = [(0, "s", "claude-opus-5-5", 0, 1000, 2000, 10000, 3000, 4000)]
-cost, unpriced = tok.estimate(rows, tok.load_prices(TEST_PRICES)["models"])
-near("prices: hand-computed estimate", cost, (1000 * 4 + 2000 * 20 + 10000 * 0.2 + 3000 * 5 + 4000 * 8) / 1e6)
 table = tok.load_prices(TEST_PRICES)["models"]
+costs = tok.reply_costs((0, "s", "claude-opus-5-5", 0, 1000, 2000, 10000, 3000, 4000), table["claude-opus-5-5"])
+check("prices: hand-computed cost per type",
+      all(abs(g - w) < 1e-12 for g, w in zip(costs, (0.004, 0.04, 0.002, 0.015, 0.032))), str(costs))
 eq("prices: an entry missing a rate is unpriced", "claude-broken" in table, False)
 eq("prices: dated id takes its base id's row", tok.price_for("claude-opus-5-5-20261101", table) is table["claude-opus-5-5"], True)
 eq("prices: other suffix is not a match", tok.price_for("claude-opus-5-5-fast", table), None)
-haiku = [(0, "s", "claude-haiku-5-5", 0, 0, 1000, 100000, 0, 0),
-         (0, "s", "claude-haiku-5-5", 0, 1, 1000, 100000, 0, 0)]
-near("prices: Haiku at a 100000-token prompt, lower rates", tok.estimate(haiku[:1], table)[0],
+eq("prices: unknown model unpriced", tok.price_for("claude-x", table), None)
+HAIKU = table["claude-haiku-5-5"]
+near("prices: Haiku at a 100000-token prompt, lower rates",
+     sum(tok.reply_costs((0, "s", "claude-haiku-5-5", 0, 0, 1000, 100000, 0, 0), HAIKU)),
      (1000 * 0.5 + 100000 * 0.01) / 1e6)
-near("prices: Haiku over 100000, every rate higher", tok.estimate(haiku[1:], table)[0],
+near("prices: Haiku over 100000, every rate higher",
+     sum(tok.reply_costs((0, "s", "claude-haiku-5-5", 0, 1, 1000, 100000, 0, 0), HAIKU)),
      (1 * 0.5 + 1000 * 2.5 + 100000 * 0.05) / 1e6)
 near("prices: Haiku tier counts cache writes in the prompt",
-     tok.estimate([(0, "s", "claude-haiku-5-5", 0, 0, 0, 99999, 1, 1)], table)[0],
+     sum(tok.reply_costs((0, "s", "claude-haiku-5-5", 0, 0, 0, 99999, 1, 1), HAIKU)),
      (99999 * 0.05 + 0.625 + 1) / 1e6)
-eq("prices: unpriced listed", tok.estimate([(0, "s", "claude-x", 0, 1, 1, 1, 1, 1)], table), (0.0, ["claude-x"]))
+eq("cost object: none at all is priced", tok.cost_obj(0.0, 0, 0), {"usd": 0.0, "priced": True, "partial": False})
+eq("cost object: only unpriced", tok.cost_obj(0.0, 0, 2), {"usd": 0.0, "priced": False, "partial": False})
+eq("cost object: mixed", tok.cost_obj(1.5, 1, 2), {"usd": 1.5, "priced": True, "partial": True})
 
 shipped = tok.load_prices(SHIPPED)
 eq("shipped prices: six models",
@@ -333,7 +337,7 @@ h = Helper(TA, SA)
 final = h.done()
 ov = h.ask({"req": "overview"})
 eq("streaming duplicates: max wins, synthetic, no-id, user and invalid lines not counted",
-   ov["today"], {"output": 30 + 10 + 3 + 7, "sessions": 1, "cache_read": 1000})
+   dict(ov["today"], cost=None), {"output": 30 + 10 + 3 + 7, "sessions": 1, "cache_read": 1000, "cost": None})
 eq("skipped counts", final["skipped"], {"bad_lines": 1, "no_id": 2, "synthetic": 1})
 m = ov["last30"]["models"][0]
 eq("cache writes apart", (m["cache_write_5m"], m["cache_write_1h"]), (700, 500))
@@ -354,6 +358,8 @@ put(main1, rec("msg_01", "req_01", "2026-11-17T10:00:03.000Z", S1, out=40, inp=3
     rec("msg_01", "req_01", "2026-11-17T10:00:04.000Z", S1, out=1, inp=3, read=1000), mode="a")
 s, final, h = run(TA, SA)
 eq("duplicate across the stored offset: max, not sum, not last", s[0]["today"]["output"], 160)
+fresh, _, _ = run(TA, os.path.join(WORK, "state-a-fresh"))
+eq("a reply grown across the offset is priced again: equal to a build from scratch", s, fresh)
 
 base = os.path.join(TA, KEY, S1)
 put(os.path.join(TA, KEY, S2 + ".jsonl"),
@@ -374,7 +380,7 @@ for n, path in enumerate(never):
 s, final, h = run(TA, SA)
 eq("files that are not transcripts never opened", final["unreadable"], 0)
 eq("same reply in a fork, sub-agents and workflow sub-agents counted once",
-   s[0]["today"], {"output": 160 + 9 + 50 + 60, "sessions": 2, "cache_read": 1000})
+   dict(s[0]["today"], cost=None), {"output": 160 + 9 + 50 + 60, "sessions": 2, "cache_read": 1000, "cost": None})
 eq("sub-agent output", s[0]["last30"]["subagent_output"], 110)
 alpha = by_name(s[1]["projects"], "alpha")
 eq("sub-agent replies count in the parent's project", (alpha["output"], alpha["subagent_output"]), (279, 110))
@@ -388,8 +394,9 @@ eq("session S1: output with sub-agents, main replies only, active time without t
    {"output": 40 + 10 + 3 + 7 + 100 + 110, "replies": 5, "active_seconds": 600,
     "first_reply": epoch("2026-11-17T10:00:00+00:00"), "last_reply": epoch("2026-11-17T10:35:00+00:00")})
 eq("forked reply belongs to the smaller session id", (sessions[S2]["output"], sessions[S2]["replies"]), (9, 1))
-eq("project totals", d["totals"], {"output": 279, "share": 1.0, "sessions": 2, "subagent_output": 110,
-                                   "models": [{"model": "claude-opus-5-5", "output": 279}]})
+eq("project totals", {k: d["totals"][k] for k in ("output", "share", "sessions", "subagent_output")},
+   {"output": 279, "share": 1.0, "sessions": 2, "subagent_output": 110})
+eq("project totals: models", [(m["model"], m["output"]) for m in d["totals"]["models"]], [("claude-opus-5-5", 279)])
 eq("project: 14 days", (len(d["last14"]["days"]), d["last14"]["peak"]["output"]), (14, 279))
 eq("unknown project", one(TA, SA, {"req": "project", "project": 9999, "period": "7d"}).get("error"),
    "unknown project")
@@ -405,7 +412,9 @@ eq("schema holds ids, paths, model names and numbers only", tables, {
     "projects": ["id", "key", "name"],
     "folds": ["id", "cwd", "project", "how", "final"],
     "replies": ["key", "session", "ts", "model", "sub", "cwd", "input", "output", "cache_read",
-                "cache_write_5m", "cache_write_1h"]})
+                "cache_write_5m", "cache_write_1h", "usd_input", "usd_output", "usd_cache_read",
+                "usd_cache_write_5m", "usd_cache_write_1h", "usd", "stale"],
+    "meta": ["key", "value"]})
 
 # --- Shrunk, replaced and deleted files -------------------------------------
 
@@ -473,11 +482,14 @@ put(os.path.join(TC3, KC, uid(23) + ".jsonl"),
     rec("msg_e1", "req_e1", "2026-11-16T12:00:00.000Z", uid(23), out=6, cwd=REPOS + "/gamma"),
     rec("msg_e2", "req_e2", "2026-11-16T23:50:00.000Z", uid(23), out=5, cwd=REPOS + "/gamma"))
 s, _, _ = run(TC3, os.path.join(WORK, "state-c3"), now="2026-11-17T00:05:00Z", tz="Europe/London")
-eq("just after midnight: today empty", s[0]["today"], {"output": 0, "sessions": 0, "cache_read": 0})
+ZERO = {"usd": 0.0, "priced": True, "partial": False}
+eq("just after midnight: today empty, its cost zero and priced", s[0]["today"],
+   {"output": 0, "sessions": 0, "cache_read": 0, "cost": ZERO})
 eq("just after midnight: yesterday complete", s[2]["days"][1]["output"], 11)
 p = one(TC3, os.path.join(WORK, "state-c3"), {"req": "projects", "period": "today"}, now="2026-11-17T00:05:00Z",
         tz="Europe/London")
-eq("just after midnight: no project today", (p["ready"], p["projects"], p["output"]), (True, [], 0))
+eq("just after midnight: no project today, cost zero and priced",
+   (p["ready"], p["projects"], p["output"], p["cost"], p["unpriced_models"]), (True, [], 0, ZERO, []))
 
 # Auckland at 00:30 on the 17th is still the 16th in UTC.
 TC4 = os.path.join(WORK, "tree-c4")
@@ -504,7 +516,9 @@ p = one(TD, os.path.join(WORK, "state-d"), {"req": "projects", "period": "7d"})
 eq("a session active on three days counts once in 7 days", p["projects"][0]["sessions"], 2)
 eq("and once in each of its days", [x["sessions"] for x in s[2]["days"][:4]], [2, 1, 1, 0])
 eq("days: top project", s[2]["days"][0]["top"]["name"], "delta")
-eq("overview: top projects", s[0]["top7"], {"projects": [{"name": "delta", "output": 4}], "more": 0, "output": 4})
+top7 = s[0]["top7"]
+eq("overview: top projects", ([(p["name"], p["output"]) for p in top7["projects"]], top7["more"], top7["output"]),
+   ([("delta", 4)], 0, 4))
 
 # --- Active time read in three pieces ----------------------------------------
 
@@ -570,6 +584,146 @@ s1, _, _ = run(TH, os.path.join(WORK, "state-h2"), default_prices=True)
 s2, _, _ = run(TH, os.path.join(WORK, "state-h3"), prices=SHIPPED)
 eq("built-in price table is the shipped one", s1, s2)
 eq("shipped table prices every model here", s1[0]["last30"]["unpriced_models"], [])
+
+# --- Cost in every answer -----------------------------------------------------
+# In Auckland (UTC+13 in November) with now 09:00 UTC on the 17th, local
+# today began at 11:00 UTC on the 16th. kappa's session has an Opus reply
+# with both cache writes and a sub-agent reply today, two Haiku replies
+# yesterday (one over the tier, one at it: summed by model they would be
+# over), and one reply of an unpriced model today; lam has only an unpriced
+# reply, the day before yesterday.
+
+TK = os.path.join(WORK, "tree-k")
+SK = os.path.join(WORK, "state-k")
+KAPPA, LAM = REPOS + "/kappa", REPOS + "/lam"
+K1, L1 = uid(81), uid(82)
+put(os.path.join(TK, tok.encode(KAPPA), K1 + ".jsonl"),
+    rec("msg_k1", "req_k1", "2026-11-16T23:30:00.000Z", K1, inp=1000, out=2000, read=10000, w5=3000, w1=4000,
+        cwd=KAPPA),
+    rec("msg_k2", "req_k2", "2026-11-16T10:30:00.000Z", K1, inp=1, out=1000, read=100000, model="claude-haiku-5-5",
+        cwd=KAPPA),
+    rec("msg_k3", "req_k3", "2026-11-16T10:40:00.000Z", K1, inp=0, out=1000, read=100000, model="claude-haiku-5-5",
+        cwd=KAPPA),
+    rec("msg_k5", "req_k5", "2026-11-17T02:00:00.000Z", K1, inp=1, out=50, model="claude-x", cwd=KAPPA))
+put(os.path.join(TK, tok.encode(KAPPA), K1, "subagents", "agent-k4.jsonl"),
+    rec("msg_k4", "req_k4", "2026-11-17T01:00:00.000Z", K1, inp=10, out=100, side=True, cwd=KAPPA))
+put(os.path.join(TK, tok.encode(LAM), L1 + ".jsonl"),
+    rec("msg_l1", "req_l1", "2026-11-14T12:00:00.000Z", L1, inp=1, out=70, model="claude-x", cwd=LAM))
+NOW_K, TZ_K = "2026-11-17T09:00:00Z", "Pacific/Auckland"
+
+OPUS_K1 = {"input": 0.004, "output": 0.04, "cache_read": 0.002, "cache_write_5m": 0.015, "cache_write_1h": 0.032}
+HAIKU_OVER = (1 * 0.5 + 1000 * 2.5 + 100000 * 0.05) / 1e6
+HAIKU_AT = (1000 * 0.5 + 100000 * 0.01) / 1e6
+SUB_K4 = (10 * 4 + 100 * 20) / 1e6
+BY_TYPE = {"input": 0.004 + (0.5 + 40) / 1e6, "output": 0.04 + (2500 + 500 + 2000) / 1e6,
+           "cache_read": 0.002 + (5000 + 1000) / 1e6, "cache_write_5m": 0.015, "cache_write_1h": 0.032}
+TODAY_K = sum(OPUS_K1.values()) + SUB_K4
+YESTERDAY_K = HAIKU_OVER + HAIKU_AT
+ALL_K = TODAY_K + YESTERDAY_K
+UNPRICED = {"usd": 0.0, "priced": False, "partial": False}
+
+
+def cost_is(name, got, usd, priced=True, partial=False):
+    check(name, got is not None and abs(got["usd"] - usd) < 1e-12 and got["priced"] is priced
+          and got["partial"] is partial, f"got {got!r}, want usd {usd}, priced {priced}, partial {partial}")
+
+
+def by_type_is(name, got, want):
+    check(name, set(got) == set(want) and all(abs(got[t] - want[t]) < 1e-12 for t in want), f"got {got!r}")
+
+
+s, final, _ = run(TK, SK, now=NOW_K, tz=TZ_K)
+ov, pr, dy = s
+cost_is("cost: today, Opus and a sub-agent, one unpriced reply", ov["today"]["cost"], TODAY_K, partial=True)
+days = ov["last14"]["days"]
+cost_is("cost: yesterday, Haiku priced reply by reply", days[12]["cost"], YESTERDAY_K)
+eq("cost: a day of unpriced replies only", days[11]["cost"], UNPRICED)
+eq("cost: a zero day", days[10]["cost"], ZERO)
+eq("cost: peak carries its day's cost", ov["last14"]["peak"], days[13])
+l30 = ov["last30"]
+cost_is("cost: 30 days", l30["cost"], ALL_K, partial=True)
+by_type_is("cost: 30 days by type, 5-minute and 1-hour writes at their rates", l30["cost"]["by_type"], BY_TYPE)
+near("cost: by type sums to usd", sum(l30["cost"]["by_type"].values()), l30["cost"]["usd"])
+eq("cost: cost_usd is last30.cost.usd", l30["cost_usd"], l30["cost"]["usd"])
+eq("cost: unpriced model listed", l30["unpriced_models"], ["claude-x"])
+models = {m["model"]: m["cost"] for m in l30["models"]}
+cost_is("cost: Opus model", models["claude-opus-5-5"], sum(OPUS_K1.values()) + SUB_K4)
+cost_is("cost: Haiku model", models["claude-haiku-5-5"], YESTERDAY_K)
+eq("cost: unpriced model alone", models["claude-x"], UNPRICED)
+near("cost: model costs sum to the total", sum(c["usd"] for c in models.values()), l30["cost"]["usd"])
+top = {p["name"]: p["cost"] for p in ov["top7"]["projects"]}
+cost_is("cost: top project, mixed", top["kappa"], ALL_K, partial=True)
+eq("cost: top project, unpriced only", top["lam"], UNPRICED)
+cost_is("cost: all 7 days", ov["top7"]["cost"], ALL_K, partial=True)
+cost_is("cost: projects page, the period", pr["cost"], ALL_K, partial=True)
+eq("cost: projects page, unpriced listed", pr["unpriced_models"], ["claude-x"])
+cost_is("cost: projects page, a row", by_name(pr["projects"], "kappa")["cost"], ALL_K, partial=True)
+eq("cost: projects page, an unpriced row", by_name(pr["projects"], "lam")["cost"], UNPRICED)
+want_days = {0: (TODAY_K, True, True), 1: (YESTERDAY_K, True, False), 2: (0.0, False, False), 3: (0.0, True, False)}
+for i, (usd, priced, partial) in want_days.items():
+    cost_is(f"cost: days page, day {i} (local days)", dy["days"][i]["cost"], usd, priced, partial)
+p = one(TK, SK, {"req": "projects", "period": "today"}, now=NOW_K, tz=TZ_K)
+cost_is("cost: projects today, local day", p["cost"], TODAY_K, partial=True)
+eq("cost: projects today, the unpriced row is not there", [x["name"] for x in p["projects"]], ["kappa"])
+
+ids = {x["name"]: x["id"] for x in one(TK, SK, {"req": "projects", "period": "30d"}, now=NOW_K, tz=TZ_K)["projects"]}
+d = one(TK, SK, {"req": "project", "project": ids["kappa"], "period": "30d"}, now=NOW_K, tz=TZ_K)
+cost_is("cost: project totals", d["totals"]["cost"], ALL_K, partial=True)
+by_type_is("cost: project totals by type", d["totals"]["cost"]["by_type"], BY_TYPE)
+eq("cost: project token sums per type", d["totals"]["tokens"],
+   {"input": 1012, "output": 4150, "cache_read": 210000, "cache_write_5m": 3000, "cache_write_1h": 4000})
+eq("cost: project unpriced listed", d["unpriced_models"], ["claude-x"])
+pmodels = {m["model"]: m["cost"] for m in d["totals"]["models"]}
+cost_is("cost: project model split, Haiku", pmodels["claude-haiku-5-5"], YESTERDAY_K)
+eq("cost: project model split, unpriced", pmodels["claude-x"], UNPRICED)
+cost_is("cost: session, sub-agent replies included", d["sessions"][0]["cost"], ALL_K, partial=True)
+cost_is("cost: project's day, local", d["last14"]["days"][13]["cost"], TODAY_K, partial=True)
+d = one(TK, SK, {"req": "project", "project": ids["lam"], "period": "30d"},
+        now=NOW_K, tz=TZ_K)
+eq("cost: unpriced project", (d["totals"]["cost"]["usd"], d["totals"]["cost"]["priced"], d["unpriced_models"],
+                              d["sessions"][0]["cost"]), (0.0, False, ["claude-x"], UNPRICED))
+
+# A changed price table reprices the stored costs without reading a
+# transcript, and the old table brings the old figures back.
+DEARER = os.path.join(WORK, "prices-dearer.json")
+with open(TEST_PRICES) as f:
+    dearer = json.load(f)
+dearer["models"]["claude-opus-5-5"]["output"] = 40
+with open(DEARER, "w") as f:
+    json.dump(dearer, f)
+s2, final, _ = run(TK, SK, now=NOW_K, tz=TZ_K, prices=DEARER)
+eq("reprice: no transcript read", (final["files_total"], final["bytes_read"]), (0, 0))
+cost_is("reprice: today follows the table", s2[0]["today"]["cost"], TODAY_K + (2000 + 100) * 20 / 1e6, partial=True)
+fresh, _, _ = run(TK, os.path.join(WORK, "state-k-dearer"), now=NOW_K, tz=TZ_K, prices=DEARER)
+eq("reprice: equal to a build from scratch at the new table", s2, fresh)
+s3, final, _ = run(TK, SK, now=NOW_K, tz=TZ_K)
+eq("reprice: back to the old table, the old figures", (s3, final["bytes_read"]), (s, 0))
+
+# An index built by the previous schema (no cost columns, no meta table):
+# the same index with them taken out again.
+SK1 = os.path.join(WORK, "state-k-v1")
+shutil.copytree(SK, SK1)
+con = sqlite3.connect(os.path.join(SK1, "index.sqlite"))
+con.execute("DROP INDEX replies_stale")
+con.execute("DROP INDEX replies_window")
+con.execute("DROP TABLE meta")
+for c in tok.USD_COLS + ("usd", "stale"):
+    con.execute(f"ALTER TABLE replies DROP COLUMN {c}")
+con.execute("CREATE INDEX replies_ts ON replies (ts)")
+con.execute("PRAGMA user_version = 1")
+eq("schema 1 index: the previous layout", [c[1] for c in con.execute("PRAGMA table_info(replies)")],
+   ["key", "session", "ts", "model", "sub", "cwd", "input", "output", "cache_read", "cache_write_5m",
+    "cache_write_1h"])
+con.close()
+s4, final, _ = run(TK, SK1, now=NOW_K, tz=TZ_K)
+eq("schema 1 index: upgraded in place, no transcript read", (final["files_total"], final["bytes_read"]), (0, 0))
+eq("schema 1 index: totals equal a build from scratch", s4, s)
+con = sqlite3.connect(os.path.join(SK1, "index.sqlite"))
+eq("schema 1 index: now schema 2, the window index replacing the time index",
+   (con.execute("PRAGMA user_version").fetchone()[0],
+    sorted(n for (n,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL"))),
+   (2, ["replies_session", "replies_stale", "replies_window"]))
+con.close()
 
 # --- First run: order, readiness, not ready, SIGTERM ------------------------
 

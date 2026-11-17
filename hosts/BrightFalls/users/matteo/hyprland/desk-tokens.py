@@ -44,6 +44,12 @@ stdout, events:
 stdout, answers (one per request, "id" echoed; every answer carries "now"
 and "bounds": {"today", "tomorrow", "7d", "14d", "30d", "days": [14 day
 starts, oldest first]}):
+  Beside each token quantity an answer carries "cost": {"usd", "priced",
+  "partial"}, the estimate at API list prices summed reply by reply: "priced"
+  is false when there were replies and none had a price (then "usd" is 0.0),
+  "partial" true when some had none. The 30-day and the project totals add
+  "by_type": {type: USD}; "unpriced_models" lists the period's models with no
+  price.
   A request whose period is not complete yet is answered
   {"answer", "id", "ready": false, "needs": period, "progress": {...}}; ask
   again once a progress event shows that period ready. "overview" is never
@@ -64,6 +70,7 @@ run reads it again.
 
 import argparse
 import bisect
+import hashlib
 import json
 import os
 import re
@@ -75,7 +82,7 @@ import time
 from datetime import datetime, timedelta
 
 PRICES = "@prices@"
-SCHEMA = 1
+SCHEMA = 2
 # Gaps between a session's main-conversation replies count as active time
 # only when shorter than this.
 ACTIVE_GAP = 600
@@ -86,9 +93,27 @@ PERIODS = ("today", "7d", "14d", "30d")
 DAYS_BACK = {"today": 0, "7d": 6, "14d": 13, "30d": 29}
 PAGE_PERIODS = ("today", "7d", "30d")
 TYPES = ("input", "output", "cache_read", "cache_write_5m", "cache_write_1h")
-TS, SESSION, MODEL, SUB, INPUT, OUTPUT, READ, W5, W1 = range(9)
-COLS = "ts, session, model, sub, input, output, cache_read, cache_write_5m, cache_write_1h"
+# A window row: the reply's fields, then its total cost (None when unpriced).
+TS, SESSION, MODEL, SUB, INPUT, OUTPUT, READ, W5, W1, USD = range(10)
+RAW = "ts, session, model, sub, input, output, cache_read, cache_write_5m, cache_write_1h"
+USD_COLS = tuple("usd_" + t for t in TYPES)
+COLS = RAW + ", usd"
 
+# Added to a schema-1 index in place (open_index), so these are the same
+# statements the tables below end with. replies_window covers every column a
+# window reads, so a window query never visits the table.
+COST_COLUMNS = "".join(f"ALTER TABLE replies ADD COLUMN {c} REAL;\n" for c in USD_COLS + ("usd",)) + f"""
+ALTER TABLE replies ADD COLUMN stale INTEGER NOT NULL DEFAULT 1;
+CREATE INDEX replies_stale ON replies (stale) WHERE stale = 1;
+DROP INDEX IF EXISTS replies_ts;
+CREATE INDEX replies_window ON replies ({COLS}, {", ".join(USD_COLS)});
+CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+"""
+
+# replies.usd_*: the reply's cost per type at the rates of the price table
+# whose hash is meta's "prices" row, and usd their sum; all NULL when its
+# model is unpriced. stale = 1 marks a reply whose counters changed since it
+# was priced; no committed row is stale.
 TABLES = """
 CREATE TABLE files (path TEXT PRIMARY KEY, kind TEXT NOT NULL,
     inode INTEGER NOT NULL, read_to INTEGER NOT NULL);
@@ -102,9 +127,8 @@ CREATE TABLE replies (key TEXT PRIMARY KEY, session TEXT NOT NULL,
     cwd INTEGER NOT NULL REFERENCES folds (id), input INTEGER NOT NULL,
     output INTEGER NOT NULL, cache_read INTEGER NOT NULL,
     cache_write_5m INTEGER NOT NULL, cache_write_1h INTEGER NOT NULL);
-CREATE INDEX replies_ts ON replies (ts);
 CREATE INDEX replies_session ON replies (session);
-"""
+""" + COST_COLUMNS
 
 # A reply seen again (a later streaming line, a resumed or forked session)
 # merges by per-field maximum; which session it belongs to must not depend
@@ -123,7 +147,8 @@ ON CONFLICT (key) DO UPDATE SET
     output = max(output, excluded.output),
     cache_read = max(cache_read, excluded.cache_read),
     cache_write_5m = max(cache_write_5m, excluded.cache_write_5m),
-    cache_write_1h = max(cache_write_1h, excluded.cache_write_1h)
+    cache_write_1h = max(cache_write_1h, excluded.cache_write_1h),
+    stale = 1
 """
 
 
@@ -423,8 +448,9 @@ def fold_pass(conn):
 
 
 def open_index(state):
-    """The index at <state>/index.sqlite, rebuilt from scratch when its schema
-    version is not SCHEMA. Returns (connection, path)."""
+    """The index at <state>/index.sqlite. A schema-1 index (no costs) gains the
+    cost columns in place, every reply marked for pricing; any other version
+    but SCHEMA is rebuilt from scratch. Returns (connection, path)."""
     os.makedirs(state, mode=0o700, exist_ok=True)
     os.chmod(state, 0o700)
     path = os.path.join(state, "index.sqlite")
@@ -433,7 +459,9 @@ def open_index(state):
         version = conn.execute("PRAGMA user_version").fetchone()[0]
     except sqlite3.DatabaseError:
         version = None
-    if version != SCHEMA:
+    if version == 1:
+        conn.executescript(f"BEGIN;\n{COST_COLUMNS}PRAGMA user_version = {SCHEMA};\nCOMMIT;")
+    elif version != SCHEMA:
         conn.close()
         for suffix in ("", "-wal", "-shm"):
             try:
@@ -457,8 +485,11 @@ def connect(path):
 # Queries and the pure aggregates behind the answers
 
 
-def window(conn, start, end):
-    return conn.execute(f"SELECT {COLS} FROM replies WHERE ts >= ? AND ts < ?", (start, end)).fetchall()
+def window(conn, start, end, by_type=False):
+    """The replies from start to end as rows indexed by TS ... USD; with
+    by_type, each row ends with its cost per type in TYPES order."""
+    cols = COLS + ", " + ", ".join(USD_COLS) if by_type else COLS
+    return conn.execute(f"SELECT {cols} FROM replies WHERE ts >= ? AND ts < ?", (start, end)).fetchall()
 
 
 def session_projects(conn):
@@ -508,41 +539,108 @@ def price_for(model, table):
     return p
 
 
-def reply_cost(row, p):
-    """USD for one reply. A tier ("above") applies to the whole reply when its
+def reply_costs(row, p):
+    """USD per type for one reply, in TYPES order, at the entry p's
+    per-million rates. A tier ("above") applies to the whole reply when its
     prompt (fresh input, cache reads and both cache writes) is longer than
     the tier's prompt_tokens."""
     prompt = row[INPUT] + row[READ] + row[W5] + row[W1]
     tier = p.get("above")
     if tier is not None and prompt > tier["prompt_tokens"]:
         p = tier
-    return (row[INPUT] * p["input"] + row[OUTPUT] * p["output"] + row[READ] * p["cache_read"]
-            + row[W5] * p["cache_write_5m"] + row[W1] * p["cache_write_1h"]) / 1e6
+    return (row[INPUT] * p["input"] / 1e6, row[OUTPUT] * p["output"] / 1e6, row[READ] * p["cache_read"] / 1e6,
+            row[W5] * p["cache_write_5m"] / 1e6, row[W1] * p["cache_write_1h"] / 1e6)
 
 
-def estimate(rows, table):
-    """(USD at the table's per-million rates, sorted models with no price),
-    priced reply by reply. An unpriced model's tokens add nothing."""
-    cost, unpriced, prices = 0.0, set(), {}
-    for r in rows:
-        if r[MODEL] not in prices:
-            prices[r[MODEL]] = price_for(r[MODEL], table)
-        p = prices[r[MODEL]]
-        if p is None:
-            unpriced.add(r[MODEL])
+def price_hash(table):
+    """A digest of a loaded price table's rates: what the stored costs were
+    computed with."""
+    return hashlib.sha256(json.dumps(table, sort_keys=True).encode()).hexdigest()
+
+
+def price_stale(conn, table):
+    """Prices every reply marked stale, reply by reply; an unpriced model's
+    replies get NULL costs. Runs inside the caller's transaction."""
+    entries = {}
+    done = []
+    for row in conn.execute(f"SELECT {RAW}, rowid FROM replies WHERE stale = 1"):
+        model = row[MODEL]
+        if model not in entries:
+            entries[model] = price_for(model, table)
+        p = entries[model]
+        costs = reply_costs(row, p) if p is not None else None
+        done.append((*(costs or (None,) * 5), sum(costs) if costs else None, row[-1]))
+    conn.executemany("UPDATE replies SET " + ", ".join(c + " = ?" for c in USD_COLS)
+                     + ", usd = ?, stale = 0 WHERE rowid = ?", done)
+
+
+def follow_prices(conn, table):
+    """Makes the stored costs those of `table`: when its hash is not the one
+    they were computed with, every reply is priced again, in one transaction
+    and without reading a transcript."""
+    digest = price_hash(table)
+    conn.execute("BEGIN IMMEDIATE")
+    old = conn.execute("SELECT value FROM meta WHERE key = 'prices'").fetchone()
+    if old is None or old[0] != digest:
+        conn.execute("UPDATE replies SET stale = 1")
+        conn.execute("INSERT INTO meta (key, value) VALUES ('prices', ?)"
+                     " ON CONFLICT (key) DO UPDATE SET value = excluded.value", (digest,))
+    price_stale(conn, table)
+    conn.execute("COMMIT")
+
+
+class Cost:
+    """The estimate of a set of window rows at API list prices."""
+
+    __slots__ = ("usd", "priced", "unpriced", "models")
+
+    def __init__(self, rows=()):
+        self.usd, self.priced, self.unpriced, self.models = 0.0, 0, 0, set()
+        for r in rows:
+            self.add(r)
+
+    def add(self, r):
+        if r[USD] is None:
+            self.unpriced += 1
+            self.models.add(r[MODEL])
         else:
-            cost += reply_cost(r, p)
-    return cost, sorted(unpriced)
+            self.priced += 1
+            self.usd += r[USD]
+
+    def obj(self):
+        return cost_obj(self.usd, self.priced, self.unpriced)
+
+
+def cost_obj(usd, priced, unpriced):
+    """{"usd", "priced", "partial"} from the sum over priced replies and the
+    counts of priced and unpriced replies. No replies at all is priced."""
+    return {"usd": usd, "priced": priced > 0 or unpriced == 0, "partial": priced > 0 and unpriced > 0}
+
+
+def type_costs(rows):
+    """{type: USD} over the priced rows of a window fetched with by_type."""
+    cols = list(zip(*rows)) or [()] * (USD + 1 + len(TYPES))
+    # filter(None, …) drops the unpriced rows' None (and zeros, which add nothing).
+    return {t: float(sum(filter(None, cols[USD + 1 + i]))) for i, t in enumerate(TYPES)}
+
+
+def type_sums(rows):
+    """{type: tokens} over rows."""
+    cols = list(zip(*rows)) or [()] * (W1 + 1)
+    return {t: sum(cols[INPUT + i]) for i, t in enumerate(TYPES)}
 
 
 def daily(rows, starts, end):
-    """Output per day; starts are the days' first seconds, oldest first, and
-    end the last day's end."""
+    """[{"start", "output", "cost"}] per day; starts are the days' first
+    seconds, oldest first, and end the last day's end."""
     out = [0] * len(starts)
+    costs = [Cost() for _ in starts]
     for r in rows:
         if starts[0] <= r[TS] < end:
-            out[bisect.bisect_right(starts, r[TS]) - 1] += r[OUTPUT]
-    return out
+            i = bisect.bisect_right(starts, r[TS]) - 1
+            out[i] += r[OUTPUT]
+            costs[i].add(r)
+    return [{"start": s, "output": o, "cost": c.obj()} for s, o, c in zip(starts, out, costs)]
 
 
 def peak(days):
@@ -566,8 +664,10 @@ def by_project(rows, projects):
         pid = projects.get(r[SESSION])
         a = acc.get(pid)
         if a is None:
-            a = acc[pid] = {"output": 0, "subagent_output": 0, "models": {}, "sessions": set(), "last_reply": 0}
+            a = acc[pid] = {"output": 0, "subagent_output": 0, "models": {}, "sessions": set(), "last_reply": 0,
+                            "cost": Cost()}
         a["output"] += r[OUTPUT]
+        a["cost"].add(r)
         if r[SUB]:
             a["subagent_output"] += r[OUTPUT]
         a["models"][r[MODEL]] = a["models"].get(r[MODEL], 0) + r[OUTPUT]
@@ -584,7 +684,7 @@ def project_rows(rows, projects, names):
             continue
         out.append({"id": pid, "name": names.get(pid, ""), "output": a["output"],
                     "subagent_output": a["subagent_output"], "models": model_list(a["models"]),
-                    "sessions": len(a["sessions"]), "last_reply": a["last_reply"]})
+                    "sessions": len(a["sessions"]), "last_reply": a["last_reply"], "cost": a["cost"].obj()})
     out.sort(key=lambda p: (-p["output"], p["name"], p["id"]))
     return out
 
@@ -597,14 +697,21 @@ def last30(rows, prices):
             totals[t] += s[t]
     seen = totals["cache_read"] + totals["cache_write_5m"] + totals["cache_write_1h"] + totals["input"]
     sub = sum(r[OUTPUT] for r in rows if r[SUB])
-    cost, unpriced = estimate(rows, prices["models"])
-    models = [dict(model=m, tokens=sum(s.values()), **s) for m, s in sums.items()]
+    cost, per_model = Cost(), {}
+    for r in rows:
+        cost.add(r)
+        c = per_model.get(r[MODEL])
+        if c is None:
+            c = per_model[r[MODEL]] = Cost()
+        c.add(r)
+    models = [dict(model=m, tokens=sum(s.values()), **s, cost=per_model[m].obj()) for m, s in sums.items()]
     models.sort(key=lambda m: (-m["tokens"], m["model"]))
     return {"models": models, "totals": totals,
             "cache_hit": totals["cache_read"] / seen if seen else None,
             "subagent_output": sub,
             "subagent_share": sub / totals["output"] if totals["output"] else None,
-            "cost_usd": cost, "unpriced_models": unpriced,
+            "cost": dict(cost.obj(), by_type=type_costs(rows)),
+            "cost_usd": cost.usd, "unpriced_models": sorted(cost.models),
             "prices_checked": prices["checked"]}
 
 
@@ -615,24 +722,29 @@ def overview(conn, b, ready, prices):
         rows = window(conn, b["today"], end)
         out["today"] = {"output": sum(r[OUTPUT] for r in rows),
                         "sessions": len({r[SESSION] for r in rows}),
-                        "cache_read": sum(r[READ] for r in rows)}
+                        "cache_read": sum(r[READ] for r in rows),
+                        "cost": Cost(rows).obj()}
     if ready["14d"]:
-        rows = window(conn, b["14d"], end)
-        days = [{"start": s, "output": o} for s, o in zip(b["days"], daily(rows, b["days"], end))]
+        days = daily(window(conn, b["14d"], end), b["days"], end)
         out["last14"] = {"days": days, "peak": peak(days)}
     if ready["30d"]:
-        out["last30"] = last30(window(conn, b["30d"], end), prices)
+        out["last30"] = last30(window(conn, b["30d"], end, by_type=True), prices)
     if ready["7d"]:
-        ranked = project_rows(window(conn, b["7d"], end), session_projects(conn), project_names(conn))
-        out["top7"] = {"projects": [{"id": p["id"], "name": p["name"], "output": p["output"]} for p in ranked[:4]],
+        rows = window(conn, b["7d"], end)
+        ranked = project_rows(rows, session_projects(conn), project_names(conn))
+        out["top7"] = {"projects": [{"id": p["id"], "name": p["name"], "output": p["output"], "cost": p["cost"]}
+                                    for p in ranked[:4]],
                        "more": max(0, len(ranked) - 4),
-                       "output": sum(p["output"] for p in ranked)}
+                       "output": sum(p["output"] for p in ranked),
+                       "cost": Cost(rows).obj()}
     return out
 
 
 def projects_page(conn, b, period):
     rows = window(conn, b[period], b["tomorrow"])
-    return {"period": period, "output": sum(r[OUTPUT] for r in rows),
+    cost = Cost(rows)
+    return {"period": period, "output": sum(r[OUTPUT] for r in rows), "cost": cost.obj(),
+            "unpriced_models": sorted(cost.models),
             "projects": project_rows(rows, session_projects(conn), project_names(conn))}
 
 
@@ -643,29 +755,41 @@ def project_detail(conn, b, pid, period):
     sp = session_projects(conn)
     mine = {s for s, p in sp.items() if p == pid}
     end = b["tomorrow"]
-    rows = window(conn, b[period], end)
+    rows = window(conn, b[period], end, by_type=True)
     own = [r for r in rows if r[SESSION] in mine]
     every = sum(r[OUTPUT] for r in rows)
     output = sum(r[OUTPUT] for r in own)
-    outputs = {}
+    outputs, costs = {}, {}
     for r in own:
         outputs[r[MODEL]] = outputs.get(r[MODEL], 0) + r[OUTPUT]
+        c = costs.get(r[MODEL])
+        if c is None:
+            c = costs[r[MODEL]] = Cost()
+        c.add(r)
+    models = model_list(outputs)
+    for m in models:
+        m["cost"] = costs[m["model"]].obj()
+    cost = Cost(own)
     totals = {"output": output, "share": output / every if every else None,
               "sessions": len({r[SESSION] for r in own}),
               "subagent_output": sum(r[OUTPUT] for r in own if r[SUB]),
-              "models": model_list(outputs)}
+              "models": models, "tokens": type_sums(own),
+              "cost": dict(cost.obj(), by_type=type_costs(own))}
     own14 = [r for r in window(conn, b["14d"], end) if r[SESSION] in mine]
-    days = [{"start": s, "output": o} for s, o in zip(b["days"], daily(own14, b["days"], end))]
+    days = daily(own14, b["days"], end)
     stats = [s for s in conn.execute(
-        "SELECT session, min(ts), max(ts), sum(output) FROM replies GROUP BY session") if s[0] in mine]
+        "SELECT session, min(ts), max(ts), sum(output), total(usd), count(usd), count(*) - count(usd)"
+        " FROM replies GROUP BY session") if s[0] in mine]
     stats.sort(key=lambda s: (-s[2], s[0]))
     sessions = []
-    for session, first, last, out in stats[:6]:
+    for session, first, last, out, usd, priced, unpriced in stats[:6]:
         times = [t for (t,) in conn.execute(
             "SELECT ts FROM replies WHERE session = ? AND sub = 0 ORDER BY ts", (session,))]
         sessions.append({"id": session, "first_reply": first, "last_reply": last, "output": out,
-                         "replies": len(times), "active_seconds": active_seconds(times)})
+                         "replies": len(times), "active_seconds": active_seconds(times),
+                         "cost": cost_obj(usd, priced, unpriced)})
     return {"project": {"id": pid, "name": names[pid]}, "period": period, "totals": totals,
+            "unpriced_models": sorted(cost.models),
             "last14": {"days": days, "peak": peak(days)}, "sessions": sessions}
 
 
@@ -674,12 +798,13 @@ def days_page(conn, b):
     rows = window(conn, b["14d"], end)
     sp, names = session_projects(conn), project_names(conn)
     starts = b["days"]
-    days = [{"output": 0, "sessions": set(), "projects": {}} for _ in starts]
+    days = [{"output": 0, "sessions": set(), "projects": {}, "cost": Cost()} for _ in starts]
     for r in rows:
         if not starts[0] <= r[TS] < end:
             continue
         d = days[bisect.bisect_right(starts, r[TS]) - 1]
         d["output"] += r[OUTPUT]
+        d["cost"].add(r)
         d["sessions"].add(r[SESSION])
         pid = sp.get(r[SESSION])
         d["projects"][pid] = d["projects"].get(pid, 0) + r[OUTPUT]
@@ -688,7 +813,8 @@ def days_page(conn, b):
         ranked = sorted(((o, names.get(p, ""), p) for p, o in d["projects"].items() if o > 0),
                         key=lambda x: (-x[0], x[1], x[2]))
         top = {"id": ranked[0][2], "name": ranked[0][1], "output": ranked[0][0]} if ranked else None
-        out.append({"start": start, "output": d["output"], "sessions": len(d["sessions"]), "top": top})
+        out.append({"start": start, "output": d["output"], "sessions": len(d["sessions"]), "top": top,
+                    "cost": d["cost"].obj()})
     return {"days": out}
 
 
@@ -752,9 +878,9 @@ class Syncer(threading.Thread):
     connection. Commits at least every COMMIT_EVERY seconds or COMMIT_BYTES,
     and before a period is reported complete."""
 
-    def __init__(self, root, db, clock, out):
+    def __init__(self, root, db, clock, out, table):
         super().__init__(name="sync")
-        self.root, self.db, self.clock, self.out = root, db, clock, out
+        self.root, self.db, self.clock, self.out, self.table = root, db, clock, out, table
         self.lock = threading.Lock()
         self.cv = threading.Condition()
         self.wanted = False
@@ -813,6 +939,7 @@ class Syncer(threading.Thread):
 
     def commit(self, conn):
         fold_pass(conn)
+        price_stale(conn, self.table)
         conn.execute("COMMIT")
 
     def sync(self, conn):
@@ -999,8 +1126,9 @@ def main():
 
     prices = load_prices(args.prices)
     conn, db = open_index(args.state or default_state())
+    follow_prices(conn, prices["models"])
     out = Out()
-    syncer = Syncer(args.projects or default_projects(), db, clock, out)
+    syncer = Syncer(args.projects or default_projects(), db, clock, out, prices["models"])
     signal.signal(signal.SIGTERM, on_term)
     syncer.start()
     syncer.request()

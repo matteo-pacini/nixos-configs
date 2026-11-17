@@ -1481,9 +1481,10 @@ The full protocol is the docstring at the top of `desk-tokens.py`.
   no process. Nothing from a transcript is printed: errors are counts.
 - **The index**: SQLite at `$XDG_STATE_HOME/desk/tokens/index.sqlite` (else
   `~/.local/state/desk/tokens/`), the directory 0700, the file 0600, with a
-  schema version (another version is rebuilt from scratch). One row per
+  schema version (schema 1 is upgraded in place, see "Stored costs"; any
+  other version is rebuilt from scratch). One row per
   reply, keyed `message.id:requestId`, holding only ids, a working
-  directory's row, model name, time and counters; a row per transcript (path,
+  directory's row, model name, time, counters and costs; a row per transcript (path,
   inode, the byte after the last complete line read); folds and projects.
   Each sync reads a file from that byte; a file that shrank or got a new
   inode is read again from 0. A reply seen again (the streaming lines of one
@@ -1535,6 +1536,23 @@ The full protocol is the docstring at the top of `desk-tokens.py`.
   applied. A model missing from the table is reported by name and its tokens
   are not priced. The dollar figure is an estimate of what the same use
   would cost at API list prices, not a bill.
+- **Cost fields**: every token quantity in an answer has a `cost` object
+  beside it: `usd`, the sum over the replies that had a price; `priced`,
+  false when there were replies and none had a price (then `usd` is 0.0 and
+  not a figure); `partial`, true when some had none. A period with no
+  replies is priced at 0.0. The 30-day totals and a project's totals add
+  `by_type` (USD per token type, summing to `usd`), and the answers list the
+  period's `unpriced_models`, never added to any figure. A session's cost
+  covers its sub-agents, like its output; a day's cost follows local days.
+  The overview keeps `last30.cost_usd`, the same value as `last30.cost.usd`.
+- **Stored costs**: each reply's five costs and their sum are stored in its
+  index row when it is read (NULL for an unpriced model), and window queries
+  read them from a covering index, so an answer prices nothing. The index
+  remembers a hash of the price table's rates; when the helper starts with a
+  table whose hash differs, it reprices every reply from the stored counters
+  in one transaction, reading no transcript. An index from before costs were
+  stored (schema 1) gains the columns in place and is priced the same way,
+  not rebuilt.
 
 ## Tailscale: status and mesh hosts
 
