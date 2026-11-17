@@ -28,6 +28,7 @@ ShellRoot {
     Office {}
     Fleet {}
     Tailscale {}
+    Tokens {}
     TrayMenu {}
     Reminders {}
     Lockscreen {}

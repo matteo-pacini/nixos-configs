@@ -21,6 +21,18 @@ let
     text = builtins.readFile ./scripts/claude-statusline.sh;
   };
 
+  # The statusLine command with claudeLimitsFile on: records the plan-limit
+  # reading, then runs claude-statusline unchanged.
+  claudeLimits = pkgs.writeShellApplication {
+    name = "claude-statusline-limits";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+      claudeStatusLine
+    ];
+    text = builtins.readFile ./scripts/claude-limits.sh;
+  };
+
   # The same labels for Codex, from its hooks. On PATH under a fixed name, not
   # as a store path: Codex skips a hook until it's trusted (/hooks), and keys
   # that trust on the hook's definition, so a path that changes every rebuild
@@ -50,6 +62,13 @@ let
   };
 in
 {
+  options.custom.herdr.workbench.claudeLimitsFile.enable = lib.mkEnableOption ''
+    recording Claude Code's plan-limit reading (the weekly and 5-hour
+    `rate_limits` its status line receives) in
+    `$XDG_RUNTIME_DIR/desk/claude-limits.json`, for a desktop shell to show.
+    Takes effect with the workbench, whose status line writes it
+  '';
+
   config = lib.mkIf (cfg.enable && cfg.workbench.enable) (
     lib.mkMerge [
       {
@@ -57,7 +76,9 @@ in
 
         custom.claude-code.extraSettings.statusLine = {
           type = "command";
-          command = lib.getExe claudeStatusLine;
+          command = lib.getExe (
+            if cfg.workbench.claudeLimitsFile.enable then claudeLimits else claudeStatusLine
+          );
           padding = 0;
           refreshInterval = 10;
         };

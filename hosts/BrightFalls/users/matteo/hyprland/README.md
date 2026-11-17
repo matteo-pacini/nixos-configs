@@ -20,13 +20,16 @@ work) is in [AGENTS.md](AGENTS.md).
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
-  [Tailscale panel](#tailscale-panel), [Tray menu](#tray-menu)
+  [Tailscale panel](#tailscale-panel), [Token panel](#token-panel),
+  [Tray menu](#tray-menu)
 - [Wallpaper](#wallpaper)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
 - [Calendar events](#calendar-events) (the sync behind the calendar)
 - [Office: desk-mqtt](#office-desk-mqtt) (the helper behind the office panel)
 - [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel)
+- [Tokens: desk-tokens](#tokens-desk-tokens) (the helper behind the token
+  panel)
 - [Tailscale: status and mesh hosts](#tailscale-status-and-mesh-hosts) (the
   decisions behind the Tailscale panel)
 - [Tests](#tests)
@@ -175,8 +178,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The eight drop-down panels (network, audio, calendar, system, Bluetooth,
-office, fleet, tailscale) behave alike: each opens under its bar item on that bar's monitor (or the
+The nine drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet, tailscale, tokens) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -195,6 +198,7 @@ others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
 | Office | Super+O, bar light bulb and watts | `office` |
 | Fleet | Super+G, bar server glyph and count | `fleet` |
+| Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
@@ -233,8 +237,9 @@ workspaces (its five, plus any other that exists there; click or scroll to
 switch); the focused window's title on that monitor; the clock (see
 [Calendar panel](#calendar-panel)); then a gamepad while game mode is on
 (read from Hyprland's `animations:enabled`), the tray (left click activates,
-right click opens the item's menu, see [Tray menu](#tray-menu)), the fleet
-item (a server glyph and the number of hosts that want attention, see
+right click opens the item's menu, see [Tray menu](#tray-menu)), the token
+item (a pie and the weekly plan-limit percentage, see [Token
+panel](#token-panel)), the fleet item (a server glyph and the number of hosts that want attention, see
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, the Tailscale item (see
 [Tailscale panel](#tailscale-panel)), network (a small Wi-Fi mark beside
@@ -897,6 +902,122 @@ Nexus). **Simulated** (fixture output through the real call): every other
 state, overlay and chip. **Not done yet**: O, the arrows, and Super+V in a
 reloaded session.
 
+### Token panel
+
+`Tokens.qml`, with `tokens/TokensShared.qml` (shared with the bar:
+placement, the helper process, the panel's state, the limits file and its
+watch) and `tokens/tokens.js` (every decision: how the helper's answers and
+events change the state, every text and colour of the four pages and the bar
+item, what each key does, the footer, the reading of the limits file;
+node-tested). Super+U, or a click on the bar item left of the fleet item,
+opens it. It shows how much Claude Code has been used on this computer, and
+the plan limits as Claude Code last reported them. It is read-only.
+
+- **Bar item**: a pie glyph and the weekly all-models percentage, rounded
+  down, from the limits file. Foreground below 80 %, orange from 80 %, red at
+  100 % (compared before rounding). Dimmed, value kept, when no running
+  Claude Code session has reported the current window for an hour (while one
+  does, the file is refreshed every 15 minutes); an empty ring and a dash, dimmed, with no reading
+  (no file, or the week it was written in has reset). Purple with the open
+  mark while the panel is open. It changes when the file does, and on a
+  minute tick while a reading exists; it never starts the helper.
+- **Overview** (what it opens on): the plan limits (the weekly row with its
+  reset and a meter; a muted per-model row; the 5-hour row; a line saying
+  what happens at 100 %, or that the reading is stale, or that none is known
+  yet), today's output and sessions with the context read from cache and
+  today at API prices, the last 14 days of output as bars (today purple, the
+  peak named), 30 days (the split by model family, cache hit, the
+  sub-agents' share of output, the total at API prices beside the plan's
+  price, then that total by token type, as a bar and a row per type with its
+  tokens, and by model family, a row per family with its share of tokens,
+  largest first), and the 7-day top projects, each with its output and,
+  muted before it, its figure at API prices.
+- **Figures at API prices**: every page that shows token quantities also
+  shows what they would cost at API list prices (`≈ $4.37`, `≈ $3,571`,
+  `≈ $12.3 k`), as priced by the helper reply by reply. Each such page
+  carries once, muted above the footer, `Estimates at API list prices; the
+  plan is a flat $200.` (the plan figure from `PLAN`). A quantity made only
+  of models missing from the price table says `unpriced` instead of a
+  figure; one partly so says `≈ $N + unpriced`, and the page names the
+  models once (`not priced: …`). A helper older than the cost fields gives
+  the pages as they were, without the rows, the column and the S key (the
+  overview still shows its old 30-day figure, and so the estimate line).
+- **First read**: the helper builds its index from the newest transcripts
+  back, so today, 7, 14 and 30 days become complete in turn. Until then a
+  progress block (files read, size, percentage) stands where the first
+  missing section would be, and the sections fill in as they become
+  complete. The projects, detail and days pages show the same block until
+  what they need is read.
+- **Projects** (P): one row per project for today, 7 days or 30 days (Tab),
+  by output or, after S, by figure at API prices (largest first, unpriced
+  last; S again goes back, and each opening starts by output): name, output
+  and share, a share bar, a small bar of the model split, sessions, last
+  reply and the sub-agents' share, and the figure at API prices on the
+  right; when the line and the figure do not fit side by side the line
+  wraps. The summary says the order, the total output and the total at API
+  prices. Shares and share bars are shares of output in both orders. Eight
+  rows a page. Only a project name elides.
+- **Detail** (Enter on a project): the project's output and share,
+  sessions, sub-agents' share, figure at API prices and model split for the
+  period (Tab changes it), that figure by token type (bar and rows, as on
+  the overview), its last 14 days, and its six latest sessions (start, last
+  reply, output, figure at API prices over the session's whole life,
+  sub-agents included; replies and active time on a muted line under each).
+- **Days** (D): the last 14 days, newest first: output as a bar and a
+  number, the figure at API prices, sessions, and the day's top project.
+- **Keys**: on the overview P projects, D days, R reads what was appended
+  since the panel opened (hidden during the first read, unless it failed),
+  Esc closes. On projects ↑↓ select (past a page's end they turn the page),
+  PgUp/PgDn page (only with more than one page), Tab period, S sort (output
+  or API prices; the selected project stays selected), Enter detail, D
+  days, Esc back. In the detail Tab period, Esc back to the same project
+  and page. On days P projects, Esc back. The footer lists exactly the keys
+  that do something; Tab and the letters count only without modifiers.
+  There is no mouse selection.
+- **Where the numbers come from**: everything but the limits from
+  [`desk-tokens`](#tokens-desk-tokens), started when the panel opens and
+  stopped (SIGTERM) when it closes by any path; if it exits while open the
+  panel says so and starts it again after 2 s, doubling to a minute. A
+  helper not on PATH gives one line in place of the panel. The limits come
+  from `$XDG_RUNTIME_DIR/desk/claude-limits.json`, written by Claude Code's
+  status line (see [the plan-limit
+  file](../../../../../modules/home-manager/herdr/README.md#the-plan-limit-file)),
+  watched with a `FileView`: the directory is watched too until a reading
+  exists, so a file that appears after the shell started is still seen.
+  While the panel is closed nothing else runs.
+- **Set by hand**: `PLAN` at the top of `tokens/tokens.js` holds the plan's
+  name and price and the 5-hour row's text when Claude Code reports no
+  5-hour window. Nothing reads them from the account.
+- **What it does not show, and why**: no per-model weekly percentage (the
+  status line does not pass it on and the panel never reads credentials or
+  calls the account's endpoints; the row says it is not reported); no
+  5-hour meter unless Claude Code reports a 5-hour window; no "full in N
+  days" pace line (it would turn token counts into a share of a limit whose
+  token budget is not published); no session titles (the index keeps
+  counters, never message text); no scrolling (the shell has none for
+  panels; the projects list pages instead). The dollar figures are
+  estimates at API list prices, not a bill.
+
+**Seen for real** (by the agent that built it, with the real helper on a
+scratch index and the real transcripts): the cold first read's progress
+states, then the overview, projects (two pages), a project's detail and the
+days page from the real answers; Esc, Esc closing it with no helper left
+running; the bar item in each of its states on the real bar (with a scratch
+limits file). **Simulated** (a stand-in helper answering with invented
+fixtures, a scratch limits file, keys sent over a temporary IPC target):
+every page's states, the limits in every state, long names eliding, the
+helper missing and stopped and recovering, the limits watch with the
+directory and file created after the shell started and replaced by rename
+several times, every row of the key table and the keys that must do
+nothing, and no helper process after every close; then the figures at API
+prices on every page (priced, partly and wholly unpriced, the widest
+figures beside a 61-character name, both orders and S keeping the
+selection) and every page from a helper without cost fields. **Not done
+yet**: the figures from the real helper's answers, real
+key presses and clicks, the window with real keyboard focus, Super+U in a
+reloaded session, and the limits file written by a real Claude Code
+session.
+
 ### Tray menu
 
 `tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
@@ -1362,6 +1483,102 @@ are in `host_row()`.
   and the desktop are configured with), and `comin` and `comin-deploy` (each
   host's own).
 
+## Tokens: desk-tokens
+
+`desk-tokens` (`desk-tokens.py`, `desk-tokens.nix`) is the helper for the
+token panel: JSON lines on stdin and stdout like `desk-fleet`, started when
+the panel opens and stopped when it closes. It counts Claude Code's replies
+from the transcripts into an index of its own and answers the panel's pages:
+the overview, the projects of a period, one project, and the last 14 days.
+The full protocol is the docstring at the top of `desk-tokens.py`.
+
+- **What it reads**: only `*.jsonl` files at three places under
+  `$CLAUDE_CONFIG_DIR/projects` (else `~/.claude/projects`): a session's main
+  transcript `<key>/<session>.jsonl`, a sub-agent's
+  `<key>/<session>/subagents/agent-*.jsonl` and a workflow sub-agent's
+  `<key>/<session>/subagents/workflows/<name>/agent-*.jsonl`. A line is
+  parsed only if its bytes contain `"usage"`; from an assistant record it
+  keeps the six usage counters, the model, the timestamp, `message.id`,
+  `requestId`, `sessionId`, `isSidechain` and `cwd`, and drops the rest.
+- **What it never reads**: message content, tool input or output, titles,
+  slugs, branch names; a workflow's journal, `.meta.json`, `tool-results/`,
+  `memory/`; Claude Code's account files. It has no network code and starts
+  no process. Nothing from a transcript is printed: errors are counts.
+- **The index**: SQLite at `$XDG_STATE_HOME/desk/tokens/index.sqlite` (else
+  `~/.local/state/desk/tokens/`), the directory 0700, the file 0600, with a
+  schema version (schema 1 is upgraded in place, see "Stored costs"; any
+  other version is rebuilt from scratch). One row per
+  reply, keyed `message.id:requestId`, holding only ids, a working
+  directory's row, model name, time, counters and costs; a row per transcript (path,
+  inode, the byte after the last complete line read); folds and projects.
+  Each sync reads a file from that byte; a file that shrank or got a new
+  inode is read again from 0. A reply seen again (the streaming lines of one
+  reply, a resumed or forked session) merges by per-field maximum, so reading
+  twice never counts twice, and the smallest session id keeps it. Lines
+  without both ids and `<synthetic>` replies are skipped and counted. A
+  transcript Claude Code deletes keeps its replies in the index. Sessions,
+  active time and projects are computed from the reply rows at each request,
+  so they are the same however the files were read.
+- **Sub-agents** count in their parent session (`sessionId`) and its
+  project, flagged: they add to the session's output, not to its replies or
+  its active time (the gaps under 10 minutes between main-conversation
+  replies).
+- **Days** are calendar days in the local time zone; "7 days" is today and
+  the 6 days before it, and so on. A first run reads the newest files first,
+  so today, 7, 14 and 30 days become complete in turn (a file last written
+  before a period began cannot hold its replies); a page asked before its
+  period is complete gets a "not ready" answer with the progress. It commits
+  between files, at least every half second, and before saying a period is
+  complete; a SIGTERM rolls back what was read since the last commit, which
+  the next run reads again.
+- **Projects** (`fold_cwd()`): a session belongs to the project of the
+  working directory of its first main-conversation reply. `/tmp/tmp.*` is
+  one project, "temporary directories". A `/tmp/claude-<uid>/<key>/…`
+  scratch directory folds by name on `<key>`. An existing directory folds
+  to its nearest `.git`: a `.git` directory is the project, a `.git` file
+  pointing into `<repo>/.git/worktrees/` folds into `<repo>`, any other
+  `.git` file (a submodule) is its own project; with no `.git` it is its own
+  project. A gone `<repo>/.claude/worktrees/<name>` folds as `<repo>`. Any
+  other gone directory is encoded like Claude Code's keys (every character
+  but ASCII letters and digits to `-`) and folds into the known checkout
+  whose encoded path is its longest prefix followed by `-`; with none it is
+  its own project. A fold read from the file system is kept for good, so a
+  worktree removed later stays with its repository; a fold by name is tried
+  again at every sync, as more checkouts become known.
+- **Known wrong folds**: a removed separate repository `repo-x` folds into
+  a checkout `repo` (as does `repo.x`); a repository with no checkout left
+  stands alone under its directory; a renamed repository splits in two; a
+  session that changes directory stays with its first; a scratch key whose
+  directory had no git (the home folder, say) stands alone under its
+  encoded key.
+- **Prices**: `desk-tokens-prices.json`, built in (`--prices` overrides it):
+  USD per million tokens for input, output, 5-minute and 1-hour cache
+  writes and cache reads, with the page they were read from and the date. A
+  model id with a `-YYYYMMDD` suffix takes its base id's row. A tier
+  (`above`, Haiku 5.5's prompts over 100,000 tokens) applies to a whole reply
+  whose prompt (input, cache reads and both cache writes) is longer; there is
+  no other tier. Batch, data-residency and fast-mode multipliers are not
+  applied. A model missing from the table is reported by name and its tokens
+  are not priced. The dollar figure is an estimate of what the same use
+  would cost at API list prices, not a bill.
+- **Cost fields**: every token quantity in an answer has a `cost` object
+  beside it: `usd`, the sum over the replies that had a price; `priced`,
+  false when there were replies and none had a price (then `usd` is 0.0 and
+  not a figure); `partial`, true when some had none. A period with no
+  replies is priced at 0.0. The 30-day totals and a project's totals add
+  `by_type` (USD per token type, summing to `usd`), and the answers list the
+  period's `unpriced_models`, never added to any figure. A session's cost
+  covers its sub-agents, like its output; a day's cost follows local days.
+  The overview keeps `last30.cost_usd`, the same value as `last30.cost.usd`.
+- **Stored costs**: each reply's five costs and their sum are stored in its
+  index row when it is read (NULL for an unpriced model), and window queries
+  read them from a covering index, so an answer prices nothing. The index
+  remembers a hash of the price table's rates; when the helper starts with a
+  table whose hash differs, it reprices every reply from the stored counters
+  in one transaction, reading no transcript. An index from before costs were
+  stored (schema 1) gains the columns in place and is priced the same way,
+  not rebuilt.
+
 ## Tailscale: status and mesh hosts
 
 `user/quickshell/tailscale/tailscale.js` holds every decision of the
@@ -1505,6 +1722,19 @@ GitHub's runners, cause not known.
   `first`; and a second run with `--read-only` in which every write is
   refused and runs nothing while probes, diff, ssh and attach still work.
   About 50 s.
+- `nix build .#checks.x86_64-linux.tokens-helper`:
+  `tests/tokens/test-desk-tokens.py` runs `desk-tokens`' pure functions
+  (line parsing, the read plan, active time, prices and tiers, folding on a
+  real directory tree, day boundaries across both daylight-saving changes),
+  then the built helper against invented transcript trees: streaming and
+  forked duplicates, an offset falling inside a reply, a truncated last line,
+  sub-agent and workflow files (journals, `.meta.json`, `tool-results/` and
+  `memory/` made unreadable and never opened), skipped lines, shrunk,
+  replaced and deleted files, London and Auckland days, distinct sessions,
+  active time read in three pieces, folds kept and re-tried, prices, a first
+  run's order and readiness with a page asked too early, SIGTERM mid-sync,
+  stdin EOF, the index's mode and columns, and a source with no network or
+  process code. About 10 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the

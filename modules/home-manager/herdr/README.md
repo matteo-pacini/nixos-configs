@@ -40,6 +40,31 @@ rebuild would need trusting again each time. The `herdrCodexHooks` activation
 merges them into Codex's own `~/.codex/hooks.json` (`scripts/codex-hooks.jq`)
 and marks them trusted (`scripts/codex-trust-hooks.py`).
 
+### The plan-limit file
+
+`custom.herdr.workbench.claudeLimitsFile.enable` (off by default; on only on
+BrightFalls) also records Claude Code's plan-limit reading, the `rate_limits`
+its status line receives, for a desktop shell to show. The statusLine command
+becomes `claude-statusline-limits` (`scripts/claude-limits.sh`), which writes
+`$XDG_RUNTIME_DIR/desk/claude-limits.json` and then hands the same input to the
+unchanged `claude-statusline`. The file is one JSON line holding `written_at`
+and the `seven_day` and `five_hour` windows reduced to `used_percentage` and
+`resets_at` (`null` when absent), and nothing else. Every session on the
+machine writes it, each with the reading its own session last received, so
+each window is merged with the file's: a window missing from the input keeps
+the file's, a later `resets_at` wins even if lower, the same `resets_at` keeps
+the higher `used_percentage`, and an earlier one is ignored. The file is
+replaced atomically when the merged windows differ from it, and otherwise
+only every 900 s while a session reports the current window, so `written_at`
+is the last time a running session reported it. Identical or lower readings
+write nothing; an input with no usable window never writes, and the file is
+never deleted. Read-merge-write is not locked: a lower value written over a
+higher one lasts until the next status-line call of a session holding the
+higher. It is written inside and outside herdr terminals;
+every failure is silent. BrightFalls's Quickshell token panel and bar item read
+it (`hosts/BrightFalls/users/matteo/hyprland/`). With the option off, the
+statusLine command is `claude-statusline` as before.
+
 All Claude Code hooks are in one definition in `core.nix`:
 `custom.claude-code.extraSettings` is `types.attrs`, which merges shallowly,
 so a `hooks` set anywhere else would replace them.
@@ -123,7 +148,8 @@ CI runs all three on pull requests (the `herdr-tests` job in
   throwaway repos, so `lib/back.js`'s scripts are tested against git itself
   (the check has `git` on its PATH).
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
-  `hc` that logs its arguments.
+  `hc` that logs its arguments. `claude-limits.sh` runs with a fake `date` (the
+  clock), a fake `npx` (the renderer) and a temporary `XDG_RUNTIME_DIR`.
 - **Not covered:** drawing (there's no headless gpui), and the parts of
   `space-cards/main.js` and `status-bar/main.js` that need `lib/hosts.js` or the
   live app. For those, use `herdr-app check` and `herdr-app shot`.

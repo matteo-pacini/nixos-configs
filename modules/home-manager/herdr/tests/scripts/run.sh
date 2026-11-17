@@ -89,4 +89,177 @@ check "codex-hooks: a changed definition replaces the old one" '[{"command":"her
     jq -c '[.hooks.Interrupt[].hooks[] | {command, timeout}]')"
 check "codex-hooks: from an empty file" "9" "$(merge <<<'{}' | jq '[.hooks[][]] | length')"
 
+# ---- claude-limits.sh ----
+# The renderer, npx, is a fake that prefixes its input; claude-statusline runs
+# the real script. `date` is a fake printing $FAKE_NOW, on PATH only here.
+mkdir "$work/limbin"
+cat >"$work/limbin/npx" <<EOF
+#!$BASH
+printf 'rendered:'
+cat
+EOF
+cat >"$work/limbin/claude-statusline" <<EOF
+#!$BASH
+exec bash -euo pipefail "$scripts/claude-statusline.sh"
+EOF
+cat >"$work/limbin/date" <<EOF
+#!$BASH
+printf '%s\n' "\$FAKE_NOW"
+EOF
+chmod +x "$work/limbin/"*
+export XDG_RUNTIME_DIR="$work/xdg"
+mkdir -m 0700 "$XDG_RUNTIME_DIR"
+lfile="$XDG_RUNTIME_DIR/desk/claude-limits.json"
+
+# Status-line input carrying `rate_limits` = $1, or none when $1 is empty.
+sl() {
+  if [ -n "${1:-}" ]; then
+    jq -nc --argjson r "$1" '{session_id: "s-9", cwd: "/x", model: {display_name: "Opus"}, rate_limits: $r}'
+  else
+    jq -nc '{session_id: "s-9", cwd: "/x", model: {display_name: "Opus"}}'
+  fi
+}
+# Runs claude-limits.sh at time $1 with stdin from the caller, outside herdr.
+# Stdout and stderr land in $work/lim.out and $work/lim.err; prints the exit code.
+lim() {
+  local rc=0
+  : >"$HC_LOG"
+  (unset HC_TERMINAL_ID; PATH="$work/limbin:$PATH" FAKE_NOW=$1 \
+    bash -euo pipefail "$scripts/claude-limits.sh" >"$work/lim.out" 2>"$work/lim.err") || rc=$?
+  echo "$rc"
+}
+# Extra fields and windows are invented, to show only the contract's reach the file.
+both='{"five_hour":{"used_percentage":12.5,"resets_at":1794920000,"extra":1},"seven_day":{"used_percentage":34.25,"resets_at":1795078800},"seven_day_x":{"used_percentage":1,"resets_at":2}}'
+week='{"seven_day":{"used_percentage":34,"resets_at":1795078800}}'
+
+check "claude-limits: no file from no rate_limits" "0 absent" "$(lim 1000 <<<"$(sl)") $([ -e "$lfile" ] && echo present || echo absent)"
+check "claude-limits: no file from empty rate_limits" "0 absent" "$(lim 1000 <<<"$(sl '{}')") $([ -e "$lfile" ] && echo present || echo absent)"
+
+check "claude-limits: both windows, fractional" "0" "$(lim 1000 <<<"$(sl "$both")")"
+check "claude-limits: both windows, the file" \
+  '{"written_at":1000,"seven_day":{"used_percentage":34.25,"resets_at":1795078800},"five_hour":{"used_percentage":12.5,"resets_at":1794920000}}' \
+  "$(cat "$lfile")"
+check "claude-limits: one line ending in a newline" "1" "$(wc -l <"$lfile")"
+check "claude-limits: directory is 0700" "700" "$(stat -c %a "$XDG_RUNTIME_DIR/desk")"
+check "claude-limits: no temporary file left" "claude-limits.json" "$(command ls -A "$XDG_RUNTIME_DIR/desk")"
+check "claude-limits: outside herdr, labels nothing" "" "$(cat "$HC_LOG")"
+check "claude-limits: writer prints nothing on stderr" "" "$(cat "$work/lim.err")"
+
+rm "$lfile"
+lim 1100 <<<"$(sl "$week")" >/dev/null
+check "claude-limits: only seven_day, written at once" \
+  '{"written_at":1100,"seven_day":{"used_percentage":34,"resets_at":1795078800},"five_hour":null}' "$(cat "$lfile")"
+
+# The merge. A file the writer leaves alone keeps its inode and the mtime
+# `put` and `step` give it (epoch 100); a write replaces both.
+R=1795078800 R2=$((1795078800 + 604800)) R0=$((1795078800 - 604800)) F=1794920000
+w() { printf '{"used_percentage":%s,"resets_at":%s}' "$1" "$2"; }
+in7() { printf '{"seven_day":%s}' "$(w "$1" "$2")"; }
+in5() { printf '{"five_hour":%s}' "$(w "$1" "$2")"; }
+in75() { printf '{"seven_day":%s,"five_hour":%s}' "$(w "$1" "$2")" "$(w "$3" "$4")"; }
+fl() { printf '{"written_at":%s,"seven_day":%s,"five_hour":%s}' "$1" "$2" "$3"; }
+put() {
+  printf '%s' "$1" >"$lfile"
+  touch -d @100 "$lfile"
+}
+# Runs the writer at time $1 with rate_limits $2; prints written or untouched.
+step() {
+  local was=absent
+  if [ -e "$lfile" ]; then was=$(stat -c %i "$lfile"); fi
+  lim "$1" <<<"$(sl "$2")" >/dev/null
+  if [ -e "$lfile" ] && [ "$(stat -c '%i %Y' "$lfile")" = "$was 100" ]; then echo untouched; else echo written; fi
+  if [ -e "$lfile" ]; then touch -d @100 "$lfile"; fi
+}
+
+put "$(fl 2000 "$(w 50 $R)" null)"
+check "claude-limits: same resets_at, lower, untouched" "untouched" "$(step 2010 "$(in7 40 $R)")"
+check "claude-limits: same resets_at, higher, written" "written $(fl 2020 "$(w 55 $R)" null)" \
+  "$(step 2020 "$(in7 55 $R)") $(cat "$lfile")"
+check "claude-limits: later resets_at, lower, accepted" "written $(fl 2030 "$(w 5 $R2)" null)" \
+  "$(step 2030 "$(in7 5 $R2)") $(cat "$lfile")"
+check "claude-limits: earlier resets_at, higher, ignored" "untouched" "$(step 2040 "$(in7 99 $R)")"
+check "claude-limits: earlier resets_at at 900 s, not refreshed" "untouched $(fl 2030 "$(w 5 $R2)" null)" \
+  "$(step 2930 "$(in7 99 $R)") $(cat "$lfile")"
+
+put "$(fl 3000 "$(w 30 $R)" "$(w 10 $F)")"
+check "claude-limits: five_hour absent from the input keeps the file's" \
+  "written $(fl 3010 "$(w 31 $R)" "$(w 10 $F)")" "$(step 3010 "$(in7 31 $R)") $(cat "$lfile")"
+check "claude-limits: seven_day absent from the input keeps the file's" \
+  "written $(fl 3020 "$(w 31 $R)" "$(w 12 $F)")" "$(step 3020 "$(in5 12 $F)") $(cat "$lfile")"
+check "claude-limits: present window lower, absent one kept, untouched" "untouched" "$(step 3030 "$(in5 11 $F)")"
+check "claude-limits: windows merge independently in one call" \
+  "written $(fl 3040 "$(w 35 $R)" "$(w 12 $F)")" "$(step 3040 "$(in75 35 $R 8 $F)") $(cat "$lfile")"
+check "claude-limits: only five_hour, lower, at 900 s, refreshed" \
+  "written $(fl 3940 "$(w 35 $R)" "$(w 12 $F)")" "$(step 3940 "$(in5 8 $F)") $(cat "$lfile")"
+
+rm "$lfile"
+check "claude-limits: 77, 80, 78, 73 writes twice" "written written untouched untouched" \
+  "$(step 4000 "$(in7 77 $R)") $(step 4010 "$(in7 80 $R)") $(step 4020 "$(in7 78 $R)") $(step 4030 "$(in7 73 $R)")"
+check "claude-limits: 77, 80, 78, 73 ends at 80" "$(fl 4010 "$(w 80 $R)" null)" "$(cat "$lfile")"
+check "claude-limits: identical reading 1 s and 899 s later, untouched" "untouched untouched" \
+  "$(step 4011 "$(in7 80 $R)") $(step 4909 "$(in7 80 $R)")"
+check "claude-limits: identical reading at 900 s, refreshed" "written $(fl 4910 "$(w 80 $R)" null)" \
+  "$(step 4910 "$(in7 80 $R)") $(cat "$lfile")"
+check "claude-limits: lower reading at 900 s, refreshed at the max" "written $(fl 5810 "$(w 80 $R)" null)" \
+  "$(step 5810 "$(in7 73 $R)") $(cat "$lfile")"
+check "claude-limits: only an earlier resets_at at 900 s, not refreshed" "untouched" \
+  "$(step 6710 "$(in7 90 $R0)")"
+
+put "$(fl 6800 "$(w 78 $R)" null)"
+check "claude-limits: a lost update is repaired" "written $(fl 6810 "$(w 80 $R)" null)" \
+  "$(step 6810 "$(in7 80 $R)") $(cat "$lfile")"
+
+for old in missing '' garbage '[1,2]' "$(fl 7000 '{"used_percentage":"90","resets_at":"1795078800"}' null)" \
+  '{"seven_day":{"used_percentage":34,"resets_at":1795078800},"five_hour":null}'; do
+  if [ "$old" = missing ]; then rm -f "$lfile"; else put "$old"; fi
+  check "claude-limits: file ${old:-empty}, written from the input" "written $(fl 7010 "$(w 34 $R)" null)" \
+    "$(step 7010 "$(in7 34 $R)") $(cat "$lfile")"
+done
+
+put "$(fl 99999 "$(w 80 $R)" null)"
+check "claude-limits: written_at in the future, refreshed" "written $(fl 8000 "$(w 80 $R)" null)" \
+  "$(step 8000 "$(in7 80 $R)") $(cat "$lfile")"
+
+cp "$lfile" "$work/lim.before"
+for input in "$(sl)" "$(sl '{}')" "$(sl '{"seven_day":{"used_percentage":"34","resets_at":1795078800}}')" \
+  "$(sl '{"seven_day":{"used_percentage":34,"resets_at":null}}')"; do
+  lim 5000 <<<"$input" >/dev/null
+  check "claude-limits: no usable window leaves the file as it is: $(jq -c '.rate_limits' <<<"$input")" \
+    "same" "$(cmp -s "$lfile" "$work/lim.before" && echo same || echo differs)"
+done
+
+printf '{"written_at":' >"$lfile"
+lim 1500 <<<"$(sl "$week")" >/dev/null
+check "claude-limits: a corrupt file is replaced" \
+  '{"written_at":1500,"seven_day":{"used_percentage":34,"resets_at":1795078800},"five_hour":null}' "$(cat "$lfile")"
+
+expected=$(sl "$both" | PATH="$work/limbin:$PATH" bash -euo pipefail "$scripts/claude-statusline.sh")
+check "claude-limits: the renderer's stub is reached" "rendered:$(sl "$both")" "$expected"
+lim 1600 <<<"$(sl "$both")" >/dev/null
+check "claude-limits: status line output unchanged" "$expected" "$(cat "$work/lim.out")"
+
+check "claude-limits: XDG_RUNTIME_DIR unset, exit and output" "0 $expected" \
+  "$(unset XDG_RUNTIME_DIR; printf '%s ' "$(lim 1700 <<<"$(sl "$both")")"; cat "$work/lim.out")"
+check "claude-limits: XDG_RUNTIME_DIR unset, nothing on stderr" "" "$(cat "$work/lim.err")"
+
+for case in locked lockeddesk; do
+  rm -rf "$work/xdg-$case"
+  mkdir -p "$work/xdg-$case"
+  if [ "$case" = lockeddesk ]; then mkdir -m 0500 "$work/xdg-$case/desk"; fi
+  chmod 0500 "$work/xdg-$case"
+  check "claude-limits: unwritable $case, exit and output" "0 $expected" \
+    "$(XDG_RUNTIME_DIR="$work/xdg-$case"; printf '%s ' "$(lim 1800 <<<"$(sl "$both")")"; cat "$work/lim.out")"
+  check "claude-limits: unwritable $case, nothing on stderr" "" "$(cat "$work/lim.err")"
+  check "claude-limits: unwritable $case, no file" "absent" \
+    "$([ -e "$work/xdg-$case/desk/claude-limits.json" ] && echo present || echo absent)"
+  chmod -R u+w "$work/xdg-$case"
+done
+
+: >"$HC_LOG"
+rm "$lfile"
+sl "$both" | HC_TERMINAL_ID=t3 PATH="$work/limbin:$PATH" FAKE_NOW=1900 \
+  bash -euo pipefail "$scripts/claude-limits.sh" >/dev/null
+check "claude-limits: inside herdr, labels still set" "label t3" "$(head -n 2 "$HC_LOG" | paste -sd ' ')"
+check "claude-limits: inside herdr, the file too" "1900" "$(jq .written_at "$lfile")"
+
 exit "$failed"
