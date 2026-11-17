@@ -63,6 +63,7 @@ Scope {
 
         function toggle(): void {
             if (!root.open) {
+                Dropdowns.closeOthers("");
                 // Picked once per open, so the launcher stays put if the
                 // pointer crosses to another monitor while it is up.
                 const name = Hyprland.focusedMonitor?.name;

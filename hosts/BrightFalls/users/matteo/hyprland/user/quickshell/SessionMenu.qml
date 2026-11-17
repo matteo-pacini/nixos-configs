@@ -92,6 +92,7 @@ Scope {
 
         function toggle(): void {
             if (!root.open) {
+                Dropdowns.closeOthers("");
                 const name = Hyprland.focusedMonitor?.name;
                 window.screen = Array.from(Quickshell.screens).find(s => s.name === name) ?? Quickshell.screens[0];
                 root.current = root.entries.findIndex(e => e.enabled);
