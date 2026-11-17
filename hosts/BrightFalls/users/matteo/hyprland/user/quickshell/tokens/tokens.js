@@ -21,7 +21,7 @@ const PERIOD_LABELS = { today: "Today", "7d": "7 days", "30d": "30 days" };
 // The overview's sections fill in this order as the first read goes on.
 const READY_KEYS = ["today", "7d", "14d", "30d"];
 // Every key name key() takes.
-const KEY_NAMES = ["Up", "Down", "PgUp", "PgDn", "Tab", "Enter", "Esc", "P", "D", "R"];
+const KEY_NAMES = ["Up", "Down", "PgUp", "PgDn", "Tab", "Enter", "Esc", "P", "D", "R", "S"];
 
 const STALE_SECONDS = 3600;
 
@@ -46,8 +46,22 @@ const TEXT = {
         "7d": ["No Claude Code replies in the last 7 days.", "Tab shows the last 30 days."],
         "30d": ["No Claude Code replies in the last 30 days.", "Tab shows today."]
     },
-    top7Empty: "No Claude Code replies in the last 7 days."
+    top7Empty: "No Claude Code replies in the last 7 days.",
+    price: "At API prices",
+    unpriced: "unpriced",
+    // The one muted line on every page that shows a cost.
+    estimate: `Estimates at API list prices; the plan is a flat $${count(PLAN.usd)}.`
 };
+
+// The five token types in the cost breakdowns, in drawn order, each with the
+// colour of its bar segment (the same in the overview and the detail).
+const TYPES = [
+    { key: "cache_read", label: "Cache read", colour: "purple" },
+    { key: "cache_write_1h", label: "Cache write 1 h", colour: "pink" },
+    { key: "cache_write_5m", label: "Cache write 5 min", colour: "orange" },
+    { key: "output", label: "Output", colour: "green" },
+    { key: "input", label: "Fresh input", colour: "cyan" }
+];
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -95,9 +109,59 @@ function count(n) {
     return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-// Whole US dollars: "≈ $3,571".
+// US dollars: "≈ $0" for 0, "≈ <$0.01" under a cent, two decimals under 10
+// ("≈ $4.37"), whole dollars under 10,000 ("≈ $3,571"), then three
+// significant digits with k or M ("≈ $12.3 k", "≈ $123 k", "≈ $1.23 M"). A
+// value that rounds up to the next form is written in it ("≈ $10", never
+// "≈ $10.00"; "≈ $10.0 k", never "≈ $10,000").
 function money(usd) {
-    return "≈ $" + count(usd);
+    if (usd === 0)
+        return "≈ $0";
+    if (usd < 0.01)
+        return "≈ <$0.01";
+    if (usd < 10 && parseFloat(usd.toFixed(2)) < 10)
+        return "≈ $" + usd.toFixed(2);
+    if (Math.round(usd) < 10000)
+        return "≈ $" + count(usd);
+    const units = [[1e3, "k"], [1e6, "M"]];
+    for (let i = 0; i < units.length; i++) {
+        const v = usd / units[i][0];
+        let d = v < 10 ? 2 : v < 100 ? 1 : 0;
+        let s = v.toFixed(d);
+        if (d === 2 && parseFloat(s) >= 10)
+            s = v.toFixed(d = 1);
+        if (d === 1 && parseFloat(s) >= 100)
+            s = v.toFixed(d = 0);
+        if (parseFloat(s) < 1000 || i === units.length - 1)
+            return `≈ $${s} ${units[i][1]}`;
+    }
+    return "";
+}
+
+// A helper cost object's text: "≈ $4.37"; "unpriced" when none of its
+// replies had a price; "≈ $4.37 + unpriced" when only some had. "" when there
+// is no cost object (a helper older than the cost fields).
+function costText(c) {
+    if (!c || typeof c !== "object")
+        return "";
+    if (c.priced === false)
+        return TEXT.unpriced;
+    if (typeof c.usd !== "number" || !isFinite(c.usd))
+        return "";
+    return money(c.usd) + (c.partial ? ` + ${TEXT.unpriced}` : "");
+}
+
+// The order key of a cost: its priced dollars, or -1 (after every priced
+// cost, zero included) when nothing of it is priced or it is missing.
+function costRank(c) {
+    if (!c || typeof c !== "object" || c.priced === false || typeof c.usd !== "number" || !isFinite(c.usd))
+        return -1;
+    return c.usd;
+}
+
+// "not priced: a, b" for an answer's unpriced_models; "" when none.
+function notPriced(models) {
+    return Array.isArray(models) && models.length ? `not priced: ${models.join(", ")}` : "";
 }
 
 // A ratio as a whole percentage: "47%"; "<1%" for one that rounds to 0 but
@@ -248,6 +312,72 @@ function splitBar(parts) {
     return parts.map(p => ({ frac: p.frac, colour: p.colour }));
 }
 
+function byName(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// The cost-by-type block from a cost object with by_type and the five token
+// counts beside it: { bar: [{ frac, colour }] (each type's share of the
+// priced dollars; all 0 when they are 0), rows: [{ label, colour, tokens,
+// cost }] }, five each, in TYPES order. null without a by_type.
+function byType(cost, counts) {
+    if (!cost || typeof cost !== "object" || !cost.by_type || typeof cost.by_type !== "object")
+        return null;
+    const usd = TYPES.map(ty => Number(cost.by_type[ty.key]) || 0);
+    const sum = usd.reduce((a, b) => a + b, 0);
+    return {
+        bar: TYPES.map((ty, i) => ({ frac: sum > 0 ? usd[i] / sum : 0, colour: ty.colour })),
+        rows: TYPES.map((ty, i) => {
+            const n = counts && typeof counts[ty.key] === "number" ? counts[ty.key] : null;
+            return {
+                label: ty.label,
+                colour: ty.colour,
+                tokens: n === null ? "" : tokens(n),
+                // A type with no tokens cost nothing, whatever else was unpriced.
+                cost: n === 0 ? money(0) : costText({ usd: usd[i], priced: cost.priced, partial: cost.partial })
+            };
+        })
+    };
+}
+
+// Cost objects merged: the priced dollars summed; unpriced when none has a
+// priced part, partial when some part of them is unpriced and some is not.
+function mergeCosts(list) {
+    let usd = 0;
+    let priced = false;
+    let unpriced = false;
+    for (const c of list) {
+        if (!c || typeof c !== "object")
+            continue;
+        if (c.priced !== false) {
+            priced = true;
+            usd += Number(c.usd) || 0;
+        }
+        if (c.priced === false || c.partial)
+            unpriced = true;
+    }
+    return { usd, priced: priced || !unpriced, partial: priced && unpriced };
+}
+
+// The cost by model family: [{ name, colour, share (of tokens, one
+// decimal), cost }], largest cost first, unpriced last, then by name. null
+// when no model carries a cost.
+function familyCosts(models) {
+    if (!(models || []).some(m => m.cost && typeof m.cost === "object"))
+        return null;
+    const costs = {};
+    for (const m of models) {
+        const n = family(m.model).name;
+        (costs[n] = costs[n] || []).push(m.cost);
+    }
+    const rows = split(models, "tokens").map(p => {
+        const c = mergeCosts(costs[p.name]);
+        return { name: p.name, colour: p.colour, share: percent1(p.frac), cost: costText(c), rank: costRank(c) };
+    });
+    rows.sort((a, b) => b.rank - a.rank || byName(a.name, b.name));
+    return rows.map(r => ({ name: r.name, colour: r.colour, share: r.share, cost: r.cost }));
+}
+
 // ---- plan limits ---------------------------------------------------------
 
 function window_(w) {
@@ -371,13 +501,15 @@ function without(map, key) {
 // again (ask once more when it is answered), answers (the last answer kept),
 // waiting (the readiness key a not-ready answer named); progress (the newest
 // progress, from an event or an answer); error (the last sync's error kind,
-// or ""); selected (project id or null); detail (null | { id, name }).
+// or ""); selected (project id or null); detail (null | { id, name }); sort
+// (the projects page's order: "output" | "cost").
 function initial() {
     return {
         open: false,
         helper: "running",
         page: "overview",
         period: "7d",
+        sort: "output",
         nextId: 1,
         asked: {},
         inFlight: {},
@@ -505,7 +637,7 @@ function onAnswer(st, ev) {
         s.answers = withEntry(s.answers, page, ev);
         s.waiting = without(s.waiting, page);
         if (page === "projects" && !ev.error) {
-            const rows = ev.projects || [];
+            const rows = ordered(s, ev);
             if (!rows.some(r => r.id === s.selected))
                 s.selected = rows.length ? rows[0].id : null;
         }
@@ -576,6 +708,15 @@ function periodControl(period) {
     return PERIODS.map(p => ({ label: PERIOD_LABELS[p], on: p === period }));
 }
 
+// A projects answer's rows in the shown order: as the helper sends them (by
+// output) or by cost (largest first, unpriced last, then name, then id).
+function ordered(st, a) {
+    const rows = a.projects || [];
+    if (st.sort !== "cost")
+        return rows;
+    return rows.slice().sort((x, y) => costRank(y.cost) - costRank(x.cost) || byName(x.name, y.name) || x.id - y.id);
+}
+
 function shownProjects(st) {
     if (st.waiting.projects)
         return { kind: "building", period: st.period, rows: [] };
@@ -584,7 +725,7 @@ function shownProjects(st) {
         return { kind: "loading", period: st.period, rows: [] };
     if (a.error)
         return { kind: "error", period: st.period, rows: [], error: a.error };
-    const rows = a.projects || [];
+    const rows = ordered(st, a);
     return { kind: rows.length ? "list" : "empty", period: a.period, rows, answer: a };
 }
 
@@ -633,7 +774,7 @@ function overviewView(st, lim) {
             last30: "30 days",
             cacheHit: "Cache hit",
             subagents: "Sub-agents",
-            price: "At API prices",
+            price: TEXT.price,
             top7: "Projects · 7 days output"
         },
         limits: lim ? lim.panel : limits(null, 0).panel,
@@ -647,6 +788,7 @@ function overviewView(st, lim) {
         // "last30" or "top7"; "" when it is not shown.
         olderBefore: "",
         unreadable: "",
+        estimate: "",
         error: st.error ? `The last read failed (${st.error}). R tries again.` : ""
     };
     const p = st.progress;
@@ -657,7 +799,8 @@ function overviewView(st, lim) {
     if (a.today)
         out.today = {
             output: `${tokens(a.today.output)} tokens · ${count(a.today.sessions)} ${a.today.sessions === 1 ? "session" : "sessions"}`,
-            cache: tokens(a.today.cache_read)
+            cache: tokens(a.today.cache_read),
+            cost: costText(a.today.cost)
         };
     if (a.last14)
         out.last14 = bars(a.last14, a.bounds.today, true);
@@ -669,19 +812,24 @@ function overviewView(st, lim) {
             sentence: "All tokens by model: " + sentence(parts, true),
             cacheHit: percent1(l.cache_hit),
             subagents: `${percent(l.subagent_share)} of output`,
-            price: money(l.cost_usd),
+            // cost_usd: what a helper older than the cost object sends.
+            price: l.cost ? costText(l.cost) : typeof l.cost_usd === "number" ? money(l.cost_usd) : "",
             plan: `(plan $${count(PLAN.usd)})`,
-            unpriced: l.unpriced_models && l.unpriced_models.length ? `not priced: ${l.unpriced_models.join(", ")}` : ""
+            unpriced: notPriced(l.unpriced_models),
+            byType: byType(l.cost, l.totals),
+            families: familyCosts(l.models)
         };
     }
     if (a.top7) {
         const t = a.top7;
         out.top7 = {
-            rows: t.projects.map(r => ({ name: r.name, value: tokens(r.output) })),
+            rows: t.projects.map(r => ({ name: r.name, value: tokens(r.output), cost: costText(r.cost) })),
             more: t.more > 0 ? `and ${count(t.more)} more: P` : "",
             empty: t.projects.length ? "" : TEXT.top7Empty
         };
     }
+    if ((out.today && out.today.cost) || (out.last30 && out.last30.price) || (out.top7 && out.top7.rows.some(r => r.cost)))
+        out.estimate = TEXT.estimate;
     if (reading) {
         const missing = [];
         const names = { today: "today", last14: "14 days", last30: "30 days", top7: "projects" };
@@ -718,6 +866,8 @@ function projectsView(st) {
         rows: [],
         empty: [],
         building: null,
+        unpriced: "",
+        estimate: "",
         error: sp.kind === "error" ? `The helper could not answer: ${sp.error}.` : ""
     };
     if (sp.kind === "empty")
@@ -739,7 +889,8 @@ function projectsView(st) {
     const pages = Math.ceil(rows.length / PAGE_ROWS);
     const first = page * PAGE_ROWS;
     const last = Math.min(rows.length, first + PAGE_ROWS);
-    out.summary = `by output · ${tokens(a.output)} in all`;
+    const total = costText(a.cost);
+    out.summary = `by ${st.sort === "cost" ? "cost" : "output"} · ${tokens(a.output)}` + (total ? ` · ${total}` : "") + " in all";
     out.range = `${first + 1}–${last} of ${rows.length}` + (pages > 1 ? ` · page ${page + 1}/${pages}` : "");
     out.rows = rows.slice(first, last).map((r, j) => {
         const share = a.output > 0 ? r.output / a.output : null;
@@ -751,9 +902,13 @@ function projectsView(st) {
             shareFrac: share || 0,
             split: splitBar(split(r.models, "output")),
             line: `${count(r.sessions)} ${r.sessions === 1 ? "session" : "sessions"} · ${ago(a.now, r.last_reply)} · sub-agents ${percent(r.output > 0 ? r.subagent_output / r.output : null)}`,
+            cost: costText(r.cost),
             selected: first + j === i
         };
     });
+    out.unpriced = notPriced(a.unpriced_models);
+    if (total || rows.some(r => costText(r.cost)))
+        out.estimate = TEXT.estimate;
     return out;
 }
 
@@ -761,17 +916,22 @@ function detailView(st) {
     const out = {
         title: `‹ ${st.detail ? st.detail.name : ""}`,
         periods: periodControl(st.period),
-        labels: { output: "Output", sessions: "Sessions", subagents: "Sub-agents", last14: "Last 14 days · output", rows: "Last sessions" },
-        columns: ["Started", "Last reply", "Output", "Replies", "Active"],
+        labels: { output: "Output", sessions: "Sessions", subagents: "Sub-agents", cost: TEXT.price, byType: "By type", last14: "Last 14 days · output", rows: "Last sessions" },
+        // The fourth header is "" while no session shows a cost.
+        columns: ["Started", "Last reply", "Output", ""],
         state: "loading",
         output: "",
         sessions: "",
         subagents: "",
+        cost: "",
         split: [],
         sentence: "",
+        byType: null,
         last14: null,
         rows: [],
         note: TEXT.activeNote,
+        unpriced: "",
+        estimate: "",
         building: null,
         error: ""
     };
@@ -798,14 +958,23 @@ function detailView(st) {
     out.subagents = `${percent(t.output > 0 ? t.subagent_output / t.output : null)} of output`;
     out.split = splitBar(parts);
     out.sentence = parts.length ? `${sentence(parts, false)} of output` : "";
+    out.cost = costText(t.cost);
+    out.byType = byType(t.cost, t.tokens);
     out.last14 = bars(a.last14, a.bounds.today, false);
     out.rows = a.sessions.map(x => ({
         started: started(x.first_reply, a.now),
         last: ago(a.now, x.last_reply),
         output: tokens(x.output),
+        cost: costText(x.cost),
         replies: count(x.replies),
-        active: activeTime(x.active_seconds)
+        active: activeTime(x.active_seconds),
+        line: `${count(x.replies)} ${x.replies === 1 ? "reply" : "replies"} · active ${activeTime(x.active_seconds)}`
     }));
+    if (out.rows.some(r => r.cost))
+        out.columns = ["Started", "Last reply", "Output", "Cost"];
+    out.unpriced = notPriced(a.unpriced_models);
+    if (out.cost || out.rows.some(r => r.cost))
+        out.estimate = TEXT.estimate;
     return out;
 }
 
@@ -813,9 +982,11 @@ function daysView(st) {
     const out = {
         title: "Days",
         meta: "last 14 days",
-        columns: ["Day", "Output", "", "Sessions", "Top project"],
+        // The fourth header is "" while no day shows a cost.
+        columns: ["Day", "Output", "", "", "Sessions", "Top project"],
         state: "loading",
         rows: [],
+        estimate: "",
         building: null,
         error: ""
     };
@@ -839,10 +1010,15 @@ function daysView(st) {
         frac: most > 0 ? d.output / most : 0,
         colour: d.start === a.bounds.today ? "purple" : "grey",
         output: tokens(d.output),
+        cost: costText(d.cost),
         sessions: count(d.sessions),
         top: d.top ? d.top.name : "",
         today: d.start === a.bounds.today
     }));
+    if (out.rows.some(r => r.cost)) {
+        out.columns = ["Day", "Output", "", "Cost", "Sessions", "Top project"];
+        out.estimate = TEXT.estimate;
+    }
     return out;
 }
 
@@ -895,6 +1071,9 @@ function table(st) {
             });
         }
         t.push({ keys: ["Tab"], hint: ["Tab", "period"], run: s => ask(copy(s, { period: nextPeriod(s.period) }), "projects") });
+        // Not offered for an answer without costs (an older helper).
+        if (sp.kind === "list" && sp.answer.cost)
+            t.push({ keys: ["S"], hint: ["S", "sort"], run: s => same(copy(s, { sort: s.sort === "cost" ? "output" : "cost" })) });
         if (sp.kind === "list" && rows.length > PAGE_ROWS) {
             t.push({
                 keys: ["PgUp", "PgDn"],
@@ -921,7 +1100,7 @@ function table(st) {
 }
 
 // A key pressed in the open panel. `key` is one of KEY_NAMES ("Up", "Down",
-// "PgUp", "PgDn", "Tab", "Enter", "Esc", "P", "D", "R"). Returns { state,
+// "PgUp", "PgDn", "Tab", "Enter", "Esc", "P", "D", "R", "S"). Returns { state,
 // effects, handled }; handled is false for a key the footer does not offer
 // in this state, which then changes nothing. Effects: { do: "send", req }
 // (write req as one JSON line to the helper) and { do: "close" } (close the
@@ -948,24 +1127,34 @@ function hints(st) {
 // ("" when none); only the current page's view is filled, the others null.
 //   overview: { title, meta, labels: { limits, chip, today, output, cache,
 //     last14, last30, cacheHit, subagents, price, top7 } (the sections' and
-//     rows' names), limits (limits().panel), loading (no answer yet), today: null | { output, cache }, last14: null | bars, last30:
-//     null | { split, sentence, cacheHit, subagents, price, plan, unpriced },
-//     top7: null | { rows: [{ name, value }], more, empty }, older: null |
-//     { label, line, pct, frac, note }, olderBefore, unreadable, error }
+//     rows' names; price also names Today's cost row), limits
+//     (limits().panel), loading (no answer yet), today: null | { output,
+//     cache, cost }, last14: null | bars, last30: null | { split, sentence,
+//     cacheHit, subagents, price, plan, unpriced, byType: null | byType,
+//     families: null | [{ name, colour, share, cost }] }, top7: null |
+//     { rows: [{ name, value, cost }], more, empty }, older: null | { label,
+//     line, pct, frac, note }, olderBefore, unreadable, estimate, error }
 //   bars: { bars: [{ frac, colour }] (oldest first), left, middle, right }
+//   byType: { bar: [{ frac, colour }], rows: [{ label, colour, tokens,
+//     cost }] }, five each, in the same order and colours on every page
 //   projects: { title, periods: [{ label, on }], state: "loading" | "list" |
 //     "empty" | "building" | "error", summary, range, rows: [{ id, name,
-//     output, share, shareFrac, split: [{ frac, colour }], line, selected }]
-//     (this page only), empty (two lines), building: null | { label, line,
-//     pct, frac, note }, error }
-//   detail: { title, periods, labels: { output, sessions, subagents, last14,
-//     rows }, columns (the sessions grid's five headers), state: "loading" |
-//     "shown" | "building" | "error", output, sessions, subagents, split, sentence, last14: null |
-//     bars, rows: [{ started, last, output, replies, active }], note,
-//     building, error }
-//   days: { title, meta, columns, state: "loading" | "shown" | "building" |
-//     "error", rows: [{ day, frac, colour, output, sessions, top, today }]
-//     (newest first), building, error }
+//     output, share, shareFrac, split: [{ frac, colour }], line, cost,
+//     selected }] (this page only, in the shown order), empty (two lines),
+//     building: null | { label, line, pct, frac, note }, unpriced, estimate,
+//     error }
+//   detail: { title, periods, labels: { output, sessions, subagents, cost,
+//     byType, last14, rows }, columns (the sessions grid's four headers),
+//     state: "loading" | "shown" | "building" | "error", output, sessions,
+//     subagents, cost, split, sentence, byType: null | byType, last14: null
+//     | bars, rows: [{ started, last, output, cost, replies, active, line }],
+//     note, unpriced, estimate, building, error }
+//   days: { title, meta, columns (six headers), state: "loading" | "shown" |
+//     "building" | "error", rows: [{ day, frac, colour, output, cost,
+//     sessions, top, today }] (newest first), estimate, building, error }
+// A cost text is "" when the helper sent no cost for it; estimate (the one
+// muted line above the footer) and unpriced ("not priced: …") are "" when
+// not shown.
 function view(st, lim) {
     const out = { single: single(st), page: st.page, hints: hints(st), overview: null, projects: null, detail: null, days: null };
     if (out.single)
@@ -984,7 +1173,7 @@ function view(st, lim) {
 if (typeof module !== "undefined")
     module.exports = {
         PLAN, PAGE_ROWS, PERIODS, KEY_NAMES, TEXT,
-        tokens, count, money, percent, percent1, bytes, ago, activeTime, started, resets, dayShort, dayName,
+        tokens, count, money, costText, percent, percent1, bytes, ago, activeTime, started, resets, dayShort, dayName,
         family, split, sentence,
         limits,
         initial, opened, closed, helper, event, key, hints, view

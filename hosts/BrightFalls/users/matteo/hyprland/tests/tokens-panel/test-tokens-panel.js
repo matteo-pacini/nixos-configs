@@ -54,11 +54,12 @@ function overview() {
 function projects() {
     return answer(T.key(overview(), "P").state, "projects-7d.json", "projects").state;
 }
-// A projects answer with `count` rows for `period`, row i with id 100 + i.
+// A projects answer with `count` rows for `period`, row i with id 100 + i;
+// by cost the order is the reverse of by output.
 function rowsAnswer(count, period, first) {
     const rows = [];
     for (let i = 0; i < count; i++)
-        rows.push({ id: (first || 100) + i, name: `p${i}`, output: 1000 * (count - i), subagent_output: 0, models: [{ model: "claude-opus-5-5", output: 1000 * (count - i) }], sessions: 1, last_reply: NOW - 30 });
+        rows.push({ id: (first || 100) + i, name: `p${i}`, output: 1000 * (count - i), subagent_output: 0, models: [{ model: "claude-opus-5-5", output: 1000 * (count - i) }], sessions: 1, last_reply: NOW - 30, cost: { usd: i, priced: true, partial: false } });
     return Object.assign(fx("projects-7d.json"), { period, projects: rows, output: rows.reduce((a, r) => a + r.output, 0) });
 }
 const feed = (st, obj, page) => T.event(st, JSON.stringify(Object.assign({}, obj, { id: st.asked[page] })));
@@ -106,6 +107,30 @@ t("counts, money, percentages", () => {
     assert.equal(T.percent1(0), "0.0%");
     assert.equal(T.percent1(0.0004), "<0.1%");
     assert.equal(T.percent1(null), "–");
+});
+
+t("money: every form and the unit edges", () => {
+    const want = [
+        [0, "≈ $0"], [0.0001, "≈ <$0.01"], [0.004, "≈ <$0.01"], [0.0099, "≈ <$0.01"], [0.01, "≈ $0.01"],
+        [4.37, "≈ $4.37"], [9.994, "≈ $9.99"], [9.996, "≈ $10"], [10, "≈ $10"], [12.4, "≈ $12"],
+        [999.5, "≈ $1,000"], [3571.42, "≈ $3,571"], [9999.4, "≈ $9,999"], [9999.6, "≈ $10.0 k"],
+        [10000, "≈ $10.0 k"], [12300, "≈ $12.3 k"], [99960, "≈ $100 k"], [123456, "≈ $123 k"],
+        [999500, "≈ $1.00 M"], [1234567, "≈ $1.23 M"], [12345678, "≈ $12.3 M"]
+    ];
+    for (const [v, s] of want)
+        assert.equal(T.money(v), s, String(v));
+});
+
+t("cost texts: priced, partial, unpriced, zero, missing", () => {
+    const C = (usd, priced, partial) => ({ usd, priced, partial });
+    assert.equal(T.costText(C(1204.1, true, false)), "≈ $1,204");
+    assert.equal(T.costText(C(1204.1, true, true)), "≈ $1,204 + unpriced");
+    assert.equal(T.costText(C(0.004, true, true)), "≈ <$0.01 + unpriced");
+    assert.equal(T.costText(C(0, false, false)), "unpriced");
+    // No replies at all: zero tokens, zero dollars, priced.
+    assert.equal(T.costText(C(0, true, false)), "≈ $0");
+    for (const c of [undefined, null, 5, "x", {}, { usd: "1" }, { usd: NaN, priced: true }])
+        assert.equal(T.costText(c), "", JSON.stringify(c));
 });
 
 t("bytes", () => {
@@ -300,7 +325,7 @@ t("overview: normal, as drawn", () => {
     });
     assert.equal(o.limits, LIM.panel);
     assert.equal(o.loading, false);
-    assert.deepEqual(o.today, { output: "463 k tokens · 14 sessions", cache: "96.8 M" });
+    assert.deepEqual(o.today, { output: "463 k tokens · 14 sessions", cache: "96.8 M", cost: "≈ $61" });
     assert.equal(o.last14.bars.length, 14);
     assert.deepEqual(o.last14.bars[11], { frac: 1, colour: "grey" });
     assert.deepEqual(o.last14.bars[13], { frac: 463000 / 3750000, colour: "purple" });
@@ -317,15 +342,70 @@ t("overview: normal, as drawn", () => {
     assert.equal(o.last30.plan, "(plan $200)");
     assert.equal(o.last30.unpriced, "");
     assert.deepEqual(o.top7, {
-        rows: [{ name: "alpha", value: "8.83 M" }, { name: "beta", value: "5.12 M" }, { name: "gamma", value: "1.71 M" }, { name: "temporary directories", value: "1.53 M" }],
+        rows: [{ name: "alpha", value: "8.83 M", cost: "≈ $1,204" }, { name: "beta", value: "5.12 M", cost: "≈ $690" }, { name: "gamma", value: "1.71 M", cost: "≈ $202" }, { name: "temporary directories", value: "1.53 M", cost: "≈ $180" }],
         more: "and 10 more: P",
         empty: ""
     });
     assert.equal(o.older, null);
     assert.equal(o.olderBefore, "");
     assert.equal(o.unreadable, "");
+    assert.equal(o.estimate, "Estimates at API list prices; the plan is a flat $200.");
     assert.equal(o.error, "");
     assert.deepEqual(v.hints, [["P", "projects"], ["D", "days"], ["R", "refresh"], ["Esc", "close"]]);
+});
+
+t("overview: costs by type and by family, as laid out", () => {
+    const l = T.view(overview(), LIM).overview.last30;
+    assert.equal(l.price, "≈ $3,571");
+    assert.deepEqual(l.byType.rows, [
+        { label: "Cache read", colour: "purple", tokens: "9.81 B", cost: "≈ $1,844" },
+        { label: "Cache write 1 h", colour: "pink", tokens: "112 M", cost: "≈ $752" },
+        { label: "Cache write 5 min", colour: "orange", tokens: "46.3 M", cost: "≈ $209" },
+        { label: "Output", colour: "green", tokens: "33.4 M", cost: "≈ $766" },
+        { label: "Fresh input", colour: "cyan", tokens: "103 k", cost: "≈ $0.47" }
+    ]);
+    assert.deepEqual(l.byType.bar.map(b => b.colour), l.byType.rows.map(r => r.colour));
+    assert.ok(Math.abs(l.byType.bar.reduce((a, b) => a + b.frac, 0) - 1) < 1e-12);
+    assert.ok(Math.abs(l.byType.bar[0].frac - 1844 / 3571.42) < 1e-12);
+    // By cost, not by tokens: Sonnet's 2 M tokens cost more than Haiku's 28 M.
+    assert.deepEqual(l.families, [
+        { name: "Opus", colour: "purple", share: "90.2%", cost: "≈ $3,220" },
+        { name: "Fable", colour: "pink", share: "9.5%", cost: "≈ $330" },
+        { name: "Sonnet", colour: "green", share: "<0.1%", cost: "≈ $18" },
+        { name: "Haiku", colour: "cyan", share: "0.3%", cost: "≈ $2.50" }
+    ]);
+});
+
+t("overview: partly and wholly unpriced costs, and zero cost", () => {
+    const a = fx("overview-full.json");
+    const l30 = a.last30;
+    l30.unpriced_models = ["claude-fable-5-2"];
+    l30.cost.partial = true;
+    l30.models.find(m => m.model === "claude-fable-5-2").cost = { usd: 0, priced: false, partial: false };
+    l30.models.find(m => m.model === "claude-opus-4-1").cost.partial = true;
+    l30.totals.input = 0;
+    l30.cost.by_type.input = 0;
+    a.today.cost = { usd: 0, priced: false, partial: false };
+    let o = T.view(feed(T.opened().state, a, "overview").state, LIM).overview;
+    assert.equal(o.today.cost, "unpriced");
+    assert.equal(o.last30.price, "≈ $3,571 + unpriced");
+    assert.equal(o.last30.unpriced, "not priced: claude-fable-5-2");
+    assert.deepEqual(o.last30.byType.rows.map(r => r.cost), ["≈ $1,844 + unpriced", "≈ $752 + unpriced", "≈ $209 + unpriced", "≈ $766 + unpriced", "≈ $0"]);
+    // Unpriced last; a family with one partly priced model is partial.
+    assert.deepEqual(o.last30.families.map(f => [f.name, f.cost]), [["Opus", "≈ $3,220 + unpriced"], ["Sonnet", "≈ $18"], ["Haiku", "≈ $2.50"], ["Fable", "unpriced"]]);
+    // Nothing priced: no figure anywhere, every bar segment 0.
+    l30.cost = { usd: 0, priced: false, partial: false, by_type: { input: 0, output: 0, cache_read: 0, cache_write_5m: 0, cache_write_1h: 0 } };
+    o = T.view(feed(T.opened().state, a, "overview").state, LIM).overview;
+    assert.equal(o.last30.price, "unpriced");
+    assert.deepEqual(o.last30.byType.rows.map(r => r.cost), ["unpriced", "unpriced", "unpriced", "unpriced", "≈ $0"]);
+    assert.ok(o.last30.byType.bar.every(b => b.frac === 0));
+    // Zero cost, zero tokens.
+    l30.cost = { usd: 0, priced: true, partial: false, by_type: { input: 0, output: 0, cache_read: 0, cache_write_5m: 0, cache_write_1h: 0 } };
+    l30.totals = { input: 0, output: 0, cache_read: 0, cache_write_5m: 0, cache_write_1h: 0 };
+    o = T.view(feed(T.opened().state, a, "overview").state, LIM).overview;
+    assert.equal(o.last30.price, "≈ $0");
+    assert.deepEqual(o.last30.byType.rows.map(r => [r.tokens, r.cost]), Array(5).fill(["0", "≈ $0"]));
+    assert.ok(o.last30.byType.bar.every(b => b.frac === 0));
 });
 
 t("overview: not priced, unreadable, null ratios, one session, no more projects, no output", () => {
@@ -368,7 +448,8 @@ t("overview: first run, as drawn, then filling section by section", () => {
     let v = T.view(st, LIM);
     let o = v.overview;
     assert.equal(o.meta, "reading transcripts…");
-    assert.deepEqual(o.today, { output: "463 k tokens · 14 sessions", cache: "96.8 M" });
+    assert.deepEqual(o.today, { output: "463 k tokens · 14 sessions", cache: "96.8 M", cost: "≈ $61" });
+    assert.equal(o.estimate, T.TEXT.estimate);
     assert.equal(o.last14, null);
     assert.equal(o.last30, null);
     assert.equal(o.top7, null);
@@ -512,7 +593,7 @@ t("projects: 7 days, page 1 of 2, as drawn", () => {
     assert.equal(p.title, "Projects");
     assert.deepEqual(p.periods, [{ label: "Today", on: false }, { label: "7 days", on: true }, { label: "30 days", on: false }]);
     assert.equal(p.state, "list");
-    assert.equal(p.summary, "by output · 18.7 M in all");
+    assert.equal(p.summary, "by output · 18.7 M · ≈ $2,104 + unpriced in all");
     assert.equal(p.range, "1–8 of 14 · page 1/2");
     assert.equal(p.rows.length, 8);
     assert.deepEqual(p.rows.map(x => [x.name, x.output, x.share, x.line]), [
@@ -530,7 +611,10 @@ t("projects: 7 days, page 1 of 2, as drawn", () => {
     assert.deepEqual(p.rows[0].split, [{ frac: 6560000 / 8830000, colour: "purple" }, { frac: 2200000 / 8830000, colour: "pink" }, { frac: 70000 / 8830000, colour: "cyan" }]);
     // Ordered by output, whatever the answer's model order.
     assert.deepEqual(p.rows[3].split.map(s => s.colour), ["cyan", "purple", "pink"]);
-    assert.deepEqual(v.hints, [["↑↓", "select"], ["Enter", "detail"], ["Tab", "period"], ["PgUp/PgDn", "page"], ["D", "days"], ["Esc", "back"]]);
+    assert.deepEqual(p.rows.map(x => x.cost), ["≈ $1,204", "≈ $690", "≈ $202", "≈ $180", "≈ $1.50", "≈ $61", "≈ $45", "≈ $30"]);
+    assert.equal(p.unpriced, "not priced: claude-x-9");
+    assert.equal(p.estimate, T.TEXT.estimate);
+    assert.deepEqual(v.hints, [["↑↓", "select"], ["Enter", "detail"], ["Tab", "period"], ["S", "sort"], ["PgUp/PgDn", "page"], ["D", "days"], ["Esc", "back"]]);
 });
 
 t("projects: today with one project, as drawn", () => {
@@ -538,10 +622,11 @@ t("projects: today with one project, as drawn", () => {
     assert.equal(r.state.period, "today");
     const v = T.view(answer(r.state, "projects-today.json", "projects").state, LIM);
     assert.deepEqual(v.projects.periods.map(x => x.on), [true, false, false]);
-    assert.equal(v.projects.summary, "by output · 463 k in all");
+    assert.equal(v.projects.summary, "by output · 463 k · ≈ $61 in all");
     assert.equal(v.projects.range, "1–1 of 1");
-    assert.deepEqual(v.projects.rows.map(x => [x.name, x.output, x.share, x.shareFrac, x.line, x.selected]), [["alpha", "463 k", "100%", 1, "14 sessions · now · sub-agents 6%", true]]);
-    assert.deepEqual(v.hints, [["↑↓", "select"], ["Enter", "detail"], ["Tab", "period"], ["D", "days"], ["Esc", "back"]]);
+    assert.deepEqual(v.projects.rows.map(x => [x.name, x.output, x.share, x.shareFrac, x.line, x.cost, x.selected]), [["alpha", "463 k", "100%", 1, "14 sessions · now · sub-agents 6%", "≈ $61", true]]);
+    assert.equal(v.projects.unpriced, "");
+    assert.deepEqual(v.hints, [["↑↓", "select"], ["Enter", "detail"], ["Tab", "period"], ["S", "sort"], ["D", "days"], ["Esc", "back"]]);
 });
 
 t("projects: empty period, each wording, as drawn for today", () => {
@@ -551,6 +636,7 @@ t("projects: empty period, each wording, as drawn for today", () => {
     assert.deepEqual(v.projects.empty, ["No Claude Code replies yet today.", "Tab shows the last 7 days."]);
     assert.equal(v.projects.summary, "");
     assert.deepEqual(v.projects.rows, []);
+    assert.equal(v.projects.estimate, "");
     assert.deepEqual(v.hints, [["Tab", "period"], ["D", "days"], ["Esc", "back"]]);
     st = T.key(overview(), "P").state;
     v = T.view(feed(st, Object.assign(fx("projects-today-empty.json"), { period: "7d" }), "projects").state, LIM);
@@ -734,6 +820,108 @@ t("projects: selection across period changes: kept, moved to another page, gone"
     assert.ok(again.effects[0].req.id > st.asked.projects);
 });
 
+t("projects: S sorts by cost, unpriced last, and back", () => {
+    let r = T.key(projects(), "S");
+    assert.equal(r.handled, true);
+    assert.deepEqual(r.effects, []);
+    let p = T.view(r.state, LIM).projects;
+    assert.equal(p.summary, "by cost · 18.7 M · ≈ $2,104 + unpriced in all");
+    assert.equal(p.range, "1–8 of 14 · page 1/2");
+    assert.deepEqual(p.rows.map(x => [x.name, x.cost]), [
+        ["alpha", "≈ $1,204"], ["beta", "≈ $690"], ["gamma", "≈ $202"], ["temporary directories", "≈ $180"],
+        ["epsilon", "≈ $61"], ["zeta", "≈ $45"], ["eta", "≈ $30"], ["theta", "≈ $4.37"]
+    ]);
+    // Shares stay shares of output.
+    assert.equal(p.rows[4].share, "2%");
+    assert.equal(p.rows[0].selected, true);
+    r = T.key(r.state, "PgDn");
+    p = T.view(r.state, LIM).projects;
+    assert.equal(r.state.selected, 16);
+    assert.equal(p.range, "9–14 of 14 · page 2/2");
+    // iota and kappa cost the same: by name. mu is unpriced: last, after
+    // lambda's fraction of a cent.
+    assert.deepEqual(p.rows.map(x => [x.name, x.cost]), [
+        ["iota", "≈ $2.10"], ["kappa", "≈ $2.10"], ["delta", "≈ $1.50"], ["nu", "≈ $1.00"], ["lambda", "≈ <$0.01"], ["mu", "unpriced"]
+    ]);
+    // ↓ walks the cost order.
+    r = keys(r.state, ["Down", "Down"]);
+    assert.equal(r.state.selected, 11);
+    r = T.key(r.state, "S");
+    p = T.view(r.state, LIM).projects;
+    assert.equal(p.summary, "by output · 18.7 M · ≈ $2,104 + unpriced in all");
+    assert.equal(r.state.selected, 11);
+    assert.equal(p.range, "1–8 of 14 · page 1/2");
+    assert.equal(p.rows[4].selected, true);
+    assert.deepEqual(T.key(r.state, "Down").state.selected, 12);
+});
+
+t("projects: ties in cost by name, then id; zero before unpriced", () => {
+    const a = rowsAnswer(5, "7d");
+    const c = (usd, priced) => ({ usd, priced, partial: false });
+    a.projects[0] = Object.assign(a.projects[0], { name: "same", cost: c(3, true) });
+    a.projects[1] = Object.assign(a.projects[1], { name: "same", cost: c(3, true) });
+    a.projects[2] = Object.assign(a.projects[2], { name: "abc", cost: c(3, true) });
+    a.projects[3] = Object.assign(a.projects[3], { name: "unp", cost: c(0, false) });
+    a.projects[4] = Object.assign(a.projects[4], { name: "zero", cost: c(0, true) });
+    const st = T.key(feed(T.key(overview(), "P").state, a, "projects").state, "S").state;
+    const rows = T.view(st, LIM).projects.rows;
+    assert.deepEqual(rows.map(x => [x.name, x.id]), [["abc", 102], ["same", 100], ["same", 101], ["zero", 104], ["unp", 103]]);
+});
+
+t("projects: the selection stays on its project across a sort, on its new page", () => {
+    // delta: row 5 by output (page 1), row 11 by cost (page 2).
+    let st = keys(projects(), ["Down", "Down", "Down", "Down"]).state;
+    assert.equal(st.selected, 11);
+    st = T.key(st, "S").state;
+    let p = T.view(st, LIM).projects;
+    assert.equal(st.selected, 11);
+    assert.equal(p.range, "9–14 of 14 · page 2/2");
+    assert.deepEqual(p.rows.map(x => x.selected), [false, false, true, false, false, false]);
+    // PgUp goes to the first row of page 1 in the cost order.
+    assert.equal(T.key(st, "PgUp").state.selected, 3);
+    // Enter opens the selected project; Esc comes back sorted, same place.
+    let r = T.key(st, "Enter");
+    assert.equal(sends(r)[0].project, 11);
+    st = answer(T.key(r.state, "Esc").state, "projects-7d.json", "projects").state;
+    p = T.view(st, LIM).projects;
+    assert.equal(st.sort, "cost");
+    assert.equal(p.range, "9–14 of 14 · page 2/2");
+    assert.equal(p.rows[2].selected, true);
+    // A new period keeps the order; a selection gone from it goes to the top
+    // of the cost order.
+    st = feed(T.key(st, "Tab").state, rowsAnswer(10, "30d"), "projects").state;
+    assert.equal(st.sort, "cost");
+    assert.equal(st.selected, 109);
+    assert.equal(T.view(st, LIM).projects.rows[0].name, "p9");
+    // P from elsewhere: the top of the cost order.
+    st = T.key(T.key(st, "Esc").state, "P").state;
+    assert.equal(st.sort, "cost");
+    st = feed(st, rowsAnswer(10, "30d"), "projects").state;
+    assert.equal(T.view(st, LIM).projects.rows[0].selected, true);
+    assert.equal(st.selected, 109);
+});
+
+t("projects: the order is back to output at the next open", () => {
+    const st = T.key(projects(), "S").state;
+    assert.equal(st.sort, "cost");
+    const again = T.opened(T.closed(st)).state;
+    assert.equal(again.sort, "output");
+    const s2 = answer(T.key(answer(again, "overview-full.json", "overview").state, "P").state, "projects-7d.json", "projects").state;
+    assert.equal(T.view(s2, LIM).projects.summary, "by output · 18.7 M · ≈ $2,104 + unpriced in all");
+    assert.equal(T.view(s2, LIM).projects.rows[4].name, "delta");
+});
+
+t("projects: a partly priced row, and a fully priced period", () => {
+    const a = fx("projects-7d.json");
+    a.projects[1].cost.partial = true;
+    a.cost.partial = false;
+    a.unpriced_models = [];
+    const p = T.view(feed(T.key(overview(), "P").state, a, "projects").state, LIM).projects;
+    assert.equal(p.rows[1].cost, "≈ $690 + unpriced");
+    assert.equal(p.summary, "by output · 18.7 M · ≈ $2,104 in all");
+    assert.equal(p.unpriced, "");
+});
+
 t("projects: a 61-character name passes through whole", () => {
     const name = "an-example-repository-with-a-name-far-too-long-for-the-panel1";
     assert.equal(name.length, 61);
@@ -777,11 +965,24 @@ t("detail: Enter asks for the selected project; drawn as designed", () => {
     assert.equal(d.title, "‹ alpha");
     assert.deepEqual(d.periods.map(x => x.on), [false, true, false]);
     assert.equal(d.state, "shown");
-    assert.deepEqual(d.labels, { output: "Output", sessions: "Sessions", subagents: "Sub-agents", last14: "Last 14 days · output", rows: "Last sessions" });
-    assert.deepEqual(d.columns, ["Started", "Last reply", "Output", "Replies", "Active"]);
+    assert.deepEqual(d.labels, { output: "Output", sessions: "Sessions", subagents: "Sub-agents", cost: "At API prices", byType: "By type", last14: "Last 14 days · output", rows: "Last sessions" });
+    assert.deepEqual(d.columns, ["Started", "Last reply", "Output", "Cost"]);
     assert.equal(d.output, "8.83 M · 47% of all");
     assert.equal(d.sessions, "131");
     assert.equal(d.subagents, "10% of output");
+    assert.equal(d.cost, "≈ $1,204");
+    assert.deepEqual(d.byType.rows, [
+        { label: "Cache read", colour: "purple", tokens: "2.81 B", cost: "≈ $681" },
+        { label: "Cache write 1 h", colour: "pink", tokens: "30.5 M", cost: "≈ $260" },
+        { label: "Cache write 5 min", colour: "orange", tokens: "11.0 M", cost: "≈ $59" },
+        { label: "Output", colour: "green", tokens: "8.83 M", cost: "≈ $203" },
+        { label: "Fresh input", colour: "cyan", tokens: "21.0 k", cost: "≈ $0.11" }
+    ]);
+    assert.deepEqual(d.byType.bar.map(b => b.colour), ["purple", "pink", "orange", "green", "cyan"]);
+    assert.ok(Math.abs(d.byType.bar[0].frac - 681.3 / 1204.1) < 1e-12);
+    assert.ok(Math.abs(d.byType.bar.reduce((a, b) => a + b.frac, 0) - 1) < 1e-12);
+    assert.equal(d.unpriced, "");
+    assert.equal(d.estimate, T.TEXT.estimate);
     assert.deepEqual(d.split.map(s => s.colour), ["purple", "pink", "cyan"]);
     assert.equal(d.split[0].frac, 6540000 / 8830000);
     assert.equal(d.sentence, "Opus 74%, Fable 25%, Haiku 1% of output");
@@ -790,12 +991,12 @@ t("detail: Enter asks for the selected project; drawn as designed", () => {
     assert.equal(d.last14.right, "today");
     assert.deepEqual(d.last14.bars[13], { frac: 463000 / 3520000, colour: "purple" });
     assert.deepEqual(d.rows, [
-        { started: "09:14", last: "now", output: "3.9 k", replies: "14", active: "1 min" },
-        { started: "Sat 18:29", last: "now", output: "1.26 M", replies: "1,461", active: "17 h 03" },
-        { started: "09:14", last: "now", output: "3.1 k", replies: "6", active: "<1 min" },
-        { started: "08:31", last: "23 min ago", output: "59.4 k", replies: "66", active: "10 min" },
-        { started: "08:34", last: "35 min ago", output: "23.3 k", replies: "51", active: "5 min" },
-        { started: "08:24", last: "43 min ago", output: "37.4 k", replies: "50", active: "7 min" }
+        { started: "09:14", last: "now", output: "3.9 k", cost: "≈ $1.92", replies: "14", active: "1 min", line: "14 replies · active 1 min" },
+        { started: "Sat 18:29", last: "now", output: "1.26 M", cost: "≈ $172", replies: "1,461", active: "17 h 03", line: "1,461 replies · active 17 h 03" },
+        { started: "09:14", last: "now", output: "3.1 k", cost: "≈ <$0.01", replies: "6", active: "<1 min", line: "6 replies · active <1 min" },
+        { started: "08:31", last: "23 min ago", output: "59.4 k", cost: "≈ $10", replies: "66", active: "10 min", line: "66 replies · active 10 min" },
+        { started: "08:34", last: "35 min ago", output: "23.3 k", cost: "≈ $4.37", replies: "51", active: "5 min", line: "51 replies · active 5 min" },
+        { started: "08:24", last: "43 min ago", output: "37.4 k", cost: "unpriced", replies: "50", active: "7 min", line: "50 replies · active 7 min" }
     ]);
     assert.equal(d.note, "Active: time between replies, gaps over 10 min left out.");
     assert.deepEqual(v.hints, [["Tab", "period"], ["Esc", "back"]]);
@@ -889,10 +1090,11 @@ t("days: as drawn", () => {
     const d = v.days;
     assert.equal(d.title, "Days");
     assert.equal(d.meta, "last 14 days");
-    assert.deepEqual(d.columns, ["Day", "Output", "", "Sessions", "Top project"]);
+    assert.deepEqual(d.columns, ["Day", "Output", "", "Cost", "Sessions", "Top project"]);
     assert.equal(d.rows.length, 14);
-    assert.deepEqual(d.rows[0], { day: "Tue 17", frac: 463000 / 3750000, colour: "purple", output: "463 k", sessions: "14", top: "alpha", today: true });
-    assert.deepEqual(d.rows[2], { day: "Sun 15", frac: 1, colour: "grey", output: "3.75 M", sessions: "56", top: "alpha", today: false });
+    assert.deepEqual(d.rows[0], { day: "Tue 17", frac: 463000 / 3750000, colour: "purple", output: "463 k", cost: "≈ $60", sessions: "14", top: "alpha", today: true });
+    assert.deepEqual(d.rows[2], { day: "Sun 15", frac: 1, colour: "grey", output: "3.75 M", cost: "≈ $488", sessions: "56", top: "alpha", today: false });
+    assert.equal(d.estimate, T.TEXT.estimate);
     assert.deepEqual(d.rows.map(x => [x.day, x.output, x.sessions, x.top]), [
         ["Tue 17", "463 k", "14", "alpha"], ["Mon 16", "2.97 M", "55", "alpha"], ["Sun 15", "3.75 M", "56", "alpha"],
         ["Sat 14", "3.14 M", "36", "alpha"], ["Fri 13", "2.52 M", "34", "beta"], ["Thu 12", "3.28 M", "10", "beta"],
@@ -913,6 +1115,8 @@ t("days: across the DST change, days with no output", () => {
         ["Fri 30", "0", "0", "", false, 0]
     ]);
     assert.equal(v.days.rows[13].day, "Tue 20");
+    // A day with no replies costs exactly nothing.
+    assert.equal(v.days.rows[2].cost, "≈ $0");
     const zero = fx("days-dst.json");
     zero.days.forEach(d => { d.output = 0; d.sessions = 0; d.top = null; });
     const z = T.view(feed(T.key(overview(), "D").state, zero, "days").state, LIM);
@@ -935,6 +1139,80 @@ t("days: building, P projects from the top, Esc back", () => {
     assert.equal(r.state.selected, null);
     assert.equal(T.view(r.state, LIM).projects.rows[0].selected, true);
     assert.equal(T.key(st, "Esc").state.page, "overview");
+});
+
+// ---- a helper older than the cost fields ---------------------------------
+
+// The fixture as such a helper sends it: no cost objects, no
+// unpriced_models beside a period, no token sums per type in a project.
+// The overview's last30 keeps cost_usd and unpriced_models, which it had.
+function old(file) {
+    const strip = o => {
+        if (Array.isArray(o))
+            o.forEach(strip);
+        else if (o && typeof o === "object") {
+            delete o.cost;
+            Object.values(o).forEach(strip);
+        }
+        return o;
+    };
+    const a = strip(fx(file));
+    delete a.unpriced_models;
+    if (a.totals)
+        delete a.totals.tokens;
+    return a;
+}
+
+t("an older helper: no cost texts, no estimate line, no sort, nothing thrown", () => {
+    let o = T.view(feed(T.opened().state, old("overview-full.json"), "overview").state, LIM).overview;
+    assert.equal(o.today.cost, "");
+    assert.equal(o.last30.price, "≈ $3,571");
+    assert.equal(o.last30.byType, null);
+    assert.equal(o.last30.families, null);
+    assert.deepEqual(o.top7.rows.map(r => r.cost), ["", "", "", ""]);
+    // The 30 days' cost_usd is still a figure.
+    assert.equal(o.estimate, T.TEXT.estimate);
+    o = T.view(feed(T.opened().state, old("overview-partial.json"), "overview").state, LIM).overview;
+    assert.equal(o.today.cost, "");
+    assert.equal(o.estimate, "");
+
+    let st = feed(T.key(overview(), "P").state, old("projects-7d.json"), "projects").state;
+    let v = T.view(st, LIM);
+    assert.equal(v.projects.summary, "by output · 18.7 M in all");
+    assert.ok(v.projects.rows.every(r => r.cost === ""));
+    assert.equal(v.projects.unpriced, "");
+    assert.equal(v.projects.estimate, "");
+    assert.ok(!v.hints.some(h => h[0] === "S"));
+    assert.equal(T.key(st, "S").handled, false);
+
+    st = feed(T.key(st, "Enter").state, old("project-alpha-7d.json"), "detail").state;
+    const d = T.view(st, LIM).detail;
+    assert.equal(d.state, "shown");
+    assert.equal(d.cost, "");
+    assert.equal(d.byType, null);
+    assert.deepEqual(d.columns, ["Started", "Last reply", "Output", ""]);
+    assert.ok(d.rows.every(r => r.cost === ""));
+    assert.equal(d.rows[1].line, "1,461 replies · active 17 h 03");
+    assert.equal(d.unpriced, "");
+    assert.equal(d.estimate, "");
+
+    const days = T.view(feed(T.key(overview(), "D").state, old("days.json"), "days").state, LIM).days;
+    assert.deepEqual(days.columns, ["Day", "Output", "", "", "Sessions", "Top project"]);
+    assert.ok(days.rows.every(r => r.cost === ""));
+    assert.equal(days.estimate, "");
+});
+
+t("detail: a cost object without by_type, unpriced models, a one-reply session", () => {
+    const a = fx("project-alpha-7d.json");
+    delete a.totals.cost.by_type;
+    a.unpriced_models = ["claude-x-9", "unknown"];
+    a.totals.cost.partial = true;
+    a.sessions[2].replies = 1;
+    const d = T.view(feed(T.key(projects(), "Enter").state, a, "detail").state, LIM).detail;
+    assert.equal(d.byType, null);
+    assert.equal(d.cost, "≈ $1,204 + unpriced");
+    assert.equal(d.unpriced, "not priced: claude-x-9, unknown");
+    assert.equal(d.rows[2].line, "1 reply · active <1 min");
 });
 
 // ---- the helper's process ------------------------------------------------
@@ -970,6 +1248,9 @@ t("every hinted key is handled and every handled key is hinted, in every state",
     states["overview error"] = T.event(states["overview first read"], JSON.stringify({ event: "error", kind: "X" })).state;
     states["projects loading"] = T.key(overview(), "P").state;
     states["projects 2 pages"] = projects();
+    states["projects by cost"] = T.key(projects(), "S").state;
+    states["projects by cost, page 2"] = keys(projects(), ["S", "PgDn"]).state;
+    states["projects, older helper"] = feed(T.key(overview(), "P").state, old("projects-7d.json"), "projects").state;
     states["projects 1 page"] = feed(T.key(overview(), "P").state, rowsAnswer(3, "7d"), "projects").state;
     states["projects empty"] = feed(T.key(overview(), "P").state, rowsAnswer(0, "7d"), "projects").state;
     states["projects building"] = answer(T.key(projects(), "Tab").state, "projects-30d-not-ready.json", "projects").state;
