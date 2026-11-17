@@ -66,6 +66,7 @@
 
   custom.nvf.enable = true;
   custom.ghostty.enable = true;
+  programs.ghostty.settings.background-opacity = lib.mkForce 0.85;
   custom.nushell.enable = true;
   custom.starship.enable = true;
   custom.claude-code.enable = true;
