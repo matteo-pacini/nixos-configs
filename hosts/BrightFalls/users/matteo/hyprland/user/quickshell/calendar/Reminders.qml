@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs
 import "queries.js" as Q
+import "../common/notify.js" as Notify
 
 // Calendar reminders and the morning digest, as desktop notifications.
 // Queries.plan decides what is due, held and sent; this runs it each minute
@@ -55,11 +56,6 @@ Scope {
         closeDue();
     }
 
-    // GVariant text for a string, so gdbus never reads a title as syntax.
-    function gv(s: string): string {
-        return "'" + s.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, "\\n") + "'";
-    }
-
     function cardsNow(): var {
         try {
             return JSON.parse(persist.cards);
@@ -78,7 +74,7 @@ Scope {
         sender.note = note;
         // expire 0: until dismissed or closed below; the digest expires
         // like any other.
-        sender.command = ["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path", "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.Notify", gv("Calendar"), "uint32 " + (old ?? 0), gv("x-office-calendar"), gv(note.summary), gv(note.body), "['open', 'Open']", "{'urgency': <byte 1>}", note.closeAt ? "int32 0" : "int32 -1"];
+        sender.command = Notify.command("Calendar", old ?? 0, "x-office-calendar", note.summary, note.body, "['open', 'Open']", "{'urgency': <byte 1>}", note.closeAt ? "int32 0" : "int32 -1");
         sender.running = true;
     }
 

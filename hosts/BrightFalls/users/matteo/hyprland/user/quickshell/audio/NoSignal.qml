@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import "../common/notify.js" as Notify
 
 // Inputs that are attached and running but deliver no samples: the ALSA
 // capture PCM is RUNNING and its hw_ptr does not move. Silence still moves
@@ -57,7 +58,7 @@ Singleton {
         if (done.includes(serial))
             return;
         persist.notified = done.concat([serial]).join(",");
-        Quickshell.execDetached(["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path", "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.Notify", "Audio", "0", "audio-input-microphone", `${inputName(n)} sends no signal`, "Unplug its cable for a few seconds and plug it back.", "[]", "{}", "int32 -1"]);
+        Quickshell.execDetached(Notify.command("Audio", 0, "audio-input-microphone", `${inputName(n)} sends no signal`, "Unplug its cable for a few seconds and plug it back.", "[]", "{}", "int32 -1"));
     }
 
     // Node properties, alsa.card among them, arrive once a node is bound.

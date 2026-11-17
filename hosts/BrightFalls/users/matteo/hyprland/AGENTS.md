@@ -597,10 +597,6 @@ rename leaves stale live files; the naming rule is under "Names to know").
 - `Bar.qml:300-308` and `common/KeyHints.qml:51-63`: the window title and
   the footer message have no `textFormat`, so tag-like text is drawn as
   markup.
-- `bluetooth/BluetoothShared.qml:61` and `audio/NoSignal.qml:60` pass names
-  to `gdbus … Notify` unquoted (quotes stripped, `\n` a newline, a trailing
-  `\` loses the notification); `calendar/Reminders.qml` quotes with `gv()`.
-  One shared, node-tested sender for the three.
 - `tokens/TokensShared.qml:95-115`: the helper's stderr is discarded, the
   back-off resets on any line, and `onStarted` ignores `stopping`.
 - `Network.qml:1234-1240,1539`, `Audio.qml:1105`: wired details do not
