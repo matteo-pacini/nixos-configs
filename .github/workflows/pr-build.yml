@@ -112,7 +112,8 @@ jobs:
             .#checks.x86_64-linux.fleet-panel \
             .#checks.x86_64-linux.tailscale-panel \
             .#checks.x86_64-linux.wifi-panel \
-            .#checks.x86_64-linux.tokens-helper
+            .#checks.x86_64-linux.tokens-helper \
+            .#checks.x86_64-linux.tokens-panel
 
   pr-build:
     needs: [eval]

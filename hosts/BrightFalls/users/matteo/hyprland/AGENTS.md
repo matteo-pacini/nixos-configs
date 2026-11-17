@@ -182,9 +182,10 @@ nix build .#checks.x86_64-linux.fleet-panel      # fleet/fleet.js under node
 nix build .#checks.x86_64-linux.tailscale-panel  # tailscale/tailscale.js under node
 nix build .#checks.x86_64-linux.wifi-panel       # network/wifi.js under node
 nix build .#checks.x86_64-linux.tokens-helper    # desk-tokens' pure functions, then the helper on invented transcripts
+nix build .#checks.x86_64-linux.tokens-panel     # tokens/tokens.js under node, in New York time
 ```
 
-The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel, wifi-panel and system-panel checks read the
+The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel, wifi-panel, tokens-panel and system-panel checks read the
 repository's `.js` files, so they fail until a live change to those files is pulled. All of them
 but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
 required check for merging into `master`. `hypr-config` is run by hand before a change to the
@@ -203,6 +204,7 @@ nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export 
   .#checks.x86_64-linux.audio-output-cycle .#checks.x86_64-linux.fleet-helper \
   .#checks.x86_64-linux.fleet-panel .#checks.x86_64-linux.tailscale-panel \
   .#checks.x86_64-linux.wifi-panel .#checks.x86_64-linux.tokens-helper \
+  .#checks.x86_64-linux.tokens-panel \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
@@ -348,7 +350,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test) |
+| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |

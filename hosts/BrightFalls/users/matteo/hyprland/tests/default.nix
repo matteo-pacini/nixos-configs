@@ -18,6 +18,7 @@
 #   nix build .#checks.<system>.tailscale-panel
 #   nix build .#checks.<system>.wifi-panel
 #   nix build .#checks.<system>.tokens-helper
+#   nix build .#checks.<system>.tokens-panel
 # All but hypr-config run in CI (the brightfalls-tests job in
 # .github/workflows/pr-build.yml). hypr-config is run by hand before a change
 # to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
@@ -284,6 +285,22 @@ in
         python3 -I ${./tokens/test-desk-tokens.py} \
           ${pkgs.lib.getExe (pkgs.callPackage ../desk-tokens.nix { })} \
           ${../desk-tokens.py} ${../desk-tokens-prices.json} "$PWD/work"
+        touch $out
+      '';
+
+  # The token panel's library (quickshell/tokens/tokens.js) against invented
+  # desk-tokens answers in tokens-panel/fixtures/; the times it asserts are
+  # New York's, and some cases cross its daylight-saving change.
+  tokens-panel =
+    pkgs.runCommand "tokens-panel-tests"
+      {
+        nativeBuildInputs = [ pkgs.nodejs ];
+        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
+      }
+      ''
+        # Set here: the builder's setup sets TZ=UTC over the derivation's own.
+        export TZ=America/New_York
+        node ${./tokens-panel}/test-tokens-panel.js ${../user/quickshell/tokens}
         touch $out
       '';
 
