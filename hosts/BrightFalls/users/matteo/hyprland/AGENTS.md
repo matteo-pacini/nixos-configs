@@ -585,34 +585,15 @@ durations differ by design and are documented); renaming
 rename leaves stale live files; the naming rule is under "Names to know").
 
 **Open defects**, read in the source and not reproduced live (each small):
-- No `Keys.onPressed` filters key auto-repeat, so holding a key passes a
-  "press again" guard: R or S in `SessionMenu.qml:81-87` (reboot, shut
-  down), F in `BluetoothPanel.qml:362` and `network/wifi.js:300` (forget);
-  W, B, M and Enter flap. Unverified live: it assumes Qt on Wayland
-  delivers repeats as presses. Fix: return early on `event.isAutoRepeat`
-  except arrows and paging.
-- `Network.qml:221,390,876`: the default route is read only on open or a
-  Wi-Fi connect, so a speed test after plugging in a cable while open is
-  stored under the old interface.
-- `Network.qml:1234-1240,1539`, `Audio.qml:1105`: wired details do not
-  wrap and two "Set in Nix" label sets elide, against "No truncation";
-  `Network.qml:1798` caps the speed-test failure text.
-- `Network.qml:1558-1563`, `network/wifi.js:440`, `Audio.qml:1139`:
-  footers that mislabel a key (Esc "close" while it collapses details;
-  "Enter make default" on the default input).
-- The centred modals (`Launcher.qml`, `Cheatsheet.qml`, `SessionMenu.qml`)
-  do not close the drop-downs, so one opened over a panel leaves two
-  exclusive-keyboard surfaces. Unverified live: it assumes Hyprland runs
-  the bind while a layer surface holds the keyboard.
-- `network/SpeedTest.qml:61-75,190-219`: a test started while a cancelled
-  one is still exiting is fed the old one's end.
+- A drop-down's bind can open it over a centred modal (launcher, cheat
+  sheet, session menu, polkit dialog): the modals are not in `Dropdowns`,
+  so nothing closes them. Unverified in this direction; a modal's bind was
+  seen to fire under a drop-down's exclusive keyboard.
 - `launcher/Calc.qml:56,93-105`: float results (`floor((0.1+0.7)*10)` gives
   7, `1 % 0.1` gives 0.1); fix with the move to `.js` above.
 - `Office.qml:567`: an off light's slider cannot be dragged with the mouse,
   while the README says moving it turns the light on. The user decides
   whether the slider or the sentence changes.
-- `Polkit.qml:29-41`: typed text can outlive a request that ends without a
-  submit, in the hidden field.
 - `desk-sync.sh:43-44`: `reset` on a live directory at a manifest file's
   path fails ("could not reset") and leaves `<path>.desk-new` beside it.
   A hand-made state; removing the stray file on a failed `mv` is one line.
