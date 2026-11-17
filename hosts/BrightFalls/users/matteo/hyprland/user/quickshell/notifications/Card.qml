@@ -76,7 +76,7 @@ Rectangle {
     }
 
     implicitHeight: main.height + (strip.visible ? strip.height : 0) + 2
-    radius: 10
+    radius: Style.radius
     color: Style.surface
     border.width: 1
     border.color: critical ? Theme.red : Theme.purple

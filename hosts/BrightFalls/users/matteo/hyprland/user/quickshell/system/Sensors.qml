@@ -327,7 +327,6 @@ Singleton {
         } catch (e) {
             locked = [];
         }
-        out.lockedPresent = str("locked") !== "";
 
         // CPU.
         const im = D.metrics(bytes("igpuMetrics"));

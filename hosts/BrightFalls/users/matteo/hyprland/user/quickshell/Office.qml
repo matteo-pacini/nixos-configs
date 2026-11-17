@@ -173,7 +173,6 @@ Scope {
         commitBlind();
     }
 
-
     Timer {
         id: flashTimer
 
@@ -491,8 +490,6 @@ Scope {
 
                     // The light.
                     Rectangle {
-                        id: lightRow
-
                         visible: root.light !== null
                         x: 8
                         width: parent.width - 16
