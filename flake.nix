@@ -392,6 +392,7 @@
               inputs.nvf.homeManagerModules.default
               self.homeManagerModules.default
               self.homeManagerModules.sleepmode
+              self.homeManagerModules.deskWallpaper
             ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
@@ -456,6 +457,7 @@
               inputs.nvf.homeManagerModules.default
               self.homeManagerModules.default
               self.homeManagerModules.sleepmode
+              self.homeManagerModules.deskWallpaper
             ];
           }
           inputs.nix-homebrew.darwinModules.nix-homebrew
@@ -474,6 +476,7 @@
       };
       homeManagerModules = {
         sleepmode = import ./modules/home-manager/darwin/sleepmode.nix;
+        deskWallpaper = import ./modules/home-manager/darwin/desk-wallpaper;
       };
 
       apps.aarch64-darwin.xcode-fetch = {

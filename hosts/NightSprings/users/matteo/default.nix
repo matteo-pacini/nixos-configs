@@ -41,6 +41,7 @@
   custom.herdr.workbench.spaceCards.enable = true;
   custom.hex.enable = true;
   custom.sleepmode.enable = true;
+  custom.deskWallpaper.enable = true;
   custom.mpv.enable = true;
   custom.mpv.jellyfinShim.enable = true;
 
@@ -49,7 +50,6 @@
   programs.home-manager.enable = true;
 
   dracula = {
-    wallpaper.enable = true;
     eza.enable = true;
     xcode.enable = true;
     fzf.enable = true;

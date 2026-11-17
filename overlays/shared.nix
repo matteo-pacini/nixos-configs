@@ -27,6 +27,8 @@
 
     ssh-mesh-renew = self.callPackage ../packages/ssh-mesh-renew.nix { };
 
+    desk-wallpaper = self.callPackage ../packages/desk-wallpaper { };
+
     # 2.1.0 follows Apple's 2026 sign-in changes; nixpkgs' 1.6.2 fails to log
     # in. Regenerate packages/xcodes/generated on bump: `swift package resolve`
     # then `swiftpm2nix` in the source checkout.
