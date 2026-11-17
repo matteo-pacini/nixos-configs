@@ -1226,6 +1226,8 @@ Scope {
             KeyHints {
                 visible: root.v !== null
                 keys: root.v ? root.v.hints : []
+                message: TokensShared.said
+                messageColor: Theme.comment
             }
         }
     }

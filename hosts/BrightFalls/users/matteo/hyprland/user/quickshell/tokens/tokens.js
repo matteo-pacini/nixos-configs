@@ -263,6 +263,18 @@ function started(t, now) {
     return dayShort(t);
 }
 
+// When a limits reading was written, against `now`: "17:58" today, "Mon
+// 17:58" on the six local days before, else "10 Nov 17:58" (a week back is
+// today's weekday).
+function reported(t, now) {
+    const diff = dayNumber(now) - dayNumber(t);
+    if (diff === 0)
+        return clock(t);
+    if (diff >= 1 && diff <= 6)
+        return `${WEEKDAYS[local(t).getDay()]} ${clock(t)}`;
+    return `${dayShort(t)} ${clock(t)}`;
+}
+
 // "resets Thu 09:00".
 function resets(t) {
     return `resets ${WEEKDAYS[local(t).getDay()]} ${clock(t)}`;
@@ -424,13 +436,20 @@ function shownPercent(pct) {
     return `${Math.floor(pct)}%`;
 }
 
-function limitRow(label, w, r, now) {
+// A limits row; `dated` gives it the reading's time even while it is fresh.
+function limitRow(label, w, r, now, dated) {
     return {
         label,
         value: r.stale ? shownPercent(w.pct) : `${shownPercent(w.pct)} · ${resets(w.resetsAt)}`,
-        note: r.stale ? `as of ${ago(now, r.writtenAt)}` : "",
+        note: r.stale || dated ? `as of ${reported(r.writtenAt, now)}` : "",
         colour: level(w.pct).colour
     };
+}
+
+// The footer line after R, from limits().reading: what R re-reads, and the
+// quota as last reported, which only Claude Code's status line updates.
+function refreshLine(r, now) {
+    return `Counting tokens again from the transcripts · ${r ? `quota as reported ${reported(r.writtenAt, now)}` : "no quota reported yet"}`;
 }
 
 // The limits file's text (null or "" when there is none) read at `now`.
@@ -467,7 +486,7 @@ function limits(text, now) {
             known: true,
             chip: !r.stale,
             line: "",
-            main: limitRow(TEXT.weekly, r, r, now),
+            main: limitRow(TEXT.weekly, r, r, now, true),
             meter: { frac: Math.max(0, Math.min(1, r.pct / 100)), colour: r.stale ? "grey" : lv.colour === "fg" ? "purple" : lv.colour },
             model: !r.stale && r.pct < 100 ? { label: TEXT.modelCap, value: TEXT.modelCapValue, note: "", colour: "muted" } : null,
             fiveHour,
@@ -1050,7 +1069,7 @@ function table(st) {
         ];
         // Hidden while the first read runs, unless that read failed.
         if (!firstRead(st) || st.error)
-            t.push({ keys: ["R"], hint: ["R", "refresh"], run: s => ({ state: copy(s, { nextId: s.nextId + 1 }), effects: [{ do: "send", req: { req: "refresh", id: s.nextId } }] }) });
+            t.push({ keys: ["R"], hint: ["R", "refresh counts"], run: s => ({ state: copy(s, { nextId: s.nextId + 1 }), effects: [{ do: "send", req: { req: "refresh", id: s.nextId } }, { do: "reloadLimits" }] }) });
         t.push(esc("close", s => ({ state: s, effects: [{ do: "close" }] })));
         return t;
     }
@@ -1107,8 +1126,10 @@ function table(st) {
 // for a held key's auto-repeat, which only the moving keys (arrows, paging)
 // act on. Returns { state, effects, handled }; handled is false for a key the
 // footer does not offer in this state, which then changes nothing. Effects:
-// { do: "send", req } (write req as one JSON line to the helper) and
-// { do: "close" } (close the panel, then call closed()).
+// { do: "send", req } (write req as one JSON line to the helper),
+// { do: "reloadLimits" } (read the limits file again and show refreshLine()
+// in the footer for a moment) and { do: "close" } (close the panel, then
+// call closed()).
 function key(st, k, repeat) {
     if (!st.open)
         return { state: st, effects: [], handled: false };
@@ -1181,6 +1202,6 @@ if (typeof module !== "undefined")
         PLAN, PAGE_ROWS, PERIODS, KEY_NAMES, TEXT,
         tokens, count, money, costText, percent, percent1, bytes, ago, activeTime, started, resets, dayShort, dayName,
         family, split, sentence,
-        limits,
+        limits, refreshLine,
         initial, opened, closed, helper, event, key, hints, view
     };

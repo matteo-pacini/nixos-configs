@@ -912,7 +912,8 @@ the plan limits as Claude Code last reported them. It is read-only.
   mark while the panel is open. It changes when the file does, and on a
   minute tick while a reading exists; it never starts the helper.
 - **Overview** (what it opens on): the plan limits (the weekly row with its
-  reset and a meter; a muted per-model row; the 5-hour row; a line saying
+  reset, when Claude Code reported it, `as of 17:58` today or `as of Mon
+  17:58` before, and a meter; a muted per-model row; the 5-hour row; a line saying
   what happens at 100 %, or that the reading is stale, or that none is known
   yet), today's output and sessions with the context read from cache and
   today at API prices, the last 14 days of output as bars (today purple, the
@@ -955,9 +956,13 @@ the plan limits as Claude Code last reported them. It is read-only.
   sub-agents included; replies and active time on a muted line under each).
 - **Days** (D): the last 14 days, newest first: output as a bar and a
   number, the figure at API prices, sessions, and the day's top project.
-- **Keys**: on the overview P projects, D days, R reads what was appended
-  since the panel opened (hidden during the first read, unless it failed),
-  Esc closes. On projects ↑↓ select (past a page's end they turn the page),
+- **Keys**: on the overview P projects, D days, R ("refresh counts") reads
+  what was appended to the transcripts since the panel opened and reads the
+  limits file again (hidden during the first read, unless it failed), Esc
+  closes. R cannot refresh the weekly percentage: only a Claude Code
+  session's status line writes it. For four seconds after R the footer says
+  so, `Counting tokens again from the transcripts · quota as reported 17:58`
+  (or `· no quota reported yet`). A held key repeats only ↑↓ and PgUp/PgDn. On projects ↑↓ select (past a page's end they turn the page),
   PgUp/PgDn page (only with more than one page), Tab period, S sort (output
   or API prices; the selected project stays selected), Enter detail, D
   days, Esc back. In the detail Tab period, Esc back to the same project
@@ -973,8 +978,9 @@ the plan limits as Claude Code last reported them. It is read-only.
   status line (see [the plan-limit
   file](../../../../../modules/home-manager/herdr/README.md#the-plan-limit-file)),
   watched with a `FileView`: the directory is watched too until a reading
-  exists, so a file that appears after the shell started is still seen.
-  While the panel is closed nothing else runs.
+  exists, so a file that appears after the shell started is still seen; R
+  re-reads it, in case the watch missed a change. While the panel is closed
+  nothing else runs.
 - **Set by hand**: `PLAN` at the top of `tokens/tokens.js` holds the plan's
   name and price and the 5-hour row's text when Claude Code reports no
   5-hour window. Nothing reads them from the account.

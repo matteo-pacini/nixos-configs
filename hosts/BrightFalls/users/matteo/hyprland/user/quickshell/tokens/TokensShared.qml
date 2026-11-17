@@ -29,6 +29,9 @@ Singleton {
     // Epoch seconds, for the limits reading only.
     property real now: Date.now() / 1000
     readonly property var limits: T.limits(limitsText, now)
+    // The footer line for a few seconds after R, or "". Bound, so it shows
+    // the limits file as re-read, which loads after the key.
+    readonly property string said: saying.running ? T.refreshLine(limits.reading, now) : ""
 
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ""
     readonly property string limitsPath: runtimeDir !== "" ? runtimeDir + "/desk/claude-limits.json" : ""
@@ -56,10 +59,16 @@ Singleton {
     function run(r: var): void {
         st = r.state;
         for (const e of r.effects) {
-            if (e.do === "send")
+            if (e.do === "send") {
                 send(JSON.stringify(e.req) + "\n");
-            else if (e.do === "close")
+            } else if (e.do === "reloadLimits") {
+                // Also covers a change the file watch missed.
+                now = Date.now() / 1000;
+                limitsFile.reload();
+                saying.restart();
+            } else if (e.do === "close") {
                 screen = "";
+            }
         }
     }
 
@@ -88,8 +97,16 @@ Singleton {
             proc.running = true;
         } else {
             stop();
+            saying.stop();
             st = T.closed(st);
         }
+    }
+
+    // How long the footer line after R shows; runs only after R.
+    Timer {
+        id: saying
+
+        interval: 4000
     }
 
     Process {
