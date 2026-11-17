@@ -1,6 +1,7 @@
 // The office panel's library (quickshell/office/office.js) against invented
-// helper events, inline and as recorded lines in fixtures/ (one file per
-// state of the panel; "@-N" in a time means N seconds before the test's now).
+// helper events, inline and as lines hand-written in the helper's format in
+// fixtures/ (one file per state of the panel; "@-N" in a time means N
+// seconds before the test's now).
 // Run: node test-office-panel.js <directory holding office.js>
 process.env.TZ = "UTC";
 const assert = require("node:assert/strict");

@@ -6,7 +6,8 @@ desktop shell (Quickshell), including work that starts in the live
 What each piece is and how it works is in [README.md](README.md); this file
 is how to work on it. Repo-wide rules are in the root `AGENTS.md`.
 
-State as of 2026-11-17 (`master` after the token panel, PR #499). "State and
+State as of 2026-11-17 (after the token panel, PR #499, and the shell sweep:
+the aggregate check, `quickshell-lint`, the `desk-sync` and helper fixes). "State and
 open work" at the bottom says what is unproven; check it before relying on
 anything.
 
@@ -62,7 +63,9 @@ with the user, you are both: keep the same discipline.
   checked, what was verified with the decisive output, what is only
   expected, temporary things to remove, and how the user tests it by hand.
 - **Bringing work back is the coordinator's job**, not the live agent's:
-  `desk-sync pull <worktree>` for files already in the manifest, a hand copy
+  `desk-sync pull <worktree>` for files already in the manifest (it refuses
+  a file with a newer copy waiting in `incoming/`, or with an added line
+  that looks like a secret: README, "desk-sync"), a hand copy
   into `user/…` for files created live, then `diff -rq` of the live tree
   against `user/` must be silent, then a grep for leftovers (test IPC
   targets, overrides, temporary paths) before the commit.
@@ -148,7 +151,7 @@ Five levels. Each proves something different; say which one a claim rests on.
 | Level | What it proves | What it cannot |
 |-------|----------------|----------------|
 | Pure logic under node, and as flake checks | The decisions in the `.js` libraries, against invented fixtures | Anything QML draws, any device |
-| Builds and config checks | The toplevel builds, generated files have the right content, `Hyprland --verify-config` accepts the Lua | That it works in the session |
+| Builds and config checks | The toplevel builds, generated files have the right content, `Hyprland --verify-config` accepts the Lua, `qmllint` accepts the QML (syntax, imports, ids, properties, singleton members) and every `qs ipc call` names a real target and function | That it works in the session: nothing at run time (binding loops, JS errors, layout), nor members read through an outer id inside a delegate |
 | Injected data and preview modes, live | The panel's states and wording (a fake export, a fake sysfs tree, a data override, a no-focus preview) | That real hardware or a real service produces that data |
 | Real hardware with the user | The real path end to end | Cases the hardware cannot produce on demand |
 | After the deploy | That Nix put everything in place | |
@@ -161,59 +164,37 @@ user as written.
 
 **Pure logic.** Decisions live in plain `.js` files that QML imports and node
 runs (see conventions). Run them with
-`nix shell nixpkgs#nodejs -c node <test.js> <library>`. Wired as flake checks
-(`tests/default.nix`, `flake.nix`):
-
-```bash
-nix build .#checks.x86_64-linux.desk-sync        # tests/run.sh, temporary HOME
-nix build .#checks.x86_64-linux.calendar-export  # fixtures through the export
-nix build .#checks.x86_64-linux.calendar-panel   # calendar/queries.js under node
-nix build .#checks.x86_64-linux.bluetooth-panel  # bluetooth/services.js, devices.js under node
-nix build .#checks.x86_64-linux.tray-panel       # tray/menu.js under node
-nix build .#checks.x86_64-linux.office-panel     # office/office.js under node
-nix build .#checks.x86_64-linux.office-helper    # desk-mqtt against a loopback Mosquitto
-nix build .#checks.x86_64-linux.system-panel     # system/decode.js under node
-nix build .#checks.x86_64-linux.display-layout   # display-layout.sh against a fake hyprctl
-nix build .#checks.x86_64-linux.hypr-config      # user/hypr through Hyprland --verify-config
-nix build .#checks.x86_64-linux.desk-unlock      # desk-unlock.sh against fake hyprctl, systemctl, pkill
-nix build .#checks.x86_64-linux.bluetooth-agent  # desk-bt-agent against private D-Bus daemons
-nix build .#checks.x86_64-linux.audio-output-cycle  # audio-output-cycle against fake PipeWire tools
-nix build .#checks.x86_64-linux.fleet-helper     # desk-fleet's state model, then the helper against fake ssh, comin-deploy, gh
-nix build .#checks.x86_64-linux.fleet-panel      # fleet/fleet.js under node
-nix build .#checks.x86_64-linux.tailscale-panel  # tailscale/tailscale.js under node
-nix build .#checks.x86_64-linux.wifi-panel       # network/wifi.js under node
-nix build .#checks.x86_64-linux.tokens-helper    # desk-tokens' pure functions, then the helper on invented transcripts
-nix build .#checks.x86_64-linux.tokens-panel     # tokens/tokens.js under node, in New York time
-```
-
-The calendar-panel, bluetooth-panel, tray-panel, office-panel, fleet-panel, tailscale-panel, wifi-panel, tokens-panel and system-panel checks read the
-repository's `.js` files, so they fail until a live change to those files is pulled. All of them
-but `hypr-config` run on every pull request in the `brightfalls-tests` job (`pr-build.yml`), a
-required check for merging into `master`. `hypr-config` is run by hand before a change to the
-Hyprland config, not in CI: Hyprland's verify crashes (exit 139) on the full config on GitHub's
-runners, cause not known (see open work). For a new test, break the code once and watch it fail.
+`nix shell nixpkgs#nodejs -c node <test.js> <library>`. Every check, what it
+covers and which run in CI: README, "Tests" (defined in `tests/default.nix`).
+One check: `nix build .#checks.x86_64-linux.<name>`; all but `hypr-config`:
+`nix build -L .#checks.x86_64-linux.brightfalls-tests`, which is what CI
+builds and which takes a new check in `tests/default.nix` with no other
+edit. The node checks and `quickshell-lint` read the repository's files, so
+they fail until a live change to those files is pulled. For a new test,
+break the code once and watch it fail.
 
 **Builds.** Before every push, on the merged branch, the coordinator runs:
 
 ```bash
-nix build .#checks.x86_64-linux.desk-sync .#checks.x86_64-linux.calendar-export \
-  .#checks.x86_64-linux.calendar-panel .#checks.x86_64-linux.bluetooth-panel \
-  .#checks.x86_64-linux.tray-panel .#checks.x86_64-linux.office-panel \
-  .#checks.x86_64-linux.office-helper .#checks.x86_64-linux.system-panel \
-  .#checks.x86_64-linux.display-layout .#checks.x86_64-linux.hypr-config \
-  .#checks.x86_64-linux.desk-unlock .#checks.x86_64-linux.bluetooth-agent \
-  .#checks.x86_64-linux.audio-output-cycle .#checks.x86_64-linux.fleet-helper \
-  .#checks.x86_64-linux.fleet-panel .#checks.x86_64-linux.tailscale-panel \
-  .#checks.x86_64-linux.wifi-panel .#checks.x86_64-linux.tokens-helper \
-  .#checks.x86_64-linux.tokens-panel \
+nix build -L .#checks.x86_64-linux.brightfalls-tests .#checks.x86_64-linux.hypr-config \
   .#nixosConfigurations.BrightFalls.config.system.build.toplevel --no-link --print-out-paths
 ```
 
 through `hc run --bg --no-notify --name <name> "…; echo EXIT=\$?"` and
-`hc wait`. Nix does not compile QML: a green build says nothing about the
-shell loading. For Lua, the `hypr-config` check runs `Hyprland --verify-config`
-on the repository's files laid out like the install (`tests/hypr/run.sh`); a
-live edit needs the same on a temporary copy (`config/hypr/*`,
+`hc wait`. Nix does not compile QML, so the toplevel says nothing about the
+shell loading; `quickshell-lint` runs `qmllint` over it as Quickshell lays it
+out, and checks every `qs ipc call` against the `IpcHandler`s. It catches
+syntax errors, unknown imports and components, misspelt ids, properties and
+singleton members, and binds to a missing IPC target or function. It does
+not catch anything at run time (binding loops, JS errors in functions,
+wrong values, layout), members read through an outer id inside a delegate
+(no file has `pragma ComponentBehavior: Bound`), or members of the types
+its allowlist accepts broadly; the full list, and how to read a failure or
+add an allowlist line, is in README, "Tests". So after a QML change the
+`Configuration Loaded` line in the shell's log is still the proof that it
+loads. For Lua, the `hypr-config` check runs `Hyprland --verify-config`
+on the repository's files laid out like the install (`tests/hypr/run.sh
+verify`); a live edit needs the same on a temporary copy (`config/hypr/*`,
 `share/desk/hypr/*`, `XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointed at it). Both
 catch a misspelt key name in a bind (`Unknown key`), not a mouse button code
 out of range.
@@ -356,7 +337,7 @@ not.
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks: `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node), `office-panel/` (office.js under node, recorded helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (the Lua through `Hyprland --verify-config`, theme.lua under Lua), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, recorded helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`) |
+| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
@@ -467,7 +448,10 @@ read-only).
   and differs from the repository's (`false`), so activation leaves it and
   puts the new copy in `incoming/`. When the user wants it live:
   `desk-sync reset quickshell/fleet/FleetShared.qml` (the shell reloads
-  itself and restarts the helper without `--read-only`).
+  itself and restarts the helper without `--read-only`). Until then, the
+  `desk-sync` this deploy installs refuses that file on `pull` (it is
+  `incoming-pending`) instead of copying `readOnly: true` back into the
+  checkout.
 - One `hyprctl reload` (then `hyprctl configerrors`) for Super+O, Super+G,
   Super+V and Super+U, which the running Hyprland has not loaded yet.
 - `~/.config/mako/` is left over from before the shell was the notification
@@ -502,7 +486,7 @@ was written; check the reports of any newer work for its own.
 - Office panel: the user verified, with the real light and blind, the light
   on and off, brightness by keys and by mouse, the blind up, stop, down and
   to a position, and that the sockets are not clickable. Never seen for real
-  (simulated with recorded helper lines, and node-tested): the broker lost,
+  (simulated with hand-written helper lines, and node-tested): the broker lost,
   Zigbee2MQTT offline, a device offline, a command not confirmed.
 - Fleet panel: seen for real only read-only, by an agent (the real fleet's
   rows, the bar item with its count and dim, a switch sent with the row's
@@ -580,6 +564,18 @@ change what the user sees need the user's look first):
    copies the "soft" formula (leave it until the lock can be re-tested).
    Live only, not in the repository: `~/.config/hypr/dms/`, unused
    DankMaterialShell output (the user's call).
+4. **Typing the lint check accepts by name** (each a rename or a type, then
+   the matching line out of `tests/quickshell-lint/allowlist`):
+   `System.qml:206` declares `property var rows` on a `Grid`, over Grid's own
+   row count (rename it, say `pairs`); `lock/LockFace.qml:261` declares
+   `property string state`, over Item's states machinery (rename it, say
+   `fieldState`; test it in the lock preview); `Network.qml:1094` types the
+   wired rows as `NetworkDevice` while `hasLink` and `linkSpeed` are on
+   `WiredDevice`. All three work today.
+5. **`pragma ComponentBehavior: Bound`** in the delegate-heavy files would
+   let `quickshell-lint` check members read through an outer id inside a
+   delegate. It changes how delegates resolve ids, so it is a QML change to
+   each panel, tested live one panel at a time; an option, not a fix.
 
 Not worth doing, so off the list: a helper to pick the screen by name (17
 identical one-liners; a helper replaces one line with one line and has no
@@ -601,7 +597,7 @@ rename leaves stale live files; the naming rule is under "Names to know").
 - `Bar.qml:300-308` and `common/KeyHints.qml:51-63`: the window title and
   the footer message have no `textFormat`, so tag-like text is drawn as
   markup.
-- `bluetooth/BluetoothShared.qml:61` and `audio/NoSignal.qml:57` pass names
+- `bluetooth/BluetoothShared.qml:61` and `audio/NoSignal.qml:60` pass names
   to `gdbus … Notify` unquoted (quotes stripped, `\n` a newline, a trailing
   `\` loses the notification); `calendar/Reminders.qml` quotes with `gv()`.
   One shared, node-tested sender for the three.
@@ -640,6 +636,12 @@ rename leaves stale live files; the naming rule is under "Names to know").
   whether the slider or the sentence changes.
 - `Polkit.qml:29-41`: typed text can outlive a request that ends without a
   submit, in the hidden field.
+- `desk-sync.sh:43-44`: `reset` on a live directory at a manifest file's
+  path fails ("could not reset") and leaves `<path>.desk-new` beside it.
+  A hand-made state; removing the stray file on a failed `mv` is one line.
+- `desk-fleet.py`: a restarted helper refuses a second action on a host
+  whose earlier action still runs, but does not follow or report that
+  action; only `attach` shows it.
 
 Leave until that code is touched (each needs a real phone or a real lock to
 re-prove): `BluetoothPanel.qml:94-96`, the "trusted on yes" list is lost by
