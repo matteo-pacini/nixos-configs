@@ -12,6 +12,8 @@
   legionSource,
   rust,
   proton,
+  # The Wine ntdll repair (wine.nix), or null to leave it out.
+  wine,
 }:
 let
   # Debian's glibc. Guest programs built against Nix's newer glibc must not
@@ -48,7 +50,9 @@ let
     dontStrip = true;
     installPhase = ''
       mkdir -p $out/release
-      for path in bin/legion-proton-bootstrap bin/legion-guest-compositor bin/legion-audio-runtime; do
+      for path in bin/legion-proton-bootstrap bin/legion-guest-compositor bin/legion-audio-runtime${
+        lib.optionalString (wine != null) " bin/legion-cpu-adapter-fixture lib/liblegion_cpu_adapter.so"
+      }; do
         target=$out/release/$(basename $path)
         install -m0755 ${rust.workspace}/$path $target
         newest=$(objdump -T $target | { grep -oE 'GLIBC_[0-9.]+' || true; } | sed 's/GLIBC_//' | sort -V | tail -1)
@@ -57,7 +61,9 @@ let
           exit 1
         fi
         patchelf --remove-rpath $target
-        patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 $target
+        case $path in
+          bin/*) patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 $target ;;
+        esac
       done
     '';
   };
@@ -91,6 +97,14 @@ vmTools.runInLinuxImage (
       # guest_userspace() scans the Proton tree at /proton for the guest
       # libraries it needs.
       ln -s ${proton.src} /proton
+    ''
+    + lib.optionalString (wine != null) ''
+      # guest_userspace() builds the repair delta from this ntdll.dll when
+      # LEGION_WINE_REPAIR is 1.
+      install -Dm0644 ${wine}/ntdll.dll $work/wine/dlls/ntdll/x86_64-windows/ntdll.dll
+      export LEGION_WINE_REPAIR=1
+    ''
+    + ''
 
       python3 - <<'PY'
       import sys

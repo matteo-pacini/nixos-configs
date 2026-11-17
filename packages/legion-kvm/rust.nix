@@ -6,6 +6,7 @@
 # the fetched source.
 {
   lib,
+  stdenv,
   rustPlatform,
   pkgsStatic,
   pkg-config,
@@ -17,10 +18,11 @@
   memoryMiB,
   fullscreen,
   pinVcpus,
+  wineRepair,
 }:
 {
   # The programs build_runtime.py rust() builds for the guest; the cpu-adapter
-  # ones only ship with the optional Wine repair, which this package leaves out.
+  # ones only ship with the optional Wine repair.
   workspace = rustPlatform.buildRustPackage {
     pname = "legion-kvm-workspace";
     inherit (legionSource) version src;
@@ -43,6 +45,12 @@
       "--bin"
       "legion-guest-compositor"
     ];
+    # A separate cargo call: with the --bin filters above, `-p
+    # legion-cpu-adapter` would build none of the adapter's targets.
+    postBuild = lib.optionalString wineRepair ''
+      cargo build -j $NIX_BUILD_CORES --target ${stdenv.hostPlatform.rust.rustcTargetSpec} \
+        --offline --profile release -p legion-cpu-adapter
+    '';
     doCheck = false;
   };
 
