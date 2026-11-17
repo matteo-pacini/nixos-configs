@@ -609,8 +609,6 @@ rename leaves stale live files; the naming rule is under "Names to know").
   do not close the drop-downs, so one opened over a panel leaves two
   exclusive-keyboard surfaces. Unverified live: it assumes Hyprland runs
   the bind while a layer surface holds the keyboard.
-- `Lockscreen.qml:92-106`: the `gdbus monitor` behind lock-before-sleep is
-  not restarted if it exits.
 - `network/SpeedTest.qml:61-75,190-219`: a test started while a cancelled
   one is still exiting is fed the old one's end.
 - `fleet/fleet.js:33,64-67`: `st.commands` is kept but never consulted,

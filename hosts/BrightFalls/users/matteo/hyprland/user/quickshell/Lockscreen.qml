@@ -89,9 +89,17 @@ Scope {
         command: ["systemd-inhibit", "--what=sleep", "--mode=delay", "--who=Desktop shell", "--why=Locks the screen first", "cat"]
     }
 
+    // Without it the lock before sleep stops, so it is started again if it
+    // ends (the system bus or logind restarted) or could not start.
     Process {
+        id: sleepWatch
+
         running: true
         command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"]
+        onRunningChanged: if (!running) {
+            console.warn("lock: logind monitor ended; starting it again in 5 s");
+            restartSleepWatch.start();
+        }
         stdout: SplitParser {
             onRead: line => {
                 const sleep = line.match(/\.PrepareForSleep \((true|false),\)/);
@@ -103,5 +111,12 @@ Scope {
                     LockState.lock();
             }
         }
+    }
+
+    Timer {
+        id: restartSleepWatch
+
+        interval: 5000
+        onTriggered: sleepWatch.running = true
     }
 }
