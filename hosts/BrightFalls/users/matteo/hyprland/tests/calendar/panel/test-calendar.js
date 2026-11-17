@@ -352,13 +352,20 @@ assert.deepStrictEqual(Object.keys(pruned), ["b|2026-11-10 09:00", "c|2026-11-01
     assert.deepStrictEqual(q.cellView(null, D("2026-11-16"), 0), { chips: [], more: 0 });
 
     // The clocks go back in the night of 24 to 25 October 2026.
+    const lateTrain = ev("2026-10-24 23:30", "2026-10-25 00:30", "Late train", "Garden");
     const odata = q.parse([
         JSON.stringify({ version: 1, window_start: "2026-10-24", days: 2, calendars: [{ name: "Garden", color: "#33aa66" }] }),
-        JSON.stringify([ev("2026-10-24 00:00", "2026-10-24 00:30", "Night bus", "Garden")]),
-        JSON.stringify([ev("2026-10-25 10:00", "2026-10-25 11:00", "Bell ringing", "Garden")]),
+        JSON.stringify([ev("2026-10-24 00:00", "2026-10-24 00:30", "Night bus", "Garden"), lateTrain]),
+        JSON.stringify([lateTrain, ev("2026-10-25 10:00", "2026-10-25 11:00", "Bell ringing", "Garden")]),
     ].join("\n"));
-    assert.deepStrictEqual(q.cellView(odata, D("2026-10-24"), 3), { chips: [{ title: "Night bus", color: "#33aa66", time: "00:00", filled: false }], more: 0 }, "a timed event starting at midnight is timed, not filled");
-    assert.deepStrictEqual(q.cellView(odata, D("2026-10-25"), 3), { chips: [{ title: "Bell ringing", color: "#33aa66", time: "10:00", filled: false }], more: 0 }, "a timed event on the autumn DST day");
+    assert.deepStrictEqual(q.cellView(odata, D("2026-10-24"), 3), { chips: [
+        { title: "Night bus", color: "#33aa66", time: "00:00", filled: false },
+        { title: "Late train", color: "#33aa66", time: "23:30", filled: false },
+    ], more: 0 }, "a timed event starting at midnight is timed, not filled");
+    assert.deepStrictEqual(q.cellView(odata, D("2026-10-25"), 3), { chips: [
+        { title: "Late train", color: "#33aa66", time: "", filled: true },
+        { title: "Bell ringing", color: "#33aa66", time: "10:00", filled: false },
+    ], more: 0 }, "on the autumn DST day: an event from the night before is filled, a timed one keeps its time");
 
     assert.strictEqual(q.moreText(3), "3 more");
     assert.strictEqual(q.moreText(1), "1 more");
@@ -416,6 +423,7 @@ assert.deepStrictEqual(Object.keys(pruned), ["b|2026-11-10 09:00", "c|2026-11-01
     assert.strictEqual(mv("2026-10-24", "Right"), "2026-10-25", "across the autumn DST change");
     assert.strictEqual(mv("2026-10-25", "Right"), "2026-10-26");
     assert.strictEqual(mv("2026-10-26", "Left"), "2026-10-25");
+    assert.strictEqual(q.hm(q.bigViewMove(D("2026-10-26"), act("Left"), D("2026-11-17 09:00"))), "00:00", "still midnight going back over the 25-hour day");
     assert.strictEqual(mv("2026-10-21", "Down"), "2026-10-28", "a week on across the autumn DST change");
     assert.strictEqual(mv("2026-10-28", "Up"), "2026-10-21");
     assert.strictEqual(q.hm(q.bigViewMove(D("2026-10-25"), act("Right"), D("2026-11-17 09:00"))), "00:00", "still midnight after the 25-hour day");
