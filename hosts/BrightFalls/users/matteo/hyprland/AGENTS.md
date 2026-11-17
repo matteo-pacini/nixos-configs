@@ -457,8 +457,8 @@ not.
 **Hyprland** (`user/hypr/`): `hyprland.lua` (entry, requires the rest, then
 `rescue.lua`), `monitors.lua` (outputs, workspace rules), `input.lua`,
 `looknfeel.lua` (gaps, animations, tearing, scanout, `disable_autoreload`),
-`rules.lua` (game rule, critical-notification layer rule), `bindings.lua`
-(every bind, through `bind()`), `autostart.lua`.
+`rules.lua` (game rule, critical-notification and calendar big-view layer
+rules), `bindings.lua` (every bind, through `bind()`), `autostart.lua`.
 
 **Quickshell** (`user/quickshell/`). `shell.qml` loads one line per
 component. Root components, one per file:
@@ -473,6 +473,7 @@ component. Root components, one per file:
 | `Cheatsheet.qml` | Keybinding sheet from `hyprctl -j binds` |
 | `SessionMenu.qml`, `Polkit.qml` | Centred modals |
 | `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml`, `Tailscale.qml`, `Tokens.qml` | The nine drop-down panels (each the biggest file of its feature) |
+| `CalendarFull.qml` | The calendar's big view: a centred card 80 % of the monitor, blurred behind (layer rule in `hypr/rules.lua`), in `Dropdowns` as `calendarfull`, no bar item |
 | `Lockscreen.qml`, `LockState.qml` | The shell's side of the lock: IPC `lockscreen`, hold, sleep inhibitor; the launch command and `held` state |
 | `lock.qml` | The lock process itself (a separate Quickshell config) |
 
@@ -485,7 +486,7 @@ Directories (`import qs.<dir>`):
 | `notifications/` | `Card.qml` (one card), `Entry.qml` (timeout, replacement, leave animation) |
 | `network/` | `NetworkPanel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml`, `PasswordModal.qml` (the Wi-Fi password modal: masked field, `take()` hands the text over once and empties it), `wifi.js` (all Wi-Fi decisions: section state, rows and order, security words, password check, the join/forget/cancel machine and its effects, hints, details, bar look; node-tested) |
 | `audio/` | `AudioPanel.qml` (shared singleton), `Stack.qml` (the DAC drawing), `Modi.qml` (`/proc/asound` reads), `Graph.qml` (`pw-dump`), `Level.qml` (level bar), `NoSignal.qml` (singleton, runs always) |
-| `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions; node-tested) |
+| `calendar/` | `CalendarPanel.qml` (shared singleton, also the export loader, minute clock and bar hint), `CalendarFullShared.qml` (the big view's singleton: `screen`, `toggleRequested`, `showRequested`), `CalendarActions.qml` (sync, web calendar and flash for one view; one per view, polls only while it is open), `MonthCell.qml` (a big-view day cell), `Reminders.qml` (reminders, digest, held items), `queries.js` (all calendar decisions, the big view's cells and keys included; node-tested) |
 | `system/` | `SystemPanel.qml` (shared singleton), `Sensors.qml` (singleton, every read, at three levels), `decode.js` (gpu_metrics and /proc parsing, throttle decode, when a slow read is due; node-tested), `Machine.qml` (drawing), `Ring.qml`, `Temperatures.qml` (bar hover list) |
 | `bluetooth/` | `BluetoothShared.qml` (shared singleton: adapter, devices, RSSI, links, answers, low battery), `Agent.qml` (runs `desk-bt-agent`, open requests), `PairModal.qml`, `services.js`, `devices.js` (node-testable) |
 | `office/` | `OfficeShared.qml` (shared singleton: `screen`, `toggleRequested`, `readOnly`, runs `desk-mqtt` and restarts it, `office` state, `send()`, `failed`), `office.js` (all office decisions: applying helper events, ages, percent ↔ raw, locks, row texts, banners, bar view; node-tested) |
@@ -657,6 +658,9 @@ From the token panel's deploy, done or not by now, no report says:
   the polkit field cleared on hide; Office's release only after its own
   press; `R refresh counts`; the bar's weekly figure from the new limits
   writer, which is not live until the switch.
+- Calendar big view (Super+Shift+C, F from the drop-down): built and
+  checked only (lint, verify-config, node); never loaded, seen or keyed
+  live; the blur and the dim never seen.
 - Most pointer and key input was driven by the user, not by agents; whatever
   a report lists as expected still is.
 

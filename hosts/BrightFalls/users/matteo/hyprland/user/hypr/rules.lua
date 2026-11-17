@@ -25,3 +25,12 @@ hl.layer_rule({
     match  = { namespace = "^desk-notifications-critical$" },
     no_anim = true,
 })
+
+-- The calendar's big view (quickshell/CalendarFull.qml) blurs its whole
+-- monitor. No ignore_alpha (which leaves unblurred every pixel at or below
+-- its alpha), so the whole surface is blurred whatever the alpha of the
+-- dimming drawn around the card.
+hl.layer_rule({
+    match = { namespace = "^desk-calendar-full$" },
+    blur  = true,
+})

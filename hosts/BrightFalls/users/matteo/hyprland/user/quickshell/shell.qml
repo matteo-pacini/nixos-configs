@@ -23,6 +23,7 @@ ShellRoot {
     Network {}
     Audio {}
     Calendar {}
+    CalendarFull {}
     System {}
     BluetoothPanel {}
     Office {}

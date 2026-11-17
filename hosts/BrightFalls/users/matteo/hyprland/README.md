@@ -17,7 +17,8 @@ work) is in [AGENTS.md](AGENTS.md).
   [Notifications](#notifications), [OSD](#osd), [Cheat sheet](#cheat-sheet),
   [Session menu](#session-menu), [Polkit dialog](#polkit-dialog),
   [Network panel](#network-panel), [Audio panel](#audio-panel),
-  [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
+  [Calendar panel](#calendar-panel), [Calendar big view](#calendar-big-view),
+  [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
   [Tailscale panel](#tailscale-panel), [Token panel](#token-panel),
@@ -205,6 +206,7 @@ which repeat (the pairing modal and the lock screen are not guarded).
 | Network | Super+N, bar network icon | `network` |
 | Audio | Super+A, middle click on bar audio item | `audio` |
 | Calendar | Super+C, bar clock | `calendar` |
+| Calendar, big view | Super+Shift+C, F in the calendar panel | `calendarfull` |
 | System | Super+Y, bar temperature chip | `system` |
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
 | Office | Super+O, bar light bulb and watts | `office` |
@@ -565,7 +567,8 @@ check.
   M". "time zone unknown" in orange means the event's own time zone could
   not be read, so its time may be off.
 - **Keys**: ←→ move by a day and ↑↓ by a week, across months; PgUp/PgDn
-  change month, keeping the day number; T jumps to today; Enter or O opens
+  change month, keeping the day number; T jumps to today; F swaps the panel
+  for the [big view](#calendar-big-view) on the same day; Enter or O opens
   the selected day in the Nextcloud web calendar; R syncs now; Esc closes. A
   click on a day selects it.
 - **Data**: read-only. Events come from the export that `calendar-sync`
@@ -577,6 +580,45 @@ check.
   is pressed, and is never kept or logged.
 - `calendar/queries.js`, the panel's and the reminders' decisions, is plain
   JavaScript that node runs too (the `calendar-panel` check, [Tests](#tests)).
+
+### Calendar big view
+
+`CalendarFull.qml` (parts in `calendar/`: `CalendarFullShared.qml`,
+`MonthCell.qml`), the same calendar as a card 80 % of the focused monitor's
+width and height, in its middle. Super+Shift+C (`qs ipc call calendarfull
+toggle`) opens it on today, and F in the calendar panel opens it on the
+panel's selected day.
+
+- **The month**: ISO week numbers on the left, then Monday to Sunday,
+  weekends in pink, one row per week sharing the height. Each day names its
+  events, as many as fit: an all-day event, or one begun on an earlier day,
+  as its title on a bar of its calendar's colour; any other as a coloured
+  edge, its start time and its title. What does not fit is counted on a
+  last line, `3 more`. Today's number is on a purple pill, the selected day
+  outlined in pink. Days outside the month show their number only. The
+  header shows the week number, the month's weeks, or `syncing…`.
+- **The day**: beside the month, the selected day's events as the panel
+  lists them, scrolling when they do not fit, and under them the legend of
+  the month's calendars, wrapping. Not shown while no export exists.
+- **Keys**: as the panel's, except F, which swaps the big view for the
+  panel on the same day. A click on a day selects it; a click outside the
+  card closes.
+- **Data, sync and web calendar**: the panel's (`calendar/CalendarActions.qml`
+  runs R and O for both). Each view keeps its own sync state: after F the
+  header's `syncing…` follows the service within 3 seconds, and a failure
+  message from a sync started in the other view is not shown.
+- **Look**: everything behind it on that monitor, the bar included, is
+  dimmed by the shell and blurred by Hyprland (a layer rule for
+  `desk-calendar-full` in `hypr/rules.lua`). Game mode turns Hyprland's blur
+  off, and then it is only dimmed. A critical notification card or the OSD
+  is drawn above it, sharp, when its window appears after the big view
+  opens (both are Overlay surfaces, stacked in the order they appear, as
+  over the drop-downs); one already up when it opens stays under it, as do
+  the other notification cards, on the Top layer.
+- It is not a drop-down, but it is in `common/Dropdowns.qml`: opening it
+  closes any open drop-down, and opening a drop-down, the launcher, the
+  cheat sheet or the session menu closes it. Like them it is an Overlay
+  surface with the keyboard: not for use over a game.
 
 ### Calendar reminders
 
@@ -1662,8 +1704,11 @@ config on GitHub's runners, cause not known.
   (`tests/calendar/panel/`, written by `make-fixture.js` and
   `make-reminders-fixture.js` there, plus a small export built inline for
   markup in titles and calendar names, unlisted calendars and long
-  summaries), in London time (the test first asserts the zone, so a run in
-  UTC fails rather than pass the daylight-saving cases vacuously).
+  summaries, and another for the big view: what a day cell shows when its
+  events fit or not, the header's week note, and each key's action, its
+  move and whether a held key repeats), in London time (the test first
+  asserts the zone, so a run in UTC fails rather than pass the
+  daylight-saving cases vacuously).
 - `nix build .#checks.x86_64-linux.bluetooth-panel`: runs
   `user/quickshell/bluetooth/services.js` and `devices.js` under node
   against invented devices and links (`tests/bluetooth/test-bluetooth.js`):

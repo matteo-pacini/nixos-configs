@@ -320,6 +320,110 @@ function webUrl(davBase, date) {
     return m ? m[1] + "index.php/apps/calendar/timeGridDay/" + ymd(date) : "";
 }
 
+// The big view: the month as a large card, each day cell naming its events.
+
+// What the day cell for `date` shows when `max` rows fit in it:
+// { chips: [{ title, color, time, filled }], more }. Chips follow dayEvents().
+// `color` is the calendar's header colour, else the event's own. `filled` is
+// true for an all-day event and for a timed one begun before `date`'s
+// midnight; those have `time` "", the others their start "HH:MM". When the
+// events do not fit, the last row is the "N more" line: `max - 1` chips and
+// `more` the rest; `more` is 0 when everything is shown.
+function cellView(data, date, max) {
+    var evs = dayEvents(data, date);
+    var shown = evs.length <= max ? evs.length : Math.max(max - 1, 0);
+    var midnight = dayStart(date);
+    return {
+        chips: evs.slice(0, shown).map(function (e) {
+            var filled = e.allDay || e.start < midnight;
+            return { title: e.title, color: colorOf(data, e.calendar, e.color), time: filled ? "" : hm(e.start), filled: filled };
+        }),
+        more: evs.length - shown
+    };
+}
+
+// A day cell's last line: "3 more".
+function moreText(n) {
+    return n + " more";
+}
+
+// How many rows `row` pixels high, `gap` pixels apart, fit in `available`
+// pixels; 0 or more.
+function fitRows(available, row, gap) {
+    return Math.max(0, Math.floor((available + gap) / (row + gap)));
+}
+
+// The month header's right-hand text: "syncing…" while syncing; "week N" of
+// `selected` when its month is `now`'s; otherwise "weeks A to B", the month
+// grid's first and last rows.
+function headerNote(syncing, selected, now) {
+    if (syncing)
+        return "syncing…";
+    if (selected.getFullYear() === now.getFullYear() && selected.getMonth() === now.getMonth())
+        return "week " + isoWeek(selected);
+    var grid = monthGrid(selected.getFullYear(), selected.getMonth());
+    return "weeks " + grid[0].week + " to " + grid[grid.length - 1].week;
+}
+
+var BIG_VIEW_REPEATING = ["Left", "Right", "Up", "Down", "PgUp", "PgDn"];
+
+// What a key does in the big view. `name` is "Esc", "Left", "Right", "Up",
+// "Down", "PgUp", "PgDn", "Enter" (Return and Enter both), or the letter "T",
+// "R", "O", "F"; `plain` is false when a modifier other than the keypad's is
+// held, and then a letter does nothing. Returns { do: "close" } |
+// { do: "move", days } | { do: "move", months } | { do: "today" } |
+// { do: "sync" } | { do: "web" } (open the web calendar) | { do: "dropdown" }
+// (switch to the drop-down on the same day) | { do: "none" } (key not used).
+function bigViewKey(name, plain) {
+    switch (name) {
+    case "Esc":
+        return { do: "close" };
+    case "Left":
+        return { do: "move", days: -1 };
+    case "Right":
+        return { do: "move", days: 1 };
+    case "Up":
+        return { do: "move", days: -7 };
+    case "Down":
+        return { do: "move", days: 7 };
+    case "PgUp":
+        return { do: "move", months: -1 };
+    case "PgDn":
+        return { do: "move", months: 1 };
+    case "Enter":
+        return { do: "web" };
+    }
+    if (!plain)
+        return { do: "none" };
+    switch (name) {
+    case "T":
+        return { do: "today" };
+    case "R":
+        return { do: "sync" };
+    case "O":
+        return { do: "web" };
+    case "F":
+        return { do: "dropdown" };
+    }
+    return { do: "none" };
+}
+
+// The day selected after `action` (bigViewKey()'s result) from `selected`, at
+// midnight: days and months moved (a month on clamps to its last day), or
+// `now`'s day for "today". Any other action keeps `selected`.
+function bigViewMove(selected, action, now) {
+    if (action.do === "today")
+        return dayStart(now);
+    if (action.do !== "move")
+        return selected;
+    return action.months ? addMonths(selected, action.months) : addDays(selected, action.days);
+}
+
+// Whether a held key's auto-repeat acts: only for the keys that move.
+function bigViewRepeats(name) {
+    return BIG_VIEW_REPEATING.indexOf(name) >= 0;
+}
+
 // Reminders and the morning digest. Reminders.qml calls plan() once a minute
 // and does what it returns; everything below is decided here.
 
@@ -637,6 +741,13 @@ if (typeof module !== "undefined")
         row: row,
         staleText: staleText,
         webUrl: webUrl,
+        cellView: cellView,
+        moreText: moreText,
+        fitRows: fitRows,
+        headerNote: headerNote,
+        bigViewKey: bigViewKey,
+        bigViewMove: bigViewMove,
+        bigViewRepeats: bigViewRepeats,
         ymd: ymd,
         hm: hm
     };

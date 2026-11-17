@@ -30,4 +30,6 @@ Singleton {
     readonly property color track: Qt.darker(Theme.background, 1.5)
     // The dimmed desktop behind a centred modal.
     readonly property color scrim: Qt.rgba(15 / 255, 16 / 255, 22 / 255, 0.5)
+    // The lighter dim over the blurred desktop behind the calendar big view.
+    readonly property color veil: Qt.rgba(15 / 255, 16 / 255, 22 / 255, 0.28)
 }
