@@ -77,6 +77,35 @@ pkgs.lib.fix (self: {
         sed -i 's/^SUMMARY:FX renamed$/SUMMARY:FX renamed twice/' vdir/fixB/midnight.ics
         run vdir "$PWD/inc" edited.jsonl
         grep -q '"title": "FX renamed twice"' edited.jsonl
+
+        # A file that is not UTF-8 and one that is not iCalendar are left
+        # out, counted on stderr without their names; the rest of their
+        # calendar is exported as without them.
+        mkdir good bad
+        cp -r --no-preserve=mode ${./calendar/fixtures}/fixE good/
+        cp -r good/fixE bad/
+        printf 'BEGIN:VCALENDAR\r\nSUMMARY:caf\351\r\nEND:VCALENDAR\r\n' >bad/fixE/latin1.ics
+        printf 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nBEGIN:VALARM\nno colon here\n' >bad/fixE/broken.ics
+        run good "$PWD/good-work" good.jsonl
+        run bad "$PWD/bad-work" bad.jsonl 2>bad.err || {
+          cat bad.err
+          exit 1
+        }
+        diff -u good.jsonl bad.jsonl
+        grep -qx 'calendar-export: .ics files skipped (not UTF-8 or not iCalendar): 2' bad.err
+        if grep -q 'latin1\|broken' bad.err; then
+          echo "a skipped file is named on stderr"
+          exit 1
+        fi
+        # A file already exported that turns unreadable drops out.
+        grep -q '"uid": "fx-alarm-single"' bad.jsonl
+        printf 'BEGIN:VCALENDAR\r\nSUMMARY:caf\351\r\nEND:VCALENDAR\r\n' >bad/fixE/single.ics
+        run bad "$PWD/bad-work" bad2.jsonl 2>bad2.err
+        grep -q 'skipped (not UTF-8 or not iCalendar): 3$' bad2.err
+        if grep -q 'fx-alarm-single' bad2.jsonl; then
+          echo "a file that turned unreadable is still exported"
+          exit 1
+        fi
         touch $out
       '';
 
