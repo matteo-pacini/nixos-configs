@@ -165,14 +165,21 @@ reset() {
   fi
 }
 
-# Line numbers of $1 that look like a secret, one per line; fails if none.
+# Line numbers of the live file $1 that look like a secret, among the lines
+# that are not in its store copy $2, one per line; fails if none. Only those
+# lines are scanned: shipped code has lines the patterns match.
 secret_lines() {
+  local added
+  # $1 with every line it shares with $2 blanked, so grep -n still counts
+  # $1's lines.
+  added=$(diff --unchanged-line-format=$'\n' --old-line-format= \
+    --new-line-format=%L "$2" "$1") || true
   {
-    grep -n -e '-----BEGIN \([A-Z0-9]* \)*PRIVATE KEY' "$1" || true
-    grep -niE '(password|passwd|secret|token|api[_-]?key)[a-z0-9_]*["'\'']?[[:space:]]*[:=]' "$1" || true
-    grep -niE 'bearer[[:space:]]+[A-Za-z0-9._~+/=-]{16,}' "$1" || true
+    grep -n -e '-----BEGIN \([A-Z0-9]* \)*PRIVATE KEY' <<<"$added" || true
+    grep -niE '(password|passwd|secret|token|api[_-]?key)[a-z0-9_]*["'\'']?[[:space:]]*[:=]' <<<"$added" || true
+    grep -niE 'bearer[[:space:]]+[A-Za-z0-9._~+/=-]{16,}' <<<"$added" || true
     # Long runs with a letter and a digit: API keys, not identifiers.
-    grep -noE '[A-Za-z0-9_+=]{40,}' "$1" | grep -E '^[0-9]+:[^:]*[0-9]' |
+    grep -noE '[A-Za-z0-9_+=]{40,}' <<<"$added" | grep -E '^[0-9]+:[^:]*[0-9]' |
       grep -E '^[0-9]+:[^:]*[A-Za-z]' || true
   } | cut -d: -f1 | sort -un | grep .
 }
@@ -185,7 +192,13 @@ pull() {
     live="$config_home/$rel"
     [ -f "$live" ] || continue
     cmp -s "$live" "$manifest/$rel" && continue
-    if lines=$(secret_lines "$live"); then
+    # The checkout may already hold that newer version; copying would revert it.
+    if [ -e "$state/incoming/$rel" ]; then
+      echo "desk-sync: not copying $rel: it was edited on an older version; the newer one is in $state/incoming/$rel (see desk-sync status -v)" >&2
+      refused=1
+      continue
+    fi
+    if lines=$(secret_lines "$live" "$manifest/$rel"); then
       echo "desk-sync: not copying $rel: line $(paste -sd, - <<<"$lines" | sed 's/,/, /g') of $live looks like a secret" >&2
       refused=1
       continue
