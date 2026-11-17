@@ -38,7 +38,7 @@ Scope {
     readonly property var pipe: F.pipeline(fleet)
     readonly property string runUrl: fleet.github?.state === "ok" ? (fleet.github.run?.url ?? "") : ""
     readonly property string spinner: "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[frame % 10]
-    readonly property bool spinning: names.some(n => fleet.rows[n].chip.id === "deploying" || fleet.rows[n].chip.id === "building" || ["started", "running"].includes(fleet.actions[n]?.state))
+    readonly property bool spinning: F.spinning(fleet)
 
     readonly property color soft: Style.soft
 

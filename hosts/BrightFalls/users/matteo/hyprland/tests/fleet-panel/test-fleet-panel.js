@@ -364,11 +364,13 @@ t("navigation: up, down, home, end, clamps, unknown selection", () => {
     assert.equal(F.move([], "A", "Down"), "");
 });
 
-t("sent commands are kept until their final event", () => {
-    let st = F.sent(F.initial("running"), 7, { cmd: "diff", host: "H" });
-    assert.deepEqual(st.commands[7], { cmd: "diff", host: "H" });
-    st = F.apply(st, { event: "action", id: 7, host: "H", action: "diff", state: "ok" });
-    assert.equal(st.commands[7], undefined);
+t("the spinner turns while a chip is busy or a session action runs", () => {
+    const hero = load("hero");
+    assert.equal(F.spinning(hero), false);
+    assert.equal(F.spinning(load("chips-2")), true);
+    const running = F.apply(hero, { event: "action", id: 1, host: "Nexus", action: "switch", state: "running" });
+    assert.equal(F.spinning(running), true);
+    assert.equal(F.spinning(F.apply(running, { event: "action", id: 1, host: "Nexus", action: "switch", state: "ok" })), false);
 });
 
 console.log(`ok: ${n} tests`);

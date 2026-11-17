@@ -611,8 +611,6 @@ rename leaves stale live files; the naming rule is under "Names to know").
   the bind while a layer surface holds the keyboard.
 - `network/SpeedTest.qml:61-75,190-219`: a test started while a cancelled
   one is still exiting is fed the old one's end.
-- `fleet/fleet.js:33,64-67`: `st.commands` is kept but never consulted,
-  and grows by one per F5.
 - `launcher/Calc.qml:56,93-105`: float results (`floor((0.1+0.7)*10)` gives
   7, `1 % 0.1` gives 0.1); fix with the move to `.js` above.
 - `Office.qml:567`: an off light's slider cannot be dragged with the mouse,
