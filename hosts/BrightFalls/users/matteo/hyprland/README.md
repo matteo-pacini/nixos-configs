@@ -593,10 +593,10 @@ panel's selected day.
   weekends in pink, one row per week sharing the height. Each day names its
   events, as many as fit: an all-day event, or one begun on an earlier day,
   as its title on a bar of its calendar's colour; any other as a coloured
-  edge, its start time and its title. What does not fit is counted on a last line, `3
-  more`. Today's number is on a purple pill, the selected day outlined in
-  pink. Days outside the month show their number only. The header shows the
-  week number, the month's weeks, or `syncing…`.
+  edge, its start time and its title. What does not fit is counted on a
+  last line, `3 more`. Today's number is on a purple pill, the selected day
+  outlined in pink. Days outside the month show their number only. The
+  header shows the week number, the month's weeks, or `syncing…`.
 - **The day**: beside the month, the selected day's events as the panel
   lists them, scrolling when they do not fit, and under them the legend of
   the month's calendars, wrapping. Not shown while no export exists.
@@ -604,11 +604,16 @@ panel's selected day.
   panel on the same day. A click on a day selects it; a click outside the
   card closes.
 - **Data, sync and web calendar**: the panel's (`calendar/CalendarActions.qml`
-  runs R and O for both).
+  runs R and O for both). Each view keeps its own sync state: after F the
+  header's `syncing…` follows the service within 3 seconds, and a failure
+  message from a sync started in the other view is not shown.
 - **Look**: everything behind it on that monitor, the bar included, is
   dimmed by the shell and blurred by Hyprland (a layer rule for
   `desk-calendar-full` in `hypr/rules.lua`). Game mode turns Hyprland's blur
-  off, and then it is only dimmed.
+  off, and then it is only dimmed. A critical notification card or the OSD
+  appearing while it is open is drawn above it, sharp: both are Overlay
+  surfaces mapped later, as over the drop-downs. Other notification cards
+  are on the Top layer, under it.
 - It is not a drop-down, but it is in `common/Dropdowns.qml`: opening it
   closes any open drop-down, and opening a drop-down, the launcher, the
   cheat sheet or the session menu closes it. Like them it is an Overlay
@@ -1700,8 +1705,9 @@ config on GitHub's runners, cause not known.
   markup in titles and calendar names, unlisted calendars and long
   summaries, and another for the big view: what a day cell shows when its
   events fit or not, the header's week note, and each key's action, its
-  move and whether a held key repeats), in London time (the test first asserts the zone, so a run in
-  UTC fails rather than pass the daylight-saving cases vacuously).
+  move and whether a held key repeats), in London time (the test first
+  asserts the zone, so a run in UTC fails rather than pass the
+  daylight-saving cases vacuously).
 - `nix build .#checks.x86_64-linux.bluetooth-panel`: runs
   `user/quickshell/bluetooth/services.js` and `devices.js` under node
   against invented devices and links (`tests/bluetooth/test-bluetooth.js`):

@@ -136,7 +136,7 @@ Scope {
 
         Rectangle {
             anchors.fill: parent
-            color: Style.scrim
+            color: Style.veil
         }
 
         // A click off the card closes.
