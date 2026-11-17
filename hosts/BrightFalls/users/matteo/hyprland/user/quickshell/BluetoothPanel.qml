@@ -296,7 +296,7 @@ Scope {
 
     function power(): void {
         if (!usable) {
-            BluetoothShared.announce(blocked ? "Bluetooth is blocked" : "No Bluetooth adapter");
+            BluetoothShared.announce(blocked ? "Bluetooth is blocked" : "No Bluetooth adapter", false);
             return;
         }
         powerPending = true;
@@ -512,7 +512,7 @@ Scope {
         if (powerPending) {
             powerPending = false;
             powerTimer.stop();
-            BluetoothShared.announce(on ? "Bluetooth on" : "Bluetooth off");
+            BluetoothShared.announce(on ? "Bluetooth on" : "Bluetooth off", on);
         }
         if (!on) {
             scanUntil = 0;
@@ -681,7 +681,7 @@ Scope {
         onTriggered: {
             if (root.powerPending) {
                 root.powerPending = false;
-                BluetoothShared.announce(root.on ? "Bluetooth did not turn off" : "Bluetooth did not turn on");
+                BluetoothShared.announce(root.on ? "Bluetooth did not turn off" : "Bluetooth did not turn on", root.on);
             }
         }
     }
