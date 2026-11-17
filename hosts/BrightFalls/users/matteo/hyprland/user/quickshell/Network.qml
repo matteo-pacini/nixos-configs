@@ -524,6 +524,9 @@ Scope {
         if (!open || phase !== "list")
             return;
         expanded = "";
+        // The route may have moved since the panel opened (a cable plugged
+        // in); a run is filed under the route read here.
+        infoQuery.running = true;
         const last = sessionChoice || historyChoice;
         chosen = Math.max(0, choices.indexOf(last));
         phase = "out";
@@ -651,7 +654,8 @@ Scope {
         id: startTimer
 
         interval: 380
-        onTriggered: root.runTest()
+        // Waits for the route read openChooser() started.
+        onTriggered: infoQuery.running ? startTimer.restart() : root.runTest()
     }
 
     Timer {
