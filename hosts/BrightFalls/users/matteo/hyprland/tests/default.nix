@@ -1,28 +1,7 @@
-# The BrightFalls desktop's tests, as flake checks (each says below what it
-# covers):
-#   nix build .#checks.<system>.desk-sync
-#   nix build .#checks.<system>.calendar-export
-#   nix build .#checks.<system>.calendar-panel
-#   nix build .#checks.<system>.bluetooth-panel
-#   nix build .#checks.<system>.tray-panel
-#   nix build .#checks.<system>.office-panel
-#   nix build .#checks.<system>.office-helper
-#   nix build .#checks.<system>.system-panel
-#   nix build .#checks.<system>.display-layout
-#   nix build .#checks.<system>.hypr-config
-#   nix build .#checks.<system>.desk-unlock
-#   nix build .#checks.<system>.bluetooth-agent
-#   nix build .#checks.<system>.audio-output-cycle
-#   nix build .#checks.<system>.fleet-helper
-#   nix build .#checks.<system>.fleet-panel
-#   nix build .#checks.<system>.tailscale-panel
-#   nix build .#checks.<system>.wifi-panel
-#   nix build .#checks.<system>.tokens-helper
-#   nix build .#checks.<system>.tokens-panel
-# All but hypr-config run in CI (the brightfalls-tests job in
-# .github/workflows/pr-build.yml). hypr-config is run by hand before a change
-# to the Hyprland config: Hyprland --verify-config crashes (exit 139) on the
-# full hyprland.lua on GitHub's runners, cause not known.
+# The BrightFalls desktop's tests, as flake checks; each says below what it
+# covers. One check: nix build .#checks.x86_64-linux.<name>
+# All but hypr-config, through one attribute (what CI builds):
+#   nix build -L .#checks.x86_64-linux.brightfalls-tests
 { pkgs }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
@@ -32,7 +11,18 @@ let
     timeZone = "Europe/London";
   };
 in
-{
+pkgs.lib.fix (self: {
+  # Every check in this set but hypr-config (and itself). hypr-config is run
+  # by hand before a change to the Hyprland config: Hyprland --verify-config
+  # crashes (exit 139) on the full hyprland.lua on GitHub's runners, cause
+  # not known.
+  brightfalls-tests = pkgs.linkFarm "brightfalls-tests" (
+    builtins.removeAttrs self [
+      "brightfalls-tests"
+      "hypr-config"
+    ]
+  );
+
   # The export of calendar/fixtures/ as of CALENDAR_NOW must equal
   # calendar/expected.jsonl. Regenerating it: README.md, "Calendar events".
   calendar-export =
@@ -191,18 +181,19 @@ in
       '';
 
   # The Hyprland config, laid out as installed, through Hyprland
-  # --verify-config, and theme.lua's reading of theme.json.
-  hypr-config =
-    pkgs.runCommand "hypr-config-tests"
-      {
-        nativeBuildInputs = [ pkgs.jq ];
-      }
-      ''
-        # lua5_5: the Lua the Hyprland package embeds.
-        bash ${./hypr/run.sh} ${pkgs.lib.getExe' pkgs.hyprland "Hyprland"} \
-          ${pkgs.lib.getExe pkgs.lua5_5} ${../user} ${../defaults}
-        touch $out
-      '';
+  # --verify-config.
+  hypr-config = pkgs.runCommand "hypr-config-tests" { } ''
+    bash ${./hypr/run.sh} verify ${pkgs.lib.getExe' pkgs.hyprland "Hyprland"} \
+      ${../user} ${../defaults}
+    touch $out
+  '';
+
+  # theme.lua's reading of theme.json, under Lua alone (no Hyprland).
+  hypr-theme = pkgs.runCommand "hypr-theme-tests" { nativeBuildInputs = [ pkgs.jq ]; } ''
+    # lua5_5: the Lua the Hyprland package embeds.
+    bash ${./hypr/run.sh} theme ${pkgs.lib.getExe pkgs.lua5_5} ${../user} ${../defaults}
+    touch $out
+  '';
 
   # desk-unlock (the recovery when the lock screen dies) against fake
   # hyprctl, systemctl and pkill.
@@ -319,4 +310,4 @@ in
         bash ${./run.sh} ${../desk-sync.sh}
         touch $out
       '';
-}
+})
