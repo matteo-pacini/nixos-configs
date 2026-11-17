@@ -393,6 +393,7 @@ host=${FAKE_HOST:-local}
 if [ "$1" = mode ] && [ $# = 1 ]; then echo manual; exit 0; fi
 echo "$host comin-deploy $*" >>"$FAKE/log"
 echo "fake comin-deploy on $host: $*"
+if [ -e "$FAKE/$host.slow" ]; then sleep 60; fi
 code=$(cat "$FAKE/$host.cdexit" 2>/dev/null || echo 0)
 [ "$code" = 0 ] || echo "The deployment failed: fake error"
 exit "$code"
@@ -588,6 +589,36 @@ esac
     proc.wait(10)
     subprocess.run([fleet_tmux(), "-S", os.path.join(runtime, "tmux.sock"), "kill-server"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # A helper restarted while an action still runs counts the host as busy:
+    # the running session is neither replaced nor killed.
+    os.unlink(os.path.join(fake, "far.cdexit"))
+    open(os.path.join(fake, "far.slow"), "w").close()
+    runtime = os.path.join(WORK, "rt-restart")
+    tsock = [fleet_tmux(), "-S", os.path.join(runtime, "tmux.sock")]
+    proc, events, wait, send = start(runtime)
+    wait(lambda e: e["event"] == "round" and e["state"] == "done", 20, "restart: first round")
+    send(id=40, cmd="mode", host="Far", value="boot")
+    wait(lambda e: e["event"] == "action" and e.get("id") == 40 and e["state"] == "started", 10, "slow mode started")
+    logged("far comin-deploy mode boot")
+    proc.stdin.close()
+    wait(lambda e: e["event"] == "exit", 10, "restart: exit")
+    proc.wait(10)
+    before = logged()
+    proc, events, wait, send = start(runtime)
+    wait(lambda e: e["event"] == "round" and e["state"] == "done", 20, "restart: round after restart")
+    send(id=41, cmd="mode", host="Far", value="manual")
+    e = wait(lambda e: e["event"] == "action" and e.get("id") == 41, 10, "restart: second action")
+    check("restart: second action refused busy", e and e["state"] == "refused" and e["reason"] == "busy", e)
+    check("restart: first session still there",
+          subprocess.run([*tsock, "has-session", "-t", "=Far"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL).returncode == 0)
+    check("restart: nothing more ran", logged() == before, logged()[len(before):])
+    proc.stdin.close()
+    wait(lambda e: e["event"] == "exit", 10, "restart: second exit")
+    proc.wait(10)
+    subprocess.run([*tsock, "kill-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    os.unlink(os.path.join(fake, "far.slow"))
 
     # --read-only: rows as usual, every write refused before the gate, the
     # rest still works.

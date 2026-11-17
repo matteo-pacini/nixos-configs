@@ -930,8 +930,12 @@ class Fleet:
             row = self.rows.get(label)
             busy = label in self.running
         refusal = check_command(row, msg)
-        if refusal is None and busy and name not in ("diff", "ssh"):
-            refusal = ("busy", "an action is running on this host")
+        if refusal is None and name not in ("diff", "ssh"):
+            # A session without an exit code is an action still running, maybe
+            # started before this helper did; starting another would kill it.
+            busy = busy or (self.sessions.exists(label) and self.sessions.exit_code(label) is None)
+            if busy:
+                refusal = ("busy", "an action is running on this host")
         if refusal:
             emit(event="action", **base, state="refused", reason=refusal[0], why=refusal[1])
             return
@@ -1001,8 +1005,11 @@ class Fleet:
                 and any("password is required" in x for x in tail):
             emit(event="message", host=label, kind="sudo-password",
                  text=f"sudo on {label} needs a password: type it in the terminal that opened.")
-            self.sessions.start(label, on_host(host, "sudo systemctl reboot"))
-            err = ghostty(f"Fleet: {label} reboot", self.sessions.attach_argv(label))
+            ok, err = self.sessions.start(label, on_host(host, "sudo systemctl reboot"))
+            if ok:
+                err = ghostty(f"Fleet: {label} reboot", self.sessions.attach_argv(label))
+            else:
+                err = err or "tmux failed"
             if err:
                 emit(event="action", **base, state="failed", tail=tail, exit=code, reason=err)
                 with self.mu:
