@@ -154,6 +154,7 @@ Scope {
             id: titleText
 
             text: head.title
+            textFormat: Text.PlainText
             color: Theme.foreground
             font.family: Theme.fontUi
             font.pixelSize: 14
@@ -166,6 +167,7 @@ Scope {
             width: Math.max(0, tail.x - x - 8)
             elide: Text.ElideRight
             text: head.sub
+            textFormat: Text.PlainText
         }
 
         Row {
@@ -240,6 +242,7 @@ Scope {
                         width: Math.min(implicitWidth, valueRow.width - (tag.visible ? tag.width + 6 : 0))
                         elide: Text.ElideRight
                         text: cell.row[1]
+                        textFormat: Text.PlainText
                         color: root.heatColor(cell.row[2] ?? 0)
                     }
 
@@ -279,6 +282,7 @@ Scope {
             width: 62
             elide: Text.ElideRight
             text: barRow.label
+            textFormat: Text.PlainText
         }
 
         Rectangle {

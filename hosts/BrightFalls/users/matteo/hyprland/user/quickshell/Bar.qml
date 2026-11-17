@@ -301,6 +301,7 @@ Scope {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.max(0, Math.min(implicitWidth, clock.x - root.gap - left.x - x))
                         text: bar.title
+                        textFormat: Text.PlainText
                         elide: Text.ElideRight
                         color: root.soft
                         font.family: Theme.fontMono
@@ -991,6 +992,7 @@ Scope {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: Math.min(implicitWidth, 180)
                                 text: audio.name
+                                textFormat: Text.PlainText
                                 elide: Text.ElideRight
                                 color: Theme.foreground
                                 font.family: Theme.fontMono

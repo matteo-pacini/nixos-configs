@@ -1141,6 +1141,7 @@ Scope {
                                         width: parent.width
                                         elide: Text.ElideRight
                                         text: wiredRow.modelData.name
+                                        textFormat: Text.PlainText
                                         color: Theme.foreground
                                         font.family: Theme.fontUi
                                         font.pixelSize: 15
@@ -1389,6 +1390,7 @@ Scope {
                                         width: parent.width
                                         elide: Text.ElideRight
                                         text: wifiRow.v.name
+                                        textFormat: Text.PlainText
                                         color: wifiRow.v.dim ? Theme.comment : Theme.foreground
                                         font.family: Theme.fontUi
                                         font.pixelSize: 15

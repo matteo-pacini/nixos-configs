@@ -247,6 +247,7 @@ Scope {
                     visible: root.device !== ""
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.device
+                    textFormat: Text.PlainText
                     color: Theme.foreground
                     font.family: Theme.fontUi
                     font.pixelSize: 12

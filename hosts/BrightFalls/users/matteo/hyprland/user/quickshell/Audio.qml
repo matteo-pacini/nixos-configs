@@ -518,6 +518,7 @@ Scope {
 
                     anchors.centerIn: parent
                     text: parent.modelData[0]
+                    textFormat: Text.PlainText
                     color: parent.modelData[1] ?? Theme.comment
                     font.family: Theme.fontMono
                     font.pixelSize: parent.modelData[2] ? 10 : 11
@@ -745,6 +746,7 @@ Scope {
                                     required property var modelData
 
                                     text: modelData[0]
+                                    textFormat: Text.PlainText
                                     color: modelData[1] === "arrow" ? Theme.comment : modelData[1] === "warn" ? Theme.orange : root.soft
                                     font.family: Theme.fontMono
                                     font.pixelSize: 12
@@ -823,6 +825,7 @@ Scope {
                                             width: parent.width - 48
                                             elide: Text.ElideRight
                                             text: root.programName(program.modelData)
+                                            textFormat: Text.PlainText
                                             color: Theme.foreground
                                             font.family: Theme.fontUi
                                             font.pixelSize: 15
@@ -917,6 +920,7 @@ Scope {
                                                 width: detailLines.width - 76
                                                 wrapMode: Text.Wrap
                                                 text: parent.modelData[1]
+                                                textFormat: Text.PlainText
                                                 color: root.soft
                                                 font.family: Theme.fontMono
                                                 font.pixelSize: 12
@@ -996,6 +1000,7 @@ Scope {
                                         width: parent.width - 48
                                         elide: Text.ElideRight
                                         text: root.inputName(input.modelData)
+                                        textFormat: Text.PlainText
                                         color: Theme.foreground
                                         font.family: Theme.fontUi
                                         font.pixelSize: 15

@@ -463,6 +463,7 @@ Scope {
 
                             Mono {
                                 text: parent.modelData.name
+                                textFormat: Text.PlainText
                             }
                         }
                     }
@@ -579,6 +580,7 @@ Scope {
                                         width: parent.width
                                         elide: Text.ElideRight
                                         text: event.modelData.title
+                                        textFormat: Text.PlainText
                                         color: Theme.foreground
                                         font.family: Theme.fontUi
                                         font.pixelSize: 14
@@ -589,6 +591,7 @@ Scope {
                                         width: parent.width
                                         elide: Text.ElideRight
                                         text: event.shown.sub
+                                        textFormat: Text.PlainText
                                     }
                                 }
                             }

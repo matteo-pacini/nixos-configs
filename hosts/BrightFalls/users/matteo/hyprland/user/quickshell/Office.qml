@@ -355,6 +355,7 @@ Scope {
 
             width: parent.width - ageText.implicitWidth - 8
             text: parent.text
+            textFormat: Text.PlainText
             wrapMode: Text.Wrap
             color: parent.tone === "bad" ? Theme.red : parent.tone === "note" ? Theme.orange : parent.tone === "dim" || parent.grey ? Theme.comment : root.soft
             font.family: Theme.fontUi
@@ -475,6 +476,7 @@ Scope {
                             y: 6
                             width: parent.width - 16
                             text: root.banner.text
+                            textFormat: Text.PlainText
                             wrapMode: Text.Wrap
                             color: root.banner.tone === "err" ? Theme.red : Theme.orange
                             font.family: Theme.fontUi
