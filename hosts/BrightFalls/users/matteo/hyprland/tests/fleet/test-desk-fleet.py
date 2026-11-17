@@ -620,6 +620,42 @@ esac
     subprocess.run([*tsock, "kill-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     os.unlink(os.path.join(fake, "far.slow"))
 
+    # A host's comin is not trusted: shell text in a held generation's id and
+    # out path never reaches a shell. Each would leave a file if it ran.
+    evil_uuid = "$(touch $FAKE/pwned-uuid)"
+    g_evil = {**G(12, C2, sp("e") + ";touch $FAKE/pwned-out", ago=30), "uuid": evil_uuid}
+    with open(os.path.join(fake, "far.probe"), "w") as fh:
+        fh.write(probe_text(status([D(g_a, ago=2900)], gens=[g_a, g_evil], builder=g_evil, held=evil_uuid),
+                            A, profile_ago=6000))
+    runtime = os.path.join(WORK, "rt-evil")
+    proc, events, wait, send = start(runtime)
+    wait(lambda e: e["event"] == "round" and e["state"] == "done", 20, "evil: round")
+    before = logged()
+    far = [e for e in events if e["event"] == "host" and e["host"] == "Far"][-1]
+    check("evil: diff not offered", far["actions"]["diff"]["allowed"] is False, far["actions"]["diff"])
+    tries = [
+        ({"id": 50, "cmd": "diff", "host": "Far"}, "not-allowed"),
+        ({"id": 51, "cmd": "switch", "host": "Far", "generation": evil_uuid}, "bad-input"),
+        ({"id": 52, "cmd": "switch", "host": "Far"}, "stale"),
+        ({"id": 53, "cmd": "boot", "host": "Far", "generation": uid(99)}, "stale"),
+    ]
+    for msg, reason in tries:
+        send(**msg)
+    for msg, reason in tries:
+        e = wait(lambda e, i=msg["id"]: e["event"] == "action" and e.get("id") == i, 5, f"evil {msg['id']}")
+        check(f"evil: refused {msg}", e is not None and e["state"] == "refused" and e["reason"] == reason, e)
+    time.sleep(1)
+    check("evil: nothing ran", logged() == before, logged()[len(before):])
+    check("evil: no shell text ran", not any(os.path.exists(os.path.join(fake, f"pwned-{x}")) for x in ("uuid", "out")),
+          os.listdir(fake))
+    proc.stdin.close()
+    wait(lambda e: e["event"] == "exit", 10, "evil: exit")
+    proc.wait(10)
+    subprocess.run([fleet_tmux(), "-S", os.path.join(runtime, "tmux.sock"), "kill-server"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    with open(os.path.join(fake, "far.probe"), "w") as fh:
+        fh.write(probe_text(status([D(g_a, ago=2900)], gens=[g_a], builder=g_a, main=C1), A, profile_ago=6000))
+
     # --read-only: rows as usual, every write refused before the gate, the
     # rest still works.
     before = logged()
