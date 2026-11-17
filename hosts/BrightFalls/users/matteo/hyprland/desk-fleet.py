@@ -58,8 +58,10 @@ Switch, boot, mode and reboot run in a tmux session of their own, on a
 private socket, with no window; "attach" shows it. A reboot of this machine
 is a plain `systemctl reboot` (logind allows it from the active session);
 another host's is `sudo -n systemctl reboot`, and if sudo wants a password,
-`sudo systemctl reboot` in the same session, opened in Ghostty. Nothing but the commands
-built in run_action() ever reaches a host. When stdin closes the process
+`sudo systemctl reboot` in the same session, opened in Ghostty. No command reaches a
+host but PROBE, the diff built in command(), the commands built in
+run_action() and watch_action()'s `sudo systemctl reboot`; "ssh" opens a
+login and sends none. When stdin closes the process
 exits; sessions still running are left to finish.
 """
 
