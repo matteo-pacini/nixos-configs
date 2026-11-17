@@ -594,14 +594,9 @@ rename leaves stale live files; the naming rule is under "Names to know").
 - `Network.qml:221,390,876`: the default route is read only on open or a
   Wi-Fi connect, so a speed test after plugging in a cable while open is
   stored under the old interface.
-- `Bar.qml:300-308` and `common/KeyHints.qml:51-63`: the window title and
-  the footer message have no `textFormat`, so tag-like text is drawn as
-  markup.
 - `Network.qml:1234-1240,1539`, `Audio.qml:1105`: wired details do not
   wrap and two "Set in Nix" label sets elide, against "No truncation";
   `Network.qml:1798` caps the speed-test failure text.
-- `Osd.qml:129` picks its glyph by matching the text "Bluetooth on", so
-  "Bluetooth did not turn off" shows the off glyph.
 - `Network.qml:1558-1563`, `network/wifi.js:440`, `Audio.qml:1139`:
   footers that mislabel a key (Esc "close" while it collapses details;
   "Enter make default" on the default input).
