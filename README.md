@@ -180,6 +180,8 @@ Personal laptop. nix-darwin + nix-homebrew, declaratively managed Xcode versions
 
 Work machine. nix-darwin + nix-homebrew, Docker via Colima, Tailscale.
 
+Both Macs share the desk with BrightFalls through a KVM and show the same picture on each monitor, set by the `desk-wallpaper` launchd agent (see [`modules/home-manager/darwin/desk-wallpaper/README.md`](modules/home-manager/darwin/desk-wallpaper/README.md)). The pictures live in `assets/wallpapers/`.
+
 ### InstallerISO — Custom Install Media
 
 Minimal NixOS installer ISO with [disko](https://github.com/nix-community/disko) on the PATH and the private attic cache pre-configured — the netrc token is **baked into the image**, so installs substitute from the cache with zero setup. Keep the ISO private.
@@ -197,7 +199,7 @@ The image lands in `result/iso/`. Config: `hosts/InstallerISO/default.nix`.
 
 ## Modules
 
-The flake exposes three module sets — `nixosModules.default`, `darwinModules.default`, and `homeManagerModules.default` — plus the standalone `homeManagerModules.sleepmode`. Most modules are personal config; the ones below are written with options so they can be reused.
+The flake exposes three module sets — `nixosModules.default`, `darwinModules.default`, and `homeManagerModules.default` — plus the standalone Darwin `homeManagerModules.sleepmode` and `homeManagerModules.deskWallpaper`. Most modules are personal config; the ones below are written with options so they can be reused.
 
 ### Other configurable modules
 
