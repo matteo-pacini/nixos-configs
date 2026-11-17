@@ -349,4 +349,19 @@ t("gib, diskPair, rate, ghz", () => {
     assert.equal(D.ghz(5263061, 2), "5.26");
 });
 
+// ---- when a read is due ----
+
+t("a slow source is due 10 s after it was last read, never sooner", () => {
+    assert.equal(D.due(0, 5000, "slow"), true, "never read");
+    assert.equal(D.due(100000, 100000, "slow"), false, "just read");
+    assert.equal(D.due(100000, 109999, "slow"), false, "a millisecond early");
+    assert.equal(D.due(100000, 110000, "slow"), true, "10 s on");
+    assert.equal(D.due(100000, 250000, "slow"), true, "long after");
+});
+
+t("other sources are always due", () => {
+    assert.equal(D.due(100000, 100000, "fast"), true);
+    assert.equal(D.due(100000, 100001, "once"), true);
+});
+
 console.log(`ok: ${n} tests`);

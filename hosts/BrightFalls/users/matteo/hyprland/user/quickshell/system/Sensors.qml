@@ -272,11 +272,16 @@ Singleton {
     }
 
     function tick(rate: string): void {
+        const now = Date.now();
         for (let n = 0; n < views.count; n++) {
             const view = views.objectAt(n);
             // "once" sources are read when their path is set, on opening.
-            if (view && view.on && (rate === "all" ? view.src.rate !== "once" : view.src.rate === rate))
+            // Slow ones are read by any tick that finds them due, so a
+            // timer firing a moment early does not skip a read.
+            if (view && view.on && (rate === "all" ? view.src.rate !== "once" : view.src.rate === rate || view.src.rate === "slow") && D.due(view.readAt, now, view.src.rate)) {
+                view.readAt = now;
                 view.reload();
+            }
         }
         if (rate === "fast" || rate === "all")
             tickAt = Date.now();
@@ -471,9 +476,12 @@ Singleton {
         // show for a second, and the rates would span the time it was shut.
         if (level === 2) {
             prev = {};
-            for (const src of sources)
-                if (src.min === 2)
-                    delete raw[src.key];
+            // A slow figure that is not due yet is kept: it is not read now.
+            for (let n = 0; n < views.count; n++) {
+                const view = views.objectAt(n);
+                if (view && view.src.min === 2 && D.due(view.readAt, Date.now(), view.src.rate))
+                    delete raw[view.src.key];
+            }
             delete raw.df;
             discovery.running = true;
         }
@@ -521,9 +529,18 @@ Singleton {
             required property var modelData
             readonly property var src: modelData
             readonly property bool on: root.active(modelData)
+            // When a read was last asked for, in ms since the epoch; 0 before
+            // the first.
+            property real readAt: 0
 
-            path: on ? modelData.file : ""
+            // Setting the path reads the file, so a slow source keeps its
+            // path once read and only tick() reads it again, when due.
+            path: on || (src.rate === "slow" && readAt > 0) ? modelData.file : ""
             printErrors: false
+            onOnChanged: if (on && readAt === 0)
+                readAt = Date.now()
+            Component.onCompleted: if (on)
+                readAt = Date.now()
             onLoaded: {
                 const value = src.bin ? data() : text();
                 root.raw[src.key] = value;

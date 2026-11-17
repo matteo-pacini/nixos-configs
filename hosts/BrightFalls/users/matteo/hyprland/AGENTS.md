@@ -605,9 +605,6 @@ rename leaves stale live files; the naming rule is under "Names to know").
 - `Network.qml:1558-1563`, `network/wifi.js:440`, `Audio.qml:1139`:
   footers that mislabel a key (Esc "close" while it collapses details;
   "Enter make default" on the default input).
-- `system/Sensors.qml:469-483`: a level change reads the slow sources again,
-  so hovering on and off the bar item reads the NVMe more often than every
-  10 s.
 - The centred modals (`Launcher.qml`, `Cheatsheet.qml`, `SessionMenu.qml`)
   do not close the drop-downs, so one opened over a panel leaves two
   exclusive-keyboard surfaces. Unverified live: it assumes Hyprland runs
