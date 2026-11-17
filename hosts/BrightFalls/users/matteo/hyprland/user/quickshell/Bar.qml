@@ -16,6 +16,7 @@ import qs.network
 import qs.office
 import qs.system
 import qs.tailscale
+import qs.tokens
 import qs.tray
 import "fleet/fleet.js" as FleetView
 import "office/office.js" as OfficeView
@@ -39,6 +40,11 @@ Scope {
             lightbulbOutline: "\u{f0336}",
             serverNetwork: "\u{f048d}",
             tailscale: "\u{f0499}",
+            // The token item's plan-limit pie: none, low, high, full.
+            usageNone: "\u{f0766}",
+            usageLow: "\u{f0a9f}",
+            usageHigh: "\u{f0aa3}",
+            usageFull: "\u{f0765}",
             ethernet: "\u{f0200}",
             noNetwork: "\u{f0319}",
             wifi1: "\u{f091f}",
@@ -490,6 +496,71 @@ Scope {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Item {
+                        id: tokens
+
+                        readonly property bool panelOpen: TokensShared.screen === bar.modelData.name
+                        readonly property var shown: TokensShared.limits.bar
+                        readonly property color tone: panelOpen ? Theme.purple : shown.dim ? Theme.comment : shown.colour === "red" ? Theme.red : shown.colour === "orange" ? Theme.orange : Theme.foreground
+
+                        width: tokensRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Dropdowns.anchor("tokens", bar.modelData.name, tokens, bar)
+
+                        Hover {
+                            hovered: tokensArea.containsMouse
+                        }
+
+                        // Marks the item whose panel is open.
+                        Rectangle {
+                            visible: tokens.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        // The weekly plan limit as Claude Code last reported
+                        // it; a dash before any reading.
+                        Row {
+                            id: tokensRow
+
+                            height: parent.height
+                            spacing: 5
+
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.glyph[{
+                                        none: "usageNone",
+                                        low: "usageLow",
+                                        high: "usageHigh",
+                                        full: "usageFull"
+                                    }[tokens.shown.glyph]]
+                                color: tokens.tone
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: tokens.shown.text
+                                color: tokens.tone
+                                font.family: Theme.fontMono
+                                font.pixelSize: root.fontSize
+                            }
+                        }
+
+                        MouseArea {
+                            id: tokensArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: TokensShared.toggleRequested(bar.modelData.name)
                         }
                     }
 

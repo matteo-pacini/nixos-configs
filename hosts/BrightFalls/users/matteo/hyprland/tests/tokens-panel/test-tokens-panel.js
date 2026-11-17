@@ -365,7 +365,7 @@ t("overview: first run, as drawn, then filling section by section", () => {
         line: "Reading 512 of 826 (2.7 GB)",
         pct: "62%",
         frac: 512 / 826,
-        note: "14 days, 30 days and projects appear as their files are read; a full first read takes about 3 s on this machine."
+        note: "14 days, 30 days and projects appear as their files are read; the first read takes a few seconds."
     });
     assert.deepEqual(v.hints, [["P", "projects"], ["D", "days"], ["Esc", "close"]]);
     // R is inert while the first read runs.
@@ -392,14 +392,14 @@ t("overview: first run, as drawn, then filling section by section", () => {
     o = T.view(r.state, LIM).overview;
     assert.ok(o.top7);
     assert.equal(o.olderBefore, "last14");
-    assert.equal(o.older.note, "14 days and 30 days appear as their files are read; a full first read takes about 3 s on this machine.");
+    assert.equal(o.older.note, "14 days and 30 days appear as their files are read; the first read takes a few seconds.");
     part.last14 = fx("overview-full.json").last14;
     part.progress = Object.assign({}, part.progress, { ready: R(true, true, true, false, false) });
     r = feed(r.state, part, "overview");
     assert.deepEqual(sends(r), []);
     o = T.view(r.state, LIM).overview;
     assert.equal(o.olderBefore, "last30");
-    assert.equal(o.older.note, "30 days appears as its files are read; a full first read takes about 3 s on this machine.");
+    assert.equal(o.older.note, "30 days appears as its files are read; the first read takes a few seconds.");
     // 30 days ready: the last question; the answer is ready and complete.
     r = T.event(r.state, progress(826, 826, R(true, true, true, true, false)));
     assert.deepEqual(sends(r), [{ req: "overview", id: 4 }]);
@@ -426,7 +426,7 @@ t("overview: today not ready yet, and a sync that is still listing", () => {
         line: "Listing transcripts…",
         pct: "",
         frac: 0,
-        note: "Today, 14 days, 30 days and projects appear as their files are read; a full first read takes about 3 s on this machine."
+        note: "Today, 14 days, 30 days and projects appear as their files are read; the first read takes a few seconds."
     });
     // Everything but the last file read: never 100% before it is.
     const b = fx("overview-partial.json");

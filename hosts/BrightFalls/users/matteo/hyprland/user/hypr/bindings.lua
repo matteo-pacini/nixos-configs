@@ -115,6 +115,7 @@ bind("Session", "SUPER + O", "Office", hl.dsp.exec_cmd("qs ipc call office toggl
 -- Super+F is Fullscreen.
 bind("Session", "SUPER + G", "Fleet", hl.dsp.exec_cmd("qs ipc call fleet toggle"))
 bind("Session", "SUPER + V", "Tailscale", hl.dsp.exec_cmd("qs ipc call tailscale toggle"))
+bind("Session", "SUPER + U", "Tokens", hl.dsp.exec_cmd("qs ipc call tokens toggle"))
 -- Super+Shift+B is Firefox.
 bind("Session", "SUPER + CTRL + B", "Bluetooth on/off", hl.dsp.exec_cmd("qs ipc call bluetooth power"))
 -- logind must ignore a short press (HandlePowerKey in desktop-hyprland.nix),

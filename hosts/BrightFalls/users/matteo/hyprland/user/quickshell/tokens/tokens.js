@@ -37,7 +37,7 @@ const TEXT = {
     modelCap: "Weekly · Fable",
     modelCapValue: "per-model cap not reported",
     fiveHour: "5-hour",
-    firstRead: "a full first read takes about 3 s on this machine.",
+    firstRead: "the first read takes a few seconds.",
     activeNote: "Active: time between replies, gaps over 10 min left out.",
     detailBuilding: "A project's detail appears when every transcript is read: its sessions and totals draw on all of them.",
     daysBuilding: "The days appear when every file that can hold their replies is read.",

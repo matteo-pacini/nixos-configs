@@ -20,7 +20,8 @@ work) is in [AGENTS.md](AGENTS.md).
   [Calendar panel](#calendar-panel), [Calendar reminders](#calendar-reminders),
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
-  [Tailscale panel](#tailscale-panel), [Tray menu](#tray-menu)
+  [Tailscale panel](#tailscale-panel), [Token panel](#token-panel),
+  [Tray menu](#tray-menu)
 - [Wallpaper](#wallpaper)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
@@ -177,8 +178,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The eight drop-down panels (network, audio, calendar, system, Bluetooth,
-office, fleet, tailscale) behave alike: each opens under its bar item on that bar's monitor (or the
+The nine drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet, tailscale, tokens) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -197,6 +198,7 @@ others (`common/Dropdowns.qml`). Each has an IPC `toggle` (`qs ipc call
 | Bluetooth | Super+B, bar Bluetooth glyph | `bluetooth` |
 | Office | Super+O, bar light bulb and watts | `office` |
 | Fleet | Super+G, bar server glyph and count | `fleet` |
+| Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
@@ -235,8 +237,9 @@ workspaces (its five, plus any other that exists there; click or scroll to
 switch); the focused window's title on that monitor; the clock (see
 [Calendar panel](#calendar-panel)); then a gamepad while game mode is on
 (read from Hyprland's `animations:enabled`), the tray (left click activates,
-right click opens the item's menu, see [Tray menu](#tray-menu)), the fleet
-item (a server glyph and the number of hosts that want attention, see
+right click opens the item's menu, see [Tray menu](#tray-menu)), the token
+item (a pie and the weekly plan-limit percentage, see [Token
+panel](#token-panel)), the fleet item (a server glyph and the number of hosts that want attention, see
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, the Tailscale item (see
 [Tailscale panel](#tailscale-panel)), network (a small Wi-Fi mark beside
@@ -898,6 +901,96 @@ Running, with real keys (F5, J, K, Home, End, Enter, Y, 2, Esc, T on
 Nexus). **Simulated** (fixture output through the real call): every other
 state, overlay and chip. **Not done yet**: O, the arrows, and Super+V in a
 reloaded session.
+
+### Token panel
+
+`Tokens.qml`, with `tokens/TokensShared.qml` (shared with the bar:
+placement, the helper process, the panel's state, the limits file and its
+watch) and `tokens/tokens.js` (every decision: how the helper's answers and
+events change the state, every text and colour of the four pages and the bar
+item, what each key does, the footer, the reading of the limits file;
+node-tested). Super+U, or a click on the bar item left of the fleet item,
+opens it. It shows how much Claude Code has been used on this computer, and
+the plan limits as Claude Code last reported them. It is read-only.
+
+- **Bar item**: a pie glyph and the weekly all-models percentage, rounded
+  down, from the limits file. Foreground below 80 %, orange from 80 %, red at
+  100 % (compared before rounding). Dimmed, value kept, when the last reading
+  is an hour old or more; an empty ring and a dash, dimmed, with no reading
+  (no file, or the week it was written in has reset). Purple with the open
+  mark while the panel is open. It changes when the file does, and on a
+  minute tick while a reading exists; it never starts the helper.
+- **Overview** (what it opens on): the plan limits (the weekly row with its
+  reset and a meter; a muted per-model row; the 5-hour row; a line saying
+  what happens at 100 %, or that the reading is stale, or that none is known
+  yet), today's output and sessions with the context read from cache, the
+  last 14 days of output as bars (today purple, the peak named), 30 days
+  (the split by model family, cache hit, the sub-agents' share of output,
+  the cost at API prices beside the plan's price), and the 7-day top
+  projects.
+- **First read**: the helper builds its index from the newest transcripts
+  back, so today, 7, 14 and 30 days become complete in turn. Until then a
+  progress block (files read, size, percentage) stands where the first
+  missing section would be, and the sections fill in as they become
+  complete. The projects, detail and days pages show the same block until
+  what they need is read.
+- **Projects** (P): one row per project for today, 7 days or 30 days (Tab),
+  by output: name, output and share, a share bar, a small bar of the model
+  split, sessions, last reply and the sub-agents' share. Eight rows a page.
+  Only a project name elides.
+- **Detail** (Enter on a project): the project's output and share,
+  sessions, sub-agents' share and model split for the period (Tab changes
+  it), its last 14 days, and its six latest sessions (start, last reply,
+  output, replies, active time).
+- **Days** (D): the last 14 days, newest first: output as a bar and a
+  number, sessions, and the day's top project.
+- **Keys**: on the overview P projects, D days, R reads what was appended
+  since the panel opened (hidden during the first read, unless it failed),
+  Esc closes. On projects ↑↓ select (past a page's end they turn the page),
+  PgUp/PgDn page (only with more than one page), Tab period, Enter detail,
+  D days, Esc back. In the detail Tab period, Esc back to the same project
+  and page. On days P projects, Esc back. The footer lists exactly the keys
+  that do something; Tab and the letters count only without modifiers.
+  There is no mouse selection.
+- **Where the numbers come from**: everything but the limits from
+  [`desk-tokens`](#tokens-desk-tokens), started when the panel opens and
+  stopped (SIGTERM) when it closes by any path; if it exits while open the
+  panel says so and starts it again after 2 s, doubling to a minute. A
+  helper not on PATH gives one line in place of the panel. The limits come
+  from `$XDG_RUNTIME_DIR/desk/claude-limits.json`, written by Claude Code's
+  status line (see [the plan-limit
+  file](../../../../../modules/home-manager/herdr/README.md#the-plan-limit-file)),
+  watched with a `FileView`: the directory is watched too until a reading
+  exists, so a file that appears after the shell started is still seen.
+  While the panel is closed nothing else runs.
+- **Set by hand**: `PLAN` at the top of `tokens/tokens.js` holds the plan's
+  name and price and the 5-hour row's text when Claude Code reports no
+  5-hour window. Nothing reads them from the account.
+- **What it does not show, and why**: no per-model weekly percentage (the
+  status line does not pass it on and the panel never reads credentials or
+  calls the account's endpoints; the row says it is not reported); no
+  5-hour meter unless Claude Code reports a 5-hour window; no "full in N
+  days" pace line (it would turn token counts into a share of a limit whose
+  token budget is not published); no session titles (the index keeps
+  counters, never message text); no scrolling (the shell has none for
+  panels; the projects list pages instead). The dollar figure is an
+  estimate at API list prices, not a bill.
+
+**Seen for real** (by the agent that built it, with the real helper on a
+scratch index and the real transcripts): the cold first read's progress
+states, then the overview, projects (two pages), a project's detail and the
+days page from the real answers; Esc, Esc closing it with no helper left
+running; the bar item in each of its states on the real bar (with a scratch
+limits file). **Simulated** (a stand-in helper answering with invented
+fixtures, a scratch limits file, keys sent over a temporary IPC target):
+every page's states, the limits in every state, long names eliding, the
+helper missing and stopped and recovering, the limits watch with the
+directory and file created after the shell started and replaced by rename
+several times, every row of the key table and the keys that must do
+nothing, and no helper process after every close. **Not done yet**: real
+key presses and clicks, the window with real keyboard focus, Super+U in a
+reloaded session, and the limits file written by a real Claude Code
+session.
 
 ### Tray menu
 
