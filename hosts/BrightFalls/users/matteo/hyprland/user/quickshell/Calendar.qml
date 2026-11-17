@@ -12,17 +12,14 @@ import "calendar/queries.js" as Q
 //   qs ipc call calendar toggle
 // A month with ISO weeks and one dot per calendar with events on a day, and
 // the selected day's events under it. Read-only: events come from the export
-// calendar-sync writes (CalendarPanel), R runs that sync now, and Enter or O
-// opens the day in the Nextcloud web calendar.
+// calendar-sync writes (CalendarPanel), R runs that sync now, Enter or O
+// opens the day in the Nextcloud web calendar, and F swaps this panel for the
+// big view (CalendarFull.qml) on the same day.
 Scope {
     id: root
 
     readonly property bool open: CalendarPanel.screen !== ""
     readonly property int panelWidth: 360
-
-    // ~/.local/share/desk/calendar/source.json names the file holding the
-    // CalDAV base; that address is a secret, read only when O is pressed.
-    readonly property string sourcePath: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/desk/calendar/source.json"
 
     readonly property color soft: Style.soft
     readonly property color dim: Qt.tint(Theme.background, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.55))
@@ -30,9 +27,6 @@ Scope {
     readonly property var data: CalendarPanel.data
     readonly property date now: CalendarPanel.now
     property date selected: new Date()
-    property string flash: ""
-    property bool syncing: false
-    property bool timerSyncing: false
 
     readonly property int year: selected.getFullYear()
     readonly property int month: selected.getMonth()
@@ -51,45 +45,23 @@ Scope {
         Dropdowns.closeOthers("calendar");
         window.screen = Array.from(Quickshell.screens).find(s => s.name === screen) ?? Quickshell.screens[0];
         selected = Q.addDays(now, 0);
-        flash = "";
         CalendarPanel.reload();
         CalendarPanel.screen = window.screen.name;
-        activeQuery.running = true;
     }
 
     function close(): void {
         CalendarPanel.screen = "";
     }
 
-    function say(text: string): void {
-        flash = text;
-        flashTimer.restart();
-    }
-
     function select(date: date): void {
         selected = date;
     }
 
-    function sync(): void {
-        if (syncing)
-            return;
-        syncing = true;
-        syncProc.running = true;
-    }
-
-    function openWeb(): void {
-        sourceFile.reload();
-        let urlFile = "";
-        try {
-            urlFile = JSON.parse(sourceFile.text()).url_file ?? "";
-        } catch (e) {}
-        if (typeof urlFile !== "string" || urlFile === "") {
-            say("No calendar server is set up yet.");
-            return;
-        }
-        webProc.day = selected;
-        webProc.command = ["head", "-n", "1", urlFile];
-        webProc.running = true;
+    // Closed first: the big view's opening closes every open drop-down.
+    function showFull(): void {
+        const screen = CalendarPanel.screen;
+        close();
+        CalendarFullShared.showRequested(screen, Q.ymd(selected));
     }
 
     // Returns true when the key was used.
@@ -111,81 +83,21 @@ Scope {
         } else if (k === Qt.Key_T && plain) {
             select(Q.addDays(now, 0));
         } else if (k === Qt.Key_R && plain) {
-            sync();
+            actions.sync();
         } else if (k === Qt.Key_Return || k === Qt.Key_Enter || (k === Qt.Key_O && plain)) {
-            openWeb();
+            actions.openWeb(selected);
+        } else if (k === Qt.Key_F && plain) {
+            showFull();
         } else {
             return false;
         }
         return true;
     }
 
-    Timer {
-        id: flashTimer
+    CalendarActions {
+        id: actions
 
-        interval: 3500
-        onTriggered: root.flash = ""
-    }
-
-    // Catches syncs the service's timer starts while the panel is open.
-    Timer {
-        interval: 3000
-        running: root.open
-        repeat: true
-        onTriggered: activeQuery.running = true
-    }
-
-    Process {
-        id: activeQuery
-
-        command: ["systemctl", "--user", "is-active", "calendar-sync.service"]
-        stdout: StdioCollector {
-            onStreamFinished: root.timerSyncing = text.trim() === "activating"
-        }
-    }
-
-    // A oneshot: start returns when the sync and the export have finished.
-    Process {
-        id: syncProc
-
-        command: ["systemctl", "--user", "start", "calendar-sync.service"]
-        onExited: code => {
-            root.syncing = false;
-            if (code === 5)
-                root.say("Calendar sync is not installed yet.");
-            else if (code !== 0)
-                root.say("Sync failed: journalctl --user -u calendar-sync says why.");
-        }
-    }
-
-    Process {
-        id: webProc
-
-        property date day
-
-        // SplitParser, not StdioCollector: the address is used once and not
-        // kept in a property.
-        stdout: SplitParser {
-            onRead: line => {
-                const url = Q.webUrl(line, webProc.day);
-                if (url === "")
-                    root.say("The calendar server address is not a Nextcloud one.");
-                else
-                    Quickshell.execDetached(["uwsm", "app", "--", "xdg-open", url]);
-            }
-        }
-        onExited: code => {
-            if (code !== 0)
-                root.say("The calendar server address cannot be read.");
-        }
-    }
-
-    FileView {
-        id: sourceFile
-
-        path: root.sourcePath
-        printErrors: false
-        blockLoading: true
+        active: root.open
     }
 
     Component.onCompleted: Dropdowns.add("calendar", CalendarPanel)
@@ -332,7 +244,7 @@ Scope {
                         anchors.baseline: monthTitle.baseline
                         font.pixelSize: 12
                         text: {
-                            if (root.syncing || root.timerSyncing)
+                            if (actions.syncing || actions.timerSyncing)
                                 return "syncing…";
                             if (root.thisMonth)
                                 return `week ${Q.isoWeek(root.selected)}`;
@@ -604,9 +516,9 @@ Scope {
 
                 // Keys, or the state of the data.
                 KeyHints {
-                    keys: [["←→↑↓", "day"], ["PgUp PgDn", "month"], ["T", "today"], ["O", "open in Nextcloud"], ["Esc", "close"], ["R", "sync"]]
-                    message: root.flash !== "" ? root.flash : !CalendarPanel.present ? "No calendar is set up. Events appear once the sync service has run." : root.stale
-                    messageColor: root.flash !== "" ? Theme.yellow : CalendarPanel.present ? Theme.orange : Theme.comment
+                    keys: [["←→↑↓", "day"], ["PgUp PgDn", "month"], ["T", "today"], ["F", "full screen"], ["O", "open in Nextcloud"], ["Esc", "close"], ["R", "sync"]]
+                    message: actions.flash !== "" ? actions.flash : !CalendarPanel.present ? "No calendar is set up. Events appear once the sync service has run." : root.stale
+                    messageColor: actions.flash !== "" ? Theme.yellow : CalendarPanel.present ? Theme.orange : Theme.comment
                 }
             }
         }

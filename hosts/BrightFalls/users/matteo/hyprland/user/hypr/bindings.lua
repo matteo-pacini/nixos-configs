@@ -109,6 +109,7 @@ bind("Session", "SUPER + L", "Lock", hl.dsp.exec_cmd("systemd-run --user --unit=
 bind("Session", "SUPER + N", "Network", hl.dsp.exec_cmd("qs ipc call network toggle"))
 bind("Session", "SUPER + A", "Audio", hl.dsp.exec_cmd("qs ipc call audio toggle"))
 bind("Session", "SUPER + C", "Calendar", hl.dsp.exec_cmd("qs ipc call calendar toggle"))
+bind("Session", "SUPER + SHIFT + C", "Calendar, full screen", hl.dsp.exec_cmd("qs ipc call calendarfull toggle"))
 bind("Session", "SUPER + Y", "System", hl.dsp.exec_cmd("qs ipc call system toggle"))
 bind("Session", "SUPER + B", "Bluetooth", hl.dsp.exec_cmd("qs ipc call bluetooth toggle"))
 bind("Session", "SUPER + O", "Office", hl.dsp.exec_cmd("qs ipc call office toggle"))
