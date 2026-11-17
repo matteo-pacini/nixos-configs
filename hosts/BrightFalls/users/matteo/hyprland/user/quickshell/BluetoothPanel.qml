@@ -826,6 +826,7 @@ Scope {
                     width: parent.width
                     elide: Text.ElideRight
                     text: deviceRow.d.name
+                    textFormat: Text.PlainText
                     color: deviceRow.sub[1] === "dim" ? Theme.comment : Theme.foreground
                     font.family: Theme.fontUi
                     font.pixelSize: 15
@@ -837,6 +838,7 @@ Scope {
                     width: parent.width
                     wrapMode: Text.Wrap
                     text: deviceRow.sub[0]
+                    textFormat: Text.PlainText
                     color: deviceRow.tone
                 }
             }
@@ -914,6 +916,7 @@ Scope {
                             width: detailLines.width - 72
                             wrapMode: Text.Wrap
                             text: parent.modelData[1]
+                            textFormat: Text.PlainText
                             color: root.soft
                             lineHeight: 1.6
                         }
@@ -1052,6 +1055,7 @@ Scope {
                     bottomPadding: 4
                     wrapMode: Text.Wrap
                     text: `This computer shows as ${root.adapter?.name ?? "this computer"} to devices nearby. Pick it on the other device; nothing pairs without your yes here.`
+                    textFormat: Text.PlainText
                     color: Theme.cyan
                 }
 

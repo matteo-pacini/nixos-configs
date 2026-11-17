@@ -339,6 +339,7 @@ Scope {
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: row.mode !== "calc" ? row.modelData.name : row.hint ? row.modelData.hint : row.modelData.text
+                                textFormat: Text.PlainText
                                 elide: Text.ElideRight
                                 color: row.hint ? Theme.comment : Theme.foreground
                                 font.family: result ? Theme.fontMono : Theme.fontUi
@@ -353,6 +354,7 @@ Scope {
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: row.mode === "apps" ? Apps.mainCategory(row.modelData) : row.selected ? "Enter copies" : ""
+                                textFormat: Text.PlainText
                                 color: row.selected ? Theme.purple : Theme.comment
                                 font.family: Theme.fontMono
                                 font.pixelSize: 12

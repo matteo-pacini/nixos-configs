@@ -450,6 +450,11 @@ Scope {
         }
     }
 
+    // Outside text for a StyledText string.
+    function esc(text: var): string {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
     // The selected wired or Nix row's Enter, as the footer hints it: what
     // activate() does there.
     function rowKeys(): var {
@@ -1821,7 +1826,7 @@ Scope {
                             topPadding: 10
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
-                            text: pairs.map(p => `${p[0]}&nbsp;<font color="${root.soft}">${String(p[1]).replace(/ /g, "&nbsp;")}</font>`).join("&nbsp; ")
+                            text: pairs.map(p => `${root.esc(p[0])}&nbsp;<font color="${root.soft}">${root.esc(p[1]).replace(/ /g, "&nbsp;")}</font>`).join("&nbsp; ")
                             textFormat: Text.StyledText
                             color: Theme.comment
                             font.family: Theme.fontMono
@@ -1835,6 +1840,7 @@ Scope {
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
                             text: root.allMode ? root.failure : `${root.failure}. Enter retries, Esc returns.`
+                            textFormat: Text.PlainText
                             color: Theme.red
                             font.family: Theme.fontMono
                             font.pixelSize: 12
