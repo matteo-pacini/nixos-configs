@@ -86,10 +86,11 @@ pkgs.lib.fix (self: {
     pkgs.runCommand "calendar-panel-tests"
       {
         nativeBuildInputs = [ pkgs.nodejs ];
-        TZ = "Europe/London";
         TZDIR = "${pkgs.tzdata}/share/zoneinfo";
       }
       ''
+        # Set here: the builder's setup sets TZ=UTC over the derivation's own.
+        export TZ=Europe/London
         node ${./calendar/panel}/test-calendar.js \
           ${../user/quickshell/calendar/queries.js}
         touch $out
@@ -133,8 +134,9 @@ pkgs.lib.fix (self: {
     touch $out
   '';
 
-  # The fleet panel's library (quickshell/fleet/fleet.js) against recorded
-  # desk-fleet lines in fleet-panel/fixtures/ and inline events.
+  # The fleet panel's library (quickshell/fleet/fleet.js) against desk-fleet
+  # lines hand-written in the helper's format in fleet-panel/fixtures/, and
+  # inline events.
   fleet-panel = pkgs.runCommand "fleet-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${./fleet-panel}/test-fleet-panel.js ${../user/quickshell/fleet}
     touch $out

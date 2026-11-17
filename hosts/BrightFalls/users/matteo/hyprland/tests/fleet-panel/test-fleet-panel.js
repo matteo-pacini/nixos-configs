@@ -1,6 +1,6 @@
-// The fleet panel's library (quickshell/fleet/fleet.js) against recorded
-// desk-fleet lines in fixtures/ (one file per state of the panel, built from
-// the helper's own example rows) and inline events.
+// The fleet panel's library (quickshell/fleet/fleet.js) against desk-fleet
+// lines hand-written in the helper's format in fixtures/ (one file per state
+// of the panel, built from the helper's own example rows) and inline events.
 // Run: node test-fleet-panel.js <directory holding fleet.js>
 process.env.TZ = "UTC";
 const assert = require("node:assert/strict");
@@ -158,7 +158,7 @@ t("info lines: nested keys, lists one per line, nulls as a dash, empties left ou
     assert.ok(v.info.some(l => l.label === "next_boot_why"));
 });
 
-t("actions: running with the last tail line, ok, failed with exit, sudo message", () => {
+t("actions: running with the last tail line, ok, failed with exit or reason, sudo message", () => {
     const st = load("actions");
     assert.deepEqual(view(st, "Running").action, { text: "switch: running · setting up /etc...", tone: "", busy: true });
     assert.deepEqual(view(st, "Done").action, { text: "mode: ok", tone: "green", busy: false });
@@ -169,6 +169,8 @@ t("actions: running with the last tail line, ok, failed with exit, sudo message"
     assert.equal(view(st, "Running").message, "");
     for (const h of ["Running", "Done", "Failed", "SudoAsks"])
         assert.ok(keyNames(st, h).endsWith("A"), h);
+    const why = F.apply(st, { event: "action", id: 16, host: "Done", action: "boot", state: "failed", reason: "comin-deploy not found" });
+    assert.deepEqual(view(why, "Done").action, { text: "boot: failed · comin-deploy not found", tone: "red", busy: false });
     // The final event clears the message.
     const done = F.apply(st, { event: "action", id: 14, host: "SudoAsks", action: "reboot", state: "ok", tail: [], exit: 0 });
     assert.equal(done.messages.SudoAsks, undefined);
@@ -234,9 +236,13 @@ t("GitHub error: banner text, checking line, header still checking", () => {
     assert.deepEqual(F.order(st), ["BrightFalls"]);
 });
 
-t("pipeline: passed, failed, older run, no run, ahead unknown", () => {
+t("pipeline: passed, waiting, cancelled, failed, older run, no run, ahead unknown", () => {
     const g = (over, run) => F.pipeline({ github: Object.assign({ state: "ok", master: "a".repeat(40), deploy: "a".repeat(40), ahead: 0, run: run === undefined ? { status: "completed", conclusion: "success", head_sha: "a".repeat(40) } : run }, over) }).parts;
     assert.deepEqual(g({}), [{ label: "master", text: "aaaaaaa", tone: "" }, { label: "build", text: "passed", tone: "green" }, { label: "deploy", text: "aaaaaaa", tone: "" }]);
+    for (const status of ["queued", "waiting"])
+        assert.deepEqual(g({}, { status, head_sha: "a".repeat(40) })[1], { label: "build", text: "queued", tone: "cyan" }, status);
+    for (const conclusion of ["cancelled", "skipped"])
+        assert.deepEqual(g({}, { status: "completed", conclusion, head_sha: "a".repeat(40) })[1], { label: "build", text: conclusion, tone: "orange" }, conclusion);
     assert.deepEqual(g({}, { status: "completed", conclusion: "failure", head_sha: "b".repeat(40) })[1], { label: "build", text: "failure (bbbbbbb)", tone: "red" });
     assert.deepEqual(g({}, null)[1], { label: "build", text: "no run", tone: "" });
     assert.deepEqual(g({ ahead: null, deploy: "c".repeat(40) })[2], { label: "deploy", text: "ccccccc", tone: "" });
