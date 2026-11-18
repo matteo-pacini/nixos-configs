@@ -117,7 +117,6 @@ stay as substitutions in the `.nix` files.
 | Where | Change | Applied |
 |---|---|---|
 | `patches/legion-001-writable-session-copies.patch` | `chmod -R u+w` the launcher's session copies | always |
-| `patches/legion-002-sdl-gles-display.patch` | QEMU `-display sdl,gl=es` instead of `gl=on`: the desktop window imports frames as `GL_TEXTURE_EXTERNAL_OES`, which Mesa only supports in GLES, so `gl=on` showed a black window on the native-context path | always |
 | `patches/legion-003-vcpu-affinity-env.patch` | launcher sets `LEGION_VCPU_AFFINITY` | `pinVcpus` |
 | `patches/legion-007-qemu-parent-death-signal.patch` | QEMU gets SIGKILL if the launcher dies, so its window can't outlive it | always |
 | `patches/virgl-001-device-groups-filter.patch` | the render server drops GPUs it never enumerated from `vkEnumeratePhysicalDeviceGroups`. Mesa's device-select layer narrows the device list to the selected GPU but passes every group through, so on a host with several GPUs (BrightFalls: RX 6800 XT, 780M, llvmpipe) Venus failed with "venus driver is required to call vkEnumeratePhysicalDevices first" | always |

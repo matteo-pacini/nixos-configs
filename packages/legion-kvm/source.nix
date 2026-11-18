@@ -4,7 +4,7 @@
   src = fetchFromGitHub {
     owner = "brcly";
     repo = "legion-kvm";
-    rev = "79a6ec06d8c32a3ccd55956671b1e09fc594b8e9";
-    hash = "sha256-PEZIpp+vTQhSluKnyuStfWm8ziaYup6HXqCfUQpcsm8=";
+    rev = "0197712f1a12ce70411d575b33306349c7b19c37";
+    hash = "sha256-ueGj8tjq6Bp9v7dydgbgf66fxzf+zg9P6Xw0MhTMNpo=";
   };
 }
