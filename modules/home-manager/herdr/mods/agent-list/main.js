@@ -10,6 +10,7 @@ import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, spaces, focused, run, hc, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, notify, props, window, layout } from "herdr";
 import { APPS, agentVersion, restartAgent } from "./lib/agents.js";
 import { icon, find, narrow } from "./lib/ui.js";
+import { KEEP, newWarmFailures } from "./lib/warm.js";
 
 const LABEL = "agent.name";
 
@@ -87,6 +88,8 @@ export default class AgentTree extends View {
     this.folded = new Set(JSON.parse(localStorage.getItem("folded") ?? "[]"));
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
+    // Keep-warm failures already shown as a notification, by terminal.
+    this.warned = JSON.parse(localStorage.getItem("warned") ?? "{}");
     cx.timer.every(30000, (cx) => cx.notify());
   }
 
@@ -191,6 +194,17 @@ export default class AgentTree extends View {
     localStorage.setItem("changed", JSON.stringify(this.changed));
   }
 
+  // Says once, per failure, that keeping an agent's cache warm gave up.
+  warn(list, all) {
+    const failed = newWarmFailures(all, this.warned);
+    if (!failed.length) return;
+    localStorage.setItem("warned", JSON.stringify(this.warned));
+    for (const k of failed) {
+      const name = agentName(list.find((a) => a.address === k.address) ?? { address: k.address }, k);
+      notify({ title: `Couldn't keep ${name} warm`, body: "Two refreshes didn't extend its cache.", level: "error" });
+    }
+  }
+
   // Live sub-agents of `addr`, depth first, each with the tree lines in front of it.
   tree(all, addr, lead = []) {
     const kids = all.filter((k) => k.parent === addr && k.state === "live");
@@ -250,6 +264,7 @@ export default class AgentTree extends View {
       const left = Math.floor((until * 1000 - now) / 60000);
       parts.push(left < 0 ? "cache cold" : `cache ${left < 1 ? "<1" : left}m left`);
     }
+    if (labels?.[KEEP]) parts.push("kept warm");
     if (outdated) parts.push(`${labels["agent.version"]}, ${latest} installed`);
     return [parts.join(" · "), "Right-click for options"].filter(Boolean).join("\n");
   }
@@ -323,6 +338,7 @@ export default class AgentTree extends View {
       .child(div().flex_1().min_w(0).truncate().text_color(urgency === "idle" && !a.focused ? t.muted : t.foreground).child(name))
       .when(subs.length > 0 && this.folded.has(key), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(String(subs.length))))
       .when(outdated, (el) => el.child(div().size(5).flex_none().rounded(3).bg(ORANGE)))
+      .when(Boolean(labels?.[KEEP]), (el) => el.child(svg("mods/pane-header/flame.svg").size(10).flex_none().text_color(t.ansi2)))
       .child(div().flex_none().max_w(44).truncate().text_size(11).text_color(t.dim).child(tab ?? ""))
       .child(expiring
         ? h_flex().flex_none().gap(3).items_center().text_size(11).text_color(ORANGE)
@@ -344,6 +360,7 @@ export default class AgentTree extends View {
     const shown = focused()?.agent;
     const now = Date.now();
     this.track(list, now);
+    this.warn(list, all);
     this.urgency = new Map(list.map((a) => [a.address,
       top([a.status, ...this.tree(all, a.address).map((s) => kidStatus(s.t, this.listed))])]));
     setAgentOrder(list.map((a) => a.address));

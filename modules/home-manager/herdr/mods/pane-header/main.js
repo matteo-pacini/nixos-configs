@@ -3,6 +3,7 @@
 // Shows the program's icon (the app's program table), the agent's name or
 // the terminal's title, the folder, and the agent's status; buttons split, zoom and close
 // this pane. Props from the app: { pane, terminal }. Click: focus the pane.
+// A Claude Code pane also gets the keep-cache-warm switch (lib/warm.js).
 // Derived from Herdr's shipped `pane` mod: an agent (Claude Code, Codex,
 // opencode) older than the one installed on its machine gets an OUTDATED badge
 // and a button that restarts it on the new version, resuming the same session.
@@ -12,6 +13,7 @@ import { h_flex } from "gpui-base";
 import { panes, terminals, props, run, theme, home } from "herdr";
 import { APPS, agentVersion, restartAgent } from "./lib/agents.js";
 import { icon } from "./lib/ui.js";
+import { warmth, setWarm } from "./lib/warm.js";
 
 function folder(cwd) {
   if (!cwd) return "";
@@ -20,7 +22,11 @@ function folder(cwd) {
 }
 
 export default class Pane extends View {
-  init() { this.hovered = false; }
+  init(_props, cx) {
+    this.hovered = false;
+    // The switch counts the cache down in minutes.
+    cx.timer.every(30000, (cx) => cx.notify());
+  }
 
   me() {
     return panes().find((p) => p.pane === props()?.pane);
@@ -40,6 +46,26 @@ export default class Pane extends View {
       .child(svg(`mods/pane/${icon}.svg`).size(14));
   }
 
+  // The keep-cache-warm switch; `w` is warmth()'s answer for this pane.
+  warmSwitch(t, p, w) {
+    const filled = ["warm", "refreshing", "working"].includes(w.kind);
+    const color = filled ? t.ansi2 : w.kind === "cold" ? t.ansi3 : w.kind === "short" ? t.dim : t.muted;
+    return div().id(`ph-warm-${p.pane}`).flex_none().px(8).h(20).rounded(6).flex().items_center().gap(5)
+      .text_size(11).font_semibold().text_color(color)
+      .when(filled, (el) => el.bg(t.ansi2 + "26"))
+      .when(!filled, (el) => el.border_1().border_color(w.kind === "cold" ? t.ansi3 + "66" : w.kind === "short" ? t.border : t.input))
+      .when(w.kind !== "short", (el) => el.cursor_pointer().hover((s) => s.bg(color + (filled ? "40" : "1a"))))
+      .on_click((_e, cx) => {
+        cx.stop_propagation();
+        if (w.kind !== "short") setWarm(p.terminal, !w.on);
+      })
+      .when(Boolean(w.tip), (el) => el.tooltip(w.tip))
+      .child(w.kind === "refreshing"
+        ? svg("mods/workspace-chrome/spinner.svg").size(11).flex_none().spin(900)
+        : svg("mods/pane-header/flame.svg").size(11).flex_none())
+      .child(w.text);
+  }
+
   render(cx) {
     const t = theme();
     const p = this.me();
@@ -51,6 +77,7 @@ export default class Pane extends View {
     const term = p.terminal && APPS[p.app] ? terminals().find((k) => k.address === p.terminal) : null;
     const { app, running, latest, outdated, session } = agentVersion(p.app, p.terminal, term?.labels, cx);
     const busy = st === "working" || st === "blocked";
+    const warm = p.app === "claude-code" && term ? warmth(term.labels, st, Date.now()) : null;
     return h_flex()
       .id(`pane-head-${pane}`)
       .size_full()
@@ -77,6 +104,7 @@ export default class Pane extends View {
           .tooltip(busy ? "Wait until it's idle" : "Exit and resume this session on the installed version")
           .child(`Restart on ${latest}`))))
       .child(div().flex_1().truncate().text_color(t.dim).child(folder(p.cwd)))
+      .when(Boolean(warm) && (warm.on || this.hovered), (el) => el.child(this.warmSwitch(t, p, warm)))
       .when(st === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
       .when(st === "blocked", el => el.child(div().flex_none().px(6).h(18).flex().items_center().rounded(5).bg(t.blocked + "26").text_size(10.5).font_semibold().text_color(t.blocked).child("Needs you")))
       .when(st === "done", el => el.child(div().size(7).flex_none().rounded(4).bg(t.done)))

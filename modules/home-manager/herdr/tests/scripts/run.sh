@@ -2,7 +2,7 @@
 # Tests for the hook scripts in ../../scripts, run with errexit, nounset and
 # pipefail as writeShellApplication runs them. `hc` is a fake on PATH that
 # appends its arguments, one per line, to $HC_LOG.
-# Usage: run.sh <scripts dir>   (needs bash, jq, coreutils, grep, sed on PATH)
+# Usage: run.sh <scripts dir>   (needs bash, jq, coreutils, grep, sed, awk on PATH)
 set -euo pipefail
 
 scripts=$(realpath "$1")
@@ -392,5 +392,197 @@ sl "$both" | HC_TERMINAL_ID=t3 PATH="$work/limbin:$PATH" FAKE_NOW=1900 \
   bash -euo pipefail "$scripts/claude-limits.sh" >/dev/null
 check "claude-limits: inside herdr, labels still set" "label t3" "$(head -n 2 "$HC_LOG" | paste -sd ' ')"
 check "claude-limits: inside herdr, the file too" "1900" "$(jq .written_at "$lfile")"
+
+# ---- claude-statusline.sh ----
+# Status-line input with `prompt_cache` = $1, as Claude Code 2.1.322 sends it,
+# cut to the fields the script reads.
+cache() {
+  : >"$HC_LOG"
+  jq -nc --argjson c "$1" '{model: {display_name: "Fable 5.2"}, effort: {level: "high"}, version: "2.1.322",
+    context_window: {used_percentage: 14.2, total_input_tokens: 139500}, prompt_cache: $c}' |
+    HC_TERMINAL_ID=t4 PATH="$work/limbin:$PATH" bash -euo pipefail "$scripts/claude-statusline.sh" >/dev/null
+  grep -E '^agent\.cache' "$HC_LOG" | paste -sd ' '
+}
+check "claude-statusline: the cache's expiry and lifetime" "agent.cache_until=1795041084 agent.cache_ttl=1h" \
+  "$(cache '{"warm":true,"caching_observed":true,"ttl":"1h","expires_at":1795041084.6}')"
+check "claude-statusline: a 5-minute cache" "agent.cache_until=1795038309 agent.cache_ttl=5m" \
+  "$(cache '{"warm":true,"caching_observed":true,"ttl":"5m","expires_at":1795038309}')"
+check "claude-statusline: a missed cache is cold, its lifetime kept" "agent.cache_until=0 agent.cache_ttl=1h" \
+  "$(cache '{"warm":false,"caching_observed":true,"ttl":"1h","expires_at":null}')"
+check "claude-statusline: no caching seen yet clears both" "agent.cache_until= agent.cache_ttl=" \
+  "$(cache '{"warm":false,"caching_observed":false,"ttl":"1h","expires_at":null}')"
+check "claude-statusline: all its labels, in one call" \
+  "label t4 agent.ctx=14 agent.ctxk=139 agent.cache_until=0 agent.cache_ttl= agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322" \
+  "$(cache '{"caching_observed":true}' >/dev/null; paste -sd ' ' "$HC_LOG")"
+
+# ---- claude-keep-warm.sh ----
+# `hc` here is one Claude Code terminal, t7, built from files in $KW: its
+# status and labels, and a screen drawn as Claude Code 2.1.322 draws it (the
+# prompt box between two rules, the placeholder, the stash mark, the /btw
+# answer panel). Keys and text sent to it change the screen as they do there,
+# and are logged with every label set. `sleep` returns at once; the one
+# between two passes runs $KW/between-<n> and ends the service after
+# $KW_PASSES passes. `date` prints $FAKE_NOW.
+KW="$work/kw"
+mkdir "$KW" "$work/kwbin"
+cp "$work/limbin/date" "$work/kwbin/date"
+cat >"$work/kwbin/sleep" <<EOF
+#!$BASH
+[ "\$1" = 30 ] || exit 0
+n=\$((\$(cat "$KW/passes") + 1))
+echo "\$n" >"$KW/passes"
+if [ -e "$KW/between-\$n" ]; then . "$KW/between-\$n"; fi
+if [ "\$n" -ge "\$KW_PASSES" ]; then kill "\$PPID"; fi
+EOF
+cat >"$work/kwbin/hc" <<EOF
+#!$BASH
+set -euo pipefail
+cd "$KW"
+get() { cat "\$1"; }
+put() { printf '%s' "\$2" >"\$1"; }
+rule=────────────────────────────────────────
+cmd=\$1
+shift
+case \$cmd in
+  ls)
+    case "\$*" in
+      *agent.keep_warm=1*) get ls ;;
+      *agent.warm_state=refreshing*) get stuck ;;
+    esac
+    ;;
+  get)
+    jq -nc --arg s "\$(get status)" --arg t "\$(get ttl)" --arg u "\$(get until)" \
+      '{state: "live", status: {app: "claude-code", state: \$s},
+        labels: ({"agent.keep_warm": "1", "agent.cache_ttl": \$t, "agent.cache_until": \$u} | map_values(select(. != "")))}'
+    ;;
+  read)
+    case \$(get mode) in
+      box)
+        shown=\$(get text)
+        [ -n "\$shown" ] || shown=\$(get ghost)
+        mark=
+        [ -z "\$(get stash)" ] || mark='                › stashed'
+        printf '● two\n\n%s\n❯\xc2\xa0%s\n%s\n   Model: Haiku 5.5  Ctx: 46.7k%s\n  ⏵⏵ auto mode on (shift+tab to cycle)\n' "\$rule" "\$shown" "\$rule" "\$mark"
+        ;;
+      asked | answering)
+        printf '● two\n\n❯ /btw reply with: ok\n\n  /btw reply with: ok\n\n    ✢ Answering…\n\n  ⇧←/→ to browse · x to clear history · Esc to close\n'
+        # The answer is there at the third look.
+        if [ "\$(get mode)" = asked ]; then put mode answering; else put mode answered; fi
+        ;;
+      answered) printf '● two\n\n❯ /btw reply with: ok\n\n  /btw reply with: ok\n\n    ok\n\n  ⇧←/→ to browse · c to copy · f to fork · x to clear history · Esc to close\n' ;;
+      # Under an answer that drew two rules of its own.
+      picker) printf '%s\nA table\n%s\n\n Select model\n\n ❯ 1. Default\n   2. Haiku\n\n Enter to confirm · Esc to exit\n' "\$rule" "\$rule" ;;
+    esac
+    ;;
+  label) echo "label \$*" >>log ;;
+  keys)
+    echo "keys \$*" >>log
+    text=\$(get text) stash=\$(get stash) mode=\$(get mode)
+    case "\$mode \$2" in
+      "box .") put text "\$text." ;;
+      "box backspace") put text "\${text%?}" ;;
+      "box ctrl+s")
+        if [ -e deaf ]; then :
+        elif [ -n "\$text" ]; then put stash "\$text"; put text ''
+        else put text "\$stash"; put stash ''; fi
+        ;;
+      "asked esc" | "answer"*" esc")
+        [ "\$mode" = answered ] || echo "CLOSED BEFORE THE ANSWER" >>log
+        put mode box
+        # A stashed draft comes back after a submit.
+        if [ -z "\$text" ]; then put text "\$stash"; put stash ''; fi
+        if [ -e renews ]; then put until "\$((\$(get until) + 3600))"; fi
+        ;;
+    esac
+    ;;
+  send)
+    echo "send \$*" >>log
+    if [ -n "\$(get text)" ]; then echo "SENT WITH THE DRAFT: \$(get text)" >>log; fi
+    [ -e mute ] || put mode asked
+    ;;
+esac
+EOF
+chmod +x "$work/kwbin/"*
+# A terminal at an empty prompt, idle, on a 1 h cache with 500 s left at
+# FAKE_NOW, whose refreshes renew it; then $@ as file=value changes.
+kwset() {
+  rm -f "$KW"/*
+  local kv
+  for kv in text= ghost= stash= mode=box status=idle ttl=1h until=10500 ls='{"terminals":[{"address":"t7"}]}' \
+    stuck='{"terminals":[]}' renews=1 "$@"; do
+    printf '%s' "${kv#*=}" >"$KW/${kv%%=*}"
+  done
+}
+# Runs the service for $1 passes; prints what it did to the terminal.
+kw() {
+  : >"$KW/log"
+  echo 0 >"$KW/passes"
+  (KW_PASSES=$1 FAKE_NOW=10000 PATH="$work/kwbin:$PATH" bash -euo pipefail "$scripts/claude-keep-warm.sh" >"$KW/out") 2>/dev/null || true
+  cat "$KW/log"
+}
+asked=$(printf '%s\n' 'label t7 agent.warm_state=refreshing' 'send t7 /btw reply with: ok' 'keys t7 esc' 'label t7 agent.warm_state=')
+probe=$(printf '%s\n' 'keys t7 .' 'keys t7 backspace')
+
+kwset
+check "keep-warm: an empty prompt gets the question, the answer is closed" "$asked" "$(kw 1)"
+check "keep-warm: and the cache is renewed" "14100 refreshed t7" "$(cat "$KW/until") $(cat "$KW/out")"
+check "keep-warm: a renewed cache is left alone" "" "$(kw 2)"
+
+kwset ghost='Try "refactor <filepath>"'
+check "keep-warm: a placeholder waits one pass" "" "$(kw 1)"
+check "keep-warm: then is told from a draft by a typed character" "$(printf '%s\n' "$probe" "$asked")" "$(kw 2)"
+
+kwset text='my draft'
+check "keep-warm: a draft waits one pass" "" "$(kw 1)"
+check "keep-warm: then is stashed for the question" "$(printf '%s\n' "$probe" 'keys t7 ctrl+s' "$asked")" "$(kw 2)"
+check "keep-warm: and comes back" "my draft||box" "$(cat "$KW/text")|$(cat "$KW/stash")|$(cat "$KW/mode")"
+
+kwset text='my'
+echo "printf 'my draft' >'$KW/text'" >"$KW/between-1"
+echo "printf 'my draft, longer' >'$KW/text'" >"$KW/between-2"
+check "keep-warm: a draft being typed is never touched" "" "$(kw 3)"
+
+kwset text='my draft' stash='an older one'
+check "keep-warm: a draft isn't stashed over another" "$probe" "$(kw 2)"
+check "keep-warm: both are as they were" "my draft|an older one" "$(cat "$KW/text")|$(cat "$KW/stash")"
+
+kwset stash='an older one'
+check "keep-warm: an empty prompt with a stash gets the question" "$asked" "$(kw 1)"
+check "keep-warm: and the stash comes back as the draft" "an older one|" "$(cat "$KW/text")|$(cat "$KW/stash")"
+
+kwset text='my draft' deaf=1
+check "keep-warm: a draft that won't stash gets no question" "$(printf '%s\n' "$probe" 'keys t7 ctrl+s')" "$(kw 2)"
+
+kwset mode=picker
+check "keep-warm: no prompt box, nothing typed" "" "$(kw 2)"
+for change in status=working status=blocked ttl=5m ttl= until= until=10601 until=10030 until=9000 until=0; do
+  kwset "$change"
+  check "keep-warm: $change, nothing typed" "" "$(kw 2)"
+done
+kwset until=10600
+check "keep-warm: 600 s left is the first refresh" "$asked" "$(kw 1)"
+kwset status=done
+check "keep-warm: a done agent is refreshed too" "$asked" "$(kw 1)"
+kwset ls='{"terminals":[{"address":"nexus/t7"}]}'
+check "keep-warm: another machine's terminal is left to that machine" "" "$(kw 2)"
+kwset ls='{"terminals":[]}' stuck='{"terminals":[{"address":"t7"},{"address":"nexus/t9"}]}'
+check "keep-warm: a refresh cut short is cleared at start" "label t7 agent.warm_state=" "$(kw 1)"
+
+kwset
+rm "$KW/renews"
+check "keep-warm: two refreshes that renew nothing, then it says so and stops" \
+  "$(printf '%s\n' "$asked" "$asked" 'label t7 agent.warm_failed=10000')" "$(kw 4)"
+echo "printf 10400 >'$KW/until'" >"$KW/between-3"
+check "keep-warm: the agent's next turn starts it over" \
+  "$(printf '%s\n' "$asked" "$asked" 'label t7 agent.warm_failed=10000' 'label t7 agent.warm_failed=' "$asked")" "$(kw 4)"
+kwset
+rm "$KW/renews"
+echo "printf '{\"terminals\":[]}' >'$KW/ls'" >"$KW/between-3"
+check "keep-warm: switched off after it stopped, the failure is cleared" \
+  "$(printf '%s\n' "$asked" "$asked" 'label t7 agent.warm_failed=10000' 'label t7 agent.warm_failed=')" "$(kw 4)"
+
+kwset mute=1
+check "keep-warm: a question that opens no answer isn't closed" \
+  "$(printf '%s\n' 'label t7 agent.warm_state=refreshing' 'send t7 /btw reply with: ok' 'label t7 agent.warm_state=')" "$(kw 1)"
 
 exit "$failed"

@@ -26,6 +26,8 @@ The **Herdr** design canvas is the visual reference:
 - Its **PR and CI status** page holds the status bar (`status-bar`) with
   the focused terminal's branch, PR and checks, and the two-line sidebar
   rows, as built.
+- Its **Keep cache warm** page holds the pane header's switch in every
+  state, the agents list's marker and the failure notification, as built.
 - A feature or mod with many states gets its own page or section like
   these, not a corner of a Design system artboard.
 
