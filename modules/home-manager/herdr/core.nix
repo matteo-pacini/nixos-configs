@@ -1,4 +1,5 @@
-# herdr-core and the desktop app, and Claude sessions that survive a reboot.
+# herdr-core and the desktop app, Claude sessions that survive a reboot, and
+# the service behind the workbench's keep-cache-warm switch.
 {
   config,
   lib,
@@ -28,6 +29,23 @@ let
     ];
     text = builtins.readFile ./scripts/claude-resume.sh;
   };
+
+  # Refreshes the prompt cache of the Claude panes switched to keep warm in
+  # the pane-header mod. See the script's header.
+  claudeKeepWarm = pkgs.writeShellApplication {
+    name = "herdr-claude-keep-warm";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gawk
+      pkgs.gnugrep
+      pkgs.gnused
+      pkgs.herdr-core
+      pkgs.jq
+    ];
+    text = builtins.readFile ./scripts/claude-keep-warm.sh;
+  };
+  # The switch and the labels the service reads come with the workbench.
+  keepWarm = cfg.workbench.enable && config.custom.claude-code.enable;
 
   # herdr-agent-ask is installed by agent-labels.nix. Called by its path in the
   # profile, so an older copy elsewhere on PATH can't shadow it.
@@ -107,6 +125,29 @@ in
         KeepAlive = true;
         StandardOutPath = "${config.home.homeDirectory}/Library/Logs/herdr-claude-resume.log";
         StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/herdr-claude-resume.log";
+      };
+    };
+
+    systemd.user.services.herdr-claude-keep-warm =
+      lib.mkIf (keepWarm && pkgs.stdenv.hostPlatform.isLinux)
+        {
+          Unit.Description = "Keep the prompt cache of chosen Claude panes in herdr-core warm";
+          Service = {
+            ExecStart = lib.getExe claudeKeepWarm;
+            Restart = "always";
+            RestartSec = 5;
+          };
+          Install.WantedBy = [ "default.target" ];
+        };
+
+    launchd.agents.herdr-claude-keep-warm = lib.mkIf (keepWarm && pkgs.stdenv.hostPlatform.isDarwin) {
+      enable = true;
+      config = {
+        ProgramArguments = [ (lib.getExe claudeKeepWarm) ];
+        RunAtLoad = true;
+        KeepAlive = true;
+        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/herdr-claude-keep-warm.log";
+        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/herdr-claude-keep-warm.log";
       };
     };
   };

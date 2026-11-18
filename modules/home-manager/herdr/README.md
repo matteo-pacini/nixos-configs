@@ -9,7 +9,7 @@ description.
 | Path | What |
 |------|------|
 | `default.nix` | Imports the rest; `enable`, `desktop` |
-| `core.nix` | herdr-core, the app, its theme, and Claude sessions resumed after a reboot. Holds every Claude Code hook (see below) |
+| `core.nix` | herdr-core, the app, its theme, Claude sessions resumed after a reboot, and the keep-cache-warm service. Holds every Claude Code hook (see below) |
 | `agent-labels.nix` | The terminal labels the mods draw, set from inside each agent (Claude statusLine, Codex hooks, opencode plugin) |
 | `workbench.nix` | `workbench.*` options, the mod build and install, `lib/hosts.js`, the layout file and the first switch to it |
 | `layout.nix` | Pure: which optional mods are on → the layout tree |
@@ -28,7 +28,9 @@ empty value removes a label.
 | Label | Set by | Read by |
 |-------|--------|---------|
 | `agent.model`, `agent.effort`, `agent.ctx`, `agent.ctxk`, `agent.version` | `claude-statusline.sh` (Claude's statusLine), `codex-labels.sh` (Codex hooks), `opencode-labels.js` | `agent-list` |
-| `agent.cache_until` | `claude-statusline.sh` only | `agent-list` (cache-expiring flag) |
+| `agent.cache_until`, `agent.cache_ttl` | `claude-statusline.sh` only | `agent-list` (cache-expiring flag); `lib/warm.js` and `claude-keep-warm.sh` (see below) |
+| `agent.keep_warm` | the person, from `pane-header`'s switch | `lib/warm.js` (`pane-header`, `agent-list`); `claude-keep-warm.sh` |
+| `agent.warm_state`, `agent.warm_failed` | `claude-keep-warm.sh` | `lib/warm.js`: `pane-header` ("Refreshing"), `agent-list` (the failure notification) |
 | `agent.ask` | `agent-ask.sh` (Claude and Codex hooks), `opencode-labels.js` | `agent-list` |
 | `agent.ask_detail` | `agent-ask.sh` | no mod reads it yet |
 | `claude.session`, `codex.session`, `opencode.session` | `claude-session.sh`, `codex-labels.sh`, `opencode-labels.js` | `lib/agents.js` (restart on a newer version); `claude-resume.sh` (resume after reboot) |
@@ -45,6 +47,41 @@ changed on every rebuild would need trusting again each time. The
 `~/.codex/hooks.json` (`scripts/codex-hooks.jq`), replacing an earlier entry
 of ours under any directory or none, and marks them trusted
 (`scripts/codex-trust-hooks.py`).
+
+### Keep cache warm
+
+A Claude Code pane's header has a switch, "Keep cache warm" (`lib/warm.js`
+decides what it shows). It sets `agent.keep_warm` on the terminal, so the
+switch is seen from every window and ends with the terminal.
+`herdr-claude-keep-warm` (`scripts/claude-keep-warm.sh`, a user service on
+Linux and a launchd agent on macOS, installed with the workbench) does the
+work on the terminal's own machine, with the app open or closed. Every 30 s
+it looks at this machine's switched-on terminals. When an agent is idle or
+done and its cache has 10 minutes or less left, it types `/btw reply with: ok`
+and closes the answer with Esc. The side question reads the conversation's
+cache, which renews it for another hour; nothing joins the conversation and
+the agent's status doesn't change. Each refresh re-reads the whole context
+at the cached rate and counts toward the plan's usage, about every 50
+minutes for as long as the switch is on. Nothing turns it off but the person.
+
+- **1 h caches only.** A session billed by API key or on usage credits has a
+  5-minute cache (`agent.cache_ttl=5m`): the switch can't be turned on there.
+- **It types into a terminal a person may be using.** It acts only when the
+  screen ends in Claude Code's prompt box. Text in the box that changed since
+  the last pass is left alone. A placeholder or suggested prompt reads like a
+  typed draft in `hc read`, so it types `.` and Backspace to tell them apart.
+  A real draft is set aside with Claude Code's stash (Ctrl+S), which gives it
+  back once the question is submitted; a draft is never stashed over another.
+- **After two refreshes in a row that didn't move `agent.cache_until`** it
+  sets `agent.warm_failed`, which `agent-list` shows once as a notification,
+  and leaves the terminal alone until the expiry changes (the agent's next
+  turn) or the switch is turned off and on.
+- The screen texts it matches (the rules around the prompt box, `❯`,
+  `› stashed`, `Answering…`, `Esc to close`) are Claude Code 2.1.322's, and
+  `tests/scripts/run.sh` holds the screens it was written against. A version
+  that draws the prompt box differently gets nothing typed. One that draws
+  the answer panel differently gets the question, but the answer is left
+  open and counts as a failed refresh.
 
 ### The plan-limit file
 
@@ -176,6 +213,8 @@ CI runs all three on pull requests (the `herdr-tests` job in
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
   `hc` that logs its arguments. `claude-limits.sh` runs with a fake `date` (the
   clock), a fake `npx` (the renderer) and a temporary `XDG_RUNTIME_DIR`.
+  `claude-keep-warm.sh` runs against an `hc` that plays one Claude Code
+  terminal: its screen changes with the keys and text sent to it.
 - **Not covered:** drawing (there's no headless gpui), and the parts of
   `space-cards/main.js` and `status-bar/main.js` that need `lib/hosts.js` or the
   live app. For those, use `herdr-app check` and `herdr-app shot`.
