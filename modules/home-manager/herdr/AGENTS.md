@@ -108,7 +108,10 @@ each new test break the code once and watch the test fail before trusting it.
 
 1. **Unit tests** (`tests/js/*.test.mjs`, `node --test`).
    - Run them with `cd tests/js && node --import ./hooks.mjs --test`.
-   - `herdr`, `gpui-kit` and `gpui-base` resolve to stubs.
+   - `herdr`, `gpui-kit`, `gpui-base` and `lib/hosts.js` resolve to stubs.
+   - The gpui stub records the element tree, so a test can `render()` a view,
+     `find(tree, id)` an element and call its `on.on_click`
+     (`space-cards.test.mjs`).
    - `mock({ exec, hc, … })` installs handlers, and `calls` records every call.
      A herdr function with no handler throws.
    - Test command sequences and their order.
