@@ -236,13 +236,13 @@ in
       (pkgs.buildHomeAssistantComponent rec {
         owner = "matteo-pacini";
         domain = "metron";
-        version = "0.5.0";
+        version = "0.7.5";
 
         src = pkgs.fetchFromGitHub {
           inherit owner;
           repo = "metron";
           tag = "v${version}";
-          hash = "sha256-uzv1xZ6ocXM4Pr6ZCq9YwrHj7fF5QyQTtyWzU5/TsF4=";
+          hash = "sha256-yvzFO79U69dPa3RbCfy9VKHU09Eb549OVId31WaGk3o=";
         };
       })
       scheduler
