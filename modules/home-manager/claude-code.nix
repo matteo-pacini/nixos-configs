@@ -8,6 +8,7 @@ let
   cfg = config.custom.claude-code;
 
   baseSettings = {
+    idleCompaction = false;
     statusLine = {
       type = "command";
       # Relies on nodejs being on claude's PATH (set in overlays/shared.nix).
