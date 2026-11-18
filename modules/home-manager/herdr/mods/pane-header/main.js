@@ -1,7 +1,8 @@
 // A pane's header, for layouts that frame their panes:
 //   { "tab": "active", "pane": { "header": { "content": { "mod": "pane-header" } } } }
-// Shows the program's icon (the app's program table), the agent's name or
-// the terminal's title, the folder, and the agent's status; buttons split, zoom and close
+// Shows the program's icon (the app's program table), the terminal's address,
+// the agent's name (lib/name.js) or the terminal's title, the folder, and the
+// agent's status; buttons split, zoom and close
 // this pane. Props from the app: { pane, terminal }. Click: focus the pane.
 // A Claude Code pane also gets the keep-cache-warm switch (lib/warm.js).
 // Derived from Herdr's shipped `pane` mod: an agent (Claude Code, Codex,
@@ -10,10 +11,11 @@
 
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { panes, terminals, props, run, theme, home } from "herdr";
+import { panes, terminals, props, run, theme, home, settings } from "herdr";
 import { APPS, agentVersion, restartAgent } from "./lib/agents.js";
 import { icon } from "./lib/ui.js";
 import { warmth, setWarm } from "./lib/warm.js";
+import { paneName } from "./lib/name.js";
 
 function folder(cwd) {
   if (!cwd) return "";
@@ -72,11 +74,12 @@ export default class Pane extends View {
     const t = theme();
     const p = this.me();
     if (!p) return div();
-    const name = ((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name || "shell";
     const pic = icon(p.program, 14, t.dim);
     const st = p.status;
     const pane = p.pane;
-    const term = p.terminal && APPS[p.app] ? terminals().find((k) => k.address === p.terminal) : null;
+    const self = p.terminal ? terminals().find((k) => k.address === p.terminal) : null;
+    const name = paneName(p, self);
+    const term = APPS[p.app] ? self : null;
     const { app, running, latest, outdated, session } = agentVersion(p.app, p.terminal, term?.labels, cx);
     const busy = st === "working" || st === "blocked";
     const warm = p.app === "claude-code" && term ? warmth(term.labels, st, Date.now()) : null;
@@ -93,6 +96,8 @@ export default class Pane extends View {
       .on_hover((hovered, cx) => { this.hovered = hovered; cx.notify(); })
       .on_click(() => run("pane.focus", { pane }))
       .when(Boolean(pic), (el) => el.child(pic))
+      .when(Boolean(p.terminal), (el) => el.child(div().flex_none().px(5).h(17).rounded(4).bg(t.hover).flex().items_center()
+        .font_family(settings().font_family ?? "JetBrains Mono").text_size(10.5).text_color(t.muted).child(p.terminal)))
       .child(div().flex_none().truncate().max_w(260).font_medium().text_color(t.foreground).child(name))
       .when(outdated, (el) => el
         .child(div().id(`ph-old-${pane}`).flex_none().px(6).h(17).rounded(4).bg(t.ansi3 + "26").flex().items_center()

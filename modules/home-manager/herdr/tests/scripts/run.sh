@@ -585,4 +585,125 @@ kwset mute=1
 check "keep-warm: a question that opens no answer isn't closed" \
   "$(printf '%s\n' 'label t7 agent.warm_state=refreshing' 'send t7 /btw reply with: ok' 'label t7 agent.warm_state=')" "$(kw 1)"
 
+# ---- claude-title.sh ----
+# `hc get` answers with terminal t7 as `hc get --json` gives it, cut to what
+# the script reads, with $TITLE_LABELS as its labels; `hc label` is logged on
+# one line. The hook's input is as Claude Code 2.1.322 sends it, cut to the
+# fields a hook can count on: `session_title` only for a session with a custom
+# name, `source` only on SessionStart.
+mkdir "$work/titlebin"
+cat >"$work/titlebin/hc" <<FAKE
+#!$BASH
+case \$1 in
+  get)
+    [ -z "\${HC_GET_FAILS:-}" ] || exit 1
+    printf '{"address":"t7","name":null,"title":"x","state":"live","labels":%s}\n' "\$TITLE_LABELS"
+    ;;
+  *)
+    echo "\$*" >>"\$HC_LOG"
+    [ -z "\${HC_LABEL_FAILS:-}" ] || exit 1
+    ;;
+esac
+FAKE
+chmod +x "$work/titlebin/hc"
+printf hi >"$work/prompt"
+# Runs the hook for event $2 (session named $3, SessionStart source $4) on a
+# terminal with labels $1, the prompt being $PROMPT_FILE's text; prints what
+# it printed, then what it labelled.
+title() {
+  : >"$HC_LOG"
+  jq -nc --arg e "$2" --arg t "${3:-}" --arg s "${4:-}" --rawfile p "${PROMPT_FILE:-$work/prompt}" \
+    '{session_id: "s-1", transcript_path: "/x/s-1.jsonl", cwd: "/x", hook_event_name: $e}
+      + (if $e == "UserPromptSubmit" then {prompt: $p, permission_mode: "default"} else {} end)
+      + (if $t == "" then {} else {session_title: $t} end)
+      + (if $s == "" then {} else {source: $s} end)' |
+    TITLE_LABELS=$1 HC_TERMINAL_ID=t7 PATH="$work/titlebin:$PATH" bash -euo pipefail "$scripts/claude-title.sh"
+  echo "exit $?"
+  cat "$HC_LOG"
+}
+gives() { printf '{"hookSpecificOutput":{"hookEventName":"%s","sessionTitle":"%s"}}\nexit 0\n' "${2:-UserPromptSubmit}" "$1"; }
+taken='label t7 agent.name= agent.name_base='
+named() { jq -nc --arg n "$1" --arg b "${2:-}" --arg s "${3-absent}" \
+  '{"agent.name": $n, "agent.model": "Fable 5.2"} + (if $b == "" then {} else {"agent.name_base": $b} end)
+    + (if $s == "absent" then {} else {"claude.title": ($s | tojson)} end)'; }
+
+check "claude-title: a rename reaches a session never named" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title "$(named herdr-cleanup 'Fix pane header labels' '')" UserPromptSubmit)"
+check "claude-title: a rename replaces a name Claude Code still has" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title "$(named herdr-cleanup old old)" UserPromptSubmit old)"
+check "claude-title: a /rename after the workbench rename wins" \
+  "$(printf '%s\n' 'exit 0' "$taken claude.title=\"from-claude\"")" \
+  "$(title "$(named herdr-cleanup old old)" UserPromptSubmit from-claude)"
+check "claude-title: a first /rename after the workbench rename wins" \
+  "$(printf '%s\n' 'exit 0' "$taken claude.title=\"from-claude\"")" \
+  "$(title "$(named herdr-cleanup 'Fix pane header labels' '')" UserPromptSubmit from-claude)"
+# The terminal's title already read from-claude when the workbench renamed it.
+check "claude-title: a /rename before the workbench rename loses" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title "$(named herdr-cleanup from-claude old)" UserPromptSubmit from-claude)"
+check "claude-title: a rename to the name Claude Code has is only dropped" \
+  "$(printf '%s\n' 'exit 0' "$taken")" \
+  "$(title "$(named same old same)" UserPromptSubmit same)"
+# A label from before this hook existed: no base, no recorded name.
+check "claude-title: a rename with nothing recorded is given" \
+  "$(gives hyprland-boss; echo "$taken claude.title=\"hyprland-boss\"")" \
+  "$(title "$(named hyprland-boss)" UserPromptSubmit new-sunshine)"
+check "claude-title: a recorded name that isn't JSON counts as none" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title '{"agent.name":"herdr-cleanup","claude.title":"garbage"}' UserPromptSubmit new-sunshine)"
+
+check "claude-title: no rename, a name not recorded yet is recorded" \
+  "$(printf '%s\n' 'exit 0' 'label t7 claude.title="new-sunshine"')" \
+  "$(title '{"agent.model":"Fable 5.2"}' UserPromptSubmit new-sunshine)"
+check "claude-title: no rename, a session never named is recorded as such" \
+  "$(printf '%s\n' 'exit 0' 'label t7 claude.title=""')" "$(title '{}' UserPromptSubmit)"
+check "claude-title: no rename and nothing new labels nothing" "exit 0" \
+  "$(title '{"claude.title":"\"new-sunshine\""}' UserPromptSubmit new-sunshine)"
+check "claude-title: a terminal without labels" \
+  "$(printf '%s\n' 'exit 0' 'label t7 claude.title=""')" "$(title null UserPromptSubmit)"
+
+for source in startup resume fork; do
+  check "claude-title: SessionStart $source takes a rename" \
+    "$(gives herdr-cleanup SessionStart; echo "$taken claude.title=\"herdr-cleanup\"")" \
+    "$(title "$(named herdr-cleanup old old)" SessionStart old "$source")"
+done
+# Claude Code ignores a title from these: the rename waits for the next prompt.
+for source in clear compact; do
+  check "claude-title: SessionStart $source keeps a rename, records the name" \
+    "$(printf '%s\n' 'exit 0' 'label t7 claude.title=""')" \
+    "$(title "$(named herdr-cleanup old old)" SessionStart '' "$source")"
+done
+check "claude-title: and the prompt after a /clear takes it" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title "$(named herdr-cleanup old '')" UserPromptSubmit)"
+check "claude-title: any other event only records the name" \
+  "$(printf '%s\n' 'exit 0' 'label t7 claude.title="old"')" \
+  "$(title "$(named herdr-cleanup)" Stop old)"
+
+odd='Fix "é" & \back $(x) 日本'
+check "claude-title: a name with quotes, a backslash and unicode comes out as JSON" "$odd" \
+  "$(title "$(named "$odd")" UserPromptSubmit | head -n 1 | jq -r .hookSpecificOutput.sessionTitle)"
+check "claude-title: and is recorded whole" "$taken claude.title=$(jq -nc --arg n "$odd" '$n')" \
+  "$(title "$(named "$odd")" UserPromptSubmit | tail -n 1)"
+check "claude-title: a prompt longer than an argument may be" "$(gives herdr-cleanup | head -n 1)" \
+  "$(head -c 300000 /dev/zero | tr '\0' a >"$work/long"; PROMPT_FILE="$work/long" title "$(named herdr-cleanup)" UserPromptSubmit | head -n 1)"
+
+check "claude-title: the core not answering, nothing printed, the prompt goes on" "exit 0" \
+  "$(HC_GET_FAILS=1 title "$(named herdr-cleanup)" UserPromptSubmit)"
+check "claude-title: a label that can't be set, the name is still given" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(HC_LABEL_FAILS=1 title "$(named herdr-cleanup)" UserPromptSubmit)"
+check "claude-title: input that isn't JSON, nothing printed, the prompt goes on" "exit 0" \
+  "$(: >"$HC_LOG"; echo 'not json' | TITLE_LABELS="$(named herdr-cleanup)" HC_TERMINAL_ID=t7 PATH="$work/titlebin:$PATH" \
+    bash -euo pipefail "$scripts/claude-title.sh"; echo "exit $?"; cat "$HC_LOG")"
+check "claude-title: outside herdr, nothing" "exit 0" \
+  "$(: >"$HC_LOG"; echo '{"hook_event_name":"UserPromptSubmit"}' | (unset HC_TERMINAL_ID; PATH="$work/titlebin:$PATH" \
+    bash -euo pipefail "$scripts/claude-title.sh"; echo "exit $?"); cat "$HC_LOG")"
+
+# Claude Code would read anything agent-ask printed on this event as hook output.
+check "agent-ask: prints nothing on UserPromptSubmit" "" \
+  "$(echo '{"hook_event_name":"UserPromptSubmit","prompt":"hi"}' | HC_TERMINAL_ID=t2 bash -euo pipefail "$scripts/agent-ask.sh")"
+
 exit "$failed"

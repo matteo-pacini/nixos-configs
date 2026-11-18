@@ -12,6 +12,7 @@ import { v_flex, h_flex } from "gpui-base";
 import { run, props, closeOverlay, openOverlay, theme, keys, terminals, panes, knownAgents, shared, setShared, notify, exec, agents, spaces, machines } from "herdr";
 import { APPS, typeAtPrompt } from "./lib/agents.js";
 import { LEVELS, contextPrompt, copy, others } from "./lib/context.js";
+import { isClaude, renameValue, openRename } from "./lib/name.js";
 
 // The agents each machine last reported, so the split menu fills at once
 // while knownAgents() checks again.
@@ -35,8 +36,7 @@ function paneItems(target) {
   });
   return [
     ...(term && (pane?.app || pane?.program?.agent)
-      ? [{ label: "Rename", icon: "square-pen", act: () => openOverlay({ mod: "agent-list", kind: "dialog", width: 380, height: 220,
-          props: { rename: term.address, value: term.labels?.["agent.name"] ?? "" } }) }]
+      ? [{ label: "Rename", icon: "square-pen", act: () => openRename(term.address, renameValue(pane, term), isClaude(pane)) }]
       : []),
     ...(term && APPS[pane?.app]
       ? [{ label: "Copy herdr context", icon: "layers", hint: "▸", act: () => openOverlay({ mod: "pane-menu", kind: "popup", width: 220,
