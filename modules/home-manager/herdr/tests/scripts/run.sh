@@ -299,6 +299,46 @@ put "$(fl 60000 "$(fw 40 $R 59990 60000 fresh)" "$(fw 10 $F 59990 60000 fresh)")
 check "claude-limits: 8. a later resets_at with no evidence wins" "written $(fl 60010 "$(ns 3 $R2 60010)" "$(fw 10 $F 59990 60000 fresh)")" \
   "$(step 60010 "$(in7 3 $R2)") $(cat "$lfile")"
 check "claude-limits: 8. an earlier resets_at, fresh, is ignored" "untouched" "$(step 60020 "$(in7 90 $R)" "$(ts early 60019)")"
+# resets_at within 60 s is the same window, against a file holding 50
+# (evidence D) in the week ending R and 10 (evidence D) in the five hours
+# ending F.
+D=70000
+f50=$(fl $D "$(fw 50 $R $D $D fresh)" "$(fw 10 $F $D $D fresh)")
+put "$f50"
+check "claude-limits: resets_at 1 s earlier, newer evidence wins though lower" \
+  "written $(fl $((D + 610)) "$(fw 40 $((R - 1)) $((D + 600)) $((D + 610)) fresh)" "$(fw 10 $F $D $D fresh)")" \
+  "$(step $((D + 610)) "$(in7 40 $((R - 1)))" "$(ts d1 $((D + 600)))") $(cat "$lfile")"
+put "$f50"
+check "claude-limits: resets_at 1 s later, newer evidence wins though lower" \
+  "written $(fl $((D + 610)) "$(fw 40 $((R + 1)) $((D + 600)) $((D + 610)) fresh)" "$(fw 10 $F $D $D fresh)")" \
+  "$(step $((D + 610)) "$(in7 40 $((R + 1)))" "$(ts d2 $((D + 600)))") $(cat "$lfile")"
+put "$f50"
+check "claude-limits: resets_at 1 s later, older evidence, higher, untouched" "untouched" \
+  "$(step $((D + 40)) "$(in7 90 $((R + 1)))" "$(ts d10 $((D - 600)))")"
+put "$f50"
+check "claude-limits: resets_at 1 s earlier, within 60 s, higher wins" \
+  "written $(fl $((D + 40)) "$(fw 55 $((R - 1)) $((D + 30)) $((D + 40)) fresh)" "$(fw 10 $F $D $D fresh)")" \
+  "$(step $((D + 40)) "$(in7 55 $((R - 1)))" "$(ts d3 $((D + 30)))") $(cat "$lfile")"
+put "$f50"
+check "claude-limits: resets_at 1 s earlier, within 60 s, lower, untouched" "untouched" \
+  "$(step $((D + 40)) "$(in7 45 $((R - 1)))" "$(ts d4 $((D + 30)))")"
+put "$f50"
+check "claude-limits: resets_at 1 s earlier, within 60 s, equal, untouched" "untouched" \
+  "$(step $((D + 40)) "$(in7 50 $((R - 1)))" "$(ts d5 $((D + 30)))")"
+put "$f50"
+check "claude-limits: resets_at 60 s earlier is the same window" \
+  "written $(fl $((D + 610)) "$(fw 40 $((R - 60)) $((D + 600)) $((D + 610)) fresh)" "$(fw 10 $F $D $D fresh)")" \
+  "$(step $((D + 610)) "$(in7 40 $((R - 60)))" "$(ts d6 $((D + 600)))") $(cat "$lfile")"
+put "$f50"
+check "claude-limits: resets_at 61 s earlier, untouched" "untouched" \
+  "$(step $((D + 610)) "$(in7 40 $((R - 61)))" "$(ts d7 $((D + 600)))")"
+put "$f50"
+check "claude-limits: resets_at 61 s later wins though lower and older" \
+  "written $(fl $((D + 40)) "$(fw 3 $((R + 61)) $((D - 600)) $((D + 40)) stale)" "$(fw 10 $F $D $D fresh)")" \
+  "$(step $((D + 40)) "$(in7 3 $((R + 61)))" "$(ts d8 $((D - 600)))") $(cat "$lfile")"
+put "$(fl $D "$(fw 40 $R $D $D fresh)" null)"
+check "claude-limits: resets_at 1 s earlier at 900 s, refreshed" "written $(fl $((D + 900)) "$(fw 40 $R $D $D fresh)" null)" \
+  "$(step $((D + 900)) "$(in7 40 $((R - 1)))" "$(ts d9 $D)") $(cat "$lfile")"
 # 9. A file from the old writer: read, and upgraded on the next write.
 put "$(fl 2000 "$(w 50 $R)" "$(w 10 $F)")"
 check "claude-limits: 9. an old file is upgraded, its values kept" "written $(fl 2010 "$(ns 50 $R 2000)" "$(ns 10 $F 2000)")" \

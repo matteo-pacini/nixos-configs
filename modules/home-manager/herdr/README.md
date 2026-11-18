@@ -66,20 +66,24 @@ answer; the script takes the mtime and never opens the file. A time in the
 future counts as now; no transcript, or one that cannot be stat'ed, is no
 evidence, older than any. `kind` is `fresh` when the evidence was at most
 60 s old at the write, else `stale`. A window missing from the input keeps
-the file's; a later `resets_at` wins (a new window); an earlier one is
-ignored; the same `resets_at` goes to the newer evidence even when its value
-is lower, since a limit can be reset within a window. Evidence times at most
-60 s apart, or both absent, are a tie, and a tie keeps the higher value: two
-live sessions answering seconds apart report slightly different figures, and
-60 s is far above that gap and far below the hours between an idle session's
-answer and a live one's. A file from before `evidence_at` is read as having
-no evidence and rewritten in the new form at the next call. One weakness: a
-session writes the user's next prompt to its transcript before the API
-answers, so for that moment it reports its old figure with a new mtime and
-can win; its own status line corrects it once the answer arrives. The file
-is replaced atomically when the merged windows differ from it, and otherwise
-only every 900 s while a session reports the current window, so `written_at`
-is the last time a running session reported it. An input with no usable
+the file's. Two `resets_at` at most 60 s apart are the same window (a
+reading can give one window's a few seconds apart; the shortest window is
+300 minutes): only one more than 60 s later wins, as a new window,
+and only one more than 60 s earlier is ignored. The same window goes to the
+newer evidence even when its value is lower, since a limit can be reset
+within a window, and the winner is written with its own `resets_at`.
+Evidence times at most 60 s apart, or both absent, are a tie, and a tie
+keeps the higher value: two live sessions answering seconds apart report
+slightly different figures, and 60 s is far above that gap and far below the
+hours between an idle session's answer and a live one's. A file from before
+`evidence_at` is read as having no evidence and rewritten in the new form at
+the next call. One weakness: a session writes the user's next prompt to its
+transcript before the API answers, so for that moment it reports its old
+figure with a new mtime and can win; its own status line corrects it once
+the answer arrives. The file is replaced atomically when the merged windows
+differ from it, and otherwise only every 900 s while a session reports the
+current window (a `resets_at` within 60 s of the merged one's), so
+`written_at` is the last time a running session reported it. An input with no usable
 window never writes, and the file is never deleted. Read-merge-write is not
 locked: two sessions writing at once can lose one update, until the loser's
 next status line. It is written inside and outside herdr terminals;
