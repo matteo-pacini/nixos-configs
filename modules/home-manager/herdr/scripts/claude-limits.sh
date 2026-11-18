@@ -17,21 +17,23 @@
 # the write.
 #
 # Each window is merged with the file's: a window missing from the input keeps
-# the file's; a later resets_at wins (a new window); an earlier one is
-# ignored; the same resets_at goes to the newer evidence, even when lower
-# (a limit can be reset within a window). Evidence times at most 60 s apart,
-# or both absent, are a tie, and a tie keeps the higher value (the file's
-# when equal): two live sessions answering seconds apart report slightly
-# different figures, and status lines re-run every 10 s.
+# the file's. Two resets_at at most 60 s apart are the same window. A
+# resets_at more than 60 s later wins (a new window); one more than 60 s
+# earlier is ignored; the same window goes to the newer evidence, even when
+# lower (a limit can be reset within a window). Evidence times at most 60 s
+# apart, or both absent, are a tie, and a tie keeps the higher value (the
+# file's when equal): two live sessions answering seconds apart report
+# slightly different figures, and status lines re-run every 10 s. The winner
+# is written whole, with its own resets_at.
 #
 # It is written only when the input has at least one usable window, and then
 # only when the merged windows differ from the file's (or the file is missing,
 # not a valid file, or from before evidence_at), or, as a liveness refresh,
 # when written_at is 900 s old or in the future and the input carries a window
-# whose resets_at is the merged one's. So written_at is the last time a
-# running session reported the current window. It is never deleted or
-# emptied. Read-merge-write is not locked: two sessions writing at once can
-# lose one update, until the loser's next status line.
+# whose resets_at is within 60 s of the merged one's. So written_at is the
+# last time a running session reported the current window. It is never
+# deleted or emptied. Read-merge-write is not locked: two sessions writing at
+# once can lose one update, until the loser's next status line.
 input=$(cat)
 
 record() {
@@ -70,16 +72,19 @@ record() {
       if $a == null and $b == null then 0
       elif $b == null then 1 elif $a == null then -1
       elif $a - $b > 60 then 1 elif $b - $a > 60 then -1 else 0 end;
+    # Seconds two resets_at may differ by and still be the same window.
+    def drift: 60;
     def merge($i; $f):
       if $i == null then $f
       elif $f == null then $i
-      elif $i.resets_at > $f.resets_at then $i
-      elif $i.resets_at < $f.resets_at then $f
+      elif $i.resets_at - $f.resets_at > drift then $i
+      elif $f.resets_at - $i.resets_at > drift then $f
       else newer($i.evidence_at; $f.evidence_at | clamp) as $n
         | if $n > 0 then $i elif $n < 0 then $f
           elif $i.used_percentage > $f.used_percentage then $i else $f end
       end;
-    def current($i; $m): $i != null and $i.resets_at == $m.resets_at;
+    def current($i; $m):
+      $i != null and $i.resets_at - $m.resets_at <= drift and $m.resets_at - $i.resets_at <= drift;
     (.rate_limits | if type == "object" then . else {} end
       | {seven_day: (.seven_day | iwin), five_hour: (.five_hour | iwin)}) as $w
     | if $w.seven_day == null and $w.five_hour == null then empty else

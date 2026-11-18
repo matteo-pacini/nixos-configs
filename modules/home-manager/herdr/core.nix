@@ -29,13 +29,14 @@ let
     text = builtins.readFile ./scripts/claude-resume.sh;
   };
 
-  # herdr-agent-ask is installed by agent-labels.nix; hooks call it by name.
+  # herdr-agent-ask is installed by agent-labels.nix. Called by its path in the
+  # profile, so an older copy elsewhere on PATH can't shadow it.
   agentAskHook = [
     {
       hooks = [
         {
           type = "command";
-          command = "herdr-agent-ask";
+          command = "${config.home.profileDirectory}/bin/herdr-agent-ask";
         }
       ];
     }
