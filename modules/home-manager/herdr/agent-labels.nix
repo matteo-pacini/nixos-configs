@@ -33,10 +33,10 @@ let
     text = builtins.readFile ./scripts/claude-limits.sh;
   };
 
-  # The same labels for Codex, from its hooks. On PATH under a fixed name, not
-  # as a store path: Codex skips a hook until it's trusted (/hooks), and keys
-  # that trust on the hook's definition, so a path that changes every rebuild
-  # would need trusting again each time.
+  # The same labels for Codex, from its hooks. The hook calls it by its path
+  # in the profile (codexHookLabels), not as a store path: Codex skips a hook
+  # until it's trusted (/hooks), and keys that trust on the hook's definition,
+  # so a path that changes every rebuild would need trusting again each time.
   codexLabels = pkgs.writeShellApplication {
     name = "herdr-codex-labels";
     runtimeInputs = [
@@ -50,8 +50,8 @@ let
 
   # Sets and clears `agent.ask`, what a waiting agent asks, from Claude Code's
   # and Codex's hooks (the Claude ones are in core.nix), as a terminal label
-  # mods can read. On PATH under a fixed name for the same reason as
-  # herdr-codex-labels.
+  # mods can read. Claude Code's hooks (core.nix) and Codex's (codexHookAsk) call
+  # it by its path in the profile, for the same reason as herdr-codex-labels.
   agentAsk = pkgs.writeShellApplication {
     name = "herdr-agent-ask";
     runtimeInputs = [
@@ -60,6 +60,12 @@ let
     ];
     text = builtins.readFile ./scripts/agent-ask.sh;
   };
+
+  # The Codex hook commands: absolute, so an older copy elsewhere on Codex's
+  # PATH can't shadow them, and the same after every rebuild, so their trust
+  # holds.
+  codexHookLabels = lib.escapeShellArg "${config.home.profileDirectory}/bin/herdr-codex-labels";
+  codexHookAsk = lib.escapeShellArg "${config.home.profileDirectory}/bin/herdr-agent-ask";
 in
 {
   options.custom.herdr.workbench.claudeLimitsFile.enable = lib.mkEnableOption ''
@@ -94,13 +100,13 @@ in
           run mkdir -p "$HOME/.codex"
           [ -f "$hooks" ] || echo '{"hooks":{}}' > "$hooks"
           tmp=$(mktemp)
-          ${lib.getExe pkgs.jq} -f ${./scripts/codex-hooks.jq} "$hooks" > "$tmp" && run mv "$tmp" "$hooks"
+          ${lib.getExe pkgs.jq} -f ${./scripts/codex-hooks.jq} --arg labels ${codexHookLabels} --arg ask ${codexHookAsk} "$hooks" > "$tmp" && run mv "$tmp" "$hooks"
           rm -f "$tmp"
           # Trusts these hooks as /hooks would, so a change to them doesn't stop
           # every Codex pane on "Hooks need review".
           run ${
             (pkgs.python3.withPackages (ps: [ ps.tomlkit ])).interpreter
-          } ${./scripts/codex-trust-hooks.py} "$hooks" "$HOME/.codex/config.toml" herdr-codex-labels herdr-agent-ask
+          } ${./scripts/codex-trust-hooks.py} "$hooks" "$HOME/.codex/config.toml" ${codexHookLabels} ${codexHookAsk}
         '';
       })
 
