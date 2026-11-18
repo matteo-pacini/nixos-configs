@@ -72,12 +72,6 @@
     env.LEGION_BUILD_ID = legionSource.src.rev;
     patches = [
       ./patches/legion-001-writable-session-copies.patch
-      # The desktop window imports guest frames as GL_TEXTURE_EXTERNAL_OES,
-      # which Mesa supports only in GLES contexts; with gl=on QEMU's window
-      # context is desktop GL and the window stays black ("Bad t->Target in
-      # _mesa_test_texobj_completeness"). QEMU's own blit shaders are GLSL ES
-      # 3.00 either way.
-      ./patches/legion-002-sdl-gles-display.patch
     ]
     ++ lib.optional pinVcpus ./patches/legion-003-vcpu-affinity-env.patch
     ++ [ ./patches/legion-007-qemu-parent-death-signal.patch ];
