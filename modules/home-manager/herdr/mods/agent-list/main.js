@@ -11,8 +11,7 @@ import { agents, terminals, spaces, focused, run, hc, theme, shared, setShared, 
 import { APPS, agentVersion, restartAgent } from "./lib/agents.js";
 import { icon, find, narrow } from "./lib/ui.js";
 import { KEEP, newWarmFailures } from "./lib/warm.js";
-
-const LABEL = "agent.name";
+import { NAME, agentName, isClaude, renameValue, renameLabels, openRename } from "./lib/name.js";
 
 function toggleSidebar() {
   const width = find(layout(), "sidebar")?.size?.px;
@@ -21,8 +20,6 @@ function toggleSidebar() {
   setShared("sidebar.collapsed", !narrow());
   run("layout.resize", { id: "sidebar", px: narrow() ? (shared("sidebar.width") ?? 268) : window()?.platform === "macos" ? 76 : 44 });
 }
-
-const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
 
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 // A sub-agent without a pane isn't in agents(): its raw word, error counting as
@@ -54,11 +51,6 @@ function duration(ms) {
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
   return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
-}
-
-// `term`: the agent's entry in terminals(), if listed yet.
-function agentName(a, term) {
-  return term?.labels?.[LABEL] || term?.name || clean(a.title) || a.program?.name || a.address;
 }
 
 // The right-click menu for an agent; `p` holds `claude` and `blocked`.
@@ -103,8 +95,9 @@ export default class AgentTree extends View {
 
   async saveName() {
     const p = props();
+    const labels = renameLabels(this.input.value(), agents().find((a) => a.address === p.rename));
     closeOverlay(p.overlay);
-    const r = await hc(["label", p.rename, `${LABEL}=${this.input.value().trim()}`]);
+    const r = await hc(["label", p.rename, ...labels]);
     if (r.code !== 0) notify({ title: "Couldn't rename agent", body: r.stderr || r.stdout, level: "error" });
   }
 
@@ -119,20 +112,18 @@ export default class AgentTree extends View {
       .child(div().text_size(15).font_semibold().child("Rename agent"))
       .child(div().pt(16).pb(7).text_size(11.5).text_color(t.dim).child("Name"))
       .child(Input.new(this.input).h(36).px(10).rounded(9).border_1().border_color(t.accent).bg(t.background).text_size(12.8).text_color(t.foreground))
-      .child(div().pt(6).text_size(11.5).text_color(t.dim).child("Empty goes back to the agent's own title."))
+      .child(div().pt(6).text_size(11.5).text_color(t.dim).child(p.claude
+        ? "Claude Code takes the name at your next message. Empty goes back to Claude's own title."
+        : "Empty goes back to the agent's own title."))
       .child(h_flex().pt(20).gap(8).justify_end()
         .child(button("rn-cancel", "Cancel", false, () => closeOverlay(p.overlay)))
         .child(button("rn-save", "Save", true, () => this.saveName())));
   }
 
-  rename(a, current) {
-    openOverlay({ mod: "agent-list", kind: "dialog", width: 380, height: 220, props: { rename: a.address, value: current } });
-  }
-
   // Right-click menu, a popup at the pointer drawn like the shipped `menu` mod.
   // `restart`: { app, latest, session } when this agent is older than the installed one.
-  openMenu(a, current, restart = null) {
-    const p = { menu: a.address, value: current, claude: a.app === "claude-code", blocked: a.status === "blocked",
+  openMenu(a, restart = null) {
+    const p = { menu: a.address, value: renameValue(a, this.terms.get(a.address)), claude: isClaude(a), blocked: a.status === "blocked",
       restart, busy: a.status === "blocked" || a.status === "working" };
     openOverlay({ mod: "agent-list", kind: "popup", width: 220, height: menuItems(p).length * 31 + 10, props: p });
   }
@@ -147,7 +138,7 @@ export default class AgentTree extends View {
     const p = props(), it = menuItems(p)[i];
     if (!it || it.disabled) return;
     closeOverlay(p.overlay);
-    if (it.action === "rename") this.rename({ address: p.menu }, p.value ?? "");
+    if (it.action === "rename") openRename(p.menu, p.value ?? "", p.claude);
     if (it.send) sendTo(p.menu, it.send);
     if (it.action === "restart") restartAgent(p.menu, APPS[p.restart.app], p.restart.session);
   }
@@ -245,7 +236,7 @@ export default class AgentTree extends View {
         .when(Boolean(l), (el) => el.border_l(1.5).border_color(t.input))
         .when(l === "└" || l === "├", (el) => el.border_b(1.5).rounded_bl(6))))
       .when(Boolean(pic), (el) => el.child(div().mr(8).child(pic)))
-      .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.labels?.[LABEL] || k.name || k.template || k.program?.name || k.address))
+      .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.labels?.[NAME] || k.name || k.template || k.program?.name || k.address))
       .child(this.status(t, kidStatus(k, this.listed), true));
   }
 
@@ -303,13 +294,13 @@ export default class AgentTree extends View {
       .bg(color + "14").border_1().border_color(color + "40").cursor_pointer()
       .hover((s) => s.bg(color + "24"))
       .on_click(() => run("pane.focus", { pane: a.pane }))
-      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, labels?.[LABEL] ?? "", restart); })
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, restart); })
       .child(h_flex().gap(7).items_center()
         .child(this.status(t, urgency, true))
         .child(div().flex_1().min_w(0).truncate().text_size(12.5).font_medium().text_color(t.foreground).child(name))
         .when(Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when)))))
       .child(div().pl(21).truncate().text_size(11).text_color(blocked ? t.blocked : t.dim)
-        .child(blocked ? (ask ? (kid ? `${kid.labels?.[LABEL] || kid.name || "Sub-agent"}: ${ask}` : ask) : `Needs you · ${a.space_name} · ${tab}`)
+        .child(blocked ? (ask ? (kid ? `${kid.labels?.[NAME] || kid.name || "Sub-agent"}: ${ask}` : ask) : `Needs you · ${a.space_name} · ${tab}`)
           : `Done · ${a.space_name} · ${tab}`));
   }
 
@@ -330,7 +321,7 @@ export default class AgentTree extends View {
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => run("pane.focus", { pane: a.pane }))
-      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, labels?.[LABEL] ?? "", restart); })
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(a, restart); })
       .tooltip(this.details(labels, now, outdated, latest))
       .when(Boolean(pic), (el) => el.child(div().id(`fold-${key}`)
         .when(subs.length > 0, (el) => el.on_click((_e, cx) => { cx.stop_propagation(); this.toggle(key, cx); }))

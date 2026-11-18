@@ -9,7 +9,7 @@ description.
 | Path | What |
 |------|------|
 | `default.nix` | Imports the rest; `enable`, `desktop` |
-| `core.nix` | herdr-core, the app, its theme, Claude sessions resumed after a reboot, and the keep-cache-warm service. Holds every Claude Code hook (see below) |
+| `core.nix` | herdr-core, the app, its theme, Claude sessions resumed after a reboot, the keep-cache-warm service, and the hook that hands a rename to Claude Code. Holds every Claude Code hook (see below) |
 | `agent-labels.nix` | The terminal labels the mods draw, set from inside each agent (Claude statusLine, Codex hooks, opencode plugin) |
 | `workbench.nix` | `workbench.*` options, the mod build and install, `lib/hosts.js`, the layout file and the first switch to it |
 | `layout.nix` | Pure: which optional mods are on → the layout tree |
@@ -34,7 +34,8 @@ empty value removes a label.
 | `agent.ask` | `agent-ask.sh` (Claude and Codex hooks), `opencode-labels.js` | `agent-list` |
 | `agent.ask_detail` | `agent-ask.sh` | no mod reads it yet |
 | `claude.session`, `codex.session`, `opencode.session` | `claude-session.sh`, `codex-labels.sh`, `opencode-labels.js` | `lib/agents.js` (restart on a newer version); `claude-resume.sh` (resume after reboot) |
-| `agent.name` | the person, from `agent-list`'s or `pane-menu`'s Rename | `agent-list`, `pane-menu` |
+| `agent.name`, `agent.name_base` | the person, from `agent-list`'s or `pane-menu`'s Rename (`lib/name.js`); removed by `claude-title.sh` once Claude Code has the name | `lib/name.js` (`agent-list`, `pane-header`, `pane-menu`); `claude-title.sh` |
+| `claude.title` | `claude-title.sh` (Claude hooks) | `claude-title.sh` |
 
 Codex's hooks call `herdr-codex-labels` and `herdr-agent-ask`, and Claude
 Code's call `herdr-agent-ask`, by their path in the Home Manager profile,
@@ -47,6 +48,38 @@ changed on every rebuild would need trusting again each time. The
 `~/.codex/hooks.json` (`scripts/codex-hooks.jq`), replacing an earlier entry
 of ours under any directory or none, and marks them trusted
 (`scripts/codex-trust-hooks.py`).
+
+### Names and renaming
+
+An agent has one name, drawn by `agent-list`'s rows and by `pane-header`
+beside the terminal's address (`lib/name.js`): the `agent.name` label, else
+the terminal's hc name, else its title, else its program.
+
+Rename (in `agent-list`'s and `pane-menu`'s menus) sets `agent.name`. For
+Codex and opencode that is all, and the label stays. Claude Code sets its
+terminal's title to its session's name, so there the label is only a rename
+Claude Code hasn't taken yet:
+
+- **Workbench to Claude Code.** `herdr-claude-title`
+  (`scripts/claude-title.sh`), a hook on UserPromptSubmit and SessionStart,
+  hands the label over as the hook's `sessionTitle`, which names the session
+  as `/rename` does, and removes the label. So the session takes the name at
+  the person's next message, or when it starts or resumes. Nothing is typed
+  into the terminal, so a rename works while the agent is working, blocked or
+  being kept warm.
+- **Claude Code to the workbench.** A `/rename` changes the title, which the
+  mods show at once when no label is in the way.
+- **Both, before the next message.** The later one wins, at that message.
+  Until then the mods show the workbench's name. The hook tells the order
+  from `claude.title` (the session's name at the hook's last run, as JSON)
+  and `agent.name_base` (the terminal's title when Rename was saved): the
+  session was renamed after when its name is neither.
+- A session never renamed shows the title Claude Code makes up for it. An
+  empty Rename removes the label and leaves the session's name alone: a hook
+  can't take a name away.
+- The hook goes by its terminal, not its session: a second Claude Code
+  started inside an agent's terminal (`claude -p` from a tool call) would
+  take a waiting rename.
 
 ### Keep cache warm
 
@@ -194,7 +227,7 @@ switches to the layout (`herdrWorkbenchLayout`).
 
 ```bash
 nix build .#checks.x86_64-linux.herdr-layout   # layout.nix, every option combination
-nix build .#checks.x86_64-linux.herdr-js       # lib/ and the mods' pure logic
+nix build .#checks.x86_64-linux.herdr-js       # lib/ and the mods' pure logic; each mod parses
 nix build .#checks.x86_64-linux.herdr-scripts  # hook scripts and the hooks.json merge
 ```
 
@@ -220,6 +253,8 @@ CI runs all three on pull requests (the `herdr-tests` job in
   clock), a fake `npx` (the renderer) and a temporary `XDG_RUNTIME_DIR`.
   `claude-keep-warm.sh` runs against an `hc` that plays one Claude Code
   terminal: its screen changes with the keys and text sent to it.
+  `claude-title.sh` runs against an `hc` that answers `hc get` with the
+  labels a case gives it.
 - **Not covered:** how anything looks (there's no headless gpui), and the
   parts of `status-bar/main.js` that need the live app. For those, use
   `herdr-app check` and `herdr-app shot`.

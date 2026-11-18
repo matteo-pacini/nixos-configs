@@ -42,6 +42,12 @@ in
       ''
         cd ${src}/tests/js
         node --import ./hooks.mjs --test
+        # The mods themselves load only in the app; this much is checked here:
+        # that each parses.
+        for mod in ${src}/mods/*/main.js; do
+          cat "$mod" >"$TMPDIR/mod.mjs"
+          node --check "$TMPDIR/mod.mjs"
+        done
         touch $out
       '';
 

@@ -1,5 +1,6 @@
-# herdr-core and the desktop app, Claude sessions that survive a reboot, and
-# the service behind the workbench's keep-cache-warm switch.
+# herdr-core and the desktop app, Claude sessions that survive a reboot, the
+# service behind the workbench's keep-cache-warm switch, and the hook that
+# gives a Claude session the name its terminal was renamed to.
 {
   config,
   lib,
@@ -47,6 +48,27 @@ let
   # The switch and the labels the service reads come with the workbench.
   keepWarm = cfg.workbench.enable && config.custom.claude-code.enable;
 
+  # Gives a Claude session the name its terminal was renamed to in the
+  # workbench. See the script's header.
+  claudeTitle = pkgs.writeShellApplication {
+    name = "herdr-claude-title";
+    runtimeInputs = [
+      pkgs.herdr-core
+      pkgs.jq
+    ];
+    text = builtins.readFile ./scripts/claude-title.sh;
+  };
+  claudeTitleHook = [
+    {
+      hooks = [
+        {
+          type = "command";
+          command = lib.getExe claudeTitle;
+        }
+      ];
+    }
+  ];
+
   # herdr-agent-ask is installed by agent-labels.nix. Called by its path in the
   # profile, so an older copy elsewhere on PATH can't shadow it.
   agentAskHook = [
@@ -85,7 +107,9 @@ in
               }
             ];
           }
-        ];
+        ]
+        # The rename comes from the workbench's mods.
+        ++ lib.optionals cfg.workbench.enable claudeTitleHook;
         SessionEnd = [
           {
             hooks = [
@@ -102,7 +126,7 @@ in
       // lib.optionalAttrs cfg.workbench.enable {
         PermissionRequest = agentAskHook;
         PostToolUse = agentAskHook;
-        UserPromptSubmit = agentAskHook;
+        UserPromptSubmit = agentAskHook ++ claudeTitleHook;
         Stop = agentAskHook;
       };
     };
