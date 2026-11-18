@@ -34,11 +34,17 @@ empty value removes a label.
 | `claude.session`, `codex.session`, `opencode.session` | `claude-session.sh`, `codex-labels.sh`, `opencode-labels.js` | `lib/agents.js` (restart on a newer version); `claude-resume.sh` (resume after reboot) |
 | `agent.name` | the person, from `agent-list`'s or `pane-menu`'s Rename | `agent-list`, `pane-menu` |
 
-Codex hooks and `herdr-agent-ask` are on `PATH` under fixed names, not store
-paths: Codex trusts a hook by its definition, so a path that changed on every
-rebuild would need trusting again each time. The `herdrCodexHooks` activation
-merges them into Codex's own `~/.codex/hooks.json` (`scripts/codex-hooks.jq`)
-and marks them trusted (`scripts/codex-trust-hooks.py`).
+Codex's hooks call `herdr-codex-labels` and `herdr-agent-ask`, and Claude
+Code's call `herdr-agent-ask`, by their path in the Home Manager profile,
+`home.profileDirectory` + `/bin/<name>` (`/etc/profiles/per-user/<user>/bin/…`
+on NixOS). Not a bare name: an older copy left earlier on the agent's `PATH`
+would shadow the installed one, silently.
+Not a store path: Codex trusts a hook by its definition, so a path that
+changed on every rebuild would need trusting again each time. The
+`herdrCodexHooks` activation merges them into Codex's own
+`~/.codex/hooks.json` (`scripts/codex-hooks.jq`), replacing an earlier entry
+of ours under any directory or none, and marks them trusted
+(`scripts/codex-trust-hooks.py`).
 
 ### The plan-limit file
 

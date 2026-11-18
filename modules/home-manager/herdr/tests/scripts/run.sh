@@ -78,16 +78,30 @@ check "agent-ask: any other event clears both" "$(printf '%s\n' 'agent.ask=' 'ag
   "$(ask PostToolUse Bash '{"command":"ls"}')"
 
 # ---- codex-hooks.jq ----
-merge() { jq -f "$scripts/codex-hooks.jq"; }
-once=$(merge <<<'{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"mine"}]}]}}')
+# The commands as agent-labels.nix passes them, in an invented profile.
+L=/etc/profiles/per-user/ada/bin/herdr-codex-labels A=/etc/profiles/per-user/ada/bin/herdr-agent-ask
+merge() { jq -f "$scripts/codex-hooks.jq" --arg labels "${1:-$L}" --arg ask "${2:-$A}"; }
+stop() { jq -c '[.hooks.Stop[].hooks[].command]'; }
+mine='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"mine"}]}]}}'
+once=$(merge <<<"$mine")
 twice=$(merge <<<"$once")
 check "codex-hooks: idempotent" "$once" "$twice"
-check "codex-hooks: keeps other hooks, adds ours once, last" '["mine","herdr-codex-labels","herdr-agent-ask"]' \
-  "$(jq -c '[.hooks.Stop[].hooks[].command]' <<<"$twice")"
-check "codex-hooks: a changed definition replaces the old one" '[{"command":"herdr-agent-ask","timeout":3}]' \
+check "codex-hooks: keeps other hooks, adds ours once, last" "[\"mine\",\"$L\",\"$A\"]" "$(stop <<<"$twice")"
+check "codex-hooks: a changed definition replaces the old one" "[{\"command\":\"$A\",\"timeout\":3}]" \
   "$(merge <<<'{"hooks":{"Interrupt":[{"hooks":[{"type":"command","command":"herdr-agent-ask","timeout":99}]}]}}' |
     jq -c '[.hooks.Interrupt[].hooks[] | {command, timeout}]')"
 check "codex-hooks: from an empty file" "9" "$(merge <<<'{}' | jq '[.hooks[][]] | length')"
+bare=$(merge herdr-codex-labels herdr-agent-ask <<<"$mine")
+check "codex-hooks: bare names, as written before, are in every event" "9" \
+  "$(jq '[.hooks[][].hooks[].command | select(. == "herdr-codex-labels" or . == "herdr-agent-ask")] | length' <<<"$bare")"
+check "codex-hooks: bare names give way to the absolute commands, once each, last" "$once" "$(merge <<<"$bare")"
+check "codex-hooks: another directory's copy of ours is replaced" "[\"$L\",\"$A\"]" \
+  "$(merge <<<'{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"/usr/local/bin/herdr-codex-labels"}]},{"hooks":[{"type":"command","command":"/old/bin/herdr-agent-ask","timeout":3}]}]}}' | stop)"
+logger='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"my-herdr-agent-ask-logger"},{"type":"command","command":"/opt/bin/herdr-codex-labels-audit"}]}]}}'
+check "codex-hooks: a foreign command containing our name is kept" \
+  "[\"my-herdr-agent-ask-logger\",\"/opt/bin/herdr-codex-labels-audit\",\"$L\",\"$A\"]" "$(merge <<<"$logger" | stop)"
+check "codex-hooks: idempotent with foreign commands containing our name" "$(merge <<<"$logger")" \
+  "$(merge <<<"$logger" | merge | merge)"
 
 # ---- claude-limits.sh ----
 # The renderer, npx, is a fake that prefixes its input; claude-statusline runs
