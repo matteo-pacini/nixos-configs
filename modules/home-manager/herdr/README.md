@@ -210,11 +210,16 @@ CI runs all three on pull requests (the `herdr-tests` job in
   `back.test.mjs` is the exception: its `exec` runs real `sh` and `git` in
   throwaway repos, so `lib/back.js`'s scripts are tested against git itself
   (the check has `git` on its PATH).
+  The gpui stub builds a tree of the elements a view draws, with their ids and
+  `on_*` handlers, and `find(root, id)` from `gpui-kit` looks one up, so a test
+  can render a view and click it. `lib/hosts.js` resolves to
+  `stubs/hosts.mjs`. `space-cards.test.mjs` does this for every "+" that makes
+  a space.
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
   `hc` that logs its arguments. `claude-limits.sh` runs with a fake `date` (the
   clock), a fake `npx` (the renderer) and a temporary `XDG_RUNTIME_DIR`.
   `claude-keep-warm.sh` runs against an `hc` that plays one Claude Code
   terminal: its screen changes with the keys and text sent to it.
-- **Not covered:** drawing (there's no headless gpui), and the parts of
-  `space-cards/main.js` and `status-bar/main.js` that need `lib/hosts.js` or the
-  live app. For those, use `herdr-app check` and `herdr-app shot`.
+- **Not covered:** how anything looks (there's no headless gpui), and the
+  parts of `status-bar/main.js` that need the live app. For those, use
+  `herdr-app check` and `herdr-app shot`.
