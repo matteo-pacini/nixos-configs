@@ -138,6 +138,31 @@
     # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
     opencode = masterPkgs.opencode;
 
+    # Herdr ahead of nixpkgs: core 0.1.21 and app 0.1.16 carry the pane size
+    # fixes for terminals shown on more than one machine.
+    # WAIT-FOR version: herdr-core >= 0.1.21: https://github.com/herdrdev/herdr-core/releases/tag/v0.1.21
+    # WAIT-FOR version: herdr-desktop >= 0.1.16: https://github.com/herdrdev/herdr-app/releases/tag/v0.1.16
+    herdr-core = masterPkgs.herdr-core.overrideAttrs (
+      finalAttrs: old: {
+        version = "0.1.21";
+        src = old.src.override {
+          tag = "v${finalAttrs.version}";
+          hash = "sha256-sKO8RNlz8lEc0ZUED/VKqIxPmzGxEfMMJjj9V0H0CM4=";
+        };
+        cargoHash = "sha256-KYWc0WORF6BNDhRcihn+tn0UqD1dF2pmR4irdsUcz7E=";
+      }
+    );
+    herdr-desktop = masterPkgs.herdr-desktop.overrideAttrs (
+      finalAttrs: old: {
+        version = "0.1.16";
+        src = old.src.override {
+          tag = "v${finalAttrs.version}";
+          hash = "sha256-yR8tu/a5TXJktYTdb9mkqXY4jKPGljfTQbYraP/S8Ss=";
+        };
+        cargoHash = "sha256-mO00lakVFzV2pDsMVR9l1N8IBSkFiMCN3Agk66/ePoQ=";
+      }
+    );
+
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but
     # pipewire-pulse can transiently report a card with zero profiles during
