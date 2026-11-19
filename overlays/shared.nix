@@ -150,12 +150,21 @@
           hash = "sha256-sKO8RNlz8lEc0ZUED/VKqIxPmzGxEfMMJjj9V0H0CM4=";
         };
         cargoHash = "sha256-KYWc0WORF6BNDhRcihn+tn0UqD1dF2pmR4irdsUcz7E=";
-        # 0.1.21 reads the scratch folder from HC_TEST_TMPDIR in these three
-        # files, so master's /var/tmp substitution no longer matches them.
+        # master's postPatch fails on 0.1.21: these three test files read the
+        # scratch folder from HC_TEST_TMPDIR instead of /var/tmp, and
+        # foreground.rs already starts its agent through bash (#229).
         postPatch =
           builtins.replaceStrings
-            [ "src/runtime/tests.rs,src/viewers/tests.rs," ",tests/macos_distribution.rs" ]
-            [ "" "" ]
+            [
+              "src/runtime/tests.rs,src/viewers/tests.rs,"
+              ",tests/macos_distribution.rs"
+              "substituteInPlace crates/herdr-core/tests/foreground.rs \\\n  --replace-fail 'run(&s, &[&agent])' 'run(&s, &[\"bash\", &agent])'\n"
+            ]
+            [
+              ""
+              ""
+              ""
+            ]
             old.postPatch;
       }
     );
@@ -167,6 +176,13 @@
           hash = "sha256-yR8tu/a5TXJktYTdb9mkqXY4jKPGljfTQbYraP/S8Ss=";
         };
         cargoHash = "sha256-mO00lakVFzV2pDsMVR9l1N8IBSkFiMCN3Agk66/ePoQ=";
+        # 0.1.16 no longer uses /var/tmp in these three test files, so
+        # master's substitution would fail on them.
+        postPatch =
+          builtins.replaceStrings
+            [ "src/{mod_files.rs,mods.rs,mods/lifecycle_tests.rs,mods/render_tests.rs," ]
+            [ "src/{mods/lifecycle_tests.rs," ]
+            old.postPatch;
       }
     );
 
