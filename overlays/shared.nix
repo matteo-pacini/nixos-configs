@@ -150,6 +150,13 @@
           hash = "sha256-sKO8RNlz8lEc0ZUED/VKqIxPmzGxEfMMJjj9V0H0CM4=";
         };
         cargoHash = "sha256-KYWc0WORF6BNDhRcihn+tn0UqD1dF2pmR4irdsUcz7E=";
+        # 0.1.21 reads the scratch folder from HC_TEST_TMPDIR in these three
+        # files, so master's /var/tmp substitution no longer matches them.
+        postPatch =
+          builtins.replaceStrings
+            [ "src/runtime/tests.rs,src/viewers/tests.rs," ",tests/macos_distribution.rs" ]
+            [ "" "" ]
+            old.postPatch;
       }
     );
     herdr-desktop = masterPkgs.herdr-desktop.overrideAttrs (
