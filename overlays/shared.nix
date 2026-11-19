@@ -166,6 +166,9 @@
               ""
             ]
             old.postPatch;
+        # 0.1.21 tests take their scratch folder from HC_TEST_TMPDIR, defaulting
+        # to /var/tmp, which the sandbox lacks.
+        preCheck = old.preCheck + "export HC_TEST_TMPDIR=\"$TMPDIR\"\n";
       }
     );
     herdr-desktop = masterPkgs.herdr-desktop.overrideAttrs (
@@ -183,6 +186,9 @@
             [ "src/{mod_files.rs,mods.rs,mods/lifecycle_tests.rs,mods/render_tests.rs," ]
             [ "src/{mods/lifecycle_tests.rs," ]
             old.postPatch;
+        # 0.1.16 tests take their scratch folder from HERDR_TEST_TMPDIR,
+        # defaulting to /var/tmp, which the sandbox lacks.
+        preCheck = old.preCheck + "export HERDR_TEST_TMPDIR=\"$TMPDIR\"\n";
       }
     );
 
