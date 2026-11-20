@@ -27,7 +27,7 @@ test("warmth: off, by the cache's lifetime", () => {
 
 test("warmth: on and idle counts the cache down", () => {
   assert.deepEqual(warmth(on(52), "idle", NOW),
-    { on: true, kind: "warm", text: "Warm · 52m", tip: "Refreshes at 10m left. Click to stop." });
+    { on: true, kind: "warm", text: "Warm · 52m", tip: "Refreshed every 25 idle minutes. Click to stop." });
   assert.equal(show(on(52), "done"), "warm: Warm · 52m");
   assert.equal(show(on(0.5)), "warm: Warm · <1m");
   assert.equal(show({ [KEEP]: "1" }), "warm: Warm", "before the first response there is no expiry");
@@ -48,6 +48,8 @@ test("warmth: cold once the cache has expired, blocked or not", () => {
   assert.equal(show(on(0)), "cold: Cache cold");
   assert.equal(show(on(-1), "blocked"), "cold: Cache cold");
   assert.equal(show(on(-1, { "agent.cache_until": "0" })), "cold: Cache cold", "the last response missed the cache");
+  assert.equal(show(on(40, { "agent.warm_failed": "1795037000" })), "cold: Cache cold",
+    "a refresh found it gone, whatever Claude Code still counts down to");
 });
 
 test("setWarm: sets and removes the label, remote terminals too", async () => {

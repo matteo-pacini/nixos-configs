@@ -1,10 +1,10 @@
-// Keep cache warm: a switch on a Claude Code terminal. While it's on,
-// herdr-claude-keep-warm (scripts/claude-keep-warm.sh), on the terminal's own
-// machine, refreshes the agent's prompt cache shortly before it expires.
+// Keep cache warm: a switch on a Claude Code terminal. While it's on, the
+// herdr-keep-warm mod inside that Claude Code session (claude-mods/keep-warm)
+// refreshes the agent's prompt cache every 25 idle minutes.
 // pane-header draws the switch and agent-list marks the agents that have it on.
 // Everything goes through terminal labels: the person's switch (KEEP), the
 // cache's expiry and lifetime from scripts/claude-statusline.sh, and what the
-// service reports back.
+// mod reports back.
 
 import { hc, notify } from "herdr";
 
@@ -13,8 +13,8 @@ export const KEEP = "agent.keep_warm";
 const TTL = "agent.cache_ttl";
 const STATE = "agent.warm_state";
 const FAILED = "agent.warm_failed";
-// Matches REFRESH_AT in scripts/claude-keep-warm.sh.
-const REFRESH_AT_MIN = 10;
+// Matches PING_EVERY_MS in claude-mods/keep-warm/hooks/logic.js.
+const PING_EVERY_MIN = 25;
 
 const SHORT_TIP = "This session's cache lasts 5 minutes.";
 
@@ -38,10 +38,12 @@ export function warmth(labels, status, now) {
   const until = parseInt(labels["agent.cache_until"], 10) * 1000;
   const minutes = Math.floor((until - now) / 60000);
   const left = Number.isNaN(until) ? "" : ` · ${minutes < 1 ? "<1" : minutes}m`;
-  const stop = `Refreshes at ${REFRESH_AT_MIN}m left. Click to stop.`;
+  const stop = `Refreshed every ${PING_EVERY_MIN} idle minutes. Click to stop.`;
   if (status === "working") return { on, kind: "working", text: "Warm", tip: stop };
   if (labels[STATE] === "refreshing") return { on, kind: "refreshing", text: "Refreshing", tip: stop };
-  if (until <= now) return { on, kind: "cold", text: "Cache cold", tip: "Resumes at the agent's next turn. Click to stop." };
+  // The mod stopped: a refresh found the cache gone, whatever expiry Claude
+  // Code still counts down to.
+  if (until <= now || labels[FAILED]) return { on, kind: "cold", text: "Cache cold", tip: "Resumes at the agent's next turn. Click to stop." };
   if (status === "blocked") return { on, kind: "paused", text: `Warm paused${left}`, tip: "Paused while it needs you." };
   if (short) return { on, kind: "paused", text: `Warm paused${left}`, tip: SHORT_TIP };
   return { on, kind: "warm", text: `Warm${left}`, tip: stop };

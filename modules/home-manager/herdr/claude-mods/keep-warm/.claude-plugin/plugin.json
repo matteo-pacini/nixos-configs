@@ -1,0 +1,5 @@
+{
+  "name": "herdr-keep-warm",
+  "version": "0.1.0",
+  "description": "Keeps an idle session's prompt cache from expiring while its herdr terminal is switched to keep warm"
+}

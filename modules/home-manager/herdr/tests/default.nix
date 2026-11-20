@@ -3,10 +3,12 @@
 { pkgs }:
 let
   inherit (pkgs) lib;
-  # Symlinks in mods/ point into lib/, so both come along.
+  # Symlinks in mods/ point into lib/, so both come along. claude-mods/ holds
+  # the logic the JS tests load.
   src = lib.fileset.toSource {
     root = ./..;
     fileset = lib.fileset.unions [
+      ../claude-mods
       ../lib
       ../mods
       ../scripts

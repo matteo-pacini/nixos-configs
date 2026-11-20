@@ -192,7 +192,7 @@ export default class AgentTree extends View {
     localStorage.setItem("warned", JSON.stringify(this.warned));
     for (const k of failed) {
       const name = agentName(list.find((a) => a.address === k.address) ?? { address: k.address }, k);
-      notify({ title: `Couldn't keep ${name} warm`, body: "Two refreshes didn't extend its cache.", level: "error" });
+      notify({ title: `Couldn't keep ${name} warm`, body: "A refresh found its cache gone, or two got no answer.", level: "error" });
     }
   }
 

@@ -9,12 +9,13 @@ description.
 | Path | What |
 |------|------|
 | `default.nix` | Imports the rest; `enable`, `desktop` |
-| `core.nix` | herdr-core, the app, its theme, Claude sessions resumed after a reboot, the keep-cache-warm service, and the hook that hands a rename to Claude Code. Holds every Claude Code hook (see below) |
+| `core.nix` | herdr-core, the app, its theme, Claude sessions resumed after a reboot, the keep-cache-warm mod for Claude Code, and the hook that hands a rename to Claude Code. Holds every Claude Code hook (see below) |
 | `agent-labels.nix` | The terminal labels the mods draw, set from inside each agent (Claude statusLine, Codex hooks, opencode plugin) |
 | `workbench.nix` | `workbench.*` options, the mod build and install, `lib/hosts.js`, the layout file and the first switch to it |
 | `layout.nix` | Pure: which optional mods are on → the layout tree |
 | `layouts/workbench.json` | Snapshot of herdr-app's shipped `main` layout |
 | `mods/<name>/` | One herdr-app mod each: `main.js`, `mod.json`, assets |
+| `claude-mods/keep-warm/` | A mod for Claude Code, not herdr-app: see [Keep cache warm](#keep-cache-warm) |
 | `lib/` | JS shared by the mods (linked in as `mods/<name>/lib`) |
 | `scripts/` | Hook scripts and the opencode plugin |
 | `tests/` | Flake checks; see [Tests](#tests) |
@@ -28,9 +29,9 @@ empty value removes a label.
 | Label | Set by | Read by |
 |-------|--------|---------|
 | `agent.model`, `agent.effort`, `agent.ctx`, `agent.ctxk`, `agent.version` | `claude-statusline.sh` (Claude's statusLine), `codex-labels.sh` (Codex hooks), `opencode-labels.js` | `agent-list` |
-| `agent.cache_until`, `agent.cache_ttl`, `agent.cache_session` (the session they describe: a resumed one keeps them until its first request) | `claude-statusline.sh` only | `agent-list` (cache-expiring flag); `lib/warm.js` and `claude-keep-warm.sh` (see below) |
-| `agent.keep_warm` | the person, from `pane-header`'s switch | `lib/warm.js` (`pane-header`, `agent-list`); `claude-keep-warm.sh` |
-| `agent.warm_state`, `agent.warm_failed` | `claude-keep-warm.sh` | `lib/warm.js`: `pane-header` ("Refreshing"), `agent-list` (the failure notification) |
+| `agent.cache_until`, `agent.cache_ttl`, `agent.cache_session` (the session they describe: a resumed one keeps them until its first request) | `claude-statusline.sh` only | `agent-list` (cache-expiring flag); `lib/warm.js` and the `herdr-keep-warm` mod (see below) |
+| `agent.keep_warm` | the person, from `pane-header`'s switch | `lib/warm.js` (`pane-header`, `agent-list`); the `herdr-keep-warm` mod |
+| `agent.warm_state`, `agent.warm_failed` | the `herdr-keep-warm` mod | `lib/warm.js`: `pane-header` ("Refreshing", "Cache cold"), `agent-list` (the failure notification) |
 | `agent.ask` | `agent-ask.sh` (Claude and Codex hooks), `opencode-labels.js` | `agent-list` |
 | `agent.ask_detail` | `agent-ask.sh` | no mod reads it yet |
 | `claude.session`, `codex.session`, `opencode.session` | `claude-session.sh`, `codex-labels.sh`, `opencode-labels.js` | `lib/agents.js` (restart on a newer version); `claude-resume.sh` (resume after reboot) |
@@ -86,35 +87,41 @@ Claude Code hasn't taken yet:
 A Claude Code pane's header has a switch, "Keep cache warm" (`lib/warm.js`
 decides what it shows). It sets `agent.keep_warm` on the terminal, so the
 switch is seen from every window and ends with the terminal.
-`herdr-claude-keep-warm` (`scripts/claude-keep-warm.sh`, a user service on
-Linux and a launchd agent on macOS, installed with the workbench) does the
-work on the terminal's own machine, with the app open or closed. Every 30 s
-it looks at this machine's switched-on terminals. When an agent is idle or
-done and its cache has 10 minutes or less left, it types `/btw reply with: ok`
-and closes the answer with Esc. The side question reads the conversation's
-cache, which renews it for another hour; nothing joins the conversation and
-the agent's status doesn't change. Each refresh re-reads the whole context
-at the cached rate and counts toward the plan's usage, about every 50
-minutes for as long as the switch is on. Nothing turns it off but the person.
+
+The work is done inside the Claude Code session, by a Claude Code mod,
+`herdr-keep-warm` (`claude-mods/keep-warm`). `core.nix` copies it to
+`~/.claude/herdr-mods/keep-warm` and names that folder in
+`CLAUDE_CODE_PLUGIN_DIRS`, in the `env` of Claude Code's settings, so every
+session loads it, however it was started. Outside a herdr-core terminal, and
+in one whose switch is off, it does nothing.
+
+While the switch is on and the session has sat idle for 25 minutes since its
+last turn or the last refresh, the mod asks a one-word question with
+`$.model.fork`. A fork repeats the conversation's last request, so it reads
+the conversation's prompt cache, which renews it; nothing joins the
+conversation, nothing is typed into the terminal and the agent's status
+doesn't change. Each refresh re-reads the whole context at the cached rate
+and counts toward the plan's usage, for as long as the switch is on. Nothing
+turns it off but the person.
 
 - **1 h caches only.** A session billed by API key or on usage credits has a
   5-minute cache (`agent.cache_ttl=5m`): the switch can't be turned on there.
-- **It types into a terminal a person may be using.** It acts only when the
-  screen ends in Claude Code's prompt box. Text in the box that changed since
-  the last pass is left alone. A placeholder or suggested prompt reads like a
-  typed draft in `hc read`, so it types `.` and Backspace to tell them apart.
-  A real draft is set aside with Claude Code's stash (Ctrl+S), which gives it
-  back once the question is submitted; a draft is never stashed over another.
-- **After two refreshes in a row that didn't move `agent.cache_until`** it
-  sets `agent.warm_failed`, which `agent-list` shows once as a notification,
-  and leaves the terminal alone until the expiry changes (the agent's next
-  turn) or the switch is turned off and on.
-- The screen texts it matches (the rules around the prompt box, `❯`,
-  `› stashed`, `Answering…`, `Esc to close`) are Claude Code 2.1.322's, and
-  `tests/scripts/run.sh` holds the screens it was written against. A version
-  that draws the prompt box differently gets nothing typed. One that draws
-  the answer panel differently gets the question, but the answer is left
-  open and counts as a failed refresh.
+- **25 minutes, not "shortly before the expiry".** After a refresh Claude
+  Code counts its expiry an hour on whether or not the refresh reached the
+  cache, so `agent.cache_until` can't time the next one.
+- **It checks what each refresh did.** A fork reports how much of the
+  conversation the cache served. One that wrote the conversation again found
+  the cache gone: the mod sets `agent.warm_failed`, which shows the switch
+  as "Cache cold" and `agent-list` shows once as a notification, and stops
+  until the agent's next turn. Two refreshes with no answer do the same.
+  It doesn't refresh a cache whose expiry has passed either.
+- **A session started before the mod was installed doesn't have it.** Its
+  switch counts down and goes cold. Restarting the agent (the OUTDATED
+  button, or `/exit` and `claude --resume`) loads it.
+- Mods need Claude Code 2.1.287 or later. The mod's decisions are in
+  `hooks/logic.js`, which `tests/js/keep-warm.test.mjs` covers; `register.ts`
+  only runs in Claude Code (`claude --plugin-dir claude-mods/keep-warm` loads
+  it from the repo, and `claude plugin validate` checks it).
 
 ### The plan-limit file
 
@@ -251,8 +258,6 @@ CI runs all three on pull requests (the `herdr-tests` job in
 - **Scripts** (`tests/scripts/run.sh <scripts dir>`) run each hook with a fake
   `hc` that logs its arguments. `claude-limits.sh` runs with a fake `date` (the
   clock), a fake `npx` (the renderer) and a temporary `XDG_RUNTIME_DIR`.
-  `claude-keep-warm.sh` runs against an `hc` that plays one Claude Code
-  terminal: its screen changes with the keys and text sent to it.
   `claude-title.sh` runs against an `hc` that answers `hc get` with the
   labels a case gives it.
 - **Not covered:** how anything looks (there's no headless gpui), and the

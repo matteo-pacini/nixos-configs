@@ -30,7 +30,7 @@ EOF
   cache=("agent.cache_until=$cache_until" "agent.cache_ttl=$cache_ttl" "agent.cache_session=${cache_seen:+$session}")
   # A session that was quit and resumed reports no cache until its first
   # request, but the one it had still stands: its labels stay, or the pane
-  # would show no expiry and herdr-claude-keep-warm would let it run out.
+  # would show no expiry and the herdr-keep-warm mod would let it run out.
   if [ -z "$cache_seen" ] && [ -n "$session" ] &&
     [ "$(hc get "$HC_TERMINAL_ID" --json 2>/dev/null | jq -r '.labels["agent.cache_session"] // ""' 2>/dev/null)" = "$session" ]; then
     cache=()
