@@ -390,29 +390,43 @@ done
 rm "$lfile"
 sl "$both" | HC_TERMINAL_ID=t3 PATH="$work/limbin:$PATH" FAKE_NOW=1900 \
   bash -euo pipefail "$scripts/claude-limits.sh" >/dev/null
-check "claude-limits: inside herdr, labels still set" "label t3" "$(head -n 2 "$HC_LOG" | paste -sd ' ')"
+check "claude-limits: inside herdr, labels still set" "label t3" "$(grep -x -A 1 label "$HC_LOG" | paste -sd ' ')"
 check "claude-limits: inside herdr, the file too" "1900" "$(jq .written_at "$lfile")"
 
 # ---- claude-statusline.sh ----
 # Status-line input with `prompt_cache` = $1, as Claude Code 2.1.322 sends it,
-# cut to the fields the script reads.
+# cut to the fields the script reads. `hc get` answers with a terminal whose
+# agent.cache_session label is $CACHE_OF.
+mkdir "$work/slbin"
+cat >"$work/slbin/hc" <<EOF
+#!$BASH
+if [ "\$1" = get ]; then printf '{"labels":{"agent.cache_session":"%s"}}\n' "\${CACHE_OF:-}"; exit; fi
+printf '%s\n' "\$@" >>"\$HC_LOG"
+EOF
+chmod +x "$work/slbin/hc"
 cache() {
   : >"$HC_LOG"
-  jq -nc --argjson c "$1" '{model: {display_name: "Fable 5.2"}, effort: {level: "high"}, version: "2.1.322",
+  jq -nc --argjson c "$1" '{session_id: "s1", model: {display_name: "Fable 5.2"}, effort: {level: "high"}, version: "2.1.322",
     context_window: {used_percentage: 14.2, total_input_tokens: 139500}, prompt_cache: $c}' |
-    HC_TERMINAL_ID=t4 PATH="$work/limbin:$PATH" bash -euo pipefail "$scripts/claude-statusline.sh" >/dev/null
+    HC_TERMINAL_ID=t4 PATH="$work/slbin:$work/limbin:$PATH" bash -euo pipefail "$scripts/claude-statusline.sh" >/dev/null
   grep -E '^agent\.cache' "$HC_LOG" | paste -sd ' '
 }
-check "claude-statusline: the cache's expiry and lifetime" "agent.cache_until=1795041084 agent.cache_ttl=1h" \
+check "claude-statusline: the cache's expiry and lifetime" "agent.cache_until=1795041084 agent.cache_ttl=1h agent.cache_session=s1" \
   "$(cache '{"warm":true,"caching_observed":true,"ttl":"1h","expires_at":1795041084.6}')"
-check "claude-statusline: a 5-minute cache" "agent.cache_until=1795038309 agent.cache_ttl=5m" \
+check "claude-statusline: a 5-minute cache" "agent.cache_until=1795038309 agent.cache_ttl=5m agent.cache_session=s1" \
   "$(cache '{"warm":true,"caching_observed":true,"ttl":"5m","expires_at":1795038309}')"
-check "claude-statusline: a missed cache is cold, its lifetime kept" "agent.cache_until=0 agent.cache_ttl=1h" \
+check "claude-statusline: a missed cache is cold, its lifetime kept" "agent.cache_until=0 agent.cache_ttl=1h agent.cache_session=s1" \
   "$(cache '{"warm":false,"caching_observed":true,"ttl":"1h","expires_at":null}')"
-check "claude-statusline: no caching seen yet clears both" "agent.cache_until= agent.cache_ttl=" \
+check "claude-statusline: no caching seen yet clears them" "agent.cache_until= agent.cache_ttl= agent.cache_session=" \
   "$(cache '{"warm":false,"caching_observed":false,"ttl":"1h","expires_at":null}')"
+check "claude-statusline: after another session's cache too" "agent.cache_until= agent.cache_ttl= agent.cache_session=" \
+  "$(CACHE_OF=s0 cache '{"warm":false,"caching_observed":false,"ttl":"1h","expires_at":null}')"
+check "claude-statusline: a resumed session keeps the cache it had" "" \
+  "$(CACHE_OF=s1 cache '{"warm":false,"caching_observed":false,"ttl":"1h","expires_at":null}')"
+check "claude-statusline: and still sets its other labels" \
+  "label t4 agent.ctx=14 agent.ctxk=139 agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322" "$(paste -sd ' ' "$HC_LOG")"
 check "claude-statusline: all its labels, in one call" \
-  "label t4 agent.ctx=14 agent.ctxk=139 agent.cache_until=0 agent.cache_ttl= agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322" \
+  "label t4 agent.ctx=14 agent.ctxk=139 agent.cache_until=0 agent.cache_ttl= agent.cache_session=s1 agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322" \
   "$(cache '{"caching_observed":true}' >/dev/null; paste -sd ' ' "$HC_LOG")"
 
 # ---- claude-keep-warm.sh ----
@@ -525,7 +539,7 @@ probe=$(printf '%s\n' 'keys t7 .' 'keys t7 backspace')
 
 kwset
 check "keep-warm: an empty prompt gets the question, the answer is closed" "$asked" "$(kw 1)"
-check "keep-warm: and the cache is renewed" "14100 refreshed t7" "$(cat "$KW/until") $(cat "$KW/out")"
+check "keep-warm: and the cache is renewed" "14100 10000 refreshed t7" "$(cat "$KW/until") $(cat "$KW/out")"
 check "keep-warm: a renewed cache is left alone" "" "$(kw 2)"
 
 kwset ghost='Try "refactor <filepath>"'
@@ -555,6 +569,8 @@ check "keep-warm: a draft that won't stash gets no question" "$(printf '%s\n' "$
 
 kwset mode=picker
 check "keep-warm: no prompt box, nothing typed" "" "$(kw 2)"
+check "keep-warm: and the log says why, once" \
+  "10000 t7 has 500 s of cache left and can't be refreshed: no prompt box on its screen (answer panel: closed)" "$(cat "$KW/out")"
 for change in status=working status=blocked ttl=5m ttl= until= until=10601 until=10030 until=9000 until=0; do
   kwset "$change"
   check "keep-warm: $change, nothing typed" "" "$(kw 2)"
@@ -584,6 +600,9 @@ check "keep-warm: switched off after it stopped, the failure is cleared" \
 kwset mute=1
 check "keep-warm: a question that opens no answer isn't closed" \
   "$(printf '%s\n' 'label t7 agent.warm_state=refreshing' 'send t7 /btw reply with: ok' 'label t7 agent.warm_state=')" "$(kw 1)"
+check "keep-warm: and the log has each look and the screen it gave up on" \
+  "$(printf '%s\n' "10000 refresh of t7 didn't extend its cache (1): no answer in 10 looks, a second apart: cccccccccc (c closed, o open)" '    | ● two')" \
+  "$(head -n 2 "$KW/out")"
 
 # ---- claude-title.sh ----
 # `hc get` answers with terminal t7 as `hc get --json` gives it, cut to what

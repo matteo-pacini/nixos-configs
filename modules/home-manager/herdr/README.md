@@ -28,7 +28,7 @@ empty value removes a label.
 | Label | Set by | Read by |
 |-------|--------|---------|
 | `agent.model`, `agent.effort`, `agent.ctx`, `agent.ctxk`, `agent.version` | `claude-statusline.sh` (Claude's statusLine), `codex-labels.sh` (Codex hooks), `opencode-labels.js` | `agent-list` |
-| `agent.cache_until`, `agent.cache_ttl` | `claude-statusline.sh` only | `agent-list` (cache-expiring flag); `lib/warm.js` and `claude-keep-warm.sh` (see below) |
+| `agent.cache_until`, `agent.cache_ttl`, `agent.cache_session` (the session they describe: a resumed one keeps them until its first request) | `claude-statusline.sh` only | `agent-list` (cache-expiring flag); `lib/warm.js` and `claude-keep-warm.sh` (see below) |
 | `agent.keep_warm` | the person, from `pane-header`'s switch | `lib/warm.js` (`pane-header`, `agent-list`); `claude-keep-warm.sh` |
 | `agent.warm_state`, `agent.warm_failed` | `claude-keep-warm.sh` | `lib/warm.js`: `pane-header` ("Refreshing"), `agent-list` (the failure notification) |
 | `agent.ask` | `agent-ask.sh` (Claude and Codex hooks), `opencode-labels.js` | `agent-list` |
