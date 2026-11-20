@@ -6,10 +6,8 @@ desktop shell (Quickshell), including work that starts in the live
 What each piece is and how it works is in [README.md](README.md); this file
 is how to work on it. Repo-wide rules are in the root `AGENTS.md`.
 
-State as of 2026-11-17 (after the token panel, PR #499, the shell sweep, PR
-#500, and the sweep's fixes to keys, footers, plain text and helpers on
-branch `fix/brightfalls-shell-sweep-live`). "State and open work" at the
-bottom says what is unproven; check it before relying on anything.
+State as of 2026-11-17. "State and open work" at the bottom says what is
+unproven; check it before relying on anything.
 
 ## What this is
 
@@ -405,7 +403,7 @@ what a check catches if one is forgotten; nothing catches the rest.
   `brightfalls-tests` by itself (`tests/default.nix:19-24`); `git add`
   first; README "Tests", the code map's `tests/` row. `-L` prints the
   failing derivation's log.
-- **Bind** (Super+U, `bindings.lua:118`): `bind()`, for the cheat sheet; a
+- **Bind** (Super+U in `bindings.lua`): `bind()`, for the cheat sheet; a
   free key (`hyprctl binds`); the IPC target; README's table. Caught: the
   call's target, function and arguments (lint); a misspelt key
   (`hypr-config`, by hand). Not: a taken key.

@@ -17,8 +17,8 @@ nix build ".#darwinConfigurations.<Host>.config.system.build.toplevel"
 nix eval ".#nixosConfigurations.<Host>.config.system.build.toplevel" --raw 2>&1 | head -5
 nix eval ".#darwinConfigurations.<Host>.config.system.build.toplevel" --raw 2>&1 | head -5
 
-# Format
-nix fmt
+# Format (name the files: bare `nix fmt` runs nixfmt, which waits on stdin)
+nix fmt -- file.nix
 # Or manually:
 nix run nixpkgs#nixfmt -- file.nix
 ```
