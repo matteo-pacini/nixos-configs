@@ -280,12 +280,14 @@ function shortRange(a, b) {
 // What a day-list row shows for `e` on `date`: { time, sub, over, tzUnknown }.
 // `over` is true for a timed event on today's list that has ended.
 function row(e, date, now) {
-    var span = daysBetween(e.start, e.end) + 1;
+    // An all-day end is its last day; a timed one is the instant after it, so one ending at 00:00 has no part on that day.
+    var last = e.allDay || e.end <= e.start ? e.end : new Date(e.end.getTime() - 1);
+    var span = daysBetween(e.start, last) + 1;
     var time;
     var sub = e.calendar;
     if (span > 1) {
         time = "day " + (daysBetween(e.start, date) + 1) + " of " + span;
-        sub += " · " + (e.allDay ? shortRange(e.start, e.end) : shortRange(e.start, e.end) + ", " + hm(e.start) + " – " + hm(e.end));
+        sub += " · " + (e.allDay ? shortRange(e.start, e.end) : shortRange(e.start, last) + ", " + hm(e.start) + " – " + hm(e.end));
     } else if (e.allDay) {
         time = "all day";
     } else {
