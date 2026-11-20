@@ -125,6 +125,7 @@
           ./modules/nixos/nix-index.nix
           ./modules/nixos/ssh-mesh.nix
           ./modules/nixos/auto-deploy.nix
+          ./modules/nixos/legion-kvm.nix
         ];
       };
 

@@ -15,6 +15,15 @@ in
   path-of-building-poe2 = super.callPackage ../packages/path-of-building-poe2.nix { };
   linuwux-runtime = super.callPackage ../packages/linuwux-runtime.nix { };
   plymouth-brightfalls = super.callPackage ../packages/plymouth-brightfalls { };
+  legion-kvm = super.callPackage ../packages/legion-kvm {
+    # The guest build boots a VM with buildPackages.qemu_kvm, which derives
+    # from the znver4 QEMU below and would not run on the Nexus builder.
+    vmTools = super.vmTools.override {
+      buildPackages = super.buildPackages // {
+        qemu_kvm = super.qemu.override { hostCpuOnly = true; };
+      };
+    };
+  };
 
   qemu = optimizedForBrightFalls (
     super.qemu.override ({

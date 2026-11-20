@@ -117,3 +117,4 @@ The short version:
 | mpv module (where each vendored file comes from, how to check for updates) | `modules/home-manager/mpv/README.md` |
 | Wallpapers: the shared PNGs (`assets/wallpapers/`), the Macs' per-display agent (`custom.deskWallpaper`, `desk-wallpaper`) | `modules/home-manager/darwin/desk-wallpaper/README.md`; BrightFalls' hyprpaper: `hosts/BrightFalls/users/matteo/hyprland/README.md`, "Wallpaper" |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |
+| legion-kvm (Proton in a KVM guest on BrightFalls: build decisions, bumping upstream and Proton) | `packages/legion-kvm/AGENTS.md`; module: `modules/nixos/legion-kvm.nix` |

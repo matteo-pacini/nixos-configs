@@ -39,6 +39,21 @@ in
     ];
   };
 
+  custom.legion-kvm = {
+    enable = true;
+    users = [ "matteo" ];
+    # DP-1, the primary monitor (monitors.xml).
+    resolution = {
+      width = 2560;
+      height = 1440;
+    };
+    refreshRate = 144;
+    # Keeps the window, and so the guest display, at the full 2560x1440.
+    fullscreen = true;
+    memoryMiB = 16384;
+    pinVcpus = true;
+  };
+
   services.ananicy = lib.mkIf (config.programs.steam.enable) {
     enable = true;
     package = pkgs.ananicy-cpp;

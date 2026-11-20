@@ -1,0 +1,25 @@
+diff --git a/src/game.rs b/src/game.rs
+index 3342810..2a88c13 100644
+--- a/src/game.rs
++++ b/src/game.rs
+@@ -353,6 +353,20 @@ fn copy(source: &Path, target: &Path) -> Result<()> {
+             .success(),
+         "copy guest session runtime failed"
+     );
++    writable(target)
++}
++
++// The runtime may live on a read-only filesystem (the Nix store, mode 0555),
++// and `cp -a` carries those modes into the session copy, which is written to.
++fn writable(target: &Path) -> Result<()> {
++    ensure!(
++        std::process::Command::new("chmod")
++            .args(["-R", "u+w", "--"])
++            .arg(target)
++            .status()?
++            .success(),
++        "make guest session runtime writable failed"
++    );
+     Ok(())
+ }
+ 

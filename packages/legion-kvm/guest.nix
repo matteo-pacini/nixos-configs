@@ -1,0 +1,127 @@
+# Guest userspace: a slice of Debian 13 /usr, as upstream's guest expects a
+# Debian layout (hardcoded /usr/lib/x86_64-linux-gnu paths in the guest
+# programs). Upstream's own venus() and guest_userspace() from
+# tools/build_runtime.py run inside a Debian VM; only their inputs come from Nix.
+{
+  lib,
+  stdenv,
+  vmTools,
+  fetchurl,
+  patchelf,
+  binutils,
+  legionSource,
+  rust,
+  proton,
+  # The Wine ntdll repair (wine.nix), or null to leave it out.
+  wine,
+}:
+let
+  # Debian's glibc. Guest programs built against Nix's newer glibc must not
+  # need a symbol version beyond it. Only GLIBC_* versions are checked, not
+  # GCC_* ones (libgcc_s, used by Rust's unwinder); the slim step catches
+  # missing sonames but not missing symbol versions.
+  debianGlibc = "2.41";
+
+  image = vmTools.fillDiskWithDebs {
+    name = "legion-kvm-guest-image";
+    fullName = "Debian 13 (legion-kvm guest build)";
+    size = 8192;
+    memSize = 4096;
+    debs = import ./debs-amd64.nix { inherit fetchurl; };
+  };
+
+  i386Debs = lib.flatten (import ./debs-i386.nix { inherit fetchurl; });
+
+  # Hash from upstream's config/sources.json.
+  mesa = fetchurl {
+    url = "https://archive.mesa3d.org/mesa-26.2.6.tar.xz";
+    sha256 = "b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92";
+  };
+
+  # Retarget the Nix-built guest programs at Debian's loader and library path.
+  programs = stdenv.mkDerivation {
+    name = "legion-kvm-guest-programs";
+    nativeBuildInputs = [
+      patchelf
+      binutils
+    ];
+    dontUnpack = true;
+    dontPatchELF = true;
+    dontStrip = true;
+    installPhase = ''
+      mkdir -p $out/release
+      for path in bin/legion-proton-bootstrap bin/legion-guest-compositor bin/legion-audio-runtime${
+        lib.optionalString (wine != null) " bin/legion-cpu-adapter-fixture lib/liblegion_cpu_adapter.so"
+      }; do
+        target=$out/release/$(basename $path)
+        install -m0755 ${rust.workspace}/$path $target
+        newest=$(objdump -T $target | { grep -oE 'GLIBC_[0-9.]+' || true; } | sed 's/GLIBC_//' | sort -V | tail -1)
+        if [ "$(printf '%s\n' "$newest" ${debianGlibc} | sort -V | tail -1)" != ${debianGlibc} ]; then
+          echo "$path needs GLIBC_$newest, newer than Debian's ${debianGlibc}" >&2
+          exit 1
+        fi
+        patchelf --remove-rpath $target
+        case $path in
+          bin/*) patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 $target ;;
+        esac
+      done
+    '';
+  };
+in
+vmTools.runInLinuxImage (
+  stdenv.mkDerivation {
+    name = "legion-kvm-guest-userspace";
+    diskImage = image;
+    # Sized to fit a GitHub ubuntu-24.04 runner (4 vCPUs, 16 GB), which builds
+    # BrightFalls in CI.
+    memSize = 8192;
+    QEMU_OPTS = "-smp 4";
+    buildCommand = ''
+      set -euo pipefail
+      for deb in ${toString i386Debs}; do
+        dpkg-deb --fsys-tarfile $deb | tar -x --keep-directory-symlink -C /
+      done
+      ldconfig
+      # Match the debian:13-slim base upstream builds from: its dpkg config keeps
+      # only copyright files under /usr/share/doc, and no man pages or locales.
+      # The slim step copies share/doc whole and fails on full Debian's
+      # doc-directory symlinks.
+      find /usr/share/doc -mindepth 1 \( -type l -o \( -type f ! -name copyright \) \) -delete
+      find /usr/share/doc -mindepth 1 -type d -empty -delete
+      rm -rf /usr/share/man /usr/share/groff /usr/share/info /usr/share/lintian /usr/share/linda
+      find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name locale.alias -exec rm -rf {} +
+
+      work=/tmp/legion
+      mkdir -p $work/sources/mesa
+      tar -xf ${mesa} --strip-components=1 -C $work/sources/mesa
+      # guest_userspace() scans the Proton tree at /proton for the guest
+      # libraries it needs.
+      ln -s ${proton.src} /proton
+    ''
+    + lib.optionalString (wine != null) ''
+      # guest_userspace() builds the repair delta from this ntdll.dll when
+      # LEGION_WINE_REPAIR is 1.
+      install -Dm0644 ${wine}/ntdll.dll $work/wine/dlls/ntdll/x86_64-windows/ntdll.dll
+      export LEGION_WINE_REPAIR=1
+    ''
+    + ''
+
+      python3 - <<'PY'
+      import sys
+      from pathlib import Path
+      sys.path.insert(0, '${legionSource.src}/tools')
+      import build_runtime as br
+      br.ROOT = Path('${legionSource.src}')
+      br.OUT = Path('/tmp/legion')
+      br.TARGET = Path('${programs}')
+      br.JOBS = 4
+      br.venus(br.OUT/'sources/mesa')
+      br.guest_userspace()
+      PY
+
+      mkdir -p $out
+      cp -dR --preserve=mode,timestamps $work/usr $out/usr
+      cp $work/usr-manifest.json $out/
+    '';
+  }
+)
