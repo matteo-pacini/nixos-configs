@@ -49,8 +49,6 @@ const running = () => answer(fixture("running"));
 const failing = (name, good) => T.read(Object.assign({ light: false }, CALLS[name]), good || T.initial(), NOW);
 const lastGood = () => answer(fixture("running"), null, NOW - 2 * MIN);
 
-// ---- section 1 -------------------------------------------------------------
-
 t("running: header, well, groups in order, nothing over the list, bar on", () => {
     const v = view(running());
     assert.deepEqual(v.header, { word: "connected", colour: "green", meta: "read only" });
@@ -122,8 +120,6 @@ t("details: Nexus as in section 1, idle and never-sent paths, shared owner", () 
     // Offline: no path line.
     assert.equal(row(v, "nCauldronLake").details.find(d => d.label === "path"), undefined);
 });
-
-// ---- 2a: the panel as a whole ---------------------------------------------
 
 t("2a 1: not read yet", () => {
     const v = view(T.initial());
@@ -294,8 +290,6 @@ t("a good answer after a failure clears it and becomes the new last good one", (
     assert.equal(view(back).bar.look, "on");
 });
 
-// ---- 2b: lines over any state with a status --------------------------------
-
 t("2b health: one orange strip each, whole", () => {
     const v = view(answer(overlay("health")));
     assert.deepEqual(stripTexts(v), OVERLAYS.health.Health.map(h => ["orange", h]));
@@ -365,8 +359,6 @@ t("2b lines come after the state's own strip", () => {
     st.Health = ["A warning."];
     assert.deepEqual(view(answer(st)).strips.map(s => s.tone), ["dim", "orange"]);
 });
-
-// ---- 2c, 2d, 2e: device rows ---------------------------------------------
 
 t("2d and 2e: every chip rule and second-line combination", () => {
     const v = view(answer(fixture("peers")));
@@ -491,8 +483,6 @@ t("no mesh file: every peer is another device, T never offered", () => {
     assert.equal(keyNames(row(sel, "nNexus")), "Enter Y");
 });
 
-// ---- wording -------------------------------------------------------------
-
 t("last seen: every boundary", () => {
     const at = d => T.ago(NOW - d, NOW);
     assert.equal(at(59 * 1000), "just now");
@@ -539,8 +529,6 @@ t("version: up to the first dash", () => {
     assert.equal(T.shortVersion("1.104.5"), "1.104.5");
     assert.equal(T.shortVersion(undefined), "");
 });
-
-// ---- keys ----------------------------------------------------------------
 
 t("keys: navigation across both groups, J K and arrows, Home End", () => {
     const v = view(running());
@@ -686,8 +674,6 @@ t("selection is kept by peer ID across reads; a gone one falls back to the first
     assert.equal(T.decide(gone, ui, "Down").ui.selected, "nCauldronLake");
 });
 
-// ---- section 3: the bar ---------------------------------------------------
-
 t("bar: every input of section 3", () => {
     const look = a => T.bar(a, false, NOW).look;
     assert.equal(look(T.initial()), "off");
@@ -739,8 +725,6 @@ t("light answers: same entry point, give the bar, keep the last full list as of 
     const out = clone(STATES["logged-out"]);
     assert.deepEqual(view(T.read(call(out, true), lastGood(), NOW)).groups, []);
 });
-
-// ---- junk ------------------------------------------------------------------
 
 t("junk inside a status: Peer null, no Self, odd fields", () => {
     const st = fixture("running");

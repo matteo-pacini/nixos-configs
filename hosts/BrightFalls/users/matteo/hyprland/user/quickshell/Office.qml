@@ -500,7 +500,6 @@ Scope {
                         title: "Light"
                     }
 
-                    // The light.
                     Rectangle {
                         visible: root.light !== null
                         x: 8
@@ -601,7 +600,6 @@ Scope {
                         title: "Blind"
                     }
 
-                    // The blind.
                     Rectangle {
                         visible: root.blind !== null
                         x: 8
@@ -720,7 +718,6 @@ Scope {
                         note: "watch only"
                     }
 
-                    // The total.
                     Item {
                         visible: root.sockets.all > 0 && !root.neverUp
                         width: parent.width

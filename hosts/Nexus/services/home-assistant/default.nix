@@ -141,19 +141,15 @@ in
       # Printer
       "ipp"
       "brother"
-      # Unifi
       "unifi"
       "unifiprotect"
-      # Wake on LAN
       "wake_on_lan"
-      # Ping
       "ping"
       # Shield
       "androidtv"
       "androidtv_remote"
       # LG TV
       "webostv"
-      # Shell commands
       "shell_command"
       # UPS
       "apcupsd"
@@ -163,9 +159,7 @@ in
       "whisper"
       "wake_word"
       "wyoming"
-      # Shelly
       "shelly"
-      # SmartThings
       "smartthings"
       # Volvo (core integration, OAuth via Application Credentials)
       "volvo"
@@ -326,7 +320,6 @@ in
       # https://www.home-assistant.io/integrations/default_config/
       default_config = { };
 
-      # Service status monitoring
       command_line = [
         {
           binary_sensor = {
@@ -840,12 +833,6 @@ in
           ];
         };
       };
-
-      # YAML http config is deprecated (removed in HA 2027.2.0). The old
-      # block (use_x_forwarded_for, trusted_proxies 127.0.0.1, ip_ban_enabled
-      # false for fail2ban) was imported into /var/lib/hass/.storage and now
-      # lives outside version control; restore it via Settings > System >
-      # Network if /var/lib/hass is ever rebuilt from scratch.
 
       lovelace = {
         resource_mode = "yaml";

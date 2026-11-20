@@ -33,7 +33,6 @@ in
 
   gtk = {
     enable = true;
-    # GTK 2/3 theme
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;

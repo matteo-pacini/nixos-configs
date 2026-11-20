@@ -18,7 +18,6 @@
     trustedUsers = [
       "@admin"
     ];
-    # Substituter + auth for pulling from the private attic cache
     atticCache = {
       enable = true;
       netrcFile = config.age.secrets."worklaptop/attic-netrc".path;

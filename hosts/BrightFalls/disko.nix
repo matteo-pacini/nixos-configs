@@ -21,7 +21,7 @@
 #   - LVM lives *inside* the container: volume names/sizes not visible at rest
 #
 # Install:
-#   1. Set `device` below to the real NVMe by-id path.
+#   1. Check `device` below is the NVMe's by-id path.
 #   2. echo -n '<passphrase>' > /tmp/luks.password
 #   3. sudo disko --mode destroy,format,mount   (WIPES DISK)
 #   4. sudo nixos-install --flake ...
@@ -50,7 +50,6 @@
               };
             };
 
-            # Part 2: LUKS2 container - rest of disk - LVM inside
             luks = {
               size = "100%";
               content = {
@@ -101,7 +100,6 @@
         type = "lvm_vg";
         lvs = {
 
-          # Root volume - 200GB - ext4
           root = {
             size = "200G";
             content = {
@@ -119,7 +117,6 @@
             };
           };
 
-          # Home volume - 600GB - ext4
           home = {
             size = "600G";
             content = {

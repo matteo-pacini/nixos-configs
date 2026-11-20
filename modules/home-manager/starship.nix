@@ -20,7 +20,6 @@ in
       settings = {
         scan_timeout = 10;
         format = builtins.concatStringsSep "" [
-          # Left
           "[](comment)"
           "$os"
           "$username"

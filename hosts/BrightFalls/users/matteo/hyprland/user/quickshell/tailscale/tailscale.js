@@ -166,8 +166,6 @@ function read(raw, previous, now) {
     return out;
 }
 
-// ---- wording -------------------------------------------------------------
-
 function parseTime(t) {
     if (typeof t !== "string" || t === "")
         return null;
@@ -250,8 +248,6 @@ function shortVersion(v) {
     return typeof v === "string" ? v.split("-")[0] : "";
 }
 
-// ---- names ---------------------------------------------------------------
-
 function list(v) {
     return Array.isArray(v) ? v.filter(x => typeof x === "string" && x !== "") : [];
 }
@@ -306,8 +302,6 @@ function ipv4(ips) {
 function ipv6(ips) {
     return ips.find(a => a.includes(":")) || "";
 }
-
-// ---- rows ----------------------------------------------------------------
 
 // Whether `tailscale status` hides the node (cli/status.go).
 function hidden(node) {
@@ -506,8 +500,6 @@ function groupsFor(st, mesh, now, live) {
         out.push({ title: "OTHER DEVICES", rows: sort(other) });
     return out;
 }
-
-// ---- the panel as a whole --------------------------------------------------
 
 function strip(tone, parts) {
     const p = parts.map(x => typeof x === "string" ? { text: x, code: false } : { text: x.code, code: true });
@@ -755,8 +747,6 @@ function view(answer, mesh, now, ui) {
         authUrl: st && typeof st.AuthURL === "string" ? st.AuthURL : ""
     };
 }
-
-// ---- keys ----------------------------------------------------------------
 
 function withUi(ui, changes) {
     return Object.assign({}, ui, changes);

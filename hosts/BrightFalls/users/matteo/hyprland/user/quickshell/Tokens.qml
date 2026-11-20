@@ -682,7 +682,6 @@ Scope {
                 bottomPadding: 10
                 spacing: 8
 
-                // ---- overview ----
                 Column {
                     id: overview
 
@@ -909,7 +908,6 @@ Scope {
                     }
                 }
 
-                // ---- projects ----
                 Column {
                     id: projects
 
@@ -993,7 +991,6 @@ Scope {
                     }
                 }
 
-                // ---- detail ----
                 Column {
                     id: detail
 
@@ -1165,7 +1162,6 @@ Scope {
                     }
                 }
 
-                // ---- days ----
                 Column {
                     id: days
 

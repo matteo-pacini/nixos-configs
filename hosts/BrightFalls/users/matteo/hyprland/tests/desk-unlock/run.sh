@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for ../desk-unlock.sh, the recovery from a text console when the
+# Tests for ../../desk-unlock.sh, the recovery from a text console when the
 # lock screen dies, against fake hyprctl, systemctl and pkill, run with
 # errexit, nounset and pipefail as writeShellApplication runs it.
 # Usage: run.sh <desk-unlock.sh>   (needs bash, coreutils and grep on PATH)

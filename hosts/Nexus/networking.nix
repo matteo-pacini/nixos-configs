@@ -12,10 +12,8 @@
       "8.8.8.8" # Google DNS (secondary)
     ];
 
-    # Use modern nftables backend instead of legacy iptables
     nftables = {
       enable = true;
-      # Flush ruleset on each reload to ensure clean state
       flushRuleset = true;
     };
 
@@ -63,7 +61,6 @@
         443 # HTTP/3 (QUIC)
       ];
 
-      # Log refused packets for debugging
       logRefusedConnections = true;
     };
   };

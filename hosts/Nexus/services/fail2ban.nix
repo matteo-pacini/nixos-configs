@@ -9,10 +9,8 @@ in
 
     maxretry = 5;
     ignoreIP = [
-      # Localhost
       "127.0.0.0/8"
       "::1"
-      # LAN networks
       "192.168.10.0/24" # HOME VLAN
       "192.168.20.0/24" # GUEST VLAN
       # Tailnet, both families. Devices here are already authenticated by
@@ -43,7 +41,6 @@ in
     };
 
     jails = {
-      # SSH protection
       sshd = {
         settings = {
           enabled = true;
@@ -53,7 +50,6 @@ in
         };
       };
 
-      # Caddy general protection (JSON log format)
       caddy-http-auth = {
         settings = {
           enabled = true;
@@ -76,7 +72,6 @@ in
         };
       };
 
-      # n8n specific protection
       n8n-auth = {
         settings = {
           enabled = true;
@@ -90,13 +85,11 @@ in
         };
       };
 
-      # Jellyfin specific protection
       jellyfin-auth = {
         settings = {
           enabled = true;
           filter = "jellyfin-auth";
           port = "http,https";
-          # Monitor Jellyfin's native log files (not nginx logs)
           logpath = "${config.services.jellyfin.logDir}/*.log";
           backend = "auto"; # Required when monitoring log files
           maxretry = 3;
@@ -105,7 +98,6 @@ in
         };
       };
 
-      # Nextcloud specific protection
       nextcloud-auth = {
         settings = {
           enabled = true;
@@ -119,13 +111,11 @@ in
         };
       };
 
-      # Home Assistant specific protection
       hass-auth = {
         settings = {
           enabled = true;
           filter = "hass-auth";
           port = "http,https";
-          # Monitor Home Assistant's log file (not nginx logs)
           logpath = "${config.services.home-assistant.configDir}/home-assistant.log";
           backend = "auto"; # Required when monitoring log files
           maxretry = 3;
@@ -136,8 +126,6 @@ in
     };
   };
 
-  # Custom filter for Caddy HTTP authentication failures (JSON format)
-  # Matches 401 (Unauthorized) and 403 (Forbidden) responses
   environment.etc."fail2ban/filter.d/caddy-http-auth.conf".text = ''
     [Definition]
     failregex = "client_ip":"<HOST>"(?:.*)"status":(?:401|403)
@@ -165,7 +153,6 @@ in
     ignoreregex = "host":"(?:home|jellyfin|nextcloud|n8n|cache|grafana|photos|metrics)\.matteopacini\.me"
   '';
 
-  # Custom filter for n8n authentication failures (JSON format)
   environment.etc."fail2ban/filter.d/n8n-auth.conf".text = ''
     [Definition]
     failregex = "client_ip":"<HOST>"(?:.*)"uri":".*/rest/login.*"(?:.*)"status":(?:401|403)

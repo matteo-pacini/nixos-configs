@@ -8,7 +8,6 @@
       autosave_on_changes = false;
     };
     listeners = [
-      # Localhost access without auth
       {
         address = "127.0.0.1";
         port = 1883;

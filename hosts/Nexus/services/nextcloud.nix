@@ -130,7 +130,6 @@
     };
   };
 
-  # Ensure nextcloud-setup waits for PostgreSQL
   systemd.services.nextcloud-setup = {
     requires = [ "postgresql.service" ];
     after = [ "postgresql.service" ];

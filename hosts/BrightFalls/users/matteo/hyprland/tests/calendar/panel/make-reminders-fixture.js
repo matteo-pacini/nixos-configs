@@ -1,5 +1,5 @@
-// Writes fixture-reminders.jsonl: a contract-shaped export with Amendment 2's
-// alarms, from invented events (no personal data), for the reminder tests.
+// Writes fixture-reminders.jsonl: a contract-shaped export with alarms,
+// from invented events (no personal data), for the reminder tests.
 // usage: node make-reminders-fixture.js <out>
 "use strict";
 const fs = require("fs");

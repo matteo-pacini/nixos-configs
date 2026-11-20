@@ -172,7 +172,6 @@ function pipeline(st) {
     return { parts };
 }
 
-// The device glyphs the design draws.
 function glyph(device) {
     return device === "server" ? "▤" : device === "laptop" ? "▭" : "▣";
 }

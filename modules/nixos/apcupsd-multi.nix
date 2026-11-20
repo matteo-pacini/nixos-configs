@@ -38,7 +38,6 @@ let
     chmod a+x "$out/${eventname}"
   '';
 
-  # Generate config and services for a single UPS
   mkUpsConfig =
     name: upsCfg:
     let
@@ -87,10 +86,8 @@ let
       inherit configFile scriptDir wrappedBinaries;
     };
 
-  # Generate all UPS configurations
   upsConfigs = lib.mapAttrs mkUpsConfig (lib.filterAttrs (n: v: v.enable) cfg.upses);
 
-  # UPS submodule options
   upsOptions =
     { name, ... }:
     {
@@ -175,7 +172,6 @@ in
   };
 
   config = lib.mkIf (upsConfigs != { }) {
-    # Assertions for valid hook names
     assertions = lib.flatten (
       lib.mapAttrsToList (name: upsCfg: [
         {
@@ -189,12 +185,9 @@ in
       ]) (lib.filterAttrs (n: v: v.enable) cfg.upses)
     );
 
-    # Provide access to wrapped apcaccess tools for each UPS
     environment.systemPackages = lib.mapAttrsToList (name: conf: conf.wrappedBinaries) upsConfigs;
 
-    # Generate a systemd service for each UPS
     systemd.services = lib.mkMerge [
-      # Main apcupsd services
       (lib.mapAttrs' (
         name: conf:
         let
@@ -214,7 +207,6 @@ in
         }
       ) upsConfigs)
 
-      # Killpower services for each UPS
       (lib.mapAttrs' (
         name: conf:
         lib.nameValuePair "apcupsd-${name}-killpower" {

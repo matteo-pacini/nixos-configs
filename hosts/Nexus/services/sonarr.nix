@@ -13,7 +13,6 @@
     openFirewall = false; # tailnet + trusted-device rule in ../networking.nix
   };
 
-  # Sonarr requires PostgreSQL to be running
   systemd.services.sonarr = {
     requires = [ "postgresql.service" ];
     after = [ "postgresql.service" ];

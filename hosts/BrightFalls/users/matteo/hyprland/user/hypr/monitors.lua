@@ -8,7 +8,6 @@ hl.monitor({ output = "DP-2", mode = "2560x1440@60", position = "2560x0", scale 
 -- Capture card.
 hl.monitor({ output = "HDMI-A-1", disabled = true })
 
--- Anything else goes to the right at its preferred mode.
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
 -- Five workspaces per display. Must match the `workspaceMonitors` mapping in

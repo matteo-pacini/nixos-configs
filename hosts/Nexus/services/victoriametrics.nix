@@ -6,7 +6,7 @@
   # series in VictoriaMetrics cost about 0.7 MB/day. The recorder still backs
   # the UI (history, logbook, more-info graphs) and keeps long-term statistics
   # forever, so this is a parallel archive, not a replacement — see the
-  # `influxdb` block and the short `purge_keep_days` in home-assistant.nix.
+  # `influxdb` block and the short `purge_keep_days` in home-assistant/default.nix.
   services.victoriametrics = {
     enable = true;
 

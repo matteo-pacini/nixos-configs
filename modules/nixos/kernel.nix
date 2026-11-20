@@ -14,7 +14,6 @@
   };
 
   config = lib.mkIf config.custom.kernel.enable {
-    # Kernel version used across all Linux hosts
     boot.kernelPackages = pkgs.linuxPackages_7_3;
   };
 }

@@ -20,8 +20,6 @@ const REFRESH_MS = 5 * 60000;
 const QUEUED_REFRESH_MS = 60000;
 const LAST = "nixpkgs-prs.last";
 
-// ---- GitHub ----
-
 const FIELDS = "number title isDraft updatedAt reviewDecision baseRefName author { login } labels(first: 30) { nodes { name } } commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } mergeQueueEntry { state position }";
 // Keys double as the reasons a PR is listed. `involves` covers authored and commented.
 const SEARCHES = {
@@ -75,8 +73,6 @@ function ago(t) {
   return `${Math.round(m / 43200)}mo`;
 }
 
-// ---- Nix ----
-
 // This machine's system and extra-platforms, and its remote builders, from
 // `nix config show` on the machine the review would run on. `builders` may
 // name a machines file (`@/etc/nix/machines`).
@@ -116,8 +112,6 @@ const RESULTS = [
   { id: "approve", label: "Post + approve", about: "approves if all builds pass", flags: ["--post-result", "--approve-pr"] },
   { id: "merge", label: "Post + approve + merge", about: "merges if all builds pass", flags: ["--post-result", "--approve-pr", "--merge-pr"] },
 ];
-
-// ---- Drawing helpers ----
 
 const button = (t, id, text, primary, action, disabled = false) => h_flex().id(id).h(32).px(14).items_center().rounded(8)
   .border_1().border_color(primary ? t.solid : t.input).bg(primary ? t.solid : t.raised)
@@ -233,8 +227,6 @@ export default class NixpkgsPRs extends View {
     cx.notify();
   }
 
-  // ---- Panel ----
-
   openMenu(pr) {
     if (!this.repo) return;
     openOverlay({ mod: BLOCK, kind: "popup", width: 230, height: MENU.length * 31 + 10, props: { menu: { pr, ...this.repo } } });
@@ -306,8 +298,6 @@ export default class NixpkgsPRs extends View {
         .children(this.group("participating", "Participating", rest, t)));
   }
 
-  // ---- Right-click menu ----
-
   initMenu(cx) {
     this.at = 0;
     this.handle = cx.focus_handle();
@@ -341,8 +331,6 @@ export default class NixpkgsPRs extends View {
         .child(svg(`mods/workspace-chrome/${it.icon}.svg`).size(14).flex_none().text_color(t.muted))
         .child(div().flex_1().child(it.label))));
   }
-
-  // ---- nixpkgs-review dialog ----
 
   initReview(cx) {
     const last = shared(LAST) ?? {};
@@ -451,8 +439,6 @@ export default class NixpkgsPRs extends View {
         .child(button(t, "rv-cancel", "Cancel", false, () => closeOverlay(p.overlay)))
         .child(button(t, "rv-start", "Start review", true, () => this.startReview(), !s.systems.length)));
   }
-
-  // ---- Claude Code dialog ----
 
   initClaude(cx) {
     const m = props().claude;

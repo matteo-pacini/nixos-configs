@@ -30,7 +30,6 @@
         DEVICE                # empty = auto-detect USB HID device
         POLLTIME  15
 
-        # ---------- shutdown triggers for Nexus ----------
         ONBATTERYDELAY 6     # seconds before reacting to power loss
         BATTERYLEVEL   10    # shutdown at 10% battery
         MINUTES        5     # shutdown with 5 minutes remaining

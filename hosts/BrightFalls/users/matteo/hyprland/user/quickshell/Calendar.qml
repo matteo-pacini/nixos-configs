@@ -221,7 +221,6 @@ Scope {
                 y: 1
                 width: parent.width - 2
 
-                // Month and week.
                 Item {
                     width: parent.width
                     height: monthTitle.implicitHeight + 16

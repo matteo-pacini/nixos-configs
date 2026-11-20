@@ -37,7 +37,6 @@ Scope {
         return requests.some(r => r.device === device);
     }
 
-    // One line from the agent.
     function handle(line: string): void {
         let ev;
         try {

@@ -17,7 +17,6 @@
       "root"
       "matteo"
     ];
-    # Substituter + auth for pulling from the private attic cache
     atticCache = {
       enable = true;
       netrcFile = config.age.secrets."nightsprings/attic-netrc".path;

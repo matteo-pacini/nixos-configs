@@ -9,15 +9,12 @@ in
 {
   config = lib.mkIf cfg.enable {
     programs.mpv.bindings = {
-      # Playlist nav
       F12 = "playlist-next";
       F11 = "playlist-prev";
 
-      # Chapter nav
       PGUP = "add chapter 1";
       PGDWN = "add chapter -1";
 
-      # Aspect / rotation / ICC
       a = ''cycle-values video-aspect-override "16:9" "4:3" "2.35:1" "no"'';
       "Ctrl+r" = "cycle-values video-rotate 90 180 270 0";
       "Ctrl+I" = "cycle icc-profile-auto";
@@ -25,7 +22,6 @@ in
       # Esc → fullscreen toggle (not quit)
       ESC = "cycle fullscreen";
 
-      # Image adjust
       "Ctrl+1" = "add contrast -1";
       "Ctrl+2" = "add contrast 1";
       "Ctrl+3" = "add brightness -1";
@@ -35,7 +31,6 @@ in
       "Ctrl+7" = "add saturation -1";
       "Ctrl+8" = "add saturation 1";
 
-      # Video pan (numpad)
       "Ctrl+KP4" = "add video-pan-x 0.01";
       "Ctrl+KP6" = "add video-pan-x -0.01";
       "Ctrl+KP8" = "add video-pan-y 0.01";

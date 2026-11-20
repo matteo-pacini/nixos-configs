@@ -113,7 +113,6 @@ present() { [ -e "$1" ] && echo present || echo absent; }
 dp1='hl.monitor({ output = "DP-1", disabled = false, mode = "2560x1440@144", position = "0x0", scale = 1 })'
 dp2='hl.monitor({ output = "DP-2", disabled = false, mode = "2560x1440@60", position = "2560x0", scale = 1 })'
 
-# ---- usage ----
 setup running good "DP-1 3 true" "DP-2 7 false"
 dl
 check "no command: usage, 2" "2 usage: display-layout single CMD... | restore" "$rc $out"
@@ -123,7 +122,6 @@ dl single
 check "single without a command: usage, 2" 2 "$rc"
 check "usage touches nothing" "" "$(log)"
 
-# ---- the monitors' rules match monitors.lua ----
 lua=$2
 for o in DP-1 DP-2; do
   want=$(grep -o "hl.monitor({ output = \"$o\", mode = [^)]*)" "$lua" | sed 's/, mode/, disabled = false, mode/')
@@ -131,7 +129,6 @@ for o in DP-1 DP-2; do
   check "$o rule as in monitors.lua" "$want" "$got"
 done
 
-# ---- restore ----
 setup stopped good
 dl restore
 check "restore without Hyprland: 1" "1 display-layout: no Hyprland session" "$rc $out"
@@ -180,7 +177,6 @@ dl restore
 check "an eval error is reported, not taken for ok" \
   "display-layout: hyprctl eval: lua: attempt to call a nil value" "$(head -1 <<<"$out")"
 
-# ---- single ----
 setup running good "DP-1 3 true" "DP-2 7 false"
 probe=$work/probe
 dl single bash -c 'echo "$*" >"$0"; cut -d" " -f1 "$FAKE/monitors" | tr "\n" " " >>"$0"; exit 3' "$probe" "a b" c

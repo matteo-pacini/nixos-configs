@@ -59,7 +59,6 @@ in
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # Base Firefox configuration
     {
       programs.firefox = {
         enable = true;
@@ -84,14 +83,12 @@ in
               # Allow Local Network Access to the UniFi dashboard without prompting
               "network.lna.skip-domains" = "*.id.ui.direct";
 
-              # Sponsored content & new-tab "Popular today / Health / Entertainment"
               "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;
               "browser.newtabpage.activity-stream.showSponsored" = false;
               "browser.newtabpage.activity-stream.feeds.section.topstories" = false;
               "browser.newtabpage.activity-stream.showSponsoredCheckboxes" = false;
               "browser.newtabpage.activity-stream.default.sites" = "";
 
-              # Telemetry
               "datareporting.policy.dataSubmissionEnabled" = false;
               "datareporting.healthreport.uploadEnabled" = false;
               "datareporting.usage.uploadEnabled" = false;
@@ -110,16 +107,13 @@ in
               "browser.newtabpage.activity-stream.feeds.telemetry" = false;
               "browser.newtabpage.activity-stream.telemetry" = false;
 
-              # Studies / experiments (Normandy, Shield)
               "app.shield.optoutstudies.enabled" = false;
               "app.normandy.enabled" = false;
               "app.normandy.api_url" = "";
 
-              # Crash reports
               "breakpad.reportURL" = "";
               "browser.tabs.crashReporting.sendReport" = false;
 
-              # CFR & personalized add-on recommendations
               "browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons" = false;
               "browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features" = false;
               "browser.discovery.enabled" = false;
@@ -131,7 +125,6 @@ in
       };
     }
 
-    # GNOME theme (Linux only)
     (mkIf (cfg.gnomeTheme.enable && isLinux) {
       home.file.".mozilla/firefox/default/chrome/firefox-gnome-theme".source = inputs.firefox-gnome-theme;
 
@@ -153,7 +146,6 @@ in
       };
     })
 
-    # Nix Packages search engine
     (mkIf cfg.search.nixPackages.enable {
       programs.firefox.profiles.default.search.engines = {
         "Nix Packages" = {
@@ -182,7 +174,6 @@ in
       };
     })
 
-    # Nix Options search engine
     (mkIf cfg.search.nixOptions.enable {
       programs.firefox.profiles.default.search.engines = {
         "Nix Options" = {
@@ -211,7 +202,6 @@ in
       };
     })
 
-    # Nix Code Search engine
     (mkIf cfg.search.nixCodeSearch.enable {
       programs.firefox.profiles.default.search.engines = {
         "Nix Code Search" = {
@@ -236,7 +226,6 @@ in
       };
     })
 
-    # Extensions
     (mkIf cfg.extensions.enable {
       programs.firefox.profiles.default.extensions.packages = mkMerge [
         (mkIf cfg.extensions.ublock.enable [ pkgs.nur.repos.rycee.firefox-addons.ublock-origin ])

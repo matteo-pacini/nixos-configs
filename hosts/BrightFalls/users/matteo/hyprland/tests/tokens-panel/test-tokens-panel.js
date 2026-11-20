@@ -66,15 +66,11 @@ function rowsAnswer(count, period, first) {
 }
 const feed = (st, obj, page) => T.event(st, JSON.stringify(Object.assign({}, obj, { id: st.asked[page] })));
 
-// ---- environment ---------------------------------------------------------
-
 t("the check runs in New York time, with the DST change", () => {
     assert.equal(process.env.TZ, "America/New_York");
     assert.equal(new Date(NOW * 1000).getTimezoneOffset(), 300);
     assert.equal(new Date((DST_NOW - 3 * 86400) * 1000).getTimezoneOffset(), 240);
 });
-
-// ---- formatting ----------------------------------------------------------
 
 t("tokens: every form and the unit edges", () => {
     const want = [
@@ -199,8 +195,6 @@ t("model families, merged splits, sentences", () => {
     assert.equal(T.sentence(tiny, false), "Opus 100%, Sonnet <1%");
 });
 
-// ---- limits --------------------------------------------------------------
-
 const lim = (obj, now) => T.limits(typeof obj === "string" ? obj : JSON.stringify(obj), now === undefined ? NOW : now);
 const file = (pct, changes) => Object.assign({ written_at: NOW - 60, seven_day: { used_percentage: pct, resets_at: 1795096800 }, five_hour: null }, changes || {});
 const NONE_BAR = { text: "–", glyph: "none", colour: "fg", dim: true };
@@ -301,7 +295,7 @@ t("limits: the weekly figure says when it was reported, today or before", () => 
     assert.equal(note(NOW - 6 * 86400), "as of Wed 09:15");
     // Seven days back is the same weekday: the date instead.
     assert.equal(note(NOW - 7 * 86400), "as of 10 Nov 09:15");
-    // The stale rule is unchanged: from an hour, dimmed and without the reset.
+    // The stale rule: from an hour, dimmed and without the reset.
     const stale = lim(file(34, { written_at: NOW - 3600 }));
     assert.deepEqual([stale.bar.dim, stale.panel.main.value, stale.panel.main.note], [true, "34%", "as of 08:15"]);
 });
@@ -334,8 +328,6 @@ t("refresh: R re-reads the limits file and says what it refreshed", () => {
     assert.equal(line(JSON.stringify(file(34, { written_at: NOW - 3 * 3600 }))), "Counting tokens again from the transcripts · quota as reported 06:15");
     assert.equal(line(null), "Counting tokens again from the transcripts · no quota reported yet");
 });
-
-// ---- overview ------------------------------------------------------------
 
 t("opened: overview, asks the overview", () => {
     const r = T.opened();
@@ -635,8 +627,6 @@ t("only answers and progress and error events count as the helper working", () =
     for (const line of [cut, JSON.stringify({ event: "error", kind: "OperationalError" }), JSON.stringify(Object.assign(fx("overview-full.json"), { id: st.asked.overview })), JSON.stringify(Object.assign(fx("overview-full.json"), { id: 999 }))])
         assert.equal(T.event(st, line).took, true, line);
 });
-
-// ---- projects ------------------------------------------------------------
 
 t("projects: 7 days, page 1 of 2, as drawn", () => {
     let r = T.key(overview(), "P");
@@ -1018,8 +1008,6 @@ t("projects: D days, Esc back to the overview", () => {
     assert.equal(T.view(r.state, LIM).overview.loading, false);
 });
 
-// ---- detail --------------------------------------------------------------
-
 t("detail: Enter asks for the selected project; drawn as designed", () => {
     let r = T.key(projects(), "Enter");
     assert.equal(r.state.page, "detail");
@@ -1148,8 +1136,6 @@ t("detail: another project never shows the last one's numbers", () => {
     assert.deepEqual(d.rows, []);
 });
 
-// ---- days ----------------------------------------------------------------
-
 t("days: as drawn", () => {
     let r = T.key(overview(), "D");
     assert.deepEqual(sends(r), [{ req: "days", id: 2 }]);
@@ -1208,8 +1194,6 @@ t("days: building, P projects from the top, Esc back", () => {
     assert.equal(T.view(r.state, LIM).projects.rows[0].selected, true);
     assert.equal(T.key(st, "Esc").state.page, "overview");
 });
-
-// ---- a helper older than the cost fields ---------------------------------
 
 // The fixture as such a helper sends it: no cost objects, no
 // unpriced_models beside a period, no token sums per type in a project.
@@ -1283,8 +1267,6 @@ t("detail: a cost object without by_type, unpriced models, a one-reply session",
     assert.equal(d.rows[2].line, "1 reply · active <1 min");
 });
 
-// ---- the helper's process ------------------------------------------------
-
 t("helper missing and stopped: one line, only Esc; running again re-asks", () => {
     let st = projects();
     for (const [status, line] of [["missing", "The token helper (desk-tokens) was not found."], ["stopped", "The token helper (desk-tokens) stopped. Trying again."]]) {
@@ -1305,8 +1287,6 @@ t("helper missing and stopped: one line, only Esc; running again re-asks", () =>
     // Running while running: nothing.
     assert.deepEqual(T.helper(st, "running").effects, []);
 });
-
-// ---- hints and keys agree ------------------------------------------------
 
 t("every hinted key is handled and every handled key is hinted, in every state", () => {
     const states = {};

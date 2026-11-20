@@ -41,6 +41,6 @@
   # To control /diskpool/media access
   users.groups.media = { };
 
-  # To control /diskpool/downloads access
+  # To control /downloads access
   users.groups.downloads = { };
 }

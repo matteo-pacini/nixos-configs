@@ -43,8 +43,6 @@ const run = (events, m) => {
 const last = rs => rs[rs.length - 1];
 const view = (rows, m, prev, ctx) => W.list(rows, m || W.initial(), prev || null, ctx || CTX);
 
-// ---- enum names --------------------------------------------------------------
-
 // An enum's names in value order, from the type file's component for
 // qs::network::<type>. The values are implicit there, so this relies on
 // enums.hpp numbering each enum from 0 without gaps (true in 0.3.2).
@@ -73,8 +71,6 @@ t("Network.qml's name arrays equal the installed Quickshell's enums", () => {
     }
 });
 
-// ---- section ---------------------------------------------------------------
-
 t("section: each state, header word and line", () => {
     const s = w => W.section(Object.assign({ device: true, hardware: true, radio: true, answered: true, rows: NETS }, w));
     assert.deepEqual(s({ device: false }), { state: "no-device", word: "", line: "No Wi-Fi device." });
@@ -88,8 +84,6 @@ t("section: each state, header word and line", () => {
     assert.equal(s({ device: false, hardware: false, radio: false }).state, "no-device");
     assert.equal(s({ hardware: false, radio: true }).state, "hardware-off");
 });
-
-// ---- rows ------------------------------------------------------------------
 
 t("security: every WifiSecurityType name in the pinned enum is known", () => {
     assert.deepEqual(Object.keys(W.SECURITY).sort(), ENUMS.WifiSecurityType.slice().sort());
@@ -156,8 +150,6 @@ t("awkward names are keys as they are", () => {
     assert.equal(new Set(names).size, NETS.length);
 });
 
-// ---- order -----------------------------------------------------------------
-
 const SORTED = ["Harbour Loft", "Fernhill 5G", "Cafe Meridian Guest", "Northgate Staff", "Tea Room ☕", "Upstairs Extender 32 Chars Long!", "Orchard", "orchard", "printer-setup-7F", "Larkspur: Flat 2"];
 
 t("order: connected, saved, then signal, ties by name", () => {
@@ -192,8 +184,6 @@ t("state key: changes only with what is drawn", () => {
     assert.notEqual(view(NETS.map(r => r.name === "printer-setup-7F" ? Object.assign({}, r, { known: true }) : r)).key, a);
     assert.notEqual(view(NETS, Object.assign(W.initial(), { armed: "Harbour Loft" })).key, a);
 });
-
-// ---- join machine ----------------------------------------------------------
 
 t("Enter: modal for an unknown password network, at once for open and saved", () => {
     let r = press(W.initial(), "Enter", net("printer-setup-7F"));
@@ -430,8 +420,6 @@ t("radio off or panel closed mid-join: settled, nothing left running", () => {
     }
 });
 
-// ---- password check --------------------------------------------------------
-
 t("password check: WPA and WPA2 lengths and hex, WPA3 any", () => {
     for (const sec of ["WpaPsk", "Wpa2Psk"]) {
         const ok = s => W.passwordCheck(sec, s);
@@ -476,8 +464,6 @@ t("the password never reaches a state or an effect", () => {
     assert.ok(seen.some(s => s.includes("connectWithPsk")));
 });
 
-// ---- forget ----------------------------------------------------------------
-
 t("forget: F arms, F again forgets, Esc or moving off disarms", () => {
     const h = net("Harbour Loft");
     let r = press(W.initial(), "F", h);
@@ -520,8 +506,6 @@ t("forget: a held F arms once and never forgets", () => {
     // Only a second press forgets.
     assert.deepEqual(press(r.state, "F", h).effects, [{ do: "forget", name: "Harbour Loft" }]);
 });
-
-// ---- keys ------------------------------------------------------------------
 
 t("a held key's repeats: Wi-Fi's keys do nothing, the panel's stay the panel's", () => {
     const c = net("Harbour Loft", { connected: true, state: "Connected" });
@@ -581,25 +565,22 @@ t("F5 rescans while the radio is on; other keys are the panel's", () => {
     assert.equal(W.step(W.initial(), { type: "nonsense" }).handled, false);
 });
 
-// ---- hints -----------------------------------------------------------------
-
 t("hints: per selection and state, only keys that work", () => {
     const ctx = { moves: true, speedTest: true };
     const h = (m, sec, row, c) => W.hints(m, sec, row, c || ctx);
-    // The page's state 2: a saved network, not joined.
+    // A saved network, not joined.
     assert.deepEqual(h(W.initial(), LIST, net("Harbour Loft")), [["↑↓", "select"], ["Enter", "join"], ["C", "connect"], ["F", "forget"], ["W", "radio off"], ["F5", "scan"], ["S", "speed test"], ["Esc", "close"]]);
     assert.deepEqual(h(W.initial(), LIST, net("printer-setup-7F")), [["↑↓", "select"], ["Enter", "join"], ["W", "radio off"], ["F5", "scan"], ["S", "speed test"], ["Esc", "close"]]);
     assert.deepEqual(h(W.initial(), LIST, net("Northgate Staff")), [["↑↓", "select"], ["W", "radio off"], ["F5", "scan"], ["S", "speed test"], ["Esc", "close"]]);
-    // State 3: radio off, a wired row selected.
+    // Radio off, a wired row selected.
     assert.deepEqual(h(W.initial(), OFF, null, { moves: true, speedTest: true, rowKeys: [], esc: "close" }), [["↑↓", "select"], ["W", "radio on"], ["S", "speed test"], ["Esc", "close"]]);
     // A wired row with its own keys, details open.
     assert.deepEqual(h(W.initial(), OFF, null, { moves: false, speedTest: false, rowKeys: [["Enter", "close details"]], esc: "back" }), [["Enter", "close details"], ["W", "radio on"], ["Esc", "back"]]);
-    // State 9: connected, details open.
+    // Connected, details open.
     const c = net("Harbour Loft", { connected: true, state: "Connected" });
     const open = Object.assign(W.initial(), { expanded: "Harbour Loft" });
     assert.deepEqual(h(open, LIST, c), [["↑↓", "select"], ["Enter", "close details"], ["C", "disconnect"], ["F", "forget"], ["W", "radio off"], ["F5", "scan"], ["S", "speed test"], ["Esc", "back"]]);
     assert.deepEqual(h(W.initial(), LIST, c)[1], ["Enter", "details"]);
-    // State 6 and 11.
     const joining = press(W.initial(), "Enter", net("Cafe Meridian Guest")).state;
     assert.deepEqual(h(joining, LIST, net("Cafe Meridian Guest")), [["Esc", "cancel"]]);
     assert.deepEqual(h(Object.assign(W.initial(), { armed: "Harbour Loft" }), LIST, c), [["F", "forget"], ["Esc", "keep"]]);
@@ -635,8 +616,6 @@ t("hints: Esc says what Esc does, whichever row is selected", () => {
     assert.equal(W.step(open, { type: "disconnected", name: "Fernhill 5G" }).state.expanded, "Harbour Loft");
 });
 
-// ---- details ---------------------------------------------------------------
-
 t("details of the connected row", () => {
     const c = net("Harbour Loft", { connected: true, state: "Connected", signal: 0.78 });
     const info = { address: "192.0.2.10/24", gateway: "192.0.2.1", dns: "192.0.2.53", mac: "02:00:00:00:00:01", wiredRoute: true };
@@ -654,8 +633,6 @@ t("details of the connected row", () => {
     assert.deepEqual(bare.map(d => d.label), ["security", "signal", "link"]);
 });
 
-// ---- bar -------------------------------------------------------------------
-
 t("bar: every combination", () => {
     for (const wired of [false, true])
         for (const wifi of [false, true])
@@ -665,7 +642,7 @@ t("bar: every combination", () => {
                     const glyph = wired ? "ethernet" : wifi && radio ? "wifi" : "noNetwork";
                     assert.deepEqual(b, { glyph, tier: glyph === "wifi" ? 2 : 0, mark: radio && glyph !== "wifi", red: offline }, JSON.stringify({ wired, wifi, radio, offline }));
                 }
-    // Wired up, radio off: as today.
+    // Wired up, radio off.
     assert.deepEqual(W.bar({ wired: true, wifi: false, signal: 0, radio: false, offline: false }), { glyph: "ethernet", tier: 0, mark: false, red: false });
     // Wi-Fi only, every tier.
     assert.deepEqual([0.1, 0.3, 0.6, 0.9].map(s => W.bar({ wired: false, wifi: true, signal: s, radio: true, offline: false }).tier), [1, 2, 3, 4]);

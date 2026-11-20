@@ -28,39 +28,29 @@
   home.packages =
     with pkgs;
     [
-      # Downloads
       aria2
-      # Security
       _1password-gui
-      # Development
       gh
       rotate-github-key
-      # Other
       nix-output-monitor
-      # Virtualisation
       qemu
       quickemu
-      # Gaming
       mangohud
       vulkan-tools
       mesa-demos
       prismlauncher
-      # Other
       telegram-desktop
       whatsie
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64) [
-      # Gaming
       bottles
       pcsx2
       reshade-linux
       heroic
-      # Path of Exile 2
       exiled-exchange-2
       path-of-building-poe2
       # Wine/Proton preload runtime
       linuwux-runtime
-      # Other
       discord
     ];
 

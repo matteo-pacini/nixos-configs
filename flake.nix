@@ -2,42 +2,21 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # Bleeding-edge nixpkgs master, used only to source a handful of
-    # fast-moving packages (claude-code, opencode) ahead of the
+    # fast-moving packages (claude-code, opencode, herdr) ahead of the
     # nixos-unstable pin. Injected via overlays/shared.nix. Bump with
     # `nix flake update nixpkgs-master`.
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
-    ################
-    # Home Manager #
-    ################
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    ##############
-    # Nix Darwin #
-    ##############
     nix-darwin.url = "github:lnl7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
-    ################
-    # Nix Homebrew #
-    ################
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
-    ##########
-    # Agenix #
-    ##########
     agenix.url = "github:ryantm/agenix";
     agenix.inputs.nixpkgs.follows = "nixpkgs";
-    #########
-    # Disko #
-    #########
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
-    #######
-    # NUR #
-    #######
     nur.url = "github:nix-community/NUR";
     nur.inputs.nixpkgs.follows = "nixpkgs";
-    #################
-    # Homebrew Taps #
-    #################
     homebrew-core = {
       url = "github:homebrew/homebrew-core";
       flake = false;
@@ -46,9 +25,6 @@
       url = "github:homebrew/homebrew-cask";
       flake = false;
     };
-    ###########
-    # Dracula #
-    ###########
     xcode-dracula-theme = {
       url = "github:dracula/xcode";
       flake = false;
@@ -65,25 +41,13 @@
       url = "github:dracula/wallpaper";
       flake = false;
     };
-    ###############
-    # Gnome theme #
-    ###############
     firefox-gnome-theme = {
       url = "github:rafaelmardojai/firefox-gnome-theme";
       flake = false;
     };
-    ################
-    # Mac App Util #
-    ################
     mac-app-util.url = "github:hraban/mac-app-util";
-    #######
-    # nvf #
-    #######
     nvf.url = "github:NotAShelf/nvf";
     nvf.inputs.nixpkgs.follows = "nixpkgs";
-    #####################
-    # nix-index-database #
-    #####################
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     #########
@@ -94,9 +58,6 @@
     comin.inputs.nixpkgs.follows = "nixpkgs";
     # Only used by comin's formatter; following avoids a second nixpkgs in the lock.
     comin.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-    #######
-    # Hex #
-    #######
     hex.url = "github:anomalyco/hex/v3.3.0";
     # Must share the system's glibc: Mesa's Vulkan drivers load into Hex's
     # process, and an older glibc leaves it with no GPU adapter.
@@ -164,9 +125,6 @@
         ];
       };
 
-      ###################
-      # Linux Gaming PC #
-      ###################
       nixosConfigurations."BrightFalls" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {
@@ -223,9 +181,6 @@
           }
         ];
       };
-      #########
-      # Nexus #
-      #########
       nixosConfigurations."Nexus" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {
@@ -312,9 +267,6 @@
           }
         ];
       };
-      ################
-      # Razer Laptop #
-      ################
       nixosConfigurations."CauldronLake" = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {
@@ -362,9 +314,6 @@
           ./hosts/InstallerISO
         ];
       };
-      ######################
-      # Macbook Pro M1 Max #
-      ######################
       darwinConfigurations."NightSprings" = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         specialArgs = {
@@ -418,9 +367,6 @@
           }
         ];
       };
-      ##############
-      # WorkLaptop #
-      ##############
       darwinConfigurations."WorkLaptop" = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         specialArgs = {

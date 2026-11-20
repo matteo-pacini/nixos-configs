@@ -47,8 +47,7 @@ manifest gen1 hypr/a.lua=a1 hypr/b.lua=b1 hypr/c.lua=c1 hypr/d.lua=d1 \
 manifest gen2 hypr/a.lua=a2 hypr/b.lua=b2 hypr/c.lua=c1 hypr/d.lua=d2 \
   quickshell/shell.qml=q2 hypr/new.lua=n2
 
-# ---- activate ----
-# d.lua starts life as a phase-1 Home Manager link into the store; c.lua
+# d.lua starts life as a Home Manager link into the store; c.lua
 # already holds the store content without a recorded hash.
 mkdir -p "$cfg/hypr"
 ln -s /nix/store/00000000000000000000000000000000-home-manager-files/.config/hypr/d.lua "$cfg/hypr/d.lua"
@@ -103,7 +102,6 @@ check "failed file: untouched" q1 "$(cat "$cfg/quickshell/shell.qml")"
 ds "$work/gen2" activate
 check "retry: failed file now updated" "0 desk-sync: quickshell/shell.qml: updated" "$rc $out"
 
-# ---- status ----
 rm "$cfg/hypr/new.lua"
 printf 'a2 edited\n' >"$cfg/hypr/a.lua"
 ds "$work/gen2" status
@@ -121,7 +119,6 @@ check "status -v diffs edited files" "edited           hypr/a.lua
 -a2
 +a2 edited" "$(head -6 <<<"$out")"
 
-# ---- reset ----
 ds "$work/gen2" reset hypr/b.lua
 check "reset one" "0 reset hypr/b.lua
 To apply: hyprctl reload" "$rc $out"
@@ -138,7 +135,6 @@ To apply: nothing for quickshell (it reloads on file change)" "$rc $out"
 ds "$work/gen2" reset hypr/nope.lua
 check "reset outside the manifest" "1 desk-sync: hypr/nope.lua: not in the manifest (see desk-sync status)" "$rc $out"
 
-# ---- pull ----
 repo=$work/repo
 sub=hosts/BrightFalls/users/matteo/hyprland/user
 mkdir -p "$repo/$sub/hypr"
@@ -220,7 +216,6 @@ for args in "" "frobnicate" "status x" "reset" "reset a b" "pull a b"; do
   check "usage: '$args' exits 2" "2 usage:" "$rc $(head -1 <<<"$out" | cut -d' ' -f1)"
 done
 
-# ---- pull: more secret shapes, and what is not one ----
 printf 'a = 1\npassword = "x"\nlocal token: 3\n-----BEGIN RSA PRIVATE KEY-----\n' >"$cfg/hypr/x.lua"
 printf 'id: "%s"\nn: %s\n' "$(printf 'A%.0s' {1..46})" "$(printf '7%.0s' {1..45})" >"$cfg/quickshell/y.qml"
 repo2=$work/repo2
@@ -231,7 +226,6 @@ check "pull: every secret line listed; letters-only and digits-only runs pass" "
 copied quickshell/y.qml
 ?? $sub/" "$rc $out"
 
-# ---- pull against a newer generation, and the scan of changed lines ----
 export HOME="$work/home3"
 mkdir -p "$HOME"
 cfg=$HOME/.config
@@ -267,7 +261,6 @@ desk-sync: not copying quickshell/t.js: line 4 of $cfg/quickshell/t.js looks lik
  M $sub/hypr/f.lua
  M $sub/quickshell/t.js" "$rc $out"
 
-# ---- activation with a live symlink out of the store, or a directory ----
 export HOME="$work/home4"
 mkdir -p "$HOME"
 cfg=$HOME/.config

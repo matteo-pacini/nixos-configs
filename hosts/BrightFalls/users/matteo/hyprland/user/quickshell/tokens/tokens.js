@@ -76,8 +76,6 @@ const FAMILIES = {
 // The page each answer belongs to; the detail page asks with "project".
 const PAGE_OF = { overview: "overview", projects: "projects", project: "detail", days: "days" };
 
-// ---- formatting ----------------------------------------------------------
-
 function pad(n) {
     return n < 10 ? "0" + n : String(n);
 }
@@ -280,8 +278,6 @@ function resets(t) {
     return `resets ${WEEKDAYS[local(t).getDay()]} ${clock(t)}`;
 }
 
-// ---- model families ------------------------------------------------------
-
 // A model id's family: { name, colour }. claude-opus-*, -fable-*, -haiku-*
 // and -sonnet-* by family; any other id is named by itself, in green.
 function family(model) {
@@ -390,8 +386,6 @@ function familyCosts(models) {
     return rows.map(r => ({ name: r.name, colour: r.colour, share: r.share, cost: r.cost }));
 }
 
-// ---- plan limits ---------------------------------------------------------
-
 function window_(w) {
     if (!w || typeof w !== "object")
         return null;
@@ -499,8 +493,6 @@ function limits(text, now) {
         }
     };
 }
-
-// ---- state ---------------------------------------------------------------
 
 function copy(st, changes) {
     return Object.assign({}, st, changes);
@@ -698,8 +690,6 @@ function event(st, line) {
         r = onAnswer(st, ev);
     return Object.assign(r, { took });
 }
-
-// ---- what each page shows ------------------------------------------------
 
 function single(st) {
     if (st.helper === "missing")
@@ -1048,8 +1038,6 @@ function daysView(st) {
     }
     return out;
 }
-
-// ---- keys ----------------------------------------------------------------
 
 function nextPeriod(p) {
     return PERIODS[(PERIODS.indexOf(p) + 1) % PERIODS.length];

@@ -24,9 +24,7 @@
           script = pkgs.writeShellScript "paperless-acl-setup" ''
             set -euo pipefail
             MEDIA_DIR="/diskpool/paperless"
-            # Grant read on existing files, execute on directories
             ${lib.getExe' pkgs.acl "setfacl"} -R -m u:nextcloud:rX "$MEDIA_DIR"
-            # Set default ACL so new files auto-inherit
             ${lib.getExe' pkgs.acl "setfacl"} -R -d -m u:nextcloud:rX "$MEDIA_DIR"
           '';
         in
@@ -52,13 +50,11 @@
       directory = "/diskpool/paperless-export";
     };
 
-    # Database configuration
     database.createLocally = true;
 
     # Consumption directory is public for easy document uploads
     consumptionDirIsPublic = true;
 
-    # OCR and other settings
     settings = {
       PAPERLESS_CONSUMER_IGNORE_PATTERN = [
         ".DS_STORE/*"

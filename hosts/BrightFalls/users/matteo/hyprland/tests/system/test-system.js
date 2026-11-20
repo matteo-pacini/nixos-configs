@@ -30,8 +30,6 @@ function blob(size, format, content, u16s, u32s) {
     return buf;
 }
 
-// ---- gpu_metrics ----
-
 const v13 = {
     4: 51, 6: 63, 8: 70, 10: 44, 12: 45, 14: 46, 16: 97, 18: 33, 22: 255,
     54: 2400, 58: 1000, 72: 1650, 74: 16, 76: 4, 104: 900, 106: 1100, 108: 1350
@@ -120,8 +118,6 @@ t("throttle reasons: only the documented bit ranges count", () => {
     // Bits 8-15, 24-31 and 48-55 are none of them.
     assert.deepEqual(D.throttleReasons(0xff00ff00, 0x00ff0000), []);
 });
-
-// ---- /proc and sysfs ----
 
 const procStat = `cpu  1000 10 500 8000 400 20 30 40 5 0
 cpu0 600 5 300 4000 200 10 15 20 0 0
@@ -217,8 +213,6 @@ t("volumes: header skipped, a repeated target once", () => {
     assert.deepEqual(D.volumes("Mounted on 1B-blocks Used\n"), []);
 });
 
-// ---- PCIe link ----
-
 t("gts and pcieGen for every generation", () => {
     assert.equal(D.gts("16.0 GT/s PCIe"), 16);
     assert.equal(D.gts("2.5 GT/s PCIe"), 2.5);
@@ -256,8 +250,6 @@ t("aerTotal: the TOTAL_ERR counter, 0 when absent", () => {
     assert.equal(D.aerTotal(""), 0);
     assert.equal(D.aerTotal(null), 0);
 });
-
-// ---- LACT ----
 
 const lact = `daemon:
   log_level: info
@@ -320,8 +312,6 @@ t("lactFan: another card's settings do not leak into this one", () => {
     assert.equal(D.lactFan(two, "0000:03:00.0"), "LACT, fixed speed");
 });
 
-// ---- figures ----
-
 t("heat levels at the thresholds", () => {
     assert.equal(D.heat(null, 70, 85), 0);
     assert.equal(D.heat(undefined, 70, 85), 0);
@@ -348,8 +338,6 @@ t("gib, diskPair, rate, ghz", () => {
     assert.equal(D.ghz(4000000), "4");
     assert.equal(D.ghz(5263061, 2), "5.26");
 });
-
-// ---- when a read is due ----
 
 t("a slow source is due 10 s after it was last read, never sooner", () => {
     assert.equal(D.due(0, 5000, "slow"), true, "never read");

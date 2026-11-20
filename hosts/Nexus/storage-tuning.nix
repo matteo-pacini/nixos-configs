@@ -10,7 +10,6 @@
     ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
   '';
 
-  # VM subsystem tuning for a storage server
   boot.kernel.sysctl = {
     "vm.dirty_ratio" = 10;
     "vm.dirty_background_ratio" = 5;
