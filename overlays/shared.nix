@@ -169,9 +169,18 @@
         # 0.1.21 tests take their scratch folder from HC_TEST_TMPDIR, defaulting
         # to /var/tmp, which the sandbox lacks.
         preCheck = old.preCheck + "export HC_TEST_TMPDIR=\"$TMPDIR\"\n";
-        # New in 0.1.21: needs unshare and user namespaces, neither in the sandbox.
+        # Tests new in 0.1.21 that need what the sandbox lacks: unshare and user
+        # namespaces (the noexec installer test), and a login shell at /bin/bash
+        # (the login environment tests).
         checkFlags = old.checkFlags ++ [
           "--skip=the_install_script_installs_when_the_temp_dir_cannot_execute"
+          "--skip=a_login_profile_cannot_block_machine_start_forever"
+          "--skip=failed_login_profile_cleans_up_its_background_child"
+          "--skip=failing_login_profile_falls_back_and_logs_the_shell_and_reason"
+          "--skip=holder_environment_does_not_reload_login_profile"
+          "--skip=login_profile_exit_chatter_preserves_exports"
+          "--skip=login_profile_output_is_bounded_while_it_runs"
+          "--skip=ssh_start_loads_login_exports_once_and_keeps_them_across_restart"
         ];
       }
     );
