@@ -64,7 +64,6 @@ in
         screenshot-sw = "yes";
       };
 
-      # Dolby Vision → SDR tone-map
       dolby-vision = {
         profile-cond = ''p["video-params/colormatrix"]=="dolbyvision"'';
         profile-restore = "copy-equal";

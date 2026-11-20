@@ -1,4 +1,4 @@
-# Sourced by writeShellApplication (hosts/Nexus/services/ssh-ca.nix), which
+# Sourced by writeShellApplication (packages/ssh-mesh-sign.nix), which
 # provides the shebang, `set -euo pipefail`, the runtime PATH and
 # MESH_CA_KEY / MESH_CA_PUB / MESH_PRINCIPALS.
 

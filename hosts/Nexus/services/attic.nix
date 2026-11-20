@@ -20,7 +20,6 @@
   # IP via the router's split DNS.
   networking.hosts."127.0.0.1" = [ "cache.matteopacini.me" ];
 
-  # Substituter + auth for pulling from the private cache
   custom.nix-core.atticCache = {
     enable = true;
     netrcFile = config.age.secrets."nexus/attic-netrc".path;

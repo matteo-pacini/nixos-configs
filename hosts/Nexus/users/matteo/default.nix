@@ -20,7 +20,6 @@
   dracula.bat.enable = true;
 
   home.packages = with pkgs; [
-    # Development
     gh
     rotate-github-key
   ];

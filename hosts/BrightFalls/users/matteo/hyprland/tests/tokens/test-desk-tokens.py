@@ -210,8 +210,6 @@ with open(TEST_PRICES, "w") as f:
         "claude-broken": {"input": 1}}}, f)
 
 
-# --- Pure functions ----------------------------------------------------------
-
 line = rec("msg_p1", "req_p1", "2026-11-17T10:00:00.000Z", uid(1), out=7, inp=2, read=30, w5=4, w1=5)
 r = tok.parse_line(line.encode())
 eq("parse: key", r["key"], "msg_p1:req_p1")
@@ -323,8 +321,6 @@ eq("bounds Auckland: the day DST starts is 23 h", b["days"][i + 1] - b["days"][i
 os.environ["TZ"] = "UTC"
 time.tzset()
 
-# --- The helper: duplicates, partial lines, sub-agents, skipped lines -------
-
 TA = os.path.join(WORK, "tree-a")
 SA = os.path.join(WORK, "state-a")
 KEY = tok.encode(ALPHA)
@@ -431,8 +427,6 @@ eq("schema holds ids, paths, model names and numbers only", tables, {
                 "usd_cache_write_5m", "usd_cache_write_1h", "usd", "stale"],
     "meta": ["key", "value"]})
 
-# --- Shrunk, replaced and deleted files -------------------------------------
-
 TB = os.path.join(WORK, "tree-b")
 KB = tok.encode(REPOS + "/beta")
 b1, b2 = os.path.join(TB, KB, uid(11) + ".jsonl"), os.path.join(TB, KB, uid(12) + ".jsonl")
@@ -465,8 +459,6 @@ con.execute("PRAGMA user_version = 99")
 con.close()
 s, final, h = run(TB, SB)
 eq("schema version mismatch: rebuilt from scratch", s[0]["today"]["output"], 104)
-
-# --- Time zones and days ------------------------------------------------------
 
 TC = os.path.join(WORK, "tree-c")
 KC = tok.encode(REPOS + "/gamma")
@@ -516,8 +508,6 @@ eq("Auckland after local midnight, UTC date behind: today is local",
    (s[0]["bounds"]["today"], s[0]["today"]["output"], s[2]["days"][1]["output"]),
    (epoch("2026-11-16T11:00:00+00:00"), 4, 3))
 
-# --- Distinct sessions across a window ------------------------------------
-
 TD = os.path.join(WORK, "tree-d")
 KD = tok.encode(REPOS + "/delta")
 SD, SE = uid(31), uid(32)
@@ -534,8 +524,6 @@ eq("days: top project", s[2]["days"][0]["top"]["name"], "delta")
 top7 = s[0]["top7"]
 eq("overview: top projects", ([(p["name"], p["output"]) for p in top7["projects"]], top7["more"], top7["output"]),
    ([("delta", 4)], 0, 4))
-
-# --- Active time read in three pieces ----------------------------------------
 
 TE = os.path.join(WORK, "tree-e")
 KE = tok.encode(REPOS + "/eps")
@@ -555,8 +543,6 @@ SEF = os.path.join(WORK, "state-e-fresh")
 pid = one(TE, SEF, {"req": "projects", "period": "today"})["projects"][0]["id"]
 eq("active time, one piece", one(TE, SEF, {"req": "project", "project": pid, "period": "today"})
    ["sessions"][0]["active_seconds"], 1199)
-
-# --- Folds remembered and tried again ----------------------------------------
 
 TG = os.path.join(WORK, "tree-g")
 SG = os.path.join(WORK, "state-g")
@@ -578,8 +564,6 @@ session_file(54, R + "/alpha-gone2", out=5)
 p = one(TG, SG, {"req": "projects", "period": "today"})
 eq("a git fold is kept after the directory goes; name folds tried again",
    sorted((x["name"], x["output"]) for x in p["projects"]), [("alpha", 15), ("beta2", 60)])
-
-# --- Prices through the helper ----------------------------------------------
 
 TH = os.path.join(WORK, "tree-h")
 KH = tok.encode(REPOS + "/eta")
@@ -740,8 +724,6 @@ eq("schema 1 index: now schema 2, the window index replacing the time index",
    (2, ["replies_session", "replies_stale", "replies_window"]))
 con.close()
 
-# --- First run: order, readiness, not ready, SIGTERM ------------------------
-
 TF = os.path.join(WORK, "tree-f")
 KF = tok.encode(REPOS + "/phi")
 now_f = epoch("2026-11-17T12:00:00+00:00")
@@ -802,8 +784,6 @@ i = h.send({"req": "days"})
 rc = h.close()
 eq("EOF: exit 0", rc, 0)
 eq("EOF: the request was answered", any(m.get("answer") == "days" and m.get("id") == i for m in h.seen), True)
-
-# --- Nothing from a transcript's text is printed -----------------------------
 
 for pump in PUMPS:
     pump.join(timeout=30)

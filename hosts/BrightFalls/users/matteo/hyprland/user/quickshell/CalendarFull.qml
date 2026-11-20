@@ -206,7 +206,6 @@ Scope {
                 anchors.fill: parent
             }
 
-            // Month and week.
             Item {
                 id: header
 

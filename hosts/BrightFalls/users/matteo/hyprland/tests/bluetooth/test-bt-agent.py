@@ -195,7 +195,6 @@ async def run(system_address, session_address):
         return {"event": "links", "device": dev, "transports": list(transports),
                 "control": control, "network": network, "calls": calls}
 
-    # ---- start ----
     check("start: links of every device, the hands-free link included",
           [links(DEV_A, [{"uuid": A2DP_SINK, "state": "idle"}], control=True, calls="connected"),
            links(DEV_B)],
@@ -230,7 +229,6 @@ async def run(system_address, session_address):
             agent.send({"id": request["id"], **answer})
         return request, task
 
-    # ---- pairing ----
     request, task = await ask("RequestConfirmation", "ou", [DEV_B, 1234], {"accept": True})
     check("confirmation: the passkey as six digits",
           {"event": "request", "id": 1, "method": "RequestConfirmation", "device": DEV_B,
@@ -282,7 +280,6 @@ async def run(system_address, session_address):
     agent.send("[1, 2]")
     check("JSON that is not an object", {"event": "bad-input", "line": "[1, 2]"}, await agent.event())
 
-    # ---- links and signal strength ----
     await bluez.change(FD_A, "org.bluez.MediaTransport1", {"State": Variant("s", "active")})
     check("transport active",
           links(DEV_A, [{"uuid": A2DP_SINK, "state": "active"}], control=True, calls="connected"),
@@ -301,7 +298,6 @@ async def run(system_address, session_address):
     await bluez.add(DEV_A, {"org.bluez.MediaControl1": {"Connected": Variant("b", False)}})
     check("media control down", links(DEV_A, calls="connected"), await agent.event())
 
-    # ---- calls ----
     await tel.change(TEL_PATH + "/ag0", GATEWAY_TRANSPORT, {"State": Variant("s", "active")})
     check("call audio through this computer", links(DEV_A, calls="active"), await agent.event())
     await tel.add(TEL_PATH + "/ag1", gateway("00:00:5E:00:53:0B", "idle"))
@@ -322,7 +318,6 @@ async def run(system_address, session_address):
         TEL_PATH + "/ag5": gateway("00:00:5E:00:53:0A", "idle")})
     check("telephony service back: read again", links(DEV_A, calls="connected"), await agent.event())
 
-    # ---- release and exit ----
     check("release", ("return", []), await call("Release", "", []))
     check("release told", {"event": "released"}, await agent.event())
     proc.stdin.close()

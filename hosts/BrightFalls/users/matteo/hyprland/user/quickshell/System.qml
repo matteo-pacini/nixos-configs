@@ -407,7 +407,6 @@ Scope {
                 y: 1
                 width: parent.width - 2
 
-                // The machine.
                 Item {
                     width: parent.width
                     height: machine.height + 16
@@ -460,7 +459,6 @@ Scope {
                     }
                 }
 
-                // CPU.
                 Section {
                     name: "cpu"
 
@@ -534,7 +532,6 @@ Scope {
                     }
                 }
 
-                // Memory.
                 Section {
                     name: "mem"
 
@@ -576,7 +573,6 @@ Scope {
                     }
                 }
 
-                // eGPU.
                 Section {
                     id: egpuSection
 
@@ -661,7 +657,6 @@ Scope {
                     }
                 }
 
-                // iGPU.
                 Section {
                     name: "igpu"
 
@@ -706,7 +701,6 @@ Scope {
                     }
                 }
 
-                // Storage and network.
                 Section {
                     name: "storage"
 

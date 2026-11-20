@@ -391,7 +391,7 @@ what a check catches if one is forgotten; nothing catches the rest.
   rows. Caught: calls to a missing target, misspelt members (lint).
 - **Removing one**: the same. Lint fails while a bind names it, evaluation
   while `tests/default.nix` does. The live files stay: delete them by hand.
-- **Bar item** (`Bar.qml:504-564`): the item, its look from the `.js`
+- **Bar item** (`Bar.qml:503-562`): the item, its look from the `.js`
   (`limits().bar`) and a test, README's Bar sentence, and an entry under
   "Nothing runs while hidden" if it runs while closed. Caught: names.
 - **Helper** (`desk-tokens`): `.py` with its docstring, `.nix`,

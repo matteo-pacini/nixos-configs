@@ -1,7 +1,5 @@
 { pkgs, ... }:
 {
-  # Basic virtualization support (no GPU passthrough)
-
   virtualisation.spiceUSBRedirection.enable = true;
 
   users.extraUsers.matteo.extraGroups = [

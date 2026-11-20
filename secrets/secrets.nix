@@ -7,7 +7,6 @@
 #   cd secrets && agenix --rekey -i /path/to/valid/identity
 
 let
-  # Host SSH public keys (used directly by age for encryption)
   inherit (import ../lib/ssh-mesh.nix) hosts;
   nexus = hosts.Nexus.hostKey;
   worklaptop = hosts.WorkLaptop.hostKey;
@@ -16,7 +15,6 @@ let
   cauldronlake = hosts.CauldronLake.hostKey;
 in
 {
-  # Nexus disk encryption secrets
   "nexus/disk0.age".publicKeys = [ nexus ];
   "nexus/disk1.age".publicKeys = [ nexus ];
   "nexus/disk2.age".publicKeys = [ nexus ];
@@ -28,7 +26,6 @@ in
   "nexus/disk8.age".publicKeys = [ nexus ];
   "nexus/disk9.age".publicKeys = [ nexus ];
 
-  # Nexus service secrets
   "nexus/attic-env.age".publicKeys = [ nexus ];
   "nexus/attic-netrc.age".publicKeys = [ nexus ];
   # Telegram bot; also used by the comin deploy hook on BrightFalls/NightSprings/CauldronLake.
@@ -50,10 +47,8 @@ in
   "nexus/fuel-finder-station.age".publicKeys = [ nexus ];
   "nexus/ssh-mesh-ca.age".publicKeys = [ nexus ];
 
-  # WorkLaptop service secrets
   "worklaptop/attic-netrc.age".publicKeys = [ worklaptop ];
 
-  # BrightFalls service secrets
   "brightfalls/attic-netrc.age".publicKeys = [ brightfalls ];
   # CalDAV base URL, user and app password for the read-only calendar sync.
   "brightfalls/caldav-url.age".publicKeys = [ brightfalls ];
@@ -62,10 +57,8 @@ in
   # MQTT broker and Zigbee2MQTT device names for the office panel's desk-mqtt.
   "brightfalls/office-mqtt.age".publicKeys = [ brightfalls ];
 
-  # NightSprings service secrets
   "nightsprings/attic-netrc.age".publicKeys = [ nightsprings ];
 
-  # Shared service secrets (decryptable by multiple hosts)
   "shared/openrouter.env.age".publicKeys = [
     brightfalls
     nexus

@@ -1,4 +1,4 @@
-# The terminal labels the workbench mods draw (agent.model, agent.context,
+# The terminal labels the workbench mods draw (agent.model, agent.ctx,
 # agent.ask, ...), set from inside each agent: Claude Code's statusLine and
 # hooks, Codex's hooks, opencode's plugin. Mods read them from `terminals()`.
 {

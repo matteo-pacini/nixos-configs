@@ -47,7 +47,6 @@ Singleton {
         return true;
     }
 
-    // One line from the helper.
     function handle(line: string): void {
         let ev;
         try {

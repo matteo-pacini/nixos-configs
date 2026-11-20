@@ -15,14 +15,10 @@
   home.homeDirectory = "/Users/matteo.pacini";
 
   home.packages = with pkgs; [
-    # Basic utilities
     coreutils
-    # Extra
     tree
-    # Development
     gh
     rotate-github-key
-    # Window Management
     loopwm
   ];
 

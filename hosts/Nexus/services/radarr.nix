@@ -13,7 +13,6 @@
     openFirewall = false; # tailnet + trusted-device rule in ../networking.nix
   };
 
-  # Radarr requires PostgreSQL to be running
   systemd.services.radarr = {
     requires = [ "postgresql.service" ];
     after = [ "postgresql.service" ];

@@ -10,19 +10,14 @@
   home.homeDirectory = "/Users/matteo";
 
   home.packages = with pkgs; [
-    # Basic utilities
     coreutils
     rsync
-    # Extra
     tree
     yt-dlp
     mosh
-    # Encription
     age
-    # Development
     gh
     rotate-github-key
-    # Window Management
     loopwm
   ];
   custom.nvf.enable = true;

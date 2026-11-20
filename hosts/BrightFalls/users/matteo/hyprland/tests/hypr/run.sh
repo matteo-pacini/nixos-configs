@@ -75,7 +75,6 @@ if [ "$mode" = verify ]; then
   exit "$failed"
 fi
 
-# ---- theme.lua ----
 cat >"$work/print.lua" <<'LUA'
 local t = dofile(arg[1])
 local keys = {}

@@ -133,8 +133,6 @@ HOST_ACTIONS = ("switch", "boot", "mode", "reboot", "diff", "ssh")
 LOCK = threading.Lock()
 
 
-# ---- the state model: pure, no I/O ----
-
 def iso(dt):
     return dt.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
@@ -626,8 +624,6 @@ def check_command(row, cmd):
     return None
 
 
-# ---- effects ----
-
 def emit(**obj):
     with LOCK:
         sys.stdout.write(json.dumps(obj) + "\n")
@@ -789,8 +785,6 @@ class Fleet:
         self.refresh_asked = True
         self.mu = threading.Lock()
 
-    # -- probing --
-
     def row(self, label):
         with self.mu:
             probe, gh, following = self.probes.get(label), self.github, label in self.follow
@@ -893,8 +887,6 @@ class Fleet:
         while True:
             self.tick()
             time.sleep(1)
-
-    # -- commands --
 
     def command(self, msg):
         cid = msg.get("id")

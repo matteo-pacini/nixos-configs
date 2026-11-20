@@ -193,7 +193,6 @@ Item {
         scale: root.width / 392
         transformOrigin: Item.TopLeft
 
-        // The mini PC.
         Box {
             bx: 10
             by: 44
@@ -287,7 +286,6 @@ Item {
             text: "UM890 PRO"
         }
 
-        // The cable.
         Shape {
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
@@ -321,7 +319,6 @@ Item {
             font.pixelSize: 7
         }
 
-        // The dock and the card.
         Item {
             anchors.fill: parent
             opacity: root.egpu ? 1 : 0.35

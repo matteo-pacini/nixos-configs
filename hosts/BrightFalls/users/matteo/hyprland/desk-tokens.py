@@ -160,9 +160,6 @@ class Terminated(Exception):
     pass
 
 
-# Time
-
-
 def parse_time(text):
     """Epoch seconds of an ISO 8601 time with a zone ("...Z" included), or
     None."""
@@ -191,9 +188,6 @@ def bounds(now):
     for period, back in DAYS_BACK.items():
         b[period] = local_midnight(today - timedelta(days=back))
     return b
-
-
-# Transcripts
 
 
 def count(value):
@@ -327,9 +321,6 @@ def period_cuts(plan, b):
     return {p: sum(1 for e in plan if e[4] >= b[p]) for p in PERIODS}
 
 
-# Folding: a working directory to its project
-
-
 TEMP = re.compile(r"/tmp/tmp\.[^/]+(/|$)")
 SCRATCH = re.compile(r"/tmp/claude-\d+/([^/]+)")
 CLAUDE_WORKTREES = "/.claude/worktrees/"
@@ -444,9 +435,6 @@ def fold_pass(conn):
                      (pid, how, int(final), i))
 
 
-# Index
-
-
 def open_index(state):
     """The index at <state>/index.sqlite. A schema-1 index (no costs) gains the
     cost columns in place, every reply marked for pricing; any other version
@@ -480,9 +468,6 @@ def connect(path):
     conn = sqlite3.connect(path, isolation_level=None)
     conn.execute("PRAGMA synchronous = NORMAL")
     return conn
-
-
-# Queries and the pure aggregates behind the answers
 
 
 def window(conn, start, end, by_type=False):
@@ -854,9 +839,6 @@ def load_prices(path):
         models[name] = base
     text = {k: data.get(k) if isinstance(data.get(k), str) else None for k in ("source", "checked")}
     return {"source": text["source"], "checked": text["checked"], "models": models}
-
-
-# The process
 
 
 class Out:

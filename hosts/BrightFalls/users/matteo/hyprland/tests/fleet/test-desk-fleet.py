@@ -231,7 +231,6 @@ def model_tests():
     expect("reboot kernel", r, "reboot-kernel", keys=["mode", "reboot", "ssh"],
            has=[("boot", "same system · new kernel")])
 
-    # The cases that used to read wrong.
     r = row(probe_text(status(base, gens=[g_a], builder=g_a, main=C1), X, booted=A, profile_ago=60),
             github={**GH, "deploy": C1})
     expect("hand build, nothing held", r, "by-hand", keys=["diff", "mode", "reboot", "ssh"], runs="hand",
@@ -311,7 +310,6 @@ def model_tests():
             github={**GH, "deploy": C1})
     expect("no comin-deploy", r, "up-to-date", keys=["reboot", "ssh"])
 
-    # The real probes.
     def real(name, host):
         with open(os.path.join(FIXTURES, name)) as fh:
             return fleet.host_row(host, {"ok": True, "text": fh.read()},
@@ -327,7 +325,6 @@ def model_tests():
     r = real("nightsprings.probe", MAC)
     expect("real nightsprings", r, "up-to-date", keys=["mode", "ssh"], runs="deploy", lacks=["boot"])
 
-    # The command gate.
     pend = row(probe_text(status(base, gens=[g_a, g_b], builder=g_b, held=g_b["uuid"]), A, profile_ago=6000))
     def gate(r, cmd):
         """The refusal reason, or None if allowed."""
@@ -342,8 +339,6 @@ def model_tests():
     check("gate nothing to switch", gate(up, {"cmd": "switch", "host": "Nexus"}) == "not-allowed")
     check("gate unknown command", gate(up, {"cmd": "rm", "host": "Nexus"}) == "unknown-command")
 
-
-# ---- the built helper with fakes ----
 
 def write_exe(path, text):
     with open(path, "w") as fh:

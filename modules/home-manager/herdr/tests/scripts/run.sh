@@ -59,7 +59,6 @@ check "codex-labels: no transcript clears what it can't read" "$(printf '%s\n' l
 (unset HC_TERMINAL_ID; run codex-labels.sh <<<"$(hook "$work/rollout.jsonl")")
 check "codex-labels: outside herdr, labels nothing" "" "$(cat "$HC_LOG")"
 
-# ---- agent-ask.sh ----
 ask() { # event tool tool_input-json
   : >"$HC_LOG"
   jq -nc --arg e "$1" --arg t "$2" --argjson i "$3" '{hook_event_name: $e, tool_name: $t, tool_input: $i}' |

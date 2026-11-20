@@ -12,14 +12,10 @@
   home.homeDirectory = "/home/debora";
 
   home.packages = with pkgs; [
-    #Gnome
     gnomeExtensions.appindicator
     gnome-tweaks
-    # Browsers
     chromium
-    # Security
     _1password-gui
-    # Gaming
     mangohud
     vulkan-tools
     mesa-demos

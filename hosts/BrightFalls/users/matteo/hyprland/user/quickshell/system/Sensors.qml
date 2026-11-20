@@ -328,7 +328,6 @@ Singleton {
             locked = [];
         }
 
-        // CPU.
         const im = D.metrics(bytes("igpuMetrics"));
         out.cpuTemp = milli("cpuTemp");
         out.cpuHottest = im && im.coreTemps.length ? Math.max(...im.coreTemps) : null;
@@ -359,7 +358,6 @@ Singleton {
         out.epp = str("epp");
         out.loadavg = str("loadavg").split(/\s+/).slice(0, 3).join(" · ");
 
-        // Memory.
         if (raw.meminfo) {
             const mi = D.meminfo(raw.meminfo);
             out.memTotal = mi.MemTotal ?? null;
@@ -375,7 +373,6 @@ Singleton {
         out.dimmWarm = milli("dimmMax0") ?? 55;
         out.dimmHot = milli("dimmCrit0") !== null ? milli("dimmCrit0") - 10 : 75;
 
-        // eGPU.
         const e = t.egpu ?? null;
         out.egpuPresent = e !== null;
         out.egpuAwake = egpuAwake;
@@ -427,7 +424,6 @@ Singleton {
         const lactRow = locked.find(r => r && r.id === "lact");
         out.lactFile = lact !== "" && lactRow ? String(lactRow.file ?? "") : "";
 
-        // iGPU.
         out.igpuPresent = !!t.igpu;
         // The APU's model name names its graphics: "... w/ Radeon 780M Graphics".
         out.igpuName = str("cpuinfo").match(/^model name\s*:.*w\/\s*(.+?)(?:\s+Graphics)?$/m)?.[1] ?? "";
@@ -439,7 +435,6 @@ Singleton {
         out.igpuVolt = num("igpuVolt") === null ? null : num("igpuVolt") / 1000;
         out.igpuVoltNb = num("igpuVoltNb") === null ? null : num("igpuVoltNb") / 1000;
 
-        // Storage and network.
         out.nvmeTemp = milli("nvmeTemp");
         out.nvmeHot = milli("nvmeMax") ?? 80;
         out.nvmeWarm = out.nvmeHot - 10;

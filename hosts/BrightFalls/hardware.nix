@@ -49,12 +49,10 @@
       '')
     ];
     outputs."DP-1" = {
-      # ASUS ROG PG278QR
       edid = "pg278qr.bin";
       mode = "e";
     };
     outputs."DP-2" = {
-      # Dell U2719D
       edid = "u2719d.bin";
       mode = "e";
     };

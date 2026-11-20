@@ -318,7 +318,6 @@ Scope {
                     ]
                 }
 
-                // This computer.
                 Rectangle {
                     visible: root.v.well !== null
                     x: 12

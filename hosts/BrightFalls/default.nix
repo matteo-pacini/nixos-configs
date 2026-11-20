@@ -36,14 +36,12 @@
       "matteo"
       "root"
     ];
-    # Substituter + auth for pulling from the private attic cache
     atticCache = {
       enable = true;
       netrcFile = config.age.secrets."brightfalls/attic-netrc".path;
     };
   };
 
-  # Boot loader
   boot.loader.systemd-boot = {
     enable = true;
     editor = false; # no console kernel-cmdline editing
@@ -54,8 +52,6 @@
   boot.loader.timeout = 30;
   # /tmp is on the root disk, not tmpfs; tmpfiles' 10d age rule alone lets it grow to 20G+.
   boot.tmp.cleanOnBoot = true;
-
-  # System Packages
 
   environment.systemPackages = with pkgs; [
     sshfs

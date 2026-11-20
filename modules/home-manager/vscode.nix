@@ -29,7 +29,6 @@ in
             (
               with vscext;
               [
-                # Editor
                 editorconfig.editorconfig
                 mhutchie.git-graph
                 usernamehw.errorlens
@@ -54,27 +53,17 @@ in
                     license = lib.licenses.mit;
                   };
                 })
-                # Live share
                 ms-vsliveshare.vsliveshare
-                # Nix
                 jnoortheen.nix-ide
-                # Go
                 golang.go
-                # Shell
                 timonwong.shellcheck
-                # Toml
                 tamasfe.even-better-toml
-                # Yaml
                 redhat.vscode-yaml
-                # Copilot
                 github.copilot
                 github.copilot-chat
-                # JS/TS
                 esbenp.prettier-vscode
                 dbaeumer.vscode-eslint
-                # GHA
                 github.vscode-github-actions
-                # Python
                 charliermarsh.ruff
                 ms-python.python
                 ms-python.vscode-pylance
@@ -119,7 +108,6 @@ in
               "editor.detectIndentation" = true;
               "editor.formatOnSave" = true;
             };
-            # Telemetry
             "telemetry.telemetryLevel" = "off";
             "redhat.telemetry.enabled" = false;
           };

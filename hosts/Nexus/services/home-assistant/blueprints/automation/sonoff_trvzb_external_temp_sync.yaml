@@ -61,11 +61,9 @@ variables:
   _friendly_name: >-
     {{ device_attr(_trv_device, 'name') | default('', true) }}
 
-  # Final MQTT topic: base/friendly_name/set
   _mqtt_topic: >-
     {{ _base_topic ~ '/' ~ _friendly_name ~ '/set' }}
 
-  # The TRV's own "temperature sensor select" entity
   _select_entity: >-
     {{ device_entities(_trv_device)
        | select('match', '^select\..*_temperature_sensor_select$')
@@ -82,7 +80,6 @@ trigger:
   - platform: time_pattern
     minutes: "/30"
 
-# Only publish a number from a live sensor, to a non-empty friendly name
 condition:
   - condition: template
     value_template: >-
@@ -113,7 +110,6 @@ action:
           payload: >-
             {{ {'temperature_sensor_select': 'remote_temperature'} | tojson }}
 
-  # Publish the external temperature value
   - service: mqtt.publish
     data:
       topic: "{{ _mqtt_topic }}"

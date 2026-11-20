@@ -65,13 +65,11 @@ condition: []
 action:
   - repeat:
       sequence:
-        # Matteo's Pixel 9 Pro Fold
         - service: notify.mobile_app_pixel_9_pro_fold
           data:
             title: "Warning"
             message: "{{ door_name }} is open"
 
-        # Debora's iPhone
         - service: notify.mobile_app_iphone_15_di_debora
           data:
             title: "Warning"

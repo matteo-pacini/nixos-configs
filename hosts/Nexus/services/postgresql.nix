@@ -5,12 +5,10 @@ let
 
     echo "Setting up Radarr/Sonarr PostgreSQL database ownership..."
 
-    # Set ownership for Radarr databases
     sudo -u postgres psql -c 'ALTER DATABASE "radarr-main" OWNER TO radarr;'
     sudo -u postgres psql -c 'ALTER DATABASE "radarr-log" OWNER TO radarr;'
     echo "✓ Radarr databases ownership set"
 
-    # Set ownership for Sonarr databases
     sudo -u postgres psql -c 'ALTER DATABASE "sonarr-main" OWNER TO sonarr;'
     sudo -u postgres psql -c 'ALTER DATABASE "sonarr-log" OWNER TO sonarr;'
     echo "✓ Sonarr databases ownership set"
@@ -29,10 +27,8 @@ in
       "atticd"
       "hass"
       "nextcloud"
-      # Radarr databases (main + log)
       "radarr-main"
       "radarr-log"
-      # Sonarr databases (main + log)
       "sonarr-main"
       "sonarr-log"
       "grafana"

@@ -66,7 +66,6 @@ in
         "${pkgs.fira-sans}/share/fonts/opentype/FiraSans-Regular.otf";
       "mpv/fonts/FiraSans-Bold.otf".source = "${pkgs.fira-sans}/share/fonts/opentype/FiraSans-Bold.otf";
 
-      # Right-click context menu definition
       "mpv/menu.conf".source = ./assets/menu.conf;
     };
   };

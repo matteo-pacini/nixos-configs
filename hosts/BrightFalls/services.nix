@@ -53,7 +53,6 @@ in
     host = "BrightFalls";
   };
 
-  # SSH server with passwordless access on local subnet for debugging
   services.openssh = {
     openFirewall = true;
     enable = true;
@@ -67,11 +66,8 @@ in
     ports = [ 1788 ];
   };
 
-  # Allow passwordless SSH from local subnet
   users.users.matteo.openssh.authorizedKeys.keys = [
-    # NightSprings (MacBook Pro M1 Max)
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQiM93t9mXjpqdtY12ohNAELZNg1SOdE47bWNRb4HC0 matteo@NightSprings"
-    # Pixel
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINm/ozPgRTmYmOVgkdNOw2deEOzBjoA4gGWLjWzrEC+u Pixel"
   ];
 

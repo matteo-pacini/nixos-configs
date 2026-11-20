@@ -330,7 +330,6 @@ Scope {
                         hovered: clockArea.containsMouse
                     }
 
-                    // Marks the item whose panel is open.
                     Rectangle {
                         visible: clock.panelOpen
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -516,7 +515,6 @@ Scope {
                             hovered: tokensArea.containsMouse
                         }
 
-                        // Marks the item whose panel is open.
                         Rectangle {
                             visible: tokens.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -580,7 +578,6 @@ Scope {
                             hovered: fleetArea.containsMouse
                         }
 
-                        // Marks the item whose panel is open.
                         Rectangle {
                             visible: fleet.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -640,7 +637,6 @@ Scope {
                             hovered: officeArea.containsMouse
                         }
 
-                        // Marks the item whose panel is open.
                         Rectangle {
                             visible: office.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -704,7 +700,6 @@ Scope {
                             hovered: systemArea.containsMouse
                         }
 
-                        // Marks the item whose panel is open.
                         Rectangle {
                             visible: system.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -777,7 +772,6 @@ Scope {
                             hovered: bluetoothArea.containsMouse
                         }
 
-                        // Marks the item whose panel is open.
                         Rectangle {
                             visible: bluetooth.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -845,7 +839,6 @@ Scope {
                             color: tailscale.shown.colour === "purple" ? Theme.purple : tailscale.shown.colour === "orange" ? Theme.orange : tailscale.shown.colour === "dim" ? Theme.comment : Theme.foreground
                         }
 
-                        // Marks the icon whose panel is open.
                         Rectangle {
                             visible: tailscale.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -908,7 +901,6 @@ Scope {
                             }
                         }
 
-                        // Marks the icon whose panel is open.
                         Rectangle {
                             visible: network.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -952,7 +944,6 @@ Scope {
                             hovered: audioArea.containsMouse
                         }
 
-                        // Marks the item whose panel is open.
                         Rectangle {
                             visible: audio.panelOpen
                             anchors.horizontalCenter: parent.horizontalCenter

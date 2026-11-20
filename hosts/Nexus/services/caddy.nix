@@ -3,7 +3,6 @@ let
   # n8n's podman network — see the file for why this is not a literal.
   podmanSubnet = import ./n8n/bridge-subnet.nix;
 
-  # Security headers applied to all virtual hosts
   securityHeaders = ''
     header {
       -Server  # Hide Caddy version (security hardening)
@@ -52,10 +51,8 @@ in
       acme_dns route53
     '';
 
-    # Email for Let's Encrypt ACME registration
     email = "m+acme@matteopacini.me";
 
-    # Virtual hosts
     virtualHosts = {
       "jellyfin.matteopacini.me" = {
         logFormat = ''
@@ -72,8 +69,6 @@ in
             max_size 10MB
           }
 
-          # Reverse proxy to Jellyfin
-          # WebSocket support is automatic
           reverse_proxy 127.0.0.1:8096
         '';
       };
@@ -109,9 +104,6 @@ in
             max_size 16MB
           }
 
-          # Reverse proxy to n8n
-          # WebSocket support is automatic
-          # All proxy headers set automatically
           reverse_proxy 127.0.0.1:5678
         '';
       };
@@ -131,7 +123,6 @@ in
             max_size 16GB
           }
 
-          # Reverse proxy to Nextcloud's internal nginx
           reverse_proxy 127.0.0.1:8085
         '';
       };
@@ -156,7 +147,6 @@ in
             max_size 8GB
           }
 
-          # Reverse proxy to atticd
           reverse_proxy 127.0.0.1:8080
         '';
       };
@@ -176,9 +166,6 @@ in
             max_size 50MB
           }
 
-          # Reverse proxy to Home Assistant
-          # WebSocket support is automatic
-          # Long-lived connections handled automatically
           reverse_proxy 127.0.0.1:8123
         '';
       };

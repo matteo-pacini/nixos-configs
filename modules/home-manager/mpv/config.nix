@@ -24,7 +24,6 @@ in
 {
   config = lib.mkIf cfg.enable {
     programs.mpv.config = lib.mkMerge [
-      # Window + OSD
       {
         keep-open = "yes";
         keep-open-pause = "no";
@@ -48,7 +47,6 @@ in
         osd-selected-outline-color = "#282A36";
       }
 
-      # GPU video output (platform-specific)
       videoOutput
 
       {
@@ -57,7 +55,6 @@ in
         target-colorspace-hint-mode = "source";
       }
 
-      # Scalers
       {
         scale = "ewa_lanczossharp";
         cscale = "ewa_lanczossharp";
@@ -68,14 +65,12 @@ in
         sigmoid-upscaling = "yes";
       }
 
-      # Dither / debanding
       {
         dither-depth = 8;
         dither = "fruit";
         deband = "no";
       }
 
-      # Screenshots
       {
         screenshot-format = "png";
         screenshot-sw = "no";
@@ -86,7 +81,6 @@ in
         screenshot-template = "%f_H%wH_M%wM_S%wS_MS.%wT_F%{estimated-frame-number}";
       }
 
-      # Subtitles
       {
         sub-auto = "fuzzy";
         sub-font = "Gandhi Sans";

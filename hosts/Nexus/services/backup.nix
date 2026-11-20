@@ -39,8 +39,6 @@ let
   ];
   fullComposeTargetName = shortName: "podman-compose-${shortName}-root.target";
 
-  # ── Restic shared configuration ──────────────────────────────────────
-
   b2Endpoint = "s3:s3.eu-central-003.backblazeb2.com";
 
   b2ExtraOptions = [ "s3.connections=10" ];
@@ -99,8 +97,6 @@ let
     "--keep-yearly 10"
   ];
 
-  # ── Wrapper script for interactive restic queries ────────────────────
-
   restic-b2 = pkgs.writeShellScriptBin "restic-b2" ''
     set -euo pipefail
 
@@ -139,27 +135,20 @@ let
     exec ${pkgs.restic}/bin/restic "$@"
   '';
 
-  # ── Local backup jobs (rsync + SnapRAID) ─────────────────────────────
-
   haBackupJob = pkgs.writeShellScriptBin "haBackupJob_4" ''
     set -eo pipefail
     export TELEGRAM_ENV_FILE="${envFile}"
 
     ${notify} "Home Assistant services will go down for backup in 60 seconds..."
 
-    # Wait
     sleep 60
 
-    # Stop HA services
     ${lib.concatMapStringsSep "\n" (service: "systemctl stop ${service}") haServices}
 
     RSYNC_CMD="${pkgs.rsync}/bin/rsync -avh --delete"
 
-    # zigbee2mqtt
     ''${RSYNC_CMD} ${config.services.zigbee2mqtt.dataDir} ${backupDestination}/
-    # mosquitto
     ''${RSYNC_CMD} ${config.services.mosquitto.dataDir} ${backupDestination}/
-    # home-assistant
     ''${RSYNC_CMD} ${config.services.home-assistant.configDir} ${backupDestination}/
     # victoriametrics (long-term metrics archive; DynamicUser StateDirectory)
     ''${RSYNC_CMD} /var/lib/victoriametrics ${backupDestination}/
@@ -168,7 +157,6 @@ let
     # Does not need to be stopped, just backed up
     ''${RSYNC_CMD} ${config.services.postgresqlBackup.location} ${backupDestination}/
 
-    # Restart HA services
     ${lib.concatMapStringsSep "\n" (service: "systemctl start ${service}") haServices}
 
     ${notify} "Home Assistant services back online, starting full backup..."
@@ -190,13 +178,10 @@ let
 
     ${notify} "Remaining Nexus services will go down for maintenance in 60 seconds..."
 
-    # Wait
     sleep 60
 
-    # Stop all services
     ${lib.concatMapStringsSep "\n" (service: "systemctl stop ${service}") affectedServices}
 
-    # Stop all compose targets
     ${lib.concatMapStringsSep "\n" (
       service: "systemctl stop ${fullComposeTargetName service}"
     ) affectedComposeTargets}
@@ -212,15 +197,10 @@ let
 
     RSYNC_CMD="${pkgs.rsync}/bin/rsync -avh --delete"
 
-    # Jellyfin
     ''${RSYNC_CMD} ${config.services.jellyfin.dataDir} ${backupDestination}/
-    # NZBGet
     ''${RSYNC_CMD} /var/lib/nzbget ${backupDestination}/
-    # nzbhydra2
     ''${RSYNC_CMD} ${config.services.nzbhydra2.dataDir} ${backupDestination}/
-    # radarr
     ''${RSYNC_CMD} ${config.services.radarr.dataDir} ${backupDestination}/
-    # sonarr
     ''${RSYNC_CMD} ${config.services.sonarr.dataDir} ${backupDestination}/
     # bazarr (provider credentials live in its UI-managed config)
     ''${RSYNC_CMD} ${config.services.bazarr.dataDir} ${backupDestination}/
@@ -229,12 +209,9 @@ let
     mkdir -p ${backupDestination}/paperless
     ''${RSYNC_CMD} ${config.services.paperless.dataDir}/ ${backupDestination}/paperless/data/
     ''${RSYNC_CMD} ${config.services.paperless.mediaDir}/ ${backupDestination}/paperless/media/
-    # n8n - application data
     ''${RSYNC_CMD} /var/lib/n8n ${backupDestination}/
-    # nextcloud
     ''${RSYNC_CMD} /diskpool/nextcloud ${backupDestination}/
 
-    # Sync SnapRAID
     ${pkgs.snapraid}/bin/snapraid --force-zero sync
 
     ${notify} "Nexus is fully back online."
@@ -273,7 +250,6 @@ in
       };
     };
 
-    # Ensure restic B2 backups run after the local backup pipeline
     "restic-backups-config".after = [ "backup-job.service" ];
     "restic-backups-matteo".after = [ "backup-job.service" ];
     "restic-backups-debora".after = [ "backup-job.service" ];

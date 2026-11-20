@@ -19,8 +19,6 @@ const IGNORED_EFFECTS = [
     NTSCCustom.fx # RSRetroArch: error X3511, unable to unroll loop
 ]
 
-# --- output helpers ----------------------------------------------------------
-
 def header [text: string] {
     print $"\n(ansi magenta_bold)▌ ($text)(ansi reset)"
 }
@@ -37,8 +35,6 @@ def confirm [question: string, --default-no] {
     let choices = if $default_no { [No Yes] } else { [Yes No] }
     ($choices | input list $"(ansi white_bold)($question)(ansi reset)") == "Yes"
 }
-
-# --- paths & state -----------------------------------------------------------
 
 def main-path [] {
     let xdg = $env.XDG_DATA_HOME? | default ($env.HOME | path join .local share)
@@ -67,8 +63,6 @@ def shader-repos [] {
         { url: $parts.0, name: ($parts | get 1? | default ($parts.0 | path basename)), branch: ($parts | get 2? | default "") }
     }
 }
-
-# --- ReShade + d3dcompiler ---------------------------------------------------
 
 # Copy (not link) from the store: game symlinks into /nix/store would dangle
 # after the next garbage collection.
@@ -99,8 +93,6 @@ def sync-runtime [] {
         }
     }
 }
-
-# --- shaders -----------------------------------------------------------------
 
 def update-repos [--force] {
     let main = main-path
@@ -250,8 +242,6 @@ def refresh [--force] {
     ensure-ini
 }
 
-# --- game discovery ----------------------------------------------------------
-
 def steam-root [] {
     [~/.local/share/Steam ~/.steam/steam ~/.var/app/com.valvesoftware.Steam/.local/share/Steam]
         | path expand | where { path join steamapps | path exists } | get 0?
@@ -318,8 +308,6 @@ def pick-game [] {
     let full = $dir | path join $exe
     { dir: ($full | path dirname), exe: $full, arch: (pe-arch $full), name: (if ($choice.dir | is-empty) { $exe } else { $choice.name }), appid: $choice.appid }
 }
-
-# --- install / uninstall -----------------------------------------------------
 
 # Symlink, refusing to clobber a real file the game shipped with.
 def place-link [target: string, link: string] {
@@ -424,8 +412,6 @@ def "main uninstall" [
     save-installs ($installs | where dir != $dir)
     warn "Remove WINEDLLOVERRIDES from the game's launch options."
 }
-
-# --- commands ----------------------------------------------------------------
 
 # ReShade for Wine / Proton games. Run without arguments for the menu.
 def main [] {

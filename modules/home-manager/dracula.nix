@@ -35,9 +35,6 @@ in
     })
     (lib.mkIf cfg.eza.enable {
       programs.zsh.initContent = ''
-        #### ------------------------------
-        #### eza - Color Scheme Definitions
-        #### ------------------------------
         export EZA_COLORS="\
         di=1;38;2;189;147;249:\
         ln=38;2;139;233;253:\

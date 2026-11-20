@@ -62,7 +62,6 @@ in
           run install -m 644 "${settingsFile}" "$HOME/.claude/settings.json"
         '';
 
-      # Vendored global instruction doc for Claude Code.
       home.file.".claude/CLAUDE.md".source = ./claude-code/CLAUDE.md;
     })
 

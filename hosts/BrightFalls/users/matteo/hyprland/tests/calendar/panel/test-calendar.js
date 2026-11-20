@@ -17,14 +17,12 @@ const names = (cals) => cals.map((c) => c.name);
 assert.strictEqual(D("2026-01-15").getTimezoneOffset(), 0, "January is at UTC: run with TZ=Europe/London");
 assert.strictEqual(D("2026-07-15").getTimezoneOffset(), -60, "July is an hour ahead of UTC: run with TZ=Europe/London");
 
-// Header and parse.
 assert.deepStrictEqual(names(data.calendars), ["Work", "Home", "Family", "Sport"]);
 assert.strictEqual(q.ymd(data.first), "2026-08-01");
 assert.strictEqual(q.ymd(data.last), "2027-11-30");
 assert.strictEqual(q.parse("not json\n[]"), null);
 assert.strictEqual(q.parse(""), null);
 
-// Window.
 assert.strictEqual(q.inWindow(data, D("2026-07-31")), false);
 assert.strictEqual(q.inWindow(data, D("2026-08-01")), true);
 assert.strictEqual(q.inWindow(data, D("2027-11-30")), true);
@@ -53,7 +51,6 @@ assert.deepStrictEqual(brief("2026-11-26"), [], "cancelled hidden");
 assert.deepStrictEqual(brief("2026-12-25"), ["FX holiday", "FX lunch"], "all-day first");
 assert.deepStrictEqual(brief("2026-11-28"), ["FX night run"], "crossing midnight is on the next day too");
 
-// Rows.
 const now = D("2026-11-15 09:53");
 const r = (s, i, at) => q.row(q.dayEvents(data, D(s))[i], D(s), at || now);
 assert.deepStrictEqual(r("2026-11-15", 0), { time: "08:30 – 09:00", sub: "Home", over: true, tzUnknown: false });
@@ -110,7 +107,6 @@ assert.deepStrictEqual(q.monthGrid(2026, 10).map((w) => w.week), [44, 45, 46, 47
 assert.deepStrictEqual(q.monthGrid(2027, 1).map((w) => w.week), [5, 6, 7, 8], "February 2027 starts on a Monday");
 assert.strictEqual(q.weekday(D("2026-11-15")), 6);
 
-// Text.
 assert.strictEqual(q.longDate(D("2026-11-15")), "Sunday 15 November");
 assert.strictEqual(q.monthTitle(2026, 10), "November 2026");
 assert.strictEqual(q.dayLine(3, D("2026-11-15"), D("2026-11-15")), "3 events");
@@ -127,13 +123,12 @@ assert.strictEqual(q.staleText(data, D("2026-11-15 10:20")), "Calendar server no
 assert.strictEqual(q.staleText(data, D("2026-11-16 09:50")), "Calendar server not reachable. Showing events as of 15 November 09:50.");
 assert.strictEqual(q.staleText(null, D("2026-11-16 09:50")), "");
 
-// Web calendar address.
 assert.strictEqual(q.webUrl("https://cloud.example.org/remote.php/dav/\n", D("2026-11-20")), "https://cloud.example.org/index.php/apps/calendar/timeGridDay/2026-11-20");
 assert.strictEqual(q.webUrl("https://example.org/nc/remote.php/dav", D("2027-01-05")), "https://example.org/nc/index.php/apps/calendar/timeGridDay/2027-01-05");
 assert.strictEqual(q.webUrl("https://example.org/caldav/", D("2027-01-05")), "");
 
 // Reminders and the digest, against fixture-reminders.jsonl (invented, with
-// Amendment 2's alarms; written by make-reminders-fixture.js). The week of
+// alarms; written by make-reminders-fixture.js). The week of
 // Monday 16 November 2026.
 const rdata = q.parse(fs.readFileSync(path.join(__dirname, "fixture-reminders.jsonl"), "utf8"));
 const ev = (title) => {
@@ -146,7 +141,6 @@ const ev = (title) => {
 const stamps = (ds) => ds.map((d) => q.ymd(d) + " " + q.hm(d));
 const due = (s, fired) => q.dueReminders(rdata, D(s), fired || {}).map((r) => r.event.title + " @" + q.hm(r.at));
 
-// Reminder times.
 assert.deepStrictEqual(stamps(q.reminderTimes(ev("T one alarm"))), ["2026-11-16 09:30"]);
 assert.deepStrictEqual(stamps(q.reminderTimes(ev("T two alarms"))), ["2026-11-16 11:00", "2026-11-16 11:45"]);
 // The defaults mirror Nextcloud's: an hour before; 09:00 on a full-day
@@ -159,7 +153,6 @@ assert.deepStrictEqual(stamps(q.reminderTimes(ev("T all-day alarms"))), ["2026-1
 assert.deepStrictEqual(q.reminderTimes(ev("T all-day plain")), [], "all-day without alarms: its default 09:00 falls on its own day, so the digest stands in");
 assert.deepStrictEqual(q.reminderTimes(ev("T all-day same day")), [], "an alarm on the all-day event's own day is dropped");
 
-// Firing.
 assert.deepStrictEqual(due("2026-11-16 09:29"), []);
 assert.deepStrictEqual(due("2026-11-16 09:30"), ["T one alarm @09:30"]);
 assert.deepStrictEqual(due("2026-11-16 09:56"), ["T one alarm @09:30"], "late start: a passed reminder fires while the event is ahead");
@@ -202,7 +195,6 @@ assert.deepStrictEqual(week.filter((s) => s.includes("Today")), [
     "06:00 Today · Friday 20 November",
 ], "a digest a day at 06:00; the start on an empty Sunday sent none");
 
-// Wording.
 const note = (title, s, late) => q.reminderNote(ev(title), D(s), late);
 assert.strictEqual(note("T one alarm", "2026-11-16 09:50").body, "10:00 – 11:00 · in 10 min · Work");
 assert.strictEqual(note("T one alarm", "2026-11-16 09:56", true).body, "10:00 – 11:00 · starts in 4 min · Work");
@@ -233,7 +225,6 @@ assert.strictEqual(dg("2026-11-21", "2026-11-21 06:00"), null, "no events, no di
 assert.strictEqual(dg("2026-11-16", "2026-11-17 00:00"), null, "held past midnight: all over, no digest");
 assert.strictEqual(dg("2026-11-16", "2026-11-16 21:00").body, "all day · T all-day alarms");
 
-// Digest timing.
 const pl = (s, state, fs, start) => q.plan(rdata, state, D(s), fs, start);
 assert.deepStrictEqual(pl("2026-11-17 05:00", {}, false, true).send.map((n) => n.summary), ["Today · Tuesday 17 November"], "at shell start, even before 06:00");
 assert.deepStrictEqual(pl("2026-11-17 05:59", { digest: "2026-11-16" }, false, false).send, []);
