@@ -274,8 +274,8 @@ notification daemon.
 - Timeouts: low urgency 5 s, normal 8 s, critical never. A timeout from the
   sender counts, up to 30 s; 0 from the sender means never. The countdown
   stops while the pointer is over the deck.
-- A body shows as many lines as the sender broke it into, from two up to
-  eight: a long body with no line breaks shows two lines.
+- A body with line breaks shows up to eight lines, wrapped ones included;
+  a body with none shows two.
 - Left click runs the default action, else dismisses; right or middle click
   dismisses. Up to three other actions show as buttons.
 - There is no history: a dismissed or expired notification is gone.
