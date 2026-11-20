@@ -169,6 +169,10 @@
         # 0.1.21 tests take their scratch folder from HC_TEST_TMPDIR, defaulting
         # to /var/tmp, which the sandbox lacks.
         preCheck = old.preCheck + "export HC_TEST_TMPDIR=\"$TMPDIR\"\n";
+        # New in 0.1.21: needs unshare and user namespaces, neither in the sandbox.
+        checkFlags = old.checkFlags ++ [
+          "--skip=the_install_script_installs_when_the_temp_dir_cannot_execute"
+        ];
       }
     );
     herdr-desktop = masterPkgs.herdr-desktop.overrideAttrs (
