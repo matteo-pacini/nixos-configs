@@ -150,6 +150,9 @@ Scope {
         let bestHeight = Infinity;
         for (let i = 0; i <= n; i++) {
             for (let j = i; j <= n; j++) {
+                // Empty columns only on the right.
+                if ((i === 0 && n > 0) || (j === i && j < n))
+                    continue;
                 const tallest = Math.max(sum(0, i), sum(i, j), sum(j, n));
                 if (tallest < bestHeight) {
                     bestHeight = tallest;

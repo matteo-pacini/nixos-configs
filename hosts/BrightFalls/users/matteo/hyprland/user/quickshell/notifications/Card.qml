@@ -228,11 +228,14 @@ Rectangle {
             Text {
                 width: parent.width
                 visible: text !== ""
-                text: card.notification.body
+                // StyledText folds line feeds into spaces, as HTML does.
+                text: card.notification.body.replace(/\r?\n/g, "<br>")
                 textFormat: Text.StyledText
                 wrapMode: Text.Wrap
-                // Two, or as many as the sender broke it into, up to eight.
-                maximumLineCount: Math.min(8, Math.max(2, card.notification.body.split("\n").length))
+                // Counts drawn rows, wrapped ones included, so a body the
+                // sender broke gets all eight: a wrapped line must not push
+                // the sender's last line out.
+                maximumLineCount: card.notification.body.trim().includes("\n") ? 8 : 2
                 elide: Text.ElideRight
                 color: card.soft
                 font.family: Theme.fontUi

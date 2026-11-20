@@ -695,7 +695,7 @@ Scope {
 
                             Mono {
                                 width: parent.width
-                                elide: Text.ElideRight
+                                wrapMode: Text.Wrap
                                 font.pixelSize: 12
                                 text: {
                                     if (root.modiState === "off")
