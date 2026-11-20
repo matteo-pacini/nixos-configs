@@ -148,6 +148,16 @@ held `badblocks` to 38 MB/s against 239 MB/s for `VCJXZ6RP`. Fixed with
 `disk2` are still `WCE=0` and have been since 2023 — worth enabling once
 parity is rebuilt. Every SATA drive in the pool already has it on.
 
+**The two NETAPP SAS drives have their temperature warning disabled**
+(`EWASC=0`, set 2026-11-20 with `sdparm --clear=EWASC --save`; default
+is 1). Their `NA01` firmware raised the SCSI warning 0B/01 while the
+drives sat at 15–16 °C against a 65 °C trip temperature, which smartd
+reports as "specified temperature exceeded": 550 alerts in a month, all
+from these two serials, rising as the room cooled. The low limit that
+triggers it is not known. Failure prediction is unaffected, and
+`smartctl -i` now shows `Temperature Warning: Disabled or Not
+Supported`. A replacement X377 will ship with `EWASC=1` again.
+
 Both drives are in service. Warranty runs to **2027-09**; the return
 window is open until **2026-10-22**.
 
