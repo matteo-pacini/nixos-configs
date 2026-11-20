@@ -350,7 +350,7 @@ What working on this shell has taught: the rule, its reason, what taught it.
   in a `.js`; a release only after the surface's own press, `heldArrow`):
   the probe showed flagged repeats and stray releases; a held F forgot a
   network. Repeat: ↑↓ (J K Home End), ←→ in Audio, Office and Calendar,
-  PgUp PgDn in Calendar and Tokens, typing. Unguarded: pairing, the lock.
+  PgUp PgDn in Calendar and Tokens, typing. Unguarded: the lock.
 - **Outside text is plain text** (`Text.PlainText`, or `esc()` in
   StyledText): a tag-shaped name draws as markup (over thirty `Text`s,
   f967125, 515518c).
@@ -781,12 +781,10 @@ rename leaves stale live files; the naming rule is under "Names to know").
 
 Leave until that code is touched (each needs a real phone or a real lock to
 re-prove): `BluetoothPanel.qml:94-96`, the "trusted on yes" list is lost by
-a reload mid-pairing; `bluetooth/PairModal.qml`, a held Enter or T can
-answer the next request unseen (BlueZ often follows a confirmed pairing at
-once with a service question, and T allows and trusts), and the remote
-device's name, chosen by that device, is drawn as markup in the title and
-the T line; `lock.qml:193-197`, a visible PAM prompt would leave the lock in
-"checking" (unreachable with the shipped PAM stack, fails closed).
+a reload mid-pairing; `bluetooth/PairModal.qml`, the remote device's name,
+chosen by that device, is drawn as markup in the title and the T line;
+`lock.qml:193-197`, a visible PAM prompt would leave the lock in "checking"
+(unreachable with the shipped PAM stack, fails closed).
 
 Also noted, no action planned: the centred modals (Launcher, Cheatsheet,
 SessionMenu, Polkit, the pairing modal) keep their own footers rather than

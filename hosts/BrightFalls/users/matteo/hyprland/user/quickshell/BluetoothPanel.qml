@@ -495,8 +495,10 @@ Scope {
             keys = [["Enter", "show file"]];
         else if (row?.kind === "nearby")
             keys = [["Enter", "pair"]];
-        else if (row)
-            keys = [["Enter", showing ? "close details" : "details"], ["C", row.device.connected ? "disconnect" : "connect"]].concat(showing ? [["T", row.device.trusted ? "untrust" : "trust"]] : [], [["F", "forget"]]);
+        else if (row) {
+            const busy = row.device.state === BluetoothDeviceState.Connecting || row.device.state === BluetoothDeviceState.Disconnecting;
+            keys = [["Enter", showing ? "close details" : "details"]].concat(busy ? [] : [["C", row.device.connected ? "disconnect" : "connect"]], showing ? [["T", row.device.trusted ? "untrust" : "trust"]] : [], [["F", "forget"]]);
+        }
         if (canMove)
             keys.push(["↑↓", "select"]);
         return keys.concat([["S", scanUntil > 0 ? "stop" : "scan"], ["V", visibleOn ? "hide" : "visible"], ["B", "on/off"], ["Esc", armed !== "" ? "cancel" : showing ? "back" : "close"]]);

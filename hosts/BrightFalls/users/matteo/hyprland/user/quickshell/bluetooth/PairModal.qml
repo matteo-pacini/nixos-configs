@@ -81,6 +81,8 @@ PanelWindow {
 
         focus: true
         Keys.onPressed: event => {
+            if (event.isAutoRepeat)
+                return;
             const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
             if (event.key === Qt.Key_Escape)
                 modal.decided(false, {}, false);
@@ -164,15 +166,15 @@ PanelWindow {
                     if (modal.service)
                         return modal.service.question;
                     if (m === "RequestConfirmation")
-                        return modal.initiated ? `Does the ${modal.kindLabel} show this code?` : `Pair only if you started this on the ${modal.kindLabel} and it shows the same code.`;
+                        return modal.initiated ? `Is this code shown on the ${modal.kindLabel}?` : `Pair only if you started this on the ${modal.kindLabel} and the same code is shown there.`;
                     if (m === "RequestAuthorization")
                         return modal.initiated ? "It shows no code. Pair?" : "It shows no code. Pair only if you started this on it.";
                     if (modal.display)
-                        return `Type this code on the ${modal.kindLabel}, then press Enter on it.`;
+                        return `Type this code on the ${modal.kindLabel}, then press Enter there.`;
                     if (m === "RequestPasskey")
-                        return `Type the six digits the ${modal.kindLabel} shows.`;
+                        return `Type the six digits shown on the ${modal.kindLabel}.`;
                     if (m === "RequestPinCode")
-                        return `Type the PIN for the ${modal.kindLabel} (often 0000 or 1234, or the one it shows).`;
+                        return `Type the PIN for the ${modal.kindLabel} (often 0000 or 1234, or the one shown on the ${modal.kindLabel}).`;
                     return "";
                 }
                 color: modal.soft
@@ -244,6 +246,8 @@ PanelWindow {
                         visible: input.cursorVisible
                     }
                     Keys.onPressed: event => {
+                        if (event.isAutoRepeat)
+                            return;
                         if (event.key === Qt.Key_Escape)
                             modal.decided(false, {}, false);
                         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
