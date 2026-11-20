@@ -443,6 +443,10 @@ t("overview: partly and wholly unpriced costs, and zero cost", () => {
     assert.equal(o.last30.price, "≈ $0");
     assert.deepEqual(o.last30.byType.rows.map(r => [r.tokens, r.cost]), Array(5).fill(["0", "≈ $0"]));
     assert.ok(o.last30.byType.bar.every(b => b.frac === 0));
+    // No replies at all: no models to name.
+    l30.models = [];
+    o = T.view(feed(T.opened().state, a, "overview").state, LIM).overview;
+    assert.equal(o.last30.sentence, "No Claude Code replies in the last 30 days.");
 });
 
 t("overview: not priced, unreadable, null ratios, one session, no more projects, no output", () => {
