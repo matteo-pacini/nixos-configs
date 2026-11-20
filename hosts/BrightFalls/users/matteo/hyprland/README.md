@@ -196,7 +196,7 @@ others (`common/Dropdowns.qml`); opening the launcher, the cheat sheet or the
 session menu closes them too. Each has an IPC `toggle` (`qs ipc call
 <target> toggle`). In the drop-downs and the centred modals a held key acts
 once, except typing and the keys that move a selection, a slider or a page,
-which repeat (the pairing modal and the lock screen are not guarded).
+which repeat (the lock screen is not guarded).
 
 | Component | Open | IPC target |
 |-----------|------|------------|
