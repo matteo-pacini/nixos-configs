@@ -73,6 +73,29 @@ with the user, you are both: keep the same discipline.
   the worktree they deploy from, never "pull" (the commits are already
   there). Wait for them to say it is deployed before checking it live.
 
+### The Shell Atlas
+
+One published page draws every surface of the shell in every state its
+source can reach, and its design system: the BrightFalls Shell Atlas,
+<https://claude.ai/artifact/6MqpiuaSGvJztQaM7GCKpa> (private to the owner;
+read it with the Artifact tool). It opens with the design system (palette,
+derived colours, type scale, measures, shared components, layers, motion),
+then has one section per surface, and ends with a source map: every `.qml`
+and `.js` file and the sections that cite it.
+
+- **Read it before designing.** A new panel or state starts from the
+  Atlas's design system and the nearest existing surface, not from memory.
+- **It is drawn from source, not screenshots.** Each state cites the file
+  and line that produces it, and each section's "Not drawn" paragraph says
+  what the source does not settle. Its header names the commit it was drawn
+  from: a state added or changed since is not in it. The source wins.
+- **Keep it current.** A change to what a surface draws (a state, a string,
+  a colour, a key) updates that surface's section in the same piece of
+  work, and the design system section when a shared value changes. Read the
+  artifact, change the section, publish to the same URL.
+- **All names and figures in it are invented**, by the public-repository
+  rule below. Keep it that way.
+
 ### The user's desktop is in use
 
 The user works at this machine while agents test on it. These rules are the
@@ -722,6 +745,20 @@ durations differ by design and are documented); renaming
 rename leaves stale live files; the naming rule is under "Names to know").
 
 **Open defects**, read in the source and not reproduced live (each small):
+- `lock.qml:213`: the second half of the completion test (a failure whose
+  last message was an error) never passes, because Quickshell clears
+  `messageIsError` before it emits `completed` (`src/services/pam/qml.cpp`;
+  seen with the `qs` binary against a scratch PAM stack). Nothing in the
+  shipped `desk-lock` stack sends a message during a check, so no state is
+  lost today. A repair tests `systemMessage` alone: `pam_faillock` sends its
+  lockout notice as information, not as an error. Needs the owner's lock
+  test.
+- `BluetoothPanel.qml:604-605`: Esc on a code shown for a pairing the
+  device started only closes the modal, which opens again at the device's
+  next key. The cancel needs `d.pairing`, which Quickshell sets only in its
+  own `pair()`. Needs a Bluetooth keyboard to prove.
+- `Audio.qml` `pathHops()`: the path ends at the Modi whenever a Modi sink
+  exists, whatever the default output is.
 - A drop-down's bind can open it over a centred modal (launcher, cheat
   sheet, session menu, polkit dialog): the modals are not in `Dropdowns`,
   so nothing closes them. Not seen in this direction, but a bind was seen
