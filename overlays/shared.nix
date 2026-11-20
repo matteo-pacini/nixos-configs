@@ -138,6 +138,73 @@
     # nixos-unstable's 2.1.4 still prices OpenRouter turns from the catalog.
     opencode = masterPkgs.opencode;
 
+    # Herdr ahead of nixpkgs: core 0.1.21 and app 0.1.16 carry the pane size
+    # fixes for terminals shown on more than one machine.
+    # WAIT-FOR version: herdr-core >= 0.1.21: https://github.com/herdrdev/herdr-core/releases/tag/v0.1.21
+    # WAIT-FOR version: herdr-desktop >= 0.1.16: https://github.com/herdrdev/herdr-app/releases/tag/v0.1.16
+    herdr-core = masterPkgs.herdr-core.overrideAttrs (
+      finalAttrs: old: {
+        version = "0.1.21";
+        src = old.src.override {
+          tag = "v${finalAttrs.version}";
+          hash = "sha256-sKO8RNlz8lEc0ZUED/VKqIxPmzGxEfMMJjj9V0H0CM4=";
+        };
+        cargoHash = "sha256-KYWc0WORF6BNDhRcihn+tn0UqD1dF2pmR4irdsUcz7E=";
+        # master's postPatch fails on 0.1.21: these three test files read the
+        # scratch folder from HC_TEST_TMPDIR instead of /var/tmp, and
+        # foreground.rs already starts its agent through bash (#229).
+        postPatch =
+          builtins.replaceStrings
+            [
+              "src/runtime/tests.rs,src/viewers/tests.rs,"
+              ",tests/macos_distribution.rs"
+              "substituteInPlace crates/herdr-core/tests/foreground.rs \\\n  --replace-fail 'run(&s, &[&agent])' 'run(&s, &[\"bash\", &agent])'\n"
+            ]
+            [
+              ""
+              ""
+              ""
+            ]
+            old.postPatch;
+        # 0.1.21 tests take their scratch folder from HC_TEST_TMPDIR, defaulting
+        # to /var/tmp, which the sandbox lacks.
+        preCheck = old.preCheck + "export HC_TEST_TMPDIR=\"$TMPDIR\"\n";
+        # Tests new in 0.1.21 that need what the sandbox lacks: unshare and user
+        # namespaces (the noexec installer test), and a login shell at /bin/bash
+        # (the login environment tests).
+        checkFlags = old.checkFlags ++ [
+          "--skip=the_install_script_installs_when_the_temp_dir_cannot_execute"
+          "--skip=a_login_profile_cannot_block_machine_start_forever"
+          "--skip=failed_login_profile_cleans_up_its_background_child"
+          "--skip=failing_login_profile_falls_back_and_logs_the_shell_and_reason"
+          "--skip=holder_environment_does_not_reload_login_profile"
+          "--skip=login_profile_exit_chatter_preserves_exports"
+          "--skip=login_profile_output_is_bounded_while_it_runs"
+          "--skip=ssh_start_loads_login_exports_once_and_keeps_them_across_restart"
+        ];
+      }
+    );
+    herdr-desktop = masterPkgs.herdr-desktop.overrideAttrs (
+      finalAttrs: old: {
+        version = "0.1.16";
+        src = old.src.override {
+          tag = "v${finalAttrs.version}";
+          hash = "sha256-yR8tu/a5TXJktYTdb9mkqXY4jKPGljfTQbYraP/S8Ss=";
+        };
+        cargoHash = "sha256-mO00lakVFzV2pDsMVR9l1N8IBSkFiMCN3Agk66/ePoQ=";
+        # 0.1.16 no longer uses /var/tmp in these three test files, so
+        # master's substitution would fail on them.
+        postPatch =
+          builtins.replaceStrings
+            [ "src/{mod_files.rs,mods.rs,mods/lifecycle_tests.rs,mods/render_tests.rs," ]
+            [ "src/{mods/lifecycle_tests.rs," ]
+            old.postPatch;
+        # 0.1.16 tests take their scratch folder from HERDR_TEST_TMPDIR,
+        # defaulting to /var/tmp, which the sandbox lacks.
+        preCheck = old.preCheck + "export HERDR_TEST_TMPDIR=\"$TMPDIR\"\n";
+      }
+    );
+
     # gnome-shell 50.2: racy SIGSEGV at session start in the vendored gvc
     # subproject — update_card() derefs pa_card_info.active_profile->name, but
     # pipewire-pulse can transiently report a card with zero profiles during
