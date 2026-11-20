@@ -826,7 +826,7 @@ function overviewView(st, lim) {
         const parts = split(l.models, "tokens");
         out.last30 = {
             split: splitBar(parts),
-            sentence: "All tokens by model: " + sentence(parts, true),
+            sentence: parts.length ? "All tokens by model: " + sentence(parts, true) : TEXT.empty["30d"][0],
             cacheHit: percent1(l.cache_hit),
             subagents: `${percent(l.subagent_share)} of output`,
             // cost_usd: what a helper older than the cost object sends.

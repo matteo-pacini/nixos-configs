@@ -65,6 +65,16 @@ assert.deepStrictEqual(r("2026-11-30", 0), { time: "14:00 – 15:00", sub: "Work
 assert.strictEqual(q.hint(data, D("2026-11-30 13:30")), "1 event at 14:00", "tz-unresolved events still give the hint");
 assert.strictEqual(r("2026-11-12", 0, D("2026-11-12 23:00")).over, false, "all-day events are never faded");
 assert.strictEqual(r("2026-11-03", 0, D("2026-11-15 09:53")).over, false, "only today's list fades");
+{
+    // The export lists a timed event up to the day of its last instant, so one ending at 00:00 is not on the day its end names.
+    const ev = (s, e, title) => ({ start: s, end: e, title, "all-day": "False", uid: "fx-" + title, "calendar-color": "#49a03f", calendar: "Home", cancelled: "", location: "", "tz-unresolved": "False" });
+    const late = ev("2026-12-11 22:00", "2026-12-12 00:00", "late");
+    const weekend = ev("2026-12-11 10:00", "2026-12-13 00:00", "weekend");
+    const mdata = q.parse([JSON.stringify({ version: 1, window_start: "2026-12-11", days: 3, generated: "2026-12-11T06:00:00+00:00", calendars: [{ name: "Home", color: "#49a03f" }] }), JSON.stringify([weekend, late]), JSON.stringify([weekend]), "[]"].join("\n"));
+    const mr = (s, i) => q.row(q.dayEvents(mdata, D(s))[i], D(s), D("2026-12-11 09:00"));
+    assert.deepStrictEqual(mr("2026-12-11", 1), { time: "22:00 – 00:00", sub: "Home", over: false, tzUnknown: false }, "a timed event ending at midnight is one day");
+    assert.deepStrictEqual(mr("2026-12-12", 0), { time: "day 2 of 2", sub: "Home · 11 to 12 December, 10:00 – 00:00", over: false, tzUnknown: false }, "its days end with its last instant's");
+}
 
 // Hint: the three wordings, started events, the 60-minute edge, midnight.
 const hint = (s) => q.hint(data, D(s));
