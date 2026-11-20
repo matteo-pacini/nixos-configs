@@ -39,17 +39,18 @@ These describe parts of the system whose live half is not in git.
 | [docs/zigbee-watchdog.md](docs/zigbee-watchdog.md) | The Zigbee network and the Zigbee Coordinator Watchdog automation (only in HA): what it detects, how it recovers, its guards, and what is still untested. |
 | [docs/blueprints.md](docs/blueprints.md) | The blueprints in `blueprints/automation/`, the UI automations built from them, and the device behaviour they rely on. |
 | [docs/heating.md](docs/heating.md) | Boiler, radiator valves, scenes and schedules: which piece lives where and what each entity really means. Also the venting advice sensors. |
-| [docs/heating-plan.md](docs/heating-plan.md) | The heating plan (only in HA) that drives the valves: period timeline, temperature levels, presence, why it is built that way, and how to roll it back. |
+| [docs/heating-plan.md](docs/heating-plan.md) | The heating plan (only in HA) that drives the valves: period timeline, temperature levels, presence, and why it is built that way. |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard conventions, and card, chart and theme behaviour that cost time to find. |
 | [docs/metrics.md](docs/metrics.md) | How HA history reaches VictoriaMetrics, what the recorder keeps, and energy and cost data. |
 | [docs/live-config.md](docs/live-config.md) | Reading and changing the live half: which API does what, browser tool limits, and how to do it safely. |
 
 **Keep them current.** They are the only record of the live half, so a stale one is worse than none.
 - Read the doc before you change what it covers.
-- When you change something a doc describes, update the doc in the same piece of work. Where the doc has a "Current state" section and a Changelog, update the first and append a dated row to the second. This applies to live edits in HA too, which leave no commit of their own.
+- When you change something a doc describes, update the doc in the same piece of work. This applies to live edits in HA too, which leave no commit of their own.
+- A doc describes the system as it is now, not how it got there. Rewrite the text a change makes stale instead of adding to it: no changelog, no incident write-ups, no dated "seen on" stories, no backup names or pending lists. The repo is public, and history belongs in commit messages kept free of house data.
 - When the live system disagrees with a doc, the live system is right. Fix the doc and say so.
-- Date every Changelog row and every "not verified" note. Remove a "not verified" note once it has been checked.
-- When you learn something about this HA that cost time to find, add it to the doc it belongs in.
+- Date every "not verified" note. Remove it once it has been checked.
+- When you learn something about this HA that cost time to find, add it to the doc it belongs in, as a fact about the system.
 
 ## Gotchas
 
