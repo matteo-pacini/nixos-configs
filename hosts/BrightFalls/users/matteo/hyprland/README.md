@@ -1774,7 +1774,7 @@ values:
 
 ```json
 {"latitude": 51.48, "longitude": 0.00,
- "warnings_region": "London & South East England",
+ "warnings_region": "South West England",
  "mqtt": {"host": "broker.example", "port": 1883, "base": "zigbee2mqtt",
           "sensor": "Some Sensor Name"}}
 ```
