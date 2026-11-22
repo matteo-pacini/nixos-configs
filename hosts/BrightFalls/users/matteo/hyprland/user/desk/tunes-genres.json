@@ -1,0 +1,166 @@
+{
+  "genres": [
+    {
+      "id": "lofi",
+      "name": "Lo-fi",
+      "caption": "lo-fi hip hop beat, dusty vinyl crackle, warm detuned electric piano, soft boom bap drums, mellow bass, relaxed late-night study mood",
+      "turns": [
+        "muted trumpet phrases",
+        "tape wobble on the chords",
+        "rain ambience in the background",
+        "jazzy guitar licks",
+        "sidechained pads",
+        "a lazy swung hi-hat",
+        "filtered breakdown halfway",
+        "music box melody"
+      ],
+      "bpm": [70, 92],
+      "moods": ["Dusty", "Sleepy", "Faded", "Quiet", "Rainy", "Late", "Soft", "Hazy", "Worn"],
+      "things": ["Notebook", "Window", "Tea", "Bus Stop", "Cassette", "Lamp", "Sweater", "Corner Shop", "Rooftop"]
+    },
+    {
+      "id": "ambient",
+      "name": "Ambient",
+      "caption": "ambient soundscape, slow evolving synth pads, long reverb tails, gentle drones, no drums, spacious and calm",
+      "turns": [
+        "distant bell tones",
+        "granular shimmer",
+        "a low cello drone",
+        "field recording of wind",
+        "soft pulsing arpeggio",
+        "choir-like pad swells",
+        "glassy high harmonics",
+        "slow filter sweeps"
+      ],
+      "bpm": [60, 80],
+      "moods": ["Still", "Pale", "Endless", "Drifting", "Frozen", "Hollow", "Silver", "Slow", "Open"],
+      "things": ["Tide", "Fog", "Glacier", "Horizon", "Orbit", "Meadow", "Lantern", "Cathedral", "Dune"]
+    },
+    {
+      "id": "synthwave",
+      "name": "Synthwave",
+      "caption": "synthwave, retro 80s analog synthesizers, gated reverb drums, driving bassline, bright lead synth, neon night drive",
+      "turns": [
+        "arpeggiated bass in eighths",
+        "big tom fills",
+        "a soaring saw lead",
+        "chorus-heavy guitar",
+        "punchy pad stabs",
+        "a key change near the end",
+        "pulsing sequencer intro",
+        "breakdown with only the arpeggio"
+      ],
+      "bpm": [90, 118],
+      "moods": ["Neon", "Chrome", "Midnight", "Electric", "Velvet", "Burning", "Distant", "Golden", "Restless"],
+      "things": ["Highway", "Skyline", "Arcade", "Sunset", "Motel", "Coupe", "Pier", "Tower", "Signal"]
+    },
+    {
+      "id": "deephouse",
+      "name": "Deep house",
+      "caption": "deep house, four on the floor kick, warm sub bass, lush chord stabs, crisp shuffled hats, smooth late-night club groove",
+      "turns": [
+        "organ bass line",
+        "filtered disco chords",
+        "a rolling percussion loop",
+        "dub chord delays",
+        "a long filter build",
+        "rimshot groove",
+        "airy pad breakdown",
+        "plucked marimba hook"
+      ],
+      "bpm": [118, 124],
+      "moods": ["Warm", "Deep", "Low", "Smooth", "Humid", "After", "Blue", "Gentle", "Slow-burning"],
+      "things": ["Basement", "Harbour", "Terrace", "Lights", "Groove", "Summer", "Avenue", "Club", "Pulse"]
+    },
+    {
+      "id": "jazz",
+      "name": "Jazz",
+      "caption": "small group jazz, acoustic piano trio, walking upright bass, brushed drums, relaxed swing, smoky lounge",
+      "turns": [
+        "tenor saxophone solo",
+        "a modal vamp",
+        "stride piano interlude",
+        "trading fours with the drums",
+        "vibraphone melody",
+        "bossa nova feel",
+        "a slow ballad tempo",
+        "bass solo with sparse comping"
+      ],
+      "bpm": [80, 160],
+      "moods": ["Smoky", "Blue", "Easy", "Crooked", "Velvet", "Midnight", "Lazy", "Bright", "Tender"],
+      "things": ["Lounge", "Avenue", "Martini", "Streetlight", "Taxi", "Hotel", "Piano", "Doorway", "Train"]
+    },
+    {
+      "id": "classical",
+      "name": "Classical",
+      "caption": "classical chamber music, string quartet and piano, expressive dynamics, clear counterpoint, concert hall acoustics",
+      "turns": [
+        "solo cello melody",
+        "pizzicato passage",
+        "a slow adagio",
+        "flute and clarinet duet",
+        "rising crescendo",
+        "minor key development",
+        "harp arpeggios",
+        "a quiet piano coda"
+      ],
+      "bpm": [60, 120],
+      "moods": ["Autumn", "Gentle", "Solemn", "Bright", "Wistful", "Noble", "Quiet", "Silver", "Spring"],
+      "things": ["Garden", "Letter", "River", "Palace", "Courtyard", "Mirror", "Harbour", "Orchard", "Chapel"]
+    },
+    {
+      "id": "downtempo",
+      "name": "Downtempo",
+      "caption": "downtempo electronica, laid-back breakbeat, deep bass, dubby textures, atmospheric samples, chill trip hop mood",
+      "turns": [
+        "a sitar-like pluck",
+        "scratched vinyl texture",
+        "dub echo on the snare",
+        "a slow string section",
+        "glitchy percussion",
+        "warm rhodes chords",
+        "a half-time drop",
+        "flute loop"
+      ],
+      "bpm": [85, 105],
+      "moods": ["Hazy", "Sunken", "Amber", "Velvet", "Murky", "Slow", "Shaded", "Warm", "Dim"],
+      "things": ["Lagoon", "Balcony", "Smoke", "Garden", "Canal", "Ferry", "Lantern", "Courtyard", "Shore"]
+    },
+    {
+      "id": "postrock",
+      "name": "Post-rock",
+      "caption": "instrumental post-rock, chiming clean electric guitars, tremolo picking, building dynamics, live drums, cinematic and emotional",
+      "turns": [
+        "a long quiet intro",
+        "wall of distorted guitars",
+        "glockenspiel melody",
+        "bowed guitar swells",
+        "a driving floor tom pattern",
+        "delay-soaked arpeggios",
+        "strings joining at the climax",
+        "a final huge crescendo"
+      ],
+      "bpm": [70, 130],
+      "moods": ["Northern", "Endless", "Broken", "Rising", "Grey", "Burning", "Lonely", "Vast", "Brave"],
+      "things": ["Lighthouse", "Glacier", "Signal", "Coast", "Bridge", "Forest", "Satellite", "Harbour", "Storm"]
+    },
+    {
+      "id": "acoustic",
+      "name": "Acoustic",
+      "caption": "acoustic instrumental, fingerpicked steel string guitar, light percussion, warm room sound, folk feel, intimate and sunny",
+      "turns": [
+        "mandolin counter melody",
+        "soft hand claps",
+        "a second guitar in harmony",
+        "upright piano chords",
+        "airy flute line",
+        "slide guitar phrases",
+        "a slower bridge",
+        "cajon groove"
+      ],
+      "bpm": [80, 120],
+      "moods": ["Sunny", "Simple", "Homeward", "Golden", "Easy", "Green", "Morning", "Kind", "Open"],
+      "things": ["Porch", "Field", "Kitchen", "Valley", "Road", "Orchard", "Cabin", "Creek", "Hillside"]
+    }
+  ]
+}

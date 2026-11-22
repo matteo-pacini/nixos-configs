@@ -10,6 +10,8 @@ let
     workDir = "@workDir@";
     timeZone = "Europe/London";
   };
+  acestepCpp = pkgs.callPackage ../../../../../../packages/acestep-cpp.nix { };
+  tunesConfig = pkgs.callPackage ../desk-tunes-config.nix { };
 in
 pkgs.lib.fix (self: {
   # Every check in this set but hypr-config (and itself). hypr-config is run
@@ -375,6 +377,47 @@ pkgs.lib.fix (self: {
   # map's projection and the sky scene's layout for a seed.
   weather-art = pkgs.runCommand "weather-art-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${./weather-art}/test-weather-art.js ${../user/quickshell/weather/paths.js}
+    touch $out
+  '';
+
+  # The model server the tunes service runs (packages/acestep-cpp.nix).
+  acestep-cpp = acestepCpp;
+
+  # desk-tunes (the tunes panel's service): its pure functions, then the
+  # service built with testing = true against a fake ace-server (the fakes
+  # are tests/tunes/run.sh's), with the shipped genres and config.
+  tunes-helper =
+    pkgs.runCommand "tunes-helper-tests"
+      {
+        nativeBuildInputs = with pkgs; [
+          python3
+          ffmpeg
+          mpv
+          dbus
+          playerctl
+        ];
+        MPV_MPRIS = "${pkgs.mpvScripts.mpris}/share/mpv/scripts/mpris.so";
+      }
+      ''
+        mkdir work
+        bash ${./tunes/run.sh} \
+          ${
+            pkgs.lib.getExe (
+              pkgs.callPackage ../desk-tunes.nix {
+                acestep-cpp = acestepCpp;
+                configFile = tunesConfig;
+                testing = true;
+              }
+            )
+          } \
+          ${../desk-tunes.py} ${../user/desk/tunes-genres.json} ${tunesConfig} "$PWD/work"
+        touch $out
+      '';
+
+  # The tunes panel's library (quickshell/tunes/tunes.js) against
+  # hand-written service lines in tunes-panel/fixtures/.
+  tunes-panel = pkgs.runCommand "tunes-panel-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./tunes-panel}/test-tunes-panel.js ${../user/quickshell/tunes/tunes.js}
     touch $out
   '';
 

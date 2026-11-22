@@ -38,6 +38,12 @@ let
     text = builtins.readFile ./desk-unlock.sh;
   };
 
+  # The tunes panel's service and its client (protocol: desk-tunes.py).
+  deskTunes = pkgs.callPackage ./desk-tunes.nix {
+    acestep-cpp = pkgs.callPackage ../../../../../packages/acestep-cpp.nix { };
+    configFile = pkgs.callPackage ./desk-tunes-config.nix { };
+  };
+
   # The Tailscale panel's mesh hosts (README.md, "Tailscale: status and mesh
   # hosts"): every host in
   # lib/ssh-mesh.nix with a Tailscale name.
@@ -136,6 +142,7 @@ in
     (callPackage ./desk-weather.nix {
       configFile = osConfig.age.secrets."brightfalls/weather".path;
     })
+    deskTunes
   ];
 
   # The desktop shell, from user/quickshell/ (installed at
@@ -152,6 +159,48 @@ in
     Service = {
       ExecStart = lib.getExe' pkgs.quickshell "qs";
       Restart = "on-failure";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  # The tunes panel's service: composes on the iGPU and plays through mpv.
+  # Not niced, since it plays audio; it nices the model server it starts.
+  systemd.user.services.desk-tunes = {
+    Unit = {
+      Description = "Generated music for the tunes panel";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${lib.getExe deskTunes} serve";
+      Restart = "on-failure";
+
+      # Everything read-only but these. The sockets it connects to (PipeWire,
+      # the session bus, Hyprland) stay reachable: connecting needs no write
+      # access to the file system holding them.
+      ProtectSystem = "strict";
+      ProtectHome = "read-only";
+      PrivateTmp = true;
+      StateDirectory = "desk-tunes";
+      CacheDirectory = "desk-tunes";
+      RuntimeDirectory = "desk-tunes";
+      RuntimeDirectoryMode = "0700";
+      # systemd has no directory setting for these two; "+" runs mkdir
+      # outside the sandbox, which needs them to exist.
+      ExecStartPre = "+${lib.getExe' pkgs.coreutils "mkdir"} -p ${config.xdg.dataHome}/desk-tunes ${config.home.homeDirectory}/Music/Tunes";
+      ReadWritePaths = [
+        "${config.xdg.dataHome}/desk-tunes"
+        "${config.home.homeDirectory}/Music/Tunes"
+      ];
+      # Mesa's shader cache under ~/.cache is read-only here.
+      Environment = [ "MESA_SHADER_CACHE_DIR=${config.xdg.cacheHome}/desk-tunes/mesa" ];
+      NoNewPrivileges = true;
+      RestrictSUIDSGID = true;
+      LockPersonality = true;
+      SystemCallArchitectures = "native";
+      # AF_NETLINK: glibc's getaddrinfo can ask the kernel for local
+      # addresses that way.
+      RestrictAddressFamilies = "AF_UNIX AF_INET AF_INET6 AF_NETLINK";
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
