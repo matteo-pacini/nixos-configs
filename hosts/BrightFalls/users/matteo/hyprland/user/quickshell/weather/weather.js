@@ -360,8 +360,8 @@ function apply(st, ev, now) {
 }
 
 // Whether a line shows the helper working, so its restart back-off resets.
-// A settings error is not: the helper stops on one, and a reset would
-// restart it every 2 s.
+// A settings error is not: the helper then waits, silent, until it is
+// started again, so it is no sign of a working helper.
 function healthy(ev) {
     if (!ev || typeof ev !== "object")
         return false;
@@ -380,8 +380,8 @@ function helperLost(st, why, retryInSeconds) {
 }
 
 // The one line replacing the panel, as { text, parts }; text "" for none.
-// A settings error outranks "stopped": the helper exits after reporting one,
-// and the next run reports it again.
+// A settings error outranks "stopped": a helper started again reads the same
+// settings and reports the same error.
 function single(st) {
     let parts = null;
     if (st.helper === "missing")
