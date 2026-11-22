@@ -18,12 +18,14 @@ import qs.system
 import qs.tailscale
 import qs.tokens
 import qs.tray
+import qs.tunes
 import qs.weather
 import "fleet/fleet.js" as FleetView
 import "office/office.js" as OfficeView
 import "tailscale/tailscale.js" as TailscaleView
 import "network/wifi.js" as WifiView
 import "weather/weather.js" as WeatherView
+import "tunes/tunes.js" as TunesView
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -56,7 +58,8 @@ Scope {
             volumeHigh: "\u{f057e}",
             volumeMedium: "\u{f0580}",
             volumeLow: "\u{f057f}",
-            volumeMuted: "\u{f0581}"
+            volumeMuted: "\u{f0581}",
+            music: "\u{f075a}"
         })
     readonly property int fontSize: 16
     readonly property int iconSize: 18
@@ -986,6 +989,72 @@ Scope {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: NetworkPanel.toggleRequested(bar.modelData.name)
+                        }
+                    }
+
+                    Item {
+                        id: tunes
+
+                        readonly property bool panelOpen: TunesShared.screen === bar.modelData.name
+                        readonly property var shown: TunesView.barView(TunesShared.st)
+                        readonly property color tone: panelOpen ? Theme.purple : {
+                            dim: Theme.comment,
+                            cyan: Theme.cyan,
+                            orange: Theme.orange,
+                            red: Theme.red
+                        }[shown.tone] ?? Theme.foreground
+
+                        width: tunesRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Dropdowns.anchor("tunes", bar.modelData.name, tunes, bar)
+
+                        Hover {
+                            hovered: tunesArea.containsMouse
+                        }
+
+                        Rectangle {
+                            visible: tunes.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        // The glyph in the service's tone, and the genre
+                        // while a tune plays.
+                        Row {
+                            id: tunesRow
+
+                            height: parent.height
+                            spacing: 6
+
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.glyph.music
+                                color: tunes.tone
+                            }
+
+                            Text {
+                                visible: tunes.shown.text !== ""
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: tunes.shown.text
+                                textFormat: Text.PlainText
+                                color: tunes.panelOpen ? Theme.purple : Theme.foreground
+                                font.family: Theme.fontMono
+                                font.pixelSize: root.fontSize
+                            }
+                        }
+
+                        MouseArea {
+                            id: tunesArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: TunesShared.toggleRequested(bar.modelData.name)
                         }
                     }
 
