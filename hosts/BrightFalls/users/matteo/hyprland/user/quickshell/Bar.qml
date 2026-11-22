@@ -18,10 +18,12 @@ import qs.system
 import qs.tailscale
 import qs.tokens
 import qs.tray
+import qs.weather
 import "fleet/fleet.js" as FleetView
 import "office/office.js" as OfficeView
 import "tailscale/tailscale.js" as TailscaleView
 import "network/wifi.js" as WifiView
+import "weather/weather.js" as WeatherView
 
 // The top bar, one per monitor. It reserves its height, and steps aside on a
 // monitor whose active workspace has a fullscreen window.
@@ -496,6 +498,72 @@ Scope {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Item {
+                        id: weather
+
+                        readonly property bool panelOpen: WeatherShared.screen === bar.modelData.name
+                        readonly property var shown: WeatherView.barView(WeatherShared.st, WeatherShared.now)
+
+                        width: weatherRow.implicitWidth
+                        height: parent.height
+
+                        Component.onCompleted: Dropdowns.anchor("weather", bar.modelData.name, weather, bar)
+
+                        Hover {
+                            hovered: weatherArea.containsMouse
+                        }
+
+                        Rectangle {
+                            visible: weather.panelOpen
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 3
+                            width: 14
+                            height: 2
+                            radius: 1
+                            color: Theme.purple
+                        }
+
+                        // A triangle while a warning is in force, the
+                        // condition, and the outdoor temperature (the
+                        // model's, dimmed, while the sensor is silent).
+                        Row {
+                            id: weatherRow
+
+                            height: parent.height
+                            spacing: 6
+
+                            WarnTriangle {
+                                visible: weather.shown.warning !== null
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: weather.shown.warningTone === "red" ? Theme.red : weather.shown.warningTone === "orange" ? Theme.orange : Theme.yellow
+                            }
+
+                            ConditionArt {
+                                visible: weather.shown.art !== null
+                                anchors.verticalCenter: parent.verticalCenter
+                                kind: weather.shown.art ?? ""
+                                size: 20
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: weather.shown.text
+                                color: weather.panelOpen ? Theme.purple : weather.shown.dim ? Theme.comment : Theme.foreground
+                                font.family: Theme.fontMono
+                                font.pixelSize: root.fontSize
+                            }
+                        }
+
+                        MouseArea {
+                            id: weatherArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: WeatherShared.toggleRequested(bar.modelData.name)
                         }
                     }
 

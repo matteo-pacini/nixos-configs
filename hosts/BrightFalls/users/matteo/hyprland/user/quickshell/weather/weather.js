@@ -301,13 +301,6 @@ function isRain(code) {
     return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
 }
 
-// Web Mercator world pixels at 256 px tiles for a longitude and latitude.
-function project(lon, lat, zoom) {
-    const n = 256 * Math.pow(2, zoom);
-    const phi = lat * Math.PI / 180;
-    return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(phi) + 1 / Math.cos(phi)) / Math.PI) / 2 * n];
-}
-
 function source() {
     // last: the last good event; error: { at, reason } of an error since it;
     // errors: consecutive errors since it.
@@ -387,18 +380,20 @@ function helperLost(st, why, retryInSeconds) {
 }
 
 // The one line replacing the panel, as { text, parts }; text "" for none.
+// A settings error outranks "stopped": the helper exits after reporting one,
+// and the next run reports it again.
 function single(st) {
     let parts = null;
     if (st.helper === "missing")
         parts = [["The weather helper is not installed (", false], ["desk-weather", true], [" is not on PATH).", false]];
-    else if (st.helper === "stopped")
-        parts = [[`The weather helper stopped. Starting it again in ${st.retryIn} s.`, false]];
     else if (st.config && st.config.state === "missing")
         parts = [["Weather is not set up: there is no settings file.", false]];
     else if (st.config && st.config.state !== "ok")
         parts = st.config.key
             ? [["Weather is not set up: ", false], [st.config.key, true], [" in the settings file is missing or not valid.", false]]
             : [["Weather is not set up: the settings file is not valid.", false]];
+    else if (st.helper === "stopped")
+        parts = [[`The weather helper stopped. Starting it again in ${st.retryIn} s.`, false]];
     if (!parts)
         return { text: "", parts: [] };
     return { text: parts.map(p => p[0]).join(""), parts: parts.map(p => ({ text: p[0], code: p[1] })) };
@@ -1076,6 +1071,6 @@ function hints(ui, st) {
 if (typeof module !== "undefined")
     module.exports = {
         SENSOR_SILENT, BATTERY_LOW, FORECAST_OLD, MIN_FUTURE_HOURS, WIND_STRONG, RADAR_BEHIND, RADAR_GONE, KEY_NAMES, WMO,
-        initial, apply, healthy, helperLost, view, radarView, barView, initialUi, key, tick, hints, artFor, conditionFor, project,
+        initial, apply, healthy, helperLost, view, radarView, barView, initialUi, key, tick, hints, artFor, conditionFor,
         degrees, compass, span, ago, radarAgo, when
     };
