@@ -42,7 +42,8 @@
 //   message: the body's text when there is no forecast to show, else "".
 //   hoursHead ("NEXT HOURS"), precipHead ("mm of rain below" | "mm of snow,
 //     as water, below" | "mm of rain and snow, as water, below"),
-//   hours: null | 3..8 of { label ("now", "17"), art (artFor key | null),
+//   hours: null | 3..8 of { now (the first, when it is the current hour),
+//     label ("now", "17"), art (artFor key | null),
 //     tempText ("9°" | "–"), temp (number | null), precip (mm | null),
 //     precipText ("0.4" | ""), precipFrac (of the strip's scale: the wettest
 //     shown hour, at least 2.5 mm) }
@@ -528,8 +529,10 @@ function hoursView(m, now) {
     const top = Math.max(2.5, ...list.map(h => num(h.precipitation) || 0));
     return list.map((h, i) => {
         const p = num(h.precipitation);
+        const current = i === 0 && h.time <= now;
         return {
-            label: i === 0 && h.time <= now ? "now" : pad(local(h.time).getHours()),
+            now: current,
+            label: current ? "now" : pad(local(h.time).getHours()),
             art: artFor(h.code, h.is_day),
             tempText: degrees(h.temperature, 0),
             temp: num(h.temperature),

@@ -139,6 +139,13 @@ t("the hours strip: 8 from the current hour, scaled to the wettest", () => {
     const h = W.view(rain(), NOW).hours;
     assert.equal(h.length, 8);
     assert.deepEqual(h.map(x => x.label), ["now", "16", "17", "18", "19", "20", "21", "22"]);
+    assert.deepEqual(h.map(x => x.now), [true, false, false, false, false, false, false, false]);
+    // A forecast whose first hour is still ahead has no current hour.
+    const ahead = forecastOf("01-rain-dusk", NOW);
+    ahead.hourly = ahead.hourly.slice(1);
+    const ha = W.view(W.apply(rain(), ahead, NOW), NOW).hours;
+    assert.equal(ha[0].now, false);
+    assert.equal(ha[0].label, "16");
     assert.deepEqual(h.map(x => x.art), ["rainy", "rainy", "pouring", "rainy", "rainy", "rainy", "partlycloudy-night", "partlycloudy-night"]);
     assert.deepEqual(h.map(x => x.tempText), ["9°", "9°", "8°", "8°", "7°", "6°", "5°", "5°"]);
     assert.equal(h[1].temp, 8.6);
