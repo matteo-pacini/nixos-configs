@@ -12,8 +12,8 @@ import "weather/weather.js" as W
 // Toggled over IPC (on the focused monitor) or from the bar:
 //   qs ipc call weather toggle
 // The sky over the house, the figures, any warnings, then the next hours, six
-// days and the air quality; M swaps the lower half for the rain radar's past
-// frames. weather.js decides everything drawn and what each key does; this
+// days, the air quality and the outdoor sensor's battery and link; M swaps
+// the lower half for the rain radar's past frames. weather.js decides everything drawn and what each key does; this
 // file draws its views and passes keys on.
 Scope {
     id: root
@@ -701,6 +701,20 @@ Scope {
                                 lineHeight: 1.25
                             }
                         }
+                    }
+
+                    // Under the air row, or under the message when there is
+                    // no forecast; not on the radar page.
+                    SensorRow {
+                        readonly property var sensor: root.v && root.v.sensor ? root.v.sensor : null
+
+                        visible: !root.radarPage && sensor !== null
+                        battery: sensor ? sensor.battery : null
+                        link: sensor ? sensor.link : null
+                        message: sensor ? sensor.message : ""
+                        messageTone: sensor ? sensor.messageTone : "dim"
+                        heard: sensor ? sensor.heard : ""
+                        heardTone: sensor ? sensor.heardTone : "dim"
                     }
 
                     // The radar page, in place of the hours, days and air.

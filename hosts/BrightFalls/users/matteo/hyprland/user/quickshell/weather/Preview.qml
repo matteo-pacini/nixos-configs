@@ -3,7 +3,7 @@ import qs
 
 // Every weather drawing in its states, with fixed invented inputs, for a
 // look during development: the twelve kinds at 64 and 22 px, nine skies,
-// four hour strips and four radar maps. Not loaded by shell.qml; put it in
+// four hour strips, four radar maps and twelve sensor rows. Not loaded by shell.qml; put it in
 // a temporary window to see it. `coast` is the generated coast file's
 // rings, `frames` and `frameDir` as RadarMap takes them, `running` starts
 // the motion.
@@ -101,6 +101,86 @@ Item {
     }
 
     readonly property var strips: [hours(16, [9, 8.6, 8.2, 7.6, 7, 6.2, 5.4, 4.8], [0.4, 1.3, 2.2, 1.6, 0.7, 0.2], [, , , , , , "partlycloudy-night", "partlycloudy-night"], true), hours(12, [11.2, 12.4, 13, 12.6, 11.4, 9.6, 8, 6.8], [], ["sunny", "sunny", "sunny", "partlycloudy", "partlycloudy", "clear-night", "clear-night", "clear-night"], true), hours(2, [-1.8, -2.2, -2.6, -2.9, -3, -2.4, -1.2, 0.3], [0.6, 0.9, 1.1, 0.5, 0.2], ["snowy", "snowy", "snowy", "snowy", "snowy", "cloudy", "cloudy", "partlycloudy"], false), hours(15, [31.6, 31, 29.4, 27, 24.8, 23, 21.6, 20.8], [0, 6.4, 12.8, 5.2, 0.8], ["partlycloudy", "lightning-rainy", "lightning-rainy", "pouring", "rainy", "cloudy", "partlycloudy-night", "clear-night"], true)]
+
+    // The sensor row as weather.js gives it, in the design page's states.
+    function batt(p) {
+        return {
+            text: p + " %",
+            tone: p <= 10 ? "red" : p <= 25 ? "orange" : p <= 50 ? "yellow" : "green",
+            fill: p / 100
+        };
+    }
+
+    function link(q) {
+        const b = q < 30 ? ["red", 1] : q < 80 ? ["orange", 2] : q < 150 ? ["yellow", 3] : ["green", 4];
+        return {
+            text: "link " + q,
+            tone: b[0],
+            bars: b[1]
+        };
+    }
+
+    readonly property var sensorRows: [
+        {
+            battery: batt(55),
+            link: link(168),
+            heard: "heard 2 min ago"
+        },
+        {
+            battery: batt(38),
+            link: link(96),
+            heard: "heard just now"
+        },
+        {
+            battery: batt(18),
+            link: link(47),
+            heard: "heard 6 min ago"
+        },
+        {
+            battery: batt(6),
+            link: link(14),
+            heard: "heard 11 min ago"
+        },
+        {
+            battery: batt(0),
+            link: link(212),
+            heard: "heard 14 min ago"
+        },
+        {
+            battery: batt(100),
+            heard: "heard 2 min ago"
+        },
+        {
+            link: link(168),
+            heard: "heard 2 min ago"
+        },
+        {
+            battery: batt(41),
+            link: link(64),
+            heard: "last heard 12:14",
+            heardTone: "orange"
+        },
+        {
+            battery: batt(41),
+            link: link(64),
+            heard: "offline, last heard 12:14",
+            heardTone: "orange"
+        },
+        {
+            battery: batt(100),
+            link: link(255),
+            heard: "offline, last heard yesterday 22:40",
+            heardTone: "orange"
+        },
+        {
+            message: "broker not reachable",
+            heard: "last heard 12:14",
+            heardTone: "orange"
+        },
+        {
+            message: "no reading yet"
+        }
+    ]
 
     implicitWidth: 1720
     implicitHeight: layout.implicitHeight
@@ -231,6 +311,35 @@ Item {
                         note: map.modelData.note
                         frames: root.frames
                         frameDir: root.frameDir
+                    }
+                }
+            }
+        }
+
+        Flow {
+            width: root.implicitWidth
+            spacing: 12
+
+            Repeater {
+                model: root.sensorRows
+
+                Rectangle {
+                    id: sensorCard
+
+                    required property var modelData
+
+                    width: 420
+                    height: sensorRow.implicitHeight
+                    color: Theme.background
+
+                    SensorRow {
+                        id: sensorRow
+
+                        battery: sensorCard.modelData.battery ?? null
+                        link: sensorCard.modelData.link ?? null
+                        message: sensorCard.modelData.message ?? ""
+                        heard: sensorCard.modelData.heard ?? ""
+                        heardTone: sensorCard.modelData.heardTone ?? "dim"
                     }
                 }
             }

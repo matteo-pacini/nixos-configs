@@ -404,6 +404,14 @@ eq("reading time: ISO", dw.reading_time("2026-11-15T10:00:00.000Z", 5), utc(2026
 eq("reading time: epoch ms", dw.reading_time(1795345000123, 5), 1795345000)
 eq("reading time: none", dw.reading_time(None, 5), 5)
 eq("reading time: garbage", dw.reading_time("yesterday", 5), 5)
+eq("reading: every field, in the event's order",
+   list(dw.reading({"temperature": 7.4, "humidity": 78, "battery": 55, "linkquality": 86}, 5).items()),
+   [("temperature", 7.4), ("humidity", 78), ("battery", 55), ("linkquality", 86), ("at", 5)])
+eq("linkquality absent", dw.reading({"temperature": 7.4}, 5)["linkquality"], None)
+for bad_link in ["86", True, None, 86.5, float("nan"), [86], {"v": 86}]:
+    eq(f"linkquality not a number: {bad_link!r}", dw.reading({"linkquality": bad_link}, 5)["linkquality"], None)
+for edge, want in [(-1, None), (0, 0), (255, 255), (256, None), (86.0, 86)]:
+    eq(f"linkquality range: {edge!r}", dw.reading({"linkquality": edge}, 5)["linkquality"], want)
 check("the source has one MQTT call that sends, the subscribe",
       "publish(" not in open(SOURCE).read())
 print(f"pure: {CHECKS[0]} checks, {len(FAILURES)} failed")
@@ -539,7 +547,7 @@ PRINTED = []
 SHAPES = {
     "config": None,
     "broker": ["event", "state"],
-    "sensor": ["event", "temperature", "humidity", "battery", "at", "available"],
+    "sensor": ["event", "temperature", "humidity", "battery", "linkquality", "at", "available"],
     "forecast": ["event", "fetched", "utc_offset", "current", "hourly", "daily"],
     "forecast_error": ["event", "at", "reason"],
     "air": ["event", "fetched", "aqi", "pm2_5", "pm10", "no2", "o3", "so2", "sub", "pollen"],
@@ -670,7 +678,7 @@ h = Helper(CONFIG)
 eq("config ok line", h.expect(event="config"), {"event": "config", "state": "ok"})
 h.expect(event="broker", state="connected")
 eq("retained reading", h.expect(event="sensor"), {
-    "event": "sensor", "temperature": 7.4, "humidity": 78.0, "battery": 55,
+    "event": "sensor", "temperature": 7.4, "humidity": 78.0, "battery": 55, "linkquality": 90,
     "at": utc(2026, 11, 22, 10, 15), "available": True})
 air = h.expect(event="air")
 eq("air event, built", air, dw.air_event(AIR, air["fetched"]))
@@ -717,8 +725,8 @@ spy.publish(SENSOR, "not json")
 spy.publish(f"{SENSOR}/availability", {"state": "online"})
 eq("same availability and a malformed reading send nothing; online does",
    [e for e in h.quiet(1) if e["event"] == "sensor"],
-   [{"event": "sensor", "temperature": 6.9, "humidity": 80, "battery": 54, "at": live["at"],
-     "available": True}])
+   [{"event": "sensor", "temperature": 6.9, "humidity": 80, "battery": 54, "linkquality": None,
+     "at": live["at"], "available": True}])
 
 # Refresh, twice while the forecast call is still running: one call.
 answer(FORECAST_PATH, (200, fixture("forecast.json", "rb"), 1.5))

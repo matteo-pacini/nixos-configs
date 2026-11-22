@@ -1058,7 +1058,7 @@ the coast file) and `weather/weather.js` (every decision: how the helper's
 events change the state, every text, tone and drawing input of the two
 pages and the bar item, what each key does, the footer; node-tested). The
 drawings are their own components in `weather/` (`ConditionArt`, `SkyScene`,
-`HoursStrip`, `RadarMap`, with the geometry in `weather/paths.js` and the
+`HoursStrip`, `RadarMap`, `SensorRow`, with the geometry in `weather/paths.js` and the
 art-only tints in `weather/Tints.qml`). Super+H, or a click on the bar item
 left of the token item, opens it. Everything comes from
 [`desk-weather`](#weather-desk-weather); the panel sends it only `refresh`
@@ -1075,10 +1075,10 @@ and radar on/off.
   moon along its arc between today's sunrise and sunset, the dusk sky in the
   first and last 12 % of the day, cloud cover, rain, snow and fog from the
   current hour, lit windows from dusk to dawn; nothing in the sky without a
-  forecast), the large figure and where it comes from (`outdoor sensor · 2
-  min ago`, or `forecast model · sensor silent for 3 h` in orange; the
-  sensor's battery joins in yellow at 15 % or less), the condition and
-  today's range; a strip per warning in force or to come, most severe first,
+  forecast), the large figure (the sensor's, with nothing over it; else the
+  forecast model's, with the reason over it in orange, `forecast model ·
+  sensor silent for 3 h`; or `waiting for the sensor` before anything has
+  come), the condition and today's range; a strip per warning in force or to come, most severe first,
   with its areas and validity; four figures (humidity, wind with its
   direction, orange from 40 km/h, rain or snow today, the next sunrise or
   sunset); the next 8 hours (art, temperature on a curve, a bar of
@@ -1087,7 +1087,25 @@ and radar on/off.
   common scale, a mark on days a warning covers); the European air quality
   index from a model (its band on a six-step scale, the pollutants with the
   one that sets the index, pollen in grains/m³ for each kind the source
-  reports above zero); and a source line saying how old each part is.
+  reports above zero); the outdoor sensor's row (below); and a source line
+  saying where the forecast and warnings come from and how old each is,
+  starting at the forecast's provider (`Open-Meteo 15:02 · no warnings, Met
+  Office 15:10`; the sensor is not in it).
+- **Outdoor sensor row** (`OUTDOOR SENSOR`, under the air quality, or under
+  the message when there is no forecast; not on the radar page): a battery
+  icon and its percent, link bars and `link <n>` (Zigbee2MQTT's link
+  quality, 0 to 255), each coloured by its band, and on the right `heard 2
+  min ago` (or `heard just now`). Battery: red to 10 %, orange 11–25,
+  yellow 26–50, green above 50; 0 % draws the outline alone. Link: red
+  under 30 (one bar), orange 30–79 (two), yellow 80–149 (three), green from
+  150 (four). A figure the sensor did not send is left out with its icon.
+  Silent for 30 minutes: `last heard 12:14` in orange, the last figures
+  kept in their colours; offline in Zigbee2MQTT: `offline, last heard
+  12:14` in orange; broker not reachable: a dim `broker not reachable` in
+  place of the figures and `last heard 12:14` in orange; before any
+  reading, a dim `no reading yet` and nothing on the right. A time not
+  today names its day (`yesterday 22:40`). The bands are a judgement, not
+  a published scale: link quality has none shared between devices.
 - **When data goes quiet**: a forecast whose last good fetch is over 2 hours
   old carries on, past hours dropped, with the source line in orange; with
   fewer than 3 future hours left it is not shown, and one line says why and
@@ -1100,9 +1118,12 @@ and radar on/off.
   ring 100 km from the house and a marker. It opens paused on the newest
   frame; Space plays the frames in a loop (half a second each, two on the
   newest), ← → step. The frame's time and age is orange, `radar is behind`,
-  when the newest frame is over 30 minutes old; with no frame under 2 hours
-  old it says `Radar not available.`; `No rain on the radar.` only when the
-  helper found no echo in the view for that frame. The helper fetches radar
+  when the newest frame is over 30 minutes old. Until a frame is listed it
+  says `Fetching the radar…` (the helper's first radar event of a fetch
+  lists none yet); `Radar not available.` only after a radar error, or when
+  every frame is 2 hours old or more. `No rain on the radar.` only when the
+  helper found no echo in the view for that frame. Its source line names
+  RainViewer and the outline's source, not the sensor. The helper fetches radar
   only while the page is open: M turns it on, and every way the panel closes
   (Esc, M back, a click outside, another panel) turns it off.
 - **Keys**: R fetches forecast, air and warnings now (the footer says
@@ -1726,7 +1747,9 @@ The full protocol is the docstring at the top of `desk-weather.py`.
   past radar frames, always the same block of zoom-6 tiles over the British
   Isles (x 30–32, y 18–21), so no request depends on the location; the
   outdoor sensor through the MQTT broker, subscribe only (the helper has no
-  code path that publishes). Every request has a timeout and the
+  code path that publishes): temperature, humidity, battery and
+  Zigbee2MQTT's `linkquality` (an integer 0–255, null when a message has
+  none) from each state message, and its availability. Every request has a timeout and the
   User-Agent `desk-weather`; redirects are not followed.
 - **Cadence**: forecast every 20 minutes, air every 60, warnings every 15,
   radar every 5 and only while the radar page is open; after an error, 60 s
@@ -1969,7 +1992,8 @@ config on GitHub's runners, cause not known.
   server, timers scaled) against a Mosquitto on loopback and that server:
   every event's shape, the rounded coordinates, the region never in a
   request, the fixed radar block, the unsupported-zoom picture refused,
-  `dry`, the retry back-off, the broker lost and back, nothing published,
+  `dry`, `linkquality` (present, absent, not a number, out of 0–255), the
+  retry back-off, the broker lost and back, nothing published,
   and no settings value in any output. The installed build has no test
   flags. About a minute.
 - `nix build .#checks.x86_64-linux.weather-panel`: runs
@@ -1977,7 +2001,8 @@ config on GitHub's runners, cause not known.
   (`tests/weather-panel/test-weather-panel.js`) against helper lines
   hand-written in the helper's format in `tests/weather-panel/fixtures/`
   (`"@-N"` in a time is N s before the test's now) and inline events: every
-  threshold on both sides, the forecast and radar pages' views, the bar
+  threshold on both sides (the sensor row's battery and link bands
+  included), the forecast and radar pages' views, the bar
   item, every key and the held-key rule, the footer after R, the errors
   (a settings error outranking a stopped helper), and the clock change of
   25 October 2026. Under 1 s.
