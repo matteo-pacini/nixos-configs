@@ -32,7 +32,8 @@ Singleton {
 
     readonly property color sea: "#14151c"
     readonly property color land: "#2b2d3a"
-    // The legend's steps, light to heavy. Drawn as the design has them; the
-    // radar tiles carry the provider's own colours.
-    readonly property var radarSteps: ["#8fc2ff", "#3f7fe0", "#f1e05a", "#ff9f40", "#ff4545"]
+    // The legend's steps, light to heavy: colours of RainViewer's Universal
+    // Blue scheme (colour 2), read from its tiles; the lightest is
+    // translucent there too.
+    readonly property var radarSteps: ["#bededa97", "#88ddee", "#0077aa", "#ffee00", "#ff9500", "#e62800"]
 }

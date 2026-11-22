@@ -7,8 +7,9 @@ import "paths.js" as P
 // The radar map, 392 × 252: a 390 × 250 view inside a 1 px rounded frame,
 // cut from a block of Web Mercator tiles around `centre`. Under the radar
 // tiles, the sea, a graticule (every 2° of longitude, 1° of latitude) and
-// `coast`, an array of rings of [lon, lat] (the generated coast file); over
-// them a ring 100 km from `centre`, a marker on it, the legend and `note`.
+// the land of `coast`, an array of rings of [lon, lat] (the generated coast
+// file); over them its outline, a ring 100 km from `centre`, a marker on it,
+// the legend and `note`.
 //
 // `block` is {zoom, tile, x0, y0, cols, rows} (the helper's radar event; by
 // default its fixed block), `centre` [x, y] in pixels from the block's
@@ -115,9 +116,7 @@ Item {
 
             ShapePath {
                 fillColor: Tints.land
-                strokeColor: Theme.comment
-                strokeWidth: 1
-                joinStyle: ShapePath.RoundJoin
+                strokeColor: "transparent"
                 fillRule: ShapePath.WindingFill
 
                 PathSvg {
@@ -153,6 +152,23 @@ Item {
                         // dropped frame's tiles leave memory with it.
                         cache: false
                     }
+                }
+            }
+        }
+
+        // The coastline over the rain, so it stays visible under echoes.
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: Theme.comment
+                strokeWidth: 1
+                joinStyle: ShapePath.RoundJoin
+
+                PathSvg {
+                    path: root.coastPath
                 }
             }
         }
@@ -208,32 +224,44 @@ Item {
             }
         }
 
-        Row {
-            x: 8
-            y: root.viewHeight - 16
-            spacing: 1
+        // The legend on a backing of the sea's colour, readable over echoes.
+        Rectangle {
+            x: 4
+            y: root.viewHeight - 22
+            width: legendText.x + legendText.implicitWidth + 4
+            height: 18
+            radius: 4
+            color: Qt.rgba(Tints.sea.r, Tints.sea.g, Tints.sea.b, 0.85)
 
-            Repeater {
-                model: Tints.radarSteps
+            Row {
+                x: 4
+                y: 6
+                spacing: 1
 
-                Rectangle {
-                    required property color modelData
+                Repeater {
+                    model: Tints.radarSteps
 
-                    width: 12
-                    height: 6
-                    radius: 1.5
-                    color: modelData
+                    Rectangle {
+                        required property color modelData
+
+                        width: 12
+                        height: 6
+                        radius: 1.5
+                        color: modelData
+                    }
                 }
             }
-        }
 
-        Text {
-            x: 8 + 70
-            y: root.viewHeight - 16 + 6 - baselineOffset
-            text: "light to heavy"
-            color: Style.soft
-            font.family: Theme.fontMono
-            font.pixelSize: 10
+            Text {
+                id: legendText
+
+                x: 4 + Tints.radarSteps.length * 13 + 5
+                y: 12 - baselineOffset
+                text: "light to heavy"
+                color: Style.soft
+                font.family: Theme.fontMono
+                font.pixelSize: 10
+            }
         }
 
         Text {
