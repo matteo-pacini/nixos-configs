@@ -723,19 +723,11 @@ Scope {
                                 x: 13
                                 y: 4
                                 coast: WeatherShared.coast
+                                block: root.block
                                 centre: root.block ? root.block.centre : null
                                 frames: root.frameDirs
                                 frameDir: root.rv ? root.rv.frameDir : ""
                                 note: root.rv ? root.rv.note : ""
-                            }
-
-                            // Before any radar event the map keeps its own
-                            // default block.
-                            Binding {
-                                target: map
-                                property: "block"
-                                value: root.block
-                                when: root.block !== null
                             }
                         }
 

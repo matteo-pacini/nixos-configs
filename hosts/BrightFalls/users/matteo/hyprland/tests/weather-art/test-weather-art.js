@@ -52,4 +52,16 @@ t("scene layout: the same inputs give the same picture; counts as drawn", () => 
     assert.equal(blank.stars.length + blank.clouds.length + blank.fog.length + blank.rain.length + blank.snow.length, 0);
 });
 
+t("rain groups: every line once, by its delay, the delay the group's start", () => {
+    const rain = P.sceneLayout({ blank: false, day: true, cloud: 1, rain: 2.4, seed: 17, w: 418, h: 170 }).rain;
+    const g = P.rainGroups(rain, 6);
+    assert.ok(g.length <= 6 && g.length > 1);
+    assert.equal(g.reduce((s, x) => s + x.count, 0), rain.length);
+    assert.equal(g.map(x => x.path).join(" ").split("M").length - 1, rain.length);
+    for (const x of g)
+        for (const l of rain.filter(l => x.path.split(" M").map(p => p.startsWith("M") ? p : "M" + p).includes(l.path)))
+            assert.ok(l.delay >= x.delay && l.delay < x.delay + 1 / 6, `delay ${l.delay} in group ${x.delay}`);
+    assert.deepEqual(P.rainGroups([], 6), []);
+});
+
 console.log(`ok: ${n} tests`);

@@ -52,11 +52,12 @@ Item {
     implicitHeight: 170
     clip: true
 
-    // Stepped, not every frame: each step redraws the panel's window. 20
-    // steps a second while rain (34 px/s) or snow falls; otherwise 5, as
-    // drift and twinkle move well under a pixel a step.
+    // Stepped, not every frame: each step redraws the panel's window, which
+    // is most of the motion's cost. 10 steps a second while rain (34 px/s)
+    // or snow falls; otherwise 5, as drift and twinkle move well under a
+    // pixel a step.
     Timer {
-        interval: root.rain > 0 || root.snow ? 50 : 200
+        interval: root.rain > 0 || root.snow ? 100 : 200
         running: root.running && !root.blank
         repeat: true
         onTriggered: root.t += interval / 1000
@@ -265,8 +266,9 @@ Item {
         }
     }
 
+    // The lines in six phase groups: one shape per group, not per line.
     Repeater {
-        model: root.placed.rain
+        model: P.rainGroups(root.placed.rain, 6)
 
         Shape {
             id: drop
