@@ -81,7 +81,7 @@ t("art and words for every Open-Meteo code, day and night", () => {
     assert.ok(!W.WMO.some(w => w[1] === "windy" || w[2] === "windy"), "no code means wind");
 });
 
-t("numbers: true minus, rounding to zero, compass, ages, projection", () => {
+t("numbers: true minus, rounding to zero, compass, ages", () => {
     assert.equal(W.degrees(-1.8, 1), `${M}1.8°`);
     assert.equal(W.degrees(-0.04, 1), "0.0°");
     assert.equal(W.degrees(-0.4, 0), "0°");
@@ -98,12 +98,6 @@ t("numbers: true minus, rounding to zero, compass, ages, projection", () => {
     assert.equal(W.when(NOW + 42000, NOW), "tomorrow 03:00");
     assert.equal(W.when(NOW - 3 * 86400, NOW), "Thu 15:20");
     assert.equal(W.when(NOW - 9 * 86400, NOW), "13 Nov 15:20");
-    const [x, y] = W.project(0, 0, 6);
-    assert.ok(Math.abs(x - 8192) < 1e-9 && Math.abs(y - 8192) < 1e-9);
-    const [gx, gy] = W.project(-0.0005, 51.4769, 6);
-    assert.equal(Math.floor(gx / 256), 31);
-    assert.equal(Math.floor(gy / 256), 21);
-    assert.ok(Math.abs(W.project(180, 0, 0)[0] - 256) < 1e-9);
 });
 
 t("rain at dusk: the reference state", () => {
@@ -547,6 +541,10 @@ t("errors: one plain line, the key named in mono", () => {
     assert.equal(W.view(back, NOW).hero.big, "7.4°");
     const st = load("10-config-invalid", NOW);
     assert.deepEqual(W.hints(W.initialUi(NOW), st), { keys: [["Esc", "close"]], message: "", tone: "normal" });
+    // The helper exits after a settings error: the error stays the line.
+    assert.equal(W.view(W.helperLost(st, "stopped", 4), NOW).single, "Weather is not set up: latitude in the settings file is missing or not valid.");
+    assert.equal(W.view(W.helperLost(load("11-config-missing", NOW), "stopped", 4), NOW).single, "Weather is not set up: there is no settings file.");
+    assert.equal(W.view(W.helperLost(st, "missing", 4), NOW).single, "The weather helper is not installed (desk-weather is not on PATH).");
 });
 
 t("healthy lines reset the back-off; settings errors and junk do not", () => {

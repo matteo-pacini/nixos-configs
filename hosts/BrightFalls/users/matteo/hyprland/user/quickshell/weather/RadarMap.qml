@@ -11,8 +11,8 @@ import "paths.js" as P
 // file); over them its outline, a ring 100 km from `centre`, a marker on it,
 // the legend and `note`.
 //
-// `block` is {zoom, tile, x0, y0, cols, rows} (the helper's radar event; by
-// default its fixed block), `centre` [x, y] in pixels from the block's
+// `block` is {zoom, tile, x0, y0, cols, rows} (the helper's radar event; null
+// for the helper's fixed block), `centre` [x, y] in pixels from the block's
 // top-left corner, or null for none (the view is then the block's middle,
 // with no ring or marker). The view stays inside the block, so near its edge
 // the marker leaves the middle. `frames` holds every frame directory, each
@@ -22,14 +22,7 @@ Item {
     id: root
 
     property var coast: []
-    property var block: ({
-            zoom: 6,
-            tile: 256,
-            x0: 30,
-            y0: 18,
-            cols: 3,
-            rows: 4
-        })
+    property var block: null
     property var centre: null
     property var frames: []
     property string frameDir: ""
@@ -37,18 +30,27 @@ Item {
 
     readonly property int viewWidth: 390
     readonly property int viewHeight: 250
-    readonly property real k: block.tile / 256
-    readonly property real centreX: centre ? centre[0] : block.cols * block.tile / 2
-    readonly property real centreY: centre ? centre[1] : block.rows * block.tile / 2
+    // `block`, or the helper's fixed block while there is none.
+    readonly property var b: block ?? {
+        zoom: 6,
+        tile: 256,
+        x0: 30,
+        y0: 18,
+        cols: 3,
+        rows: 4
+    }
+    readonly property real k: b.tile / 256
+    readonly property real centreX: centre ? centre[0] : b.cols * b.tile / 2
+    readonly property real centreY: centre ? centre[1] : b.rows * b.tile / 2
     // The view's top-left corner in block pixels.
-    readonly property real viewLeft: Math.max(0, Math.min(centreX - viewWidth / 2, block.cols * block.tile - viewWidth))
-    readonly property real viewTop: Math.max(0, Math.min(centreY - viewHeight / 2, block.rows * block.tile - viewHeight))
-    readonly property real ringRadius: 100000 / P.metresPerPixel(P.latitude(block.y0 * 256 + centreY / k, block.zoom), block.zoom) * k
+    readonly property real viewLeft: Math.max(0, Math.min(centreX - viewWidth / 2, b.cols * b.tile - viewWidth))
+    readonly property real viewTop: Math.max(0, Math.min(centreY - viewHeight / 2, b.rows * b.tile - viewHeight))
+    readonly property real ringRadius: 100000 / P.metresPerPixel(P.latitude(b.y0 * 256 + centreY / k, b.zoom), b.zoom) * k
 
     // [lon, lat] to view pixels.
     function place(lon, lat) {
-        const w = P.project(lon, lat, block.zoom);
-        return [w[0] * k - block.x0 * block.tile - viewLeft, w[1] * k - block.y0 * block.tile - viewTop];
+        const w = P.project(lon, lat, b.zoom);
+        return [w[0] * k - b.x0 * b.tile - viewLeft, w[1] * k - b.y0 * b.tile - viewTop];
     }
 
     readonly property string coastPath: coast.map(ring => ring.map((p, i) => {
@@ -72,12 +74,12 @@ Item {
     // The block's tiles that reach into the view, at view positions.
     readonly property var tiles: {
         const out = [];
-        for (let c = 0; c < block.cols; c++)
-            for (let r = 0; r < block.rows; r++) {
-                const x = c * block.tile - viewLeft, y = r * block.tile - viewTop;
-                if (x < viewWidth && x + block.tile > 0 && y < viewHeight && y + block.tile > 0)
+        for (let c = 0; c < b.cols; c++)
+            for (let r = 0; r < b.rows; r++) {
+                const x = c * b.tile - viewLeft, y = r * b.tile - viewTop;
+                if (x < viewWidth && x + b.tile > 0 && y < viewHeight && y + b.tile > 0)
                     out.push({
-                        name: `${block.x0 + c}_${block.y0 + r}.png`,
+                        name: `${b.x0 + c}_${b.y0 + r}.png`,
                         x: x,
                         y: y
                     });
@@ -144,8 +146,8 @@ Item {
 
                         x: modelData.x
                         y: modelData.y
-                        width: root.block.tile
-                        height: root.block.tile
+                        width: root.b.tile
+                        height: root.b.tile
                         source: "file://" + frame.modelData + "/" + modelData.name
                         asynchronous: true
                         // Held by this item while the frame is listed; a

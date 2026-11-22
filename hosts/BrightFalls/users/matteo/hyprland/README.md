@@ -22,7 +22,7 @@ work) is in [AGENTS.md](AGENTS.md).
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
   [Tailscale panel](#tailscale-panel), [Token panel](#token-panel),
-  [Tray menu](#tray-menu)
+  [Weather panel](#weather-panel), [Tray menu](#tray-menu)
 - [Wallpaper](#wallpaper)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
@@ -31,6 +31,8 @@ work) is in [AGENTS.md](AGENTS.md).
 - [Fleet: desk-fleet](#fleet-desk-fleet) (the helper behind the fleet panel)
 - [Tokens: desk-tokens](#tokens-desk-tokens) (the helper behind the token
   panel)
+- [Weather: desk-weather](#weather-desk-weather) (the helper behind the
+  weather panel, and its secret)
 - [Tailscale: status and mesh hosts](#tailscale-status-and-mesh-hosts) (the
   decisions behind the Tailscale panel)
 - [Tests](#tests)
@@ -187,8 +189,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The nine drop-down panels (network, audio, calendar, system, Bluetooth,
-office, fleet, tailscale, tokens) behave alike: each opens under its bar item on that bar's monitor (or the
+The ten drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet, tailscale, tokens, weather) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -213,6 +215,7 @@ which repeat (the lock screen is not guarded).
 | Fleet | Super+G, bar server glyph and count | `fleet` |
 | Tailscale | Super+V, bar Tailscale glyph | `tailscale` |
 | Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
+| Weather | Super+H, bar item (condition and temperature) | `weather` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
@@ -251,7 +254,9 @@ workspaces (its five, plus any other that exists there; click or scroll to
 switch); the focused window's title on that monitor; the clock (see
 [Calendar panel](#calendar-panel)); then a gamepad while game mode is on
 (read from Hyprland's `animations:enabled`), the tray (left click activates,
-right click opens the item's menu, see [Tray menu](#tray-menu)), the token
+right click opens the item's menu, see [Tray menu](#tray-menu)), the
+weather item (a triangle while a warning is in force, the condition and the
+outdoor temperature, see [Weather panel](#weather-panel)), the token
 item (a pie and the weekly plan-limit percentage, see [Token
 panel](#token-panel)), the fleet item (a server glyph and the number of hosts that want attention, see
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
@@ -1045,6 +1050,90 @@ the plan limits as Claude Code last reported them. It is read-only.
   panels; the projects list pages instead). The dollar figures are
   estimates at API list prices, not a bill.
 
+### Weather panel
+
+`Weather.qml`, with `weather/WeatherShared.qml` (shared with the bar:
+placement, the helper process, the state, the open panel's keys and pages,
+the coast file) and `weather/weather.js` (every decision: how the helper's
+events change the state, every text, tone and drawing input of the two
+pages and the bar item, what each key does, the footer; node-tested). The
+drawings are their own components in `weather/` (`ConditionArt`, `SkyScene`,
+`HoursStrip`, `RadarMap`, with the geometry in `weather/paths.js` and the
+art-only tints in `weather/Tints.qml`). Super+H, or a click on the bar item
+left of the token item, opens it. Everything comes from
+[`desk-weather`](#weather-desk-weather); the panel sends it only `refresh`
+and radar on/off.
+
+- **Bar item**: a warning triangle in the warning's colour while one for the
+  region is in force (the most severe sets the colour), the condition's art
+  at 20 px, and the outdoor temperature in whole degrees: the sensor's,
+  or the forecast model's for this hour, dimmed, while the sensor is silent
+  (no reading for 30 minutes), offline or not reachable. No art without a
+  forecast; `–°`, dimmed, with neither, or while the helper is down or the
+  settings are wrong. Purple with the open mark while the panel is open.
+- **Forecast page** (what it opens on): the sky over a row of houses (sun or
+  moon along its arc between today's sunrise and sunset, the dusk sky in the
+  first and last 12 % of the day, cloud cover, rain, snow and fog from the
+  current hour, lit windows from dusk to dawn; nothing in the sky without a
+  forecast), the large figure and where it comes from (`outdoor sensor · 2
+  min ago`, or `forecast model · sensor silent for 3 h` in orange; the
+  sensor's battery joins in yellow at 15 % or less), the condition and
+  today's range; a strip per warning in force or to come, most severe first,
+  with its areas and validity; four figures (humidity, wind with its
+  direction, orange from 40 km/h, rain or snow today, the next sunrise or
+  sunset); the next 8 hours (art, temperature on a curve, a bar of
+  millimetres per hour scaled to the wettest hour, at least 2.5 mm; snow
+  counts as its water); 6 days (art, precipitation, the range on the rows'
+  common scale, a mark on days a warning covers); the European air quality
+  index from a model (its band on a six-step scale, the pollutants with the
+  one that sets the index, pollen in grains/m³ for each kind the source
+  reports above zero); and a source line saying how old each part is.
+- **When data goes quiet**: a forecast whose last good fetch is over 2 hours
+  old carries on, past hours dropped, with the source line in orange; with
+  fewer than 3 future hours left it is not shown, and one line says why and
+  when it is retried. Warnings read earlier stay until each one ends; a feed
+  that could not be read is said in the source line, never shown as "no
+  warnings". An air quality error replaces the row with one line.
+- **Radar page** (M): the lower half swaps for RainViewer's past frames (the
+  last 2 hours in 10-minute steps, nothing ahead: the header says "past 2
+  hours, not a forecast") over a drawn outline of the British Isles, with a
+  ring 100 km from the house and a marker. It opens paused on the newest
+  frame; Space plays the frames in a loop (half a second each, two on the
+  newest), ← → step. The frame's time and age is orange, `radar is behind`,
+  when the newest frame is over 30 minutes old; with no frame under 2 hours
+  old it says `Radar not available.`; `No rain on the radar.` only when the
+  helper found no echo in the view for that frame. The helper fetches radar
+  only while the page is open: M turns it on, and every way the panel closes
+  (Esc, M back, a click outside, another panel) turns it off.
+- **Keys**: R fetches forecast, air and warnings now (the footer says
+  `Fetching the forecast…`, then `Forecast updated.` or why it failed, for
+  4 s), M radar and back, W opens the Met Office page of the first linked
+  warning and, pressed again, the next (`uwsm app -- xdg-open`, Met Office
+  links only), Space and ← → on the radar page, Esc closes. A held key
+  repeats only ← →. The footer lists exactly the keys that do something;
+  letters and Space count only without modifiers.
+- **Errors**: one plain line in place of the panel, and the bar item dims:
+  `The weather helper is not installed (desk-weather is not on PATH).`,
+  `The weather helper stopped. Starting it again in 8 s.`, or `Weather is not
+  set up: <key> in the settings file is missing or not valid.` (or that
+  there is no settings file).
+- **Motion**: rain and snow fall, clouds and fog drift and stars twinkle
+  only while the panel is open; the sky is stepped 10 times a second while
+  rain or snow falls, 5 otherwise, and the rain's lines move in six phase
+  groups. Nothing moves while it is closed.
+- **Cost** (the shell's CPU over 60 s, from `/proc`, with simulated data
+  and the helper not installed): rain at 10 Hz 2.9 % of one core; at
+  20 Hz 5.1 % (5.9 % with a shape per line), snow at 20 Hz 6.1 %; the
+  same sky with the motion stopped 0.65 %; the panel closed 0.33 %. Each
+  step redraws the panel's window, so the cost follows the step rate.
+- **While closed**: the helper runs (the bar shows its temperature) and a
+  minute tick re-reads the bar's view, since the sensor's silence and a
+  warning coming into force depend on the time alone.
+- **What it does not show, and why**: no meteogram (not in the first
+  build); no future radar (the free provider gives past frames only); no
+  UK air quality index (the source gives the European one; the UK's would
+  be an estimate); no wind art (no weather code means wind).
+
 ### Tray menu
 
 `tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
@@ -1622,6 +1711,82 @@ The full protocol is the docstring at the top of `desk-tokens.py`.
   stored (schema 1) gains the columns in place and is priced the same way,
   not rebuilt.
 
+## Weather: desk-weather
+
+`desk-weather` (`desk-weather.py`, `desk-weather.nix`) is the helper behind
+the [weather panel](#weather-panel): one long-running process the shell
+starts at its own start, since the bar needs it, as `desk-weather --config
+/run/agenix/brightfalls/weather`, speaking JSON lines on stdin and stdout.
+The full protocol is the docstring at the top of `desk-weather.py`.
+
+- **Sources**: the forecast and the air quality from Open-Meteo (one call
+  each, coordinates rounded to 2 decimals, about 1 km, whatever the file
+  holds); Met Office warnings from the whole-UK RSS feed only, filtered here
+  by the region's name, so the region is never in a request; RainViewer's
+  past radar frames, always the same block of zoom-6 tiles over the British
+  Isles (x 30–32, y 18–21), so no request depends on the location; the
+  outdoor sensor through the MQTT broker, subscribe only (the helper has no
+  code path that publishes). Every request has a timeout and the
+  User-Agent `desk-weather`; redirects are not followed.
+- **Cadence**: forecast every 20 minutes, air every 60, warnings every 15,
+  radar every 5 and only while the radar page is open; after an error, 60 s
+  doubling to 15 minutes, per source. `refresh` fetches the first three now.
+  Tiles are paced at 0.8 s; a first full load is about 2 minutes, newest
+  frame first. Tiles are cached under `~/.cache/desk-weather/radar/`, and a
+  frame is listed only when all its tiles are on disk.
+- **Settings errors**: a missing or invalid file gives one `config` event
+  naming the key at fault (never a value), then the helper stays alive and
+  silent until it is started again. Nothing from the file is printed or
+  logged.
+- **Outline**: the radar map's coast comes from Natural Earth's 50 m land
+  polygons (public domain), clipped and simplified by `weather-coast.nix`
+  and installed at `~/.local/share/desk/weather/coast.json`.
+
+### Secret
+
+The location, the warnings region and the broker are in the
+`brightfalls/weather` agenix secret, read only by the helper, at
+`/run/agenix/brightfalls/weather` (owner `matteo`). Its shape, with invented
+values:
+
+```json
+{"latitude": 51.48, "longitude": 0.00,
+ "warnings_region": "London & South East England",
+ "mqtt": {"host": "broker.example", "port": 1883, "base": "zigbee2mqtt",
+          "sensor": "Some Sensor Name"}}
+```
+
+`port` and `base` are optional with those defaults. `warnings_region` must
+match the text after "affecting" in the feed's warning titles, as the Met
+Office writes it.
+
+**Not declared yet**: the path is written out in `default.nix` until the
+secret exists. To enable it:
+
+1. Copy the JSON to the clipboard (never type it into the terminal) and, at
+   the repository root:
+   ```bash
+   wl-paste --no-newline | nix run nixpkgs#age -- -r "$(nix eval --raw --file lib/ssh-mesh.nix hosts.BrightFalls.hostKey)" -o secrets/brightfalls/weather.age
+   wl-copy --clear
+   ```
+2. In `secrets/secrets.nix`:
+   ```nix
+     # Location, warnings region and broker for the weather panel's desk-weather.
+     "brightfalls/weather.age".publicKeys = [ brightfalls ];
+   ```
+3. In `flake.nix`, beside `office-mqtt`:
+   ```nix
+               # Read by desk-weather, which the Quickshell weather panel runs.
+               age.secrets."brightfalls/weather" = {
+                 file = ./secrets/brightfalls/weather.age;
+                 owner = "matteo";
+               };
+   ```
+4. In `default.nix`, `osConfig.age.secrets."brightfalls/weather".path` in
+   place of the path string, as `desk-mqtt` has it.
+5. `git add secrets/brightfalls/weather.age` and commit it with the two
+   declarations, then deploy.
+
 ## Tailscale: status and mesh hosts
 
 `user/quickshell/tailscale/tailscale.js` holds every decision of the
@@ -1814,6 +1979,32 @@ config on GitHub's runners, cause not known.
   reading and the bar item, with days that cross the daylight-saving change
   of 1 November 2026; the plan's name and price come from `PLAN` itself.
   Under 1 s.
+- `nix build .#checks.x86_64-linux.weather-helper`:
+  `tests/weather/test-desk-weather.py` runs `desk-weather`'s pure functions
+  against `tests/weather/fixtures/` (forecast and air in Open-Meteo's
+  format, the warnings RSS, the radar frame list) and PNG tiles built in the
+  test, then the helper built with `testing = true` (requests go to a local
+  server, timers scaled) against a Mosquitto on loopback and that server:
+  every event's shape, the rounded coordinates, the region never in a
+  request, the fixed radar block, the unsupported-zoom picture refused,
+  `dry`, the retry back-off, the broker lost and back, nothing published,
+  and no settings value in any output. The installed build has no test
+  flags. About a minute.
+- `nix build .#checks.x86_64-linux.weather-panel`: runs
+  `user/quickshell/weather/weather.js` under node in London time
+  (`tests/weather-panel/test-weather-panel.js`) against helper lines
+  hand-written in the helper's format in `tests/weather-panel/fixtures/`
+  (`"@-N"` in a time is N s before the test's now) and inline events: every
+  threshold on both sides, the forecast and radar pages' views, the bar
+  item, every key and the held-key rule, the footer after R, the errors
+  (a settings error outranking a stopped helper), and the clock change of
+  25 October 2026. Under 1 s.
+- `nix build .#checks.x86_64-linux.weather-art`: runs
+  `user/quickshell/weather/paths.js` under node
+  (`tests/weather-art/test-weather-art.js`): the Web Mercator projection the
+  radar map places the coast and the ring with (the origin, Greenwich in the
+  block, the inverse, metres per pixel), the sky scene's layout being the
+  same for the same seed, and the rain lines' phase groups. Under 1 s.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the

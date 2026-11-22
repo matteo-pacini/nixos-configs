@@ -223,6 +223,23 @@ function sceneLayout(o) {
     return out;
 }
 
+// sceneLayout()'s rain lines in `n` groups by their delay, each group one
+// path and one delay (the start of its slice of the 0.65 s loop), so a few
+// shapes move instead of one per line. Empty groups are left out.
+function rainGroups(rain, n) {
+    const groups = [];
+    for (let k = 0; k < n; k++) {
+        const lines = rain.filter(l => Math.min(n - 1, Math.floor(l.delay * n)) === k);
+        if (lines.length)
+            groups.push({
+                path: lines.map(l => l.path).join(" "),
+                delay: k / n,
+                count: lines.length
+            });
+    }
+    return groups;
+}
+
 // The sun's or moon's dotted arc, and the point at `frac` along it.
 function skyArc(w, h) {
     const pts = [];
@@ -276,4 +293,4 @@ function swing(t, period) {
 }
 
 if (typeof module !== "undefined")
-    module.exports = { circle, cloud, crescent, sunRays, art, rng, project, latitude, metresPerPixel, sceneLayout, skyArc, skyPoint, skyline, swing };
+    module.exports = { circle, cloud, crescent, sunRays, art, rng, project, latitude, metresPerPixel, sceneLayout, rainGroups, skyArc, skyPoint, skyline, swing };

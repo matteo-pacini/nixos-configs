@@ -84,6 +84,9 @@ in
     recursive = true;
   };
   xdg.dataFile."desk/tailscale/hosts.json".text = builtins.toJSON { hosts = tailscaleHosts; };
+  # The weather panel's radar map draws this outline (README.md, "Weather
+  # panel").
+  xdg.dataFile."desk/weather/coast.json".source = pkgs.callPackage ./weather-coast.nix { };
   # The shell's token panel and bar item read the file this writes.
   custom.herdr.workbench.claudeLimitsFile.enable = true;
   home.activation.deskSync = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
