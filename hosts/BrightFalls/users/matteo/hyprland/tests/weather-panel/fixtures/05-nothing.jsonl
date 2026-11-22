@@ -1,0 +1,6 @@
+{"event":"config","state":"ok"}
+{"event":"broker","state":"connected"}
+{"event":"sensor","temperature":5.1,"humidity":88.0,"battery":50,"at":"@-60000","available":true}
+{"event":"forecast","fetched":"@-65880","utc_offset":0,"current":{"time":"@-66000","temperature":6.0,"humidity":80,"code":3,"is_day":0,"cloud":90,"precipitation":0.0,"wind":12.0,"wind_dir":180,"gusts":20.0},"hourly":[{"time":"@-4800","temperature":8.6,"code":3,"is_day":1,"precipitation":0.0,"snowfall":0.0,"cloud":80},{"time":"@-1200","temperature":8.2,"code":3,"is_day":1,"precipitation":0.0,"snowfall":0.0,"cloud":80},{"time":"@+2400","temperature":7.8,"code":3,"is_day":1,"precipitation":0.0,"snowfall":0.0,"cloud":80}],"daily":[{"date":"2026-11-22","code":3,"tmax":9.0,"tmin":4.0,"precipitation":0.0,"snowfall":0.0,"sunrise":"@-28200","sunset":"@+2760"}]}
+{"event":"broker","state":"lost"}
+{"event":"forecast_error","at":"@-60","reason":"network"}
