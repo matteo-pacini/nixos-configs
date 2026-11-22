@@ -35,7 +35,8 @@ empty value removes a label.
 | `agent.ask` | `agent-ask.sh` (Claude and Codex hooks), `opencode-labels.js` | `agent-list` |
 | `agent.ask_detail` | `agent-ask.sh` | no mod reads it yet |
 | `claude.session`, `codex.session`, `opencode.session` | `claude-session.sh`, `codex-labels.sh`, `opencode-labels.js` | `lib/agents.js` (restart on a newer version); `claude-resume.sh` (resume after reboot) |
-| `agent.name`, `agent.name_base` | the person, from `agent-list`'s or `pane-menu`'s Rename (`lib/name.js`); removed by `claude-title.sh` once Claude Code has the name | `lib/name.js` (`agent-list`, `pane-header`, `pane-menu`); `claude-title.sh` |
+| `agent.name`, `agent.name_base`, `agent.name_session` | the person, from `agent-list`'s or `pane-menu`'s Rename (`lib/name.js`); removed by `claude-title.sh` once Claude Code has the name, or when another session runs there | `lib/name.js` (`agent-list`, `pane-header`, `pane-menu`); `claude-title.sh` |
+| `claude.name` (the session's name; absent until it has one) | `claude-statusline.sh` | `lib/name.js` |
 | `claude.title` | `claude-title.sh` (Claude hooks) | `claude-title.sh` |
 
 Codex's hooks call `herdr-codex-labels` and `herdr-agent-ask`, and Claude
@@ -56,31 +57,45 @@ An agent has one name, drawn by `agent-list`'s rows and by `pane-header`
 beside the terminal's address (`lib/name.js`): the `agent.name` label, else
 the terminal's hc name, else its title, else its program.
 
+Claude Code is the exception to "else its title". It makes a title up for a
+session nobody named, and the mods never show that one: after the label and
+the hc name comes the session's own name (`claude.name`, which Claude Code's
+status line reports once the session has one), else "Claude Code".
+
 Rename (in `agent-list`'s and `pane-menu`'s menus) sets `agent.name`. For
-Codex and opencode that is all, and the label stays. Claude Code sets its
-terminal's title to its session's name, so there the label is only a rename
-Claude Code hasn't taken yet:
+Codex and opencode that is all, and the label stays. For Claude Code the
+label is only a rename the session hasn't taken yet:
 
 - **Workbench to Claude Code.** `herdr-claude-title`
   (`scripts/claude-title.sh`), a hook on UserPromptSubmit and SessionStart,
   hands the label over as the hook's `sessionTitle`, which names the session
   as `/rename` does, and removes the label. So the session takes the name at
-  the person's next message, or when it starts or resumes. Nothing is typed
-  into the terminal, so a rename works while the agent is working, blocked or
-  being kept warm.
-- **Claude Code to the workbench.** A `/rename` changes the title, which the
-  mods show at once when no label is in the way.
+  the person's next message, or when it resumes. Nothing is typed into the
+  terminal, so a rename works while the agent is working, blocked or being
+  kept warm.
+- **A rename is for one session.** Rename records the session running in the
+  terminal (`agent.name_session`, from `claude.session`), and the hook gives
+  the name to that session only. Any other session there, a new chat after
+  quitting or `/clear`, or a different one resumed, removes the label and is
+  not named. A rename with no session recorded goes to whichever runs next.
+- **Claude Code to the workbench.** A `/rename` shows in the mods at the
+  status line's next run, within about 10 s, when no label is in the way.
 - **Both, before the next message.** The later one wins, at that message.
   Until then the mods show the workbench's name. The hook tells the order
   from `claude.title` (the session's name at the hook's last run, as JSON)
   and `agent.name_base` (the terminal's title when Rename was saved): the
   session was renamed after when its name is neither.
-- A session never renamed shows the title Claude Code makes up for it. An
-  empty Rename removes the label and leaves the session's name alone: a hook
-  can't take a name away.
-- The hook goes by its terminal, not its session: a second Claude Code
-  started inside an agent's terminal (`claude -p` from a tool call) would
-  take a waiting rename.
+- The Rename dialog starts from the session's name, empty for a session never
+  named. An empty Rename removes the label and leaves the session's name
+  alone: a hook can't take a name away.
+- **`/clear` keeps the name.** Claude Code itself carries a session's name
+  into the chat a `/clear` starts. Nothing here can remove it; `/rename` in
+  the new chat replaces it.
+- The hook goes by its terminal: a second Claude Code started inside an
+  agent's terminal (`claude -p` from a tool call) is another session there,
+  so it removes a waiting rename.
+- A machine whose status line predates `claude.name` shows its named
+  sessions as "Claude Code" until it is rebuilt.
 
 ### Keep cache warm
 

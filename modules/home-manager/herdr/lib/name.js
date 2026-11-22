@@ -2,11 +2,13 @@
 // the Rename dialog (agent-list's, opened from its menu and from pane-menu)
 // share this, so the sidebar and the pane header always show the same name.
 //
-// The name is the terminal's `agent.name` label, else its title. A Claude Code
-// agent sets its title to its session's name, and takes a rename made here as
-// that name at its next message (scripts/claude-title.sh), which removes the
-// label. So for Claude Code the label only lasts until then, and a /rename in
-// Claude Code shows here through the title.
+// The name is the terminal's `agent.name` label, else its title. Not for
+// Claude Code, whose title is one it makes up until the session is named:
+// there the name is the session's own (`claude.name`, from
+// scripts/claude-statusline.sh), else "Claude Code". A Claude Code session
+// takes a rename made here as its name at its next message
+// (scripts/claude-title.sh), which removes the label, so for Claude Code the
+// label only lasts until then.
 
 import { openOverlay } from "herdr";
 
@@ -15,6 +17,12 @@ export const NAME = "agent.name";
 // The terminal's title when NAME was set: scripts/claude-title.sh tells from it
 // whether Claude Code was renamed after.
 const BASE = "agent.name_base";
+// The Claude Code session NAME was set for: scripts/claude-title.sh gives the
+// name to no other.
+const FOR = "agent.name_session";
+// A Claude Code session's name, absent until it has one.
+const SESSION_NAME = "claude.name";
+const SESSION = "claude.session";
 
 /** A terminal title without the status glyph a program puts in front of it. */
 export const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
@@ -25,7 +33,9 @@ export const isClaude = (a) => a?.app === "claude-code";
 /** The name of agent `a` (an agents() entry); `term` is its terminals() entry,
  *  if listed yet. */
 export function agentName(a, term) {
-  return term?.labels?.[NAME] || term?.name || clean(a.title) || a.program?.name || a.address;
+  const own = term?.labels?.[NAME] || term?.name;
+  if (isClaude(a)) return own || term?.labels?.[SESSION_NAME] || "Claude Code";
+  return own || clean(a.title) || a.program?.name || a.address;
 }
 
 /** What pane-header calls pane `p` (a panes() entry): an agent's name as
@@ -39,14 +49,16 @@ export function paneName(p, term) {
  *  entry): the label, or for Claude Code the session's name, since saving
  *  renames the session. */
 export function renameValue(a, term) {
-  return term?.labels?.[NAME] || (isClaude(a) ? clean(a.title) : "");
+  return term?.labels?.[NAME] || (isClaude(a) && term?.labels?.[SESSION_NAME]) || "";
 }
 
-/** The `hc label` arguments that rename `a` to `value`. Empty removes the
- *  name, which goes back to the title. */
-export function renameLabels(value, a) {
+/** The `hc label` arguments that rename `a` to `value`; `term` is its
+ *  terminals() entry. Empty removes the name. */
+export function renameLabels(value, a, term) {
   const name = value.trim();
-  return [`${NAME}=${name}`, `${BASE}=${name && isClaude(a) ? clean(a.title) : ""}`];
+  const claude = name && isClaude(a);
+  return [`${NAME}=${name}`, `${BASE}=${claude ? clean(a.title) : ""}`,
+    `${FOR}=${(claude && term?.labels?.[SESSION]) || ""}`];
 }
 
 /** Opens agent-list's Rename dialog for the agent at `address`, starting from

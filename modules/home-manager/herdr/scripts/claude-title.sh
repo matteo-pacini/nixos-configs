@@ -5,8 +5,14 @@
 #
 # The label is a rename Claude Code hasn't taken yet. This hook hands it over
 # as the hook's `sessionTitle`, which names the session as /rename does, and
-# removes the label: from then on the mods show the terminal's title, which
-# Claude Code sets to the session's name. Nothing is typed into the terminal.
+# removes the label: from then on the mods show the session's name. Nothing is
+# typed into the terminal.
+#
+# A rename is for the session that was running when it was made
+# (agent.name_session, set with agent.name): any other session in this
+# terminal, a new chat or another one resumed, removes the label and isn't
+# named. A rename with no session recorded goes to whichever session runs
+# next.
 #
 # A /rename in Claude Code that came after the rename in the workbench wins.
 # The hook tells the order from two labels:
@@ -32,15 +38,18 @@ plan=$(printf '%s\n%s\n' "$input" "$terminal" | jq -sc '
   | ($in.session_title // "") as $now
   | ($labels["agent.name"] // "") as $name
   | ($labels["agent.name_base"] // "") as $base
+  | ($labels["agent.name_session"] // "") as $for
   | ($labels["claude.title"] | if . == null then null else (try fromjson catch null) end) as $seen
   | ($in.hook_event_name == "UserPromptSubmit"
       or ($in.hook_event_name == "SessionStart" and ($in.source | IN("startup", "resume", "fork")))) as $takes
-  | (if $name == "" or ($takes | not) then "wait"
+  | (if $name == "" then "wait"
+     elif $for != "" and $for != ($in.session_id // "") then "drop"
+     elif $takes | not then "wait"
      elif $name == $now then "drop"
      elif $seen != null and $now != $seen and $now != $base then "drop"
      else "give" end) as $do
   | (if $do == "give" then $name else $now end) as $title
-  | { labels: ((if $do == "wait" then [] else ["agent.name=", "agent.name_base="] end)
+  | { labels: ((if $do == "wait" then [] else ["agent.name=", "agent.name_base=", "agent.name_session="] end)
         + (if ($title | tojson) == $labels["claude.title"] then [] else ["claude.title=" + ($title | tojson)] end))
     , out: (if $do == "give"
         then {hookSpecificOutput: {hookEventName: $in.hook_event_name, sessionTitle: $name}}

@@ -423,10 +423,15 @@ check "claude-statusline: after another session's cache too" "agent.cache_until=
 check "claude-statusline: a resumed session keeps the cache it had" "" \
   "$(CACHE_OF=s1 cache '{"warm":false,"caching_observed":false,"ttl":"1h","expires_at":null}')"
 check "claude-statusline: and still sets its other labels" \
-  "label t4 agent.ctx=14 agent.ctxk=139 agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322" "$(paste -sd ' ' "$HC_LOG")"
+  "label t4 agent.ctx=14 agent.ctxk=139 agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322 claude.name=" "$(paste -sd ' ' "$HC_LOG")"
 check "claude-statusline: all its labels, in one call" \
-  "label t4 agent.ctx=14 agent.ctxk=139 agent.cache_until=0 agent.cache_ttl= agent.cache_session=s1 agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322" \
+  "label t4 agent.ctx=14 agent.ctxk=139 agent.cache_until=0 agent.cache_ttl= agent.cache_session=s1 agent.model=Fable 5.2 agent.effort=high agent.version=2.1.322 claude.name=" \
   "$(cache '{"caching_observed":true}' >/dev/null; paste -sd ' ' "$HC_LOG")"
+# `session_name` is in the input only once the session has a name.
+check "claude-statusline: the session's name, spaces and all" "claude.name=new sunshine" \
+  "$(: >"$HC_LOG"; echo '{"session_id":"s1","session_name":"new sunshine"}' |
+    HC_TERMINAL_ID=t4 PATH="$work/slbin:$work/limbin:$PATH" bash -euo pipefail "$scripts/claude-statusline.sh" >/dev/null
+    grep '^claude\.name' "$HC_LOG")"
 
 # ---- claude-title.sh ----
 # `hc get` answers with terminal t7 as `hc get --json` gives it, cut to what
@@ -465,7 +470,7 @@ title() {
   cat "$HC_LOG"
 }
 gives() { printf '{"hookSpecificOutput":{"hookEventName":"%s","sessionTitle":"%s"}}\nexit 0\n' "${2:-UserPromptSubmit}" "$1"; }
-taken='label t7 agent.name= agent.name_base='
+taken='label t7 agent.name= agent.name_base= agent.name_session='
 named() { jq -nc --arg n "$1" --arg b "${2:-}" --arg s "${3-absent}" \
   '{"agent.name": $n, "agent.model": "Fable 5.2"} + (if $b == "" then {} else {"agent.name_base": $b} end)
     + (if $s == "absent" then {} else {"claude.title": ($s | tojson)} end)'; }
@@ -521,6 +526,24 @@ done
 check "claude-title: and the prompt after a /clear takes it" \
   "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
   "$(title "$(named herdr-cleanup old '')" UserPromptSubmit)"
+# The hook's session is s-1. The rename was made over a session never named,
+# which is when a session that isn't named either would otherwise be given it.
+for_session() { named herdr-cleanup 'Fix pane header labels' '' | jq -c --arg s "$1" '. + {"agent.name_session": $s}'; }
+dropped="$(printf '%s\n' 'exit 0' "$taken")"
+check "claude-title: a rename reaches the session it was made for" \
+  "$(gives herdr-cleanup; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title "$(for_session s-1)" UserPromptSubmit)"
+check "claude-title: and that session resumed" \
+  "$(gives herdr-cleanup SessionStart; echo "$taken claude.title=\"herdr-cleanup\"")" \
+  "$(title "$(for_session s-1)" SessionStart '' resume)"
+check "claude-title: a new chat in the terminal isn't given another session's rename" "$dropped" \
+  "$(title "$(for_session s-0)" SessionStart '' startup)"
+check "claude-title: nor is another session resumed there" "$dropped" \
+  "$(title "$(for_session s-0)" SessionStart '' resume)"
+check "claude-title: nor the chat after a /clear, at once" "$dropped" \
+  "$(title "$(for_session s-0)" SessionStart '' clear)"
+check "claude-title: nor its first prompt" "$dropped" \
+  "$(title "$(for_session s-0)" UserPromptSubmit)"
 check "claude-title: any other event only records the name" \
   "$(printf '%s\n' 'exit 0' 'label t7 claude.title="old"')" \
   "$(title "$(named herdr-cleanup)" Stop old)"

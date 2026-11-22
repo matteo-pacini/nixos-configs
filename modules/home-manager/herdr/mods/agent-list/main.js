@@ -95,7 +95,8 @@ export default class AgentTree extends View {
 
   async saveName() {
     const p = props();
-    const labels = renameLabels(this.input.value(), agents().find((a) => a.address === p.rename));
+    const labels = renameLabels(this.input.value(), agents().find((a) => a.address === p.rename),
+      terminals().find((k) => k.address === p.rename));
     closeOverlay(p.overlay);
     const r = await hc(["label", p.rename, ...labels]);
     if (r.code !== 0) notify({ title: "Couldn't rename agent", body: r.stderr || r.stdout, level: "error" });
@@ -113,7 +114,7 @@ export default class AgentTree extends View {
       .child(div().pt(16).pb(7).text_size(11.5).text_color(t.dim).child("Name"))
       .child(Input.new(this.input).h(36).px(10).rounded(9).border_1().border_color(t.accent).bg(t.background).text_size(12.8).text_color(t.foreground))
       .child(div().pt(6).text_size(11.5).text_color(t.dim).child(p.claude
-        ? "Claude Code takes the name at your next message. Empty goes back to Claude's own title."
+        ? "Claude Code takes the name at your next message. Empty leaves the session's name as it is."
         : "Empty goes back to the agent's own title."))
       .child(h_flex().pt(20).gap(8).justify_end()
         .child(button("rn-cancel", "Cancel", false, () => closeOverlay(p.overlay)))
