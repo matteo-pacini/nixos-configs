@@ -371,6 +371,13 @@ pkgs.lib.fix (self: {
         touch $out
       '';
 
+  # The weather drawings' geometry (quickshell/weather/paths.js): the radar
+  # map's projection and the sky scene's layout for a seed.
+  weather-art = pkgs.runCommand "weather-art-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    node ${./weather-art}/test-weather-art.js ${../user/quickshell/weather/paths.js}
+    touch $out
+  '';
+
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
       {
