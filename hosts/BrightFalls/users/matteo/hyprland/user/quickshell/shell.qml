@@ -30,6 +30,7 @@ ShellRoot {
     Fleet {}
     Tailscale {}
     Tokens {}
+    Weather {}
     TrayMenu {}
     Reminders {}
     Lockscreen {}
