@@ -337,6 +337,40 @@ pkgs.lib.fix (self: {
         touch $out
       '';
 
+  # desk-weather (the weather panel's helper): its pure functions against
+  # weather/fixtures/ and PNG tiles built in the test, then the helper built
+  # with testing = true (requests to a local server, timers scaled) against a
+  # Mosquitto on loopback and that server. Takes about a minute.
+  weather-helper =
+    pkgs.runCommand "weather-helper-tests"
+      {
+        nativeBuildInputs = [ (pkgs.python3.withPackages (p: [ p.paho-mqtt ])) ];
+      }
+      ''
+        mkdir work
+        python3 -I ${./weather/test-desk-weather.py} \
+          ${pkgs.lib.getExe (pkgs.callPackage ../desk-weather.nix { testing = true; })} \
+          ${../desk-weather.py} ${pkgs.lib.getExe' pkgs.mosquitto "mosquitto"} \
+          ${./weather/fixtures} "$PWD/work"
+        touch $out
+      '';
+
+  # The weather panel's library (quickshell/weather/weather.js) against
+  # hand-written helper lines in weather-panel/; the times it asserts are
+  # London's.
+  weather-panel =
+    pkgs.runCommand "weather-panel-tests"
+      {
+        nativeBuildInputs = [ pkgs.nodejs ];
+        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
+      }
+      ''
+        # Set here: the builder's setup sets TZ=UTC over the derivation's own.
+        export TZ=Europe/London
+        node ${./weather-panel}/test-weather-panel.js ${../user/quickshell/weather/weather.js}
+        touch $out
+      '';
+
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
       {
