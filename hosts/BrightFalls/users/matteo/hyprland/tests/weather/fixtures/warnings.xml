@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+ <channel>
+  <title>Met Office warnings for UK</title>
+  <link>https://weather.metoffice.gov.uk/guides/rss</link>
+  <description>Weather warnings of severe and extreme weather from the Met Office</description>
+  <language>en-gb</language>
+  <copyright>Crown copyright</copyright>
+  <pubDate>Sat, 21 Nov 2026 10:11:20 GMT</pubDate>
+  <item>
+   <title>Yellow warning of rain affecting Northshire and the Dales</title>
+   <description>Yellow warning of rain affecting Northshire and the Dales: Upper Dale, Lower Dale, Northtown valid from 0600 Sun 22 Nov to 2359 Sun 22 Nov</description>
+   <link>https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?date=2026-11-22&amp;id=00000000-fixture-0001&amp;referrer=rss</link>
+   <guid isPermaLink="false">https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?date=2026-11-22&amp;id=00000000-fixture-0001&amp;referrer=rss&amp;region=Northshire and the Dales</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/yellow-rain.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Red warning of snow affecting Northshire and the Dales</title>
+   <description>Red warning of snow affecting Northshire and the Dales: Upper Dale, valid from 0000 Tue 24 Nov to 1200 Tue 24 Nov</description>
+   <link>https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings#?id=00000000-fixture-0002</link>
+   <guid isPermaLink="false">00000000-fixture-0002</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/red-snow.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Yellow warning of wind and rain affecting Northshire and the Dales</title>
+   <description>Yellow warning of wind and rain affecting Northshire and the Dales: Upper Dale, Lower Dale, Northtown, the Coastal Strip, valid from 2100 Sun 22 Nov to 0900 Tue 24 Nov</description>
+   <link>https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0003</link>
+   <guid isPermaLink="false">00000000-fixture-0003</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/yellow-wind-rain.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Amber warning of wind affecting Northshire and the Dales</title>
+   <description>Amber warning of wind affecting Northshire and the Dales: the Coastal Strip valid from 0300 Mon 23 Nov to 1500 Mon 23 Nov</description>
+   <link>https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0004</link>
+   <guid isPermaLink="false">00000000-fixture-0004</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/amber-wind.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Yellow warning of fog affecting Southshire Coast</title>
+   <description>Yellow warning of fog affecting Southshire Coast: Porthaven valid from 0000 Sun 22 Nov to 1000 Sun 22 Nov</description>
+   <link>https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0005</link>
+   <guid isPermaLink="false">00000000-fixture-0005</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/yellow-fog.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Yellow warning of thunderstorms affecting Northshire and the Dales</title>
+   <description>Yellow warning of thunderstorms affecting Northshire and the Dales: Northtown valid from 1500 Sunday 22 November until late</description>
+   <link>https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0006</link>
+   <guid isPermaLink="false">00000000-fixture-0006</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/yellow-thunderstorms.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Amber warning of rain affecting Northshire and the Dales</title>
+   <description>Amber warning of rain affecting Northshire and the Dales: Lower Dale valid from 0600 Sun 22 Nov to 1800 Sun 22 Nov</description>
+   <link>https://www.metoffice.gov.uk.example.net/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0007</link>
+   <guid isPermaLink="false">00000000-fixture-0007</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/amber-rain.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Red warning of wind affecting Northshire and the Dales</title>
+   <description>Red warning of wind affecting Northshire and the Dales: Northtown valid from 0600 Sun 22 Nov to 1800 Sun 22 Nov</description>
+   <link>http://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0008</link>
+   <guid isPermaLink="false">00000000-fixture-0008</guid>
+   <enclosure url="https://data.consumer-digital.api.metoffice.gov.uk/v1/warnings/rss/image/red-wind.png" type="image/png" length="15285"/>
+  </item>
+  <item>
+   <title>Yellow warning of ice affecting Northshire and the Dales</title>
+   <description>Yellow warning of ice affecting Northshire and the Dales: Upper Dale valid from 1800 Sat 21 Nov to 1000 Sun 22 Nov</description>
+   <link>https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings#?id=00000000-fixture-0009</link>
+   <guid isPermaLink="false">00000000-fixture-0009</guid>
+  </item>
+ </channel>
+</rss>
