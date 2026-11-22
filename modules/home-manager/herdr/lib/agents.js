@@ -6,17 +6,18 @@
 
 import { exec, hc, notify } from "herdr";
 import { cmpVersion } from "./version.js";
+import { KEEP } from "./warm.js";
 
 // By the app herdr reports: the command on PATH, the package name in its store
 // path, the label holding the session, how to quit (text to send, or `keys:`
-// to press) and resume one, and the screen text of a prompt quitting can raise
-// instead, which Enter answers.
+// to press) and resume one, the screen text of a prompt quitting can raise
+// instead, which Enter answers, and the labels a restart sets again (`keeps`).
 // opencode takes pasted text as a prompt, so it's quit with a key. Claude asks
 // before quitting with background work running; Enter takes its default, "Exit
 // and stop tasks". Its "Move to background" would keep the old version running
 // in a daemon under a forked session, so the resume would only reattach to it.
 export const APPS = {
-  "claude-code": { name: "Claude Code", bin: "claude", pkg: "claude-code", session: "claude.session", quit: "/exit", resume: "claude --resume", asks: "Background work is running" },
+  "claude-code": { name: "Claude Code", bin: "claude", pkg: "claude-code", session: "claude.session", quit: "/exit", resume: "claude --resume", asks: "Background work is running", keeps: [KEEP] },
   codex: { name: "Codex", bin: "codex", pkg: "codex", session: "codex.session", quit: "/quit", resume: "codex resume" },
   opencode: { name: "opencode", bin: "opencode", pkg: "opencode", session: "opencode.session", quit: "keys:ctrl+c", resume: "opencode -s" },
 };
@@ -102,8 +103,11 @@ export async function typeAtPrompt(address, argv, name) {
 
 /** Quits the agent in `address`, answers the prompt quitting can raise (when
  *  its screen shows `app.asks`) with Enter, waits for its shell's prompt, then
- *  resumes `session` with the version now on PATH. Failures are shown as a
- *  notification. hc addresses remote terminals itself, so this runs here. */
+ *  resumes `session` with the version now on PATH. The labels in `app.keeps`
+ *  that were set are set again: quitting clears them (Claude Code's
+ *  keep-cache-warm switch, scripts/claude-session.sh), and a restart is not
+ *  the person quitting. Failures are shown as a notification. hc addresses
+ *  remote terminals itself, so this runs here. */
 export async function restartAgent(address, app, session) {
   const get = async () => {
     const r = await hc(["get", address, "--json"]);
@@ -114,6 +118,7 @@ export async function restartAgent(address, app, session) {
     const t = await get();
     if (atPrompt(t)) throw new Error("it isn't running");
     if (!fromShell(t)) throw new Error("it isn't running from a shell");
+    const kept = (app.keeps ?? []).filter((k) => t.labels?.[k]).map((k) => `${k}=${t.labels[k]}`);
     const quit = app.quit.startsWith("keys:") ? ["keys", address, app.quit.slice(5)] : ["send", address, app.quit];
     if ((await hc(quit)).code !== 0) throw new Error("couldn't tell it to quit");
     let quitted = false, asked = false;
@@ -126,6 +131,8 @@ export async function restartAgent(address, app, session) {
     }
     if (!quitted) throw new Error("it didn't quit");
     await hc(["send", address, `${app.resume} ${session}`]);
+    // Last, so the quitting session's hook, which clears them, has run.
+    if (kept.length) await hc(["label", address, ...kept]);
   } catch (e) {
     notify({ title: `Couldn't restart ${app.name}`, body: String(e.message ?? e), level: "error" });
   }

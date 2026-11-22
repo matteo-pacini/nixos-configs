@@ -572,4 +572,45 @@ check "claude-title: outside herdr, nothing" "exit 0" \
 check "agent-ask: prints nothing on UserPromptSubmit" "" \
   "$(echo '{"hook_event_name":"UserPromptSubmit","prompt":"hi"}' | HC_TERMINAL_ID=t2 bash -euo pipefail "$scripts/agent-ask.sh")"
 
+# ---- claude-session.sh ----
+# `session start|end` with the hook's JSON on stdin: what it printed, its exit
+# status, then every `hc` argument it passed.
+session() { # start|end, the hook's JSON
+  : >"$HC_LOG"
+  echo "$2" | HC_TERMINAL_ID=t3 bash -euo pipefail "$scripts/claude-session.sh" "$1"
+  echo "exit $?"
+  cat "$HC_LOG"
+}
+quit='label t3 claude.session= agent.keep_warm= agent.warm_state= agent.warm_failed='
+check "claude-session: a start labels the terminal with the session" "$(printf '%s\n' 'exit 0' label t3 claude.session=s-1)" \
+  "$(session start '{"session_id":"s-1","hook_event_name":"SessionStart"}')"
+check "claude-session: a start doesn't touch the keep-warm switch" "0" \
+  "$(session start '{"session_id":"s-1"}' | grep -c warm || true)"
+check "claude-session: a start with no session id, nothing" "exit 0" "$(session start '{}')"
+check "claude-session: /exit forgets the session and turns keep-warm off" "$(printf '%s\n' 'exit 0' $quit)" \
+  "$(session end '{"session_id":"s-1","reason":"prompt_input_exit"}')"
+check "claude-session: /logout does the same" "$(printf '%s\n' 'exit 0' $quit)" \
+  "$(session end '{"session_id":"s-1","reason":"logout"}')"
+check "claude-session: the quit is one hc call, on this terminal" "1 label t3" \
+  "$(session end '{"reason":"prompt_input_exit"}' | grep -c '^label$' | tr '\n' ' '; sed -n '1,2p' "$HC_LOG" | tr '\n' ' ' | sed 's/ $//')"
+# A session that carries on keeps its label, and its switch with it.
+for reason in other clear resume bypass_permissions_disabled something_new; do
+  check "claude-session: an end by '$reason' keeps the session and the switch" "exit 0" \
+    "$(session end "{\"session_id\":\"s-1\",\"reason\":\"$reason\"}")"
+done
+check "claude-session: an end with no reason keeps them" "exit 0" "$(session end '{"session_id":"s-1"}')"
+check "claude-session: an end that isn't JSON keeps them, and the hook passes" "exit 0" "$(session end 'not json')"
+check "claude-session: no stdin at all, the hook passes" "exit 0" "$(session end '')"
+check "claude-session: an unknown verb, nothing" "exit 0" "$(session resume '{"reason":"prompt_input_exit"}')"
+check "claude-session: outside herdr, a quit calls nothing" "exit 0" \
+  "$(: >"$HC_LOG"; echo '{"reason":"prompt_input_exit"}' | (unset HC_TERMINAL_ID; bash -euo pipefail "$scripts/claude-session.sh" end; echo "exit $?"); cat "$HC_LOG")"
+# The hook must pass even when hc fails (the core gone at shutdown).
+mkdir "$work/failbin"
+printf '#!%s\nexit 1\n' "$BASH" >"$work/failbin/hc"
+chmod +x "$work/failbin/hc"
+check "claude-session: hc failing doesn't fail the hook" "exit 0" \
+  "$(echo '{"reason":"prompt_input_exit"}' | HC_TERMINAL_ID=t3 PATH="$work/failbin:$PATH" bash -euo pipefail "$scripts/claude-session.sh" end; echo "exit $?")"
+check "claude-session: prints nothing" "" \
+  "$(echo '{"session_id":"s-1","reason":"prompt_input_exit"}' | HC_TERMINAL_ID=t3 bash -euo pipefail "$scripts/claude-session.sh" end)"
+
 exit "$failed"

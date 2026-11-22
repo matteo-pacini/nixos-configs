@@ -30,8 +30,8 @@ empty value removes a label.
 |-------|--------|---------|
 | `agent.model`, `agent.effort`, `agent.ctx`, `agent.ctxk`, `agent.version` | `claude-statusline.sh` (Claude's statusLine), `codex-labels.sh` (Codex hooks), `opencode-labels.js` | `agent-list` |
 | `agent.cache_until`, `agent.cache_ttl`, `agent.cache_session` (the session they describe: a resumed one keeps them until its first request) | `claude-statusline.sh` only | `agent-list` (cache-expiring flag); `lib/warm.js` and the `herdr-keep-warm` mod (see below) |
-| `agent.keep_warm` | the person, from `pane-header`'s switch | `lib/warm.js` (`pane-header`, `agent-list`); the `herdr-keep-warm` mod |
-| `agent.warm_state`, `agent.warm_failed` | the `herdr-keep-warm` mod | `lib/warm.js`: `pane-header` ("Refreshing", "Cache cold"), `agent-list` (the failure notification) |
+| `agent.keep_warm` | the person, from `pane-header`'s switch; cleared by `claude-session.sh` when the session is quit, set again by `lib/agents.js` after a restart | `lib/warm.js` (`pane-header`, `agent-list`); the `herdr-keep-warm` mod |
+| `agent.warm_state`, `agent.warm_failed` | the `herdr-keep-warm` mod; cleared by `claude-session.sh` when the session is quit | `lib/warm.js`: `pane-header` ("Refreshing", "Cache cold"), `agent-list` (the failure notification) |
 | `agent.ask` | `agent-ask.sh` (Claude and Codex hooks), `opencode-labels.js` | `agent-list` |
 | `agent.ask_detail` | `agent-ask.sh` | no mod reads it yet |
 | `claude.session`, `codex.session`, `opencode.session` | `claude-session.sh`, `codex-labels.sh`, `opencode-labels.js` | `lib/agents.js` (restart on a newer version); `claude-resume.sh` (resume after reboot) |
@@ -101,7 +101,13 @@ label is only a rename the session hasn't taken yet:
 
 A Claude Code pane's header has a switch, "Keep cache warm" (`lib/warm.js`
 decides what it shows). It sets `agent.keep_warm` on the terminal, so the
-switch is seen from every window and ends with the terminal.
+switch is seen from every window. It ends with the session: quitting Claude
+Code (`/exit`, Ctrl+C twice, `/logout`) turns it off, in the same hook that
+forgets the session (`scripts/claude-session.sh`), so a session started in
+that terminal later begins with it off. It stays on where the session
+carries on: across `/clear`, across a kill or shutdown (the session is
+resumed, switch and all), and across a restart on a new version, which sets
+it again after resuming (`lib/agents.js`).
 
 The work is done inside the Claude Code session, by a Claude Code mod,
 `herdr-keep-warm` (`claude-mods/keep-warm`). `core.nix` copies it to
@@ -116,8 +122,8 @@ last turn or the last refresh, the mod asks a one-word question with
 the conversation's prompt cache, which renews it; nothing joins the
 conversation, nothing is typed into the terminal and the agent's status
 doesn't change. Each refresh re-reads the whole context at the cached rate
-and counts toward the plan's usage, for as long as the switch is on. Nothing
-turns it off but the person.
+and counts toward the plan's usage, for as long as the switch is on. Only
+the person turns it off, by the switch or by quitting the session.
 
 - **1 h caches only.** A session billed by API key or on usage credits has a
   5-minute cache (`agent.cache_ttl=5m`): the switch can't be turned on there.

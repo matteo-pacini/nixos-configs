@@ -68,6 +68,65 @@ test("restartAgent: quits, waits for the prompt, resumes the session", async () 
   assert.deepEqual(sends, ["/exit", "claude --resume sess-1"]);
 });
 
+// The quit clears the keep-cache-warm switch (scripts/claude-session.sh), so a
+// restart has to put it back. `labelled` plays that hook: the label is gone
+// once the agent has quit.
+function restartWith(labels, { quits = true } = {}) {
+  let quit = false;
+  mock({
+    hc: async (args) => {
+      if (args[0] === "get") return { code: 0, stdout: JSON.stringify(quit ? shellAtPrompt : { ...agentInShell, labels }) };
+      if (args[0] === "send" && args[2] === "/exit") quit = quits;
+      return { code: 0, stdout: "" };
+    },
+    exec: async () => ({ code: 0, stdout: "" }),
+    notify: () => {},
+  });
+  return restartAgent("t1", APPS["claude-code"], "sess-1");
+}
+const hcCalls = (verb) => calls.filter(([n, a]) => n === "hc" && a[0] === verb).map(([, a]) => a);
+
+test("restartAgent: a session kept warm is kept warm after the restart", async () => {
+  await restartWith({ "agent.keep_warm": "1", "claude.session": "sess-1", "agent.cache_ttl": "1h" });
+  assert.deepEqual(hcCalls("label"), [["label", "t1", "agent.keep_warm=1"]], "the switch, with its value, and nothing else");
+  const order = calls.filter(([n]) => n === "hc").map(([, a]) => a.slice(0, 3).join(" "));
+  assert.ok(order.indexOf("label t1 agent.keep_warm=1") > order.indexOf("send t1 claude --resume sess-1"),
+    "set after the resume, once the quitting session's hook has cleared it");
+  assert.ok(order.indexOf("label t1 agent.keep_warm=1") > order.indexOf("send t1 /exit"));
+});
+
+test("restartAgent: a session that wasn't kept warm stays off", async () => {
+  await restartWith({ "claude.session": "sess-1", "agent.cache_ttl": "1h" });
+  assert.deepEqual(hcCalls("label"), []);
+  await restartWith({ "agent.keep_warm": "", "claude.session": "sess-1" });
+  assert.deepEqual(hcCalls("label"), [], "an empty label is off");
+  await restartWith(undefined);
+  assert.deepEqual(hcCalls("label"), [], "a terminal with no labels");
+});
+
+test("restartAgent: the switch isn't set on a terminal whose agent didn't quit", async () => {
+  await restartWith({ "agent.keep_warm": "1", "claude.session": "sess-1" }, { quits: false });
+  assert.deepEqual(hcCalls("label"), [], "the session still runs with its switch as it was");
+  assert.deepEqual(hcCalls("send").map((a) => a[2]), ["/exit"], "and nothing is resumed");
+});
+
+test("restartAgent: only Claude Code carries a switch over", async () => {
+  assert.deepEqual(APPS["claude-code"].keeps, ["agent.keep_warm"]);
+  for (const id of Object.keys(APPS).filter((k) => k !== "claude-code")) assert.equal(APPS[id].keeps, undefined, id);
+  let quit = false;
+  mock({
+    hc: async (args) => {
+      if (args[0] === "get") return { code: 0, stdout: JSON.stringify(quit ? shellAtPrompt : { ...agentInShell, labels: { "agent.keep_warm": "1" } }) };
+      if (args[0] === "send" || args[0] === "keys") quit = true;
+      return { code: 0, stdout: "" };
+    },
+    exec: async () => ({ code: 0, stdout: "" }),
+    notify: () => {},
+  });
+  await restartAgent("t1", APPS.codex ?? APPS.opencode, "sess-1");
+  assert.deepEqual(hcCalls("label"), []);
+});
+
 test("restartAgent: answers Claude's background-work prompt with Enter", async () => {
   let asked = false, quit = false;
   mock({
