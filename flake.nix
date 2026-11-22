@@ -178,6 +178,11 @@
               file = ./secrets/brightfalls/office-mqtt.age;
               owner = "matteo";
             };
+            # Read by desk-weather, which the Quickshell weather panel runs.
+            age.secrets."brightfalls/weather" = {
+              file = ./secrets/brightfalls/weather.age;
+              owner = "matteo";
+            };
           }
         ];
       };

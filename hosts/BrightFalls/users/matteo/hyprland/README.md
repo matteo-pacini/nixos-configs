@@ -1760,32 +1760,14 @@ values:
 match the text after "affecting" in the feed's warning titles, as the Met
 Office writes it.
 
-**Not declared yet**: the path is written out in `default.nix` until the
-secret exists. To enable it:
+To recreate it (needs only the public key), with the JSON on the clipboard,
+at the repository root:
 
-1. Copy the JSON to the clipboard (never type it into the terminal) and, at
-   the repository root:
-   ```bash
-   wl-paste --no-newline | nix run nixpkgs#age -- -r "$(nix eval --raw --file lib/ssh-mesh.nix hosts.BrightFalls.hostKey)" -o secrets/brightfalls/weather.age
-   wl-copy --clear
-   ```
-2. In `secrets/secrets.nix`:
-   ```nix
-     # Location, warnings region and broker for the weather panel's desk-weather.
-     "brightfalls/weather.age".publicKeys = [ brightfalls ];
-   ```
-3. In `flake.nix`, beside `office-mqtt`:
-   ```nix
-               # Read by desk-weather, which the Quickshell weather panel runs.
-               age.secrets."brightfalls/weather" = {
-                 file = ./secrets/brightfalls/weather.age;
-                 owner = "matteo";
-               };
-   ```
-4. In `default.nix`, `osConfig.age.secrets."brightfalls/weather".path` in
-   place of the path string, as `desk-mqtt` has it.
-5. `git add secrets/brightfalls/weather.age` and commit it with the two
-   declarations, then deploy.
+```bash
+rm secrets/brightfalls/weather.age
+wl-paste --no-newline | nix run nixpkgs#age -- -r "$(nix eval --raw --file lib/ssh-mesh.nix hosts.BrightFalls.hostKey)" -o secrets/brightfalls/weather.age
+wl-copy --clear
+```
 
 ## Tailscale: status and mesh hosts
 

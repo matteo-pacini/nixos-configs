@@ -133,9 +133,9 @@ in
       );
     })
     (callPackage ./desk-tokens.nix { })
-    # The path of the brightfalls/weather agenix secret, written out until
-    # the secret is declared.
-    (callPackage ./desk-weather.nix { configFile = "/run/agenix/brightfalls/weather"; })
+    (callPackage ./desk-weather.nix {
+      configFile = osConfig.age.secrets."brightfalls/weather".path;
+    })
   ];
 
   # The desktop shell, from user/quickshell/ (installed at

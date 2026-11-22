@@ -580,8 +580,7 @@ the radio off at every boot through `wifi-radio-off-at-boot` in
 `hosts/BrightFalls/networking.nix`), token panel (Super+U: Claude Code
 usage through `desk-tokens` and the plan limits from the status line's file,
 read-only), weather panel (Super+H: sky, figures, warnings, hours, days and
-air quality, and the radar page on M, through `desk-weather`; its secret
-not declared yet, README, "Weather: desk-weather").
+air quality, and the radar page on M, through `desk-weather`).
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and
@@ -604,12 +603,11 @@ live on 2026-11-22 and load without a warning from them; Super+H is loaded
   `$XDG_RUNTIME_DIR/desk/claude-limits.json` has `evidence_at` and `kind`.
   Until then the token panel's weekly row says `as of` the old writer's last
   rewrite.
-- Weather: delete the stand-in `~/.local/share/desk/weather/coast.json`
-  **before** the switch (Home Manager will not replace a regular file with
-  its link). After it, `desk-weather` is on PATH and the panel says `Weather
-  is not set up: there is no settings file.` until the secret exists: the
-  owner's five steps are in README, "Weather: desk-weather", "Secret"; one
-  more deploy after them.
+- Weather: nothing to undo by hand (there is no stand-in). After the switch
+  `desk-weather` is on PATH and reads the `brightfalls/weather` secret; the
+  bar's weather item should show the outdoor temperature within a minute or
+  two. Until the owner has seen that, everything with the real helper is
+  expected only.
 
 From the token panel's deploy, done or not by now, no report says:
 - One `hyprctl reload` (then `hyprctl configerrors`) for Super+O, Super+G,
