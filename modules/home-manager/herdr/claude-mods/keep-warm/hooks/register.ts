@@ -36,11 +36,14 @@ export const register: Register = on => {
       }
     }
 
+    // Not only when hasStopped: the label outlives the session that set it
+    // (a restart, a resume after a reboot), and this one never stopped.
     reset = async () => {
-      if (hasStopped) await hc('label', terminal, 'agent.warm_failed=')
+      await hc('label', terminal, 'agent.warm_failed=')
       hasStopped = false
       failures = 0
     }
+    await reset()
     lastActivityAt = await $.clock.now()
 
     $.clock.every(30_000, async () => {

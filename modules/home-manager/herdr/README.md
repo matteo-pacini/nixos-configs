@@ -119,9 +119,11 @@ turns it off but the person.
   switch counts down and goes cold. Restarting the agent (the OUTDATED
   button, or `/exit` and `claude --resume`) loads it.
 - Mods need Claude Code 2.1.287 or later. The mod's decisions are in
-  `hooks/logic.js`, which `tests/js/keep-warm.test.mjs` covers; `register.ts`
-  only runs in Claude Code (`claude --plugin-dir claude-mods/keep-warm` loads
-  it from the repo, and `claude plugin validate` checks it).
+  `hooks/logic.js`, which `tests/js/keep-warm.test.mjs` covers, along with
+  `register.ts`'s handling of the failure label, against a stand-in engine.
+  The rest of `register.ts` only runs in Claude Code
+  (`claude --plugin-dir claude-mods/keep-warm` loads it from the repo, and
+  `claude plugin validate` checks it).
 
 ### The plan-limit file
 

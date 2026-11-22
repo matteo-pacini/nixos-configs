@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PING_EVERY_MS, isTime, labelsOf, verdict, wants } from "../../claude-mods/keep-warm/hooks/logic.js";
+import { register } from "../../claude-mods/keep-warm/hooks/register.ts";
 
 const NOW = 1795038000000;
 // Labels as claude-statusline and the pane header's switch set them, with
@@ -64,4 +65,49 @@ test("verdict: no answer", () => {
   assert.equal(verdict(undefined), "failed", "the call threw");
   assert.equal(verdict({ isAnswered: false, reason: "api-error", usage: reply(0, 0).usage }), "failed");
   assert.equal(verdict({ isAnswered: false, reason: "nothing-to-fork" }), "failed");
+});
+
+// register.ts against a stand-in for Claude Code's mod engine: `handlers` by
+// event name, and every `hc` call it made, as its arguments.
+function engine(env = { HC_TERMINAL_ID: "t56" }) {
+  const handlers = {};
+  const hcCalls = [];
+  const $ = {
+    env: { get: async (name) => env[name] },
+    process: {
+      run: async ([program, ...args]) => {
+        assert.equal(program, "hc");
+        hcCalls.push(args);
+        return { exitCode: 0, stdout: "{}" };
+      },
+    },
+    clock: { now: async () => NOW, every: () => {} },
+  };
+  register((name, handler) => { handlers[name] = handler; });
+  const fire = (name, e = {}) => handlers[name]($, e, () => {});
+  return { fire, hcCalls };
+}
+
+const CLEAR = ["label", "t56", "agent.warm_failed="];
+
+test("register: a starting session clears the failure an earlier one left on the terminal", async () => {
+  const { fire, hcCalls } = engine();
+  await fire("session.start", { isInteractive: true });
+  assert.deepEqual(hcCalls, [CLEAR]);
+});
+
+test("register: a turn clears the failure label though this session never stopped", async () => {
+  const { fire, hcCalls } = engine();
+  await fire("session.start", { isInteractive: true });
+  hcCalls.length = 0;
+  await fire("prompt.submit");
+  await fire("turn.complete");
+  assert.deepEqual(hcCalls, [CLEAR]);
+});
+
+test("register: outside a herdr-core terminal it calls nothing", async () => {
+  const { fire, hcCalls } = engine({});
+  await fire("session.start", { isInteractive: true });
+  await fire("turn.complete");
+  assert.deepEqual(hcCalls, []);
 });
