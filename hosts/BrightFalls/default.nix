@@ -77,12 +77,15 @@
   # comin's own user service; notifies when a staged deployment needs a reboot.
   services.comin.desktop.enable = true;
   # `comin desktop` panics unless its first notification is delivered, and
-  # graphical-session.target starts it before the shell owns the
-  # notification name. It also exits 1 whenever comin's event stream drops
-  # (comin restarts itself after deploying its own unit); each restart
-  # notifies once, so the start limit caps that at six in two minutes.
+  # it starts alongside the shell, which may not own the notification name
+  # yet. It also exits 1 whenever comin's event stream drops (comin restarts
+  # itself after deploying its own unit); each restart notifies once, so the
+  # start limit caps that at six in two minutes.
+  # Ordered after graphical-session.target, not before it like the target's
+  # other wanted units: the shell starts after the target, so waiting here
+  # for its notification name before the target would stall the session.
   systemd.user.services.comin-desktop = {
-    after = [ "quickshell.service" ];
+    after = [ "graphical-session.target" ];
     startLimitIntervalSec = 120;
     startLimitBurst = 6;
     serviceConfig = {
