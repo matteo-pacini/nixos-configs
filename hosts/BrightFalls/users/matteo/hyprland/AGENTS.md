@@ -518,7 +518,7 @@ Directories (`import qs.<dir>`):
 | `fleet/` | `FleetShared.qml` (shared singleton: `screen`, `toggleRequested`, `said`, `readOnly`, runs `desk-fleet` and restarts it, `fleet` state, `send()`, `open`/`closed` to the helper), `fleet.js` (all fleet decisions: applying helper events, order, header, pipeline, row views and folding, info lines, keys lit, questions, key to command, navigation, footer texts, whether a spinner turns, bar view; node-tested) |
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`, `said`), `tokens.js` (all token-panel decisions: applying the helper's answers and events and which of them reset the restart back-off, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading, its "as of" times and the line after R, the bar look, the hand-set `PLAN`; node-tested) |
-| `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml` (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
+| `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml`, `SensorRow.qml` (the outdoor sensor's battery and link row) (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -579,8 +579,9 @@ network panel (radio, scan, join, forget, the password modal, the bar mark;
 the radio off at every boot through `wifi-radio-off-at-boot` in
 `hosts/BrightFalls/networking.nix`), token panel (Super+U: Claude Code
 usage through `desk-tokens` and the plan limits from the status line's file,
-read-only), weather panel (Super+H: sky, figures, warnings, hours, days and
-air quality, and the radar page on M, through `desk-weather`).
+read-only), weather panel (Super+H: sky, figures, warnings, hours, days, air
+quality and the outdoor sensor's battery and link row, and the radar page
+on M, through `desk-weather`).
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and
@@ -707,6 +708,14 @@ From the token panel's deploy, done or not by now, no report says:
   helper with the real secret, broker, sensor and services; a real radar
   load; real key presses and clicks; the panel with real keyboard focus; W
   opening a real warning page; the panel over a game.
+  The outdoor sensor row, the empty label over the sensor's figure, the
+  source line without the sensor and `Fetching the radar…` until a frame or
+  an error: node-tested (`weather-panel`, every band on both sides of its
+  boundaries), `linkquality` in the helper's `sensor` event tested against
+  a loopback broker (`weather-helper`), and the row's twelve states drawn
+  offscreen from `weather/Preview.qml` and checked against the design. Not
+  seen in the live panel, nor with the real sensor's link quality; whether
+  its figures fall in useful bands is expected only.
 - Calendar big view (Super+Shift+C, F from the drop-down): built and
   checked only (lint, verify-config, node); never loaded, seen or keyed
   live; the blur and the dim never seen.

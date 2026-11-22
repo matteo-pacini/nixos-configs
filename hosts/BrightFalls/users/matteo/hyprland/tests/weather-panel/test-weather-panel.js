@@ -103,14 +103,20 @@ t("numbers: true minus, rounding to zero, compass, ages", () => {
 t("rain at dusk: the reference state", () => {
     const v = W.view(rain(), NOW);
     assert.equal(v.single, "");
-    assert.deepEqual(v.hero, { big: "7.4°", bigTone: "normal", age: "outdoor sensor · 2 min ago", ageTone: "soft", condition: "Light rain", range: "today 3° to 9°" });
+    assert.deepEqual(v.hero, { big: "7.4°", bigTone: "normal", age: "", ageTone: "soft", condition: "Light rain", range: "today 3° to 9°" });
+    assert.deepEqual(v.sensor, {
+        message: "", messageTone: "dim",
+        battery: { percent: 55, text: "55 %", tone: "green", fill: 0.55 },
+        link: { value: 168, text: "link 168", tone: "green", bars: 4 },
+        heard: "heard 2 min ago", heardTone: "dim"
+    });
     assert.deepEqual(v.stats, [
         { label: "HUMIDITY", value: "78", unit: "%", tone: "normal" },
         { label: "WIND", value: "19", unit: "km/h SW", tone: "normal" },
         { label: "RAIN TODAY", value: "6.2", unit: "mm", tone: "normal" },
         { label: "SUNSET", value: "16:06", unit: "", tone: "normal" }
     ]);
-    assert.equal(v.source, "sensor 2 min ago · Open-Meteo 15:02 · no warnings, Met Office 15:10");
+    assert.equal(v.source, "Open-Meteo 15:02 · no warnings, Met Office 15:10");
     assert.equal(v.sourceTone, "normal");
     assert.deepEqual(v.warnings, []);
     assert.equal(v.body, "forecast");
@@ -241,7 +247,9 @@ t("snow at night: minus sign, sunrise next, snow as water", () => {
     assert.equal(v.hero.big, `${M}1.8°`);
     assert.equal(v.hero.condition, "Snow");
     assert.equal(v.hero.range, `today ${M}3° to 1°`);
-    assert.equal(v.hero.age, "outdoor sensor · 1 min ago");
+    assert.equal(v.hero.age, "");
+    assert.equal(v.sensor.heard, "heard 1 min ago");
+    assert.deepEqual([v.sensor.battery.text, v.sensor.battery.tone, v.sensor.link.text, v.sensor.link.tone, v.sensor.link.bars], ["40 %", "yellow", "link 96", "yellow", 3]);
     assert.deepEqual(v.stats.map(s => [s.label, s.value, s.unit]), [["HUMIDITY", "94", "%"], ["WIND", "11", "km/h N"], ["SNOW TODAY", "3.3", "mm"], ["SUNRISE", "07:31", ""]]);
     assert.equal(v.precipHead, "mm of snow, as water, below");
     assert.equal(v.hours[0].art, "snowy");
@@ -290,61 +298,121 @@ t("scene: clear midday, fog, sun in the middle, after sunset", () => {
     assert.equal(edgeAt(0.89), true);
 });
 
-const sensor = (extra, now) => Object.assign({ event: "sensor", temperature: 7.4, humidity: 78, battery: 55, at: (now || NOW) - 120, available: true }, extra);
+const sensor = (extra, now) => Object.assign({ event: "sensor", temperature: 7.4, humidity: 78, battery: 55, linkquality: 168, at: (now || NOW) - 120, available: true }, extra);
+const rowOf = (extra, now) => W.view(W.apply(rain(), sensor(extra), now || NOW), now || NOW).sensor;
 
-t("sensor silent after 30 min: the model's figure, in orange", () => {
+t("sensor silent after 30 min: the model's figure, the row's last values in orange time", () => {
     const st = W.apply(rain(), sensor({ at: NOW - 1799 }), NOW);
     assert.equal(W.view(st, NOW).hero.big, "7.4°");
-    assert.equal(W.view(st, NOW).hero.age, "outdoor sensor · 29 min ago");
+    assert.equal(W.view(st, NOW).hero.age, "");
+    assert.deepEqual([W.view(st, NOW).sensor.heard, W.view(st, NOW).sensor.heardTone], ["heard 29 min ago", "dim"]);
     const silent = W.apply(rain(), sensor({ at: NOW - 1800 }), NOW);
     let v = W.view(silent, NOW);
     assert.equal(v.hero.big, "7.8°");
     assert.equal(v.hero.age, "forecast model · sensor silent for 30 min");
     assert.equal(v.hero.ageTone, "orange");
-    v = W.view(W.apply(rain(), sensor({ at: NOW - 3 * 3600 - 360 }), NOW), NOW);
+    assert.deepEqual([v.sensor.heard, v.sensor.heardTone], ["last heard 14:50", "orange"]);
+    v = W.view(W.apply(rain(), sensor({ at: NOW - 3 * 3600 - 360, battery: 41, linkquality: 64 }), NOW), NOW);
     assert.equal(v.hero.age, "forecast model · sensor silent for 3 h");
     assert.equal(v.stats[0].value, "67");
-    assert.equal(v.source, "sensor last heard 12:14 · Open-Meteo 15:02 · no warnings, Met Office 15:10");
-    assert.equal(v.sourceTone, "orange");
+    // The last values stay, in their own colours.
+    assert.deepEqual(v.sensor, {
+        message: "", messageTone: "dim",
+        battery: { percent: 41, text: "41 %", tone: "yellow", fill: 0.41 },
+        link: { value: 64, text: "link 64", tone: "orange", bars: 2 },
+        heard: "last heard 12:14", heardTone: "orange"
+    });
+    // The source line no longer says anything of the sensor.
+    assert.equal(v.source, "Open-Meteo 15:02 · no warnings, Met Office 15:10");
+    assert.equal(v.sourceTone, "normal");
+    // Heard yesterday: the day is named.
+    assert.equal(W.view(load("05-nothing", NOW), NOW).sensor.heard, "last heard yesterday 22:40");
 });
 
-t("broker not reachable: same fallback, the cause in the source line", () => {
+t("broker not reachable: same fallback, the row says why", () => {
     const v = W.view(W.apply(rain(), { event: "broker", state: "lost" }, NOW), NOW);
     assert.equal(v.hero.big, "7.8°");
     assert.equal(v.hero.age, "forecast model · sensor not reachable");
     assert.equal(v.hero.ageTone, "orange");
-    assert.equal(v.source, "sensor: message broker not reachable, retrying · Open-Meteo 15:02 · no warnings, Met Office 15:10");
-    assert.equal(v.sourceTone, "orange");
+    assert.deepEqual(v.sensor, { message: "broker not reachable", messageTone: "dim", battery: null, link: null, heard: "last heard 15:18", heardTone: "orange" });
+    assert.equal(v.source, "Open-Meteo 15:02 · no warnings, Met Office 15:10");
+    assert.equal(v.sourceTone, "normal");
+    // Never heard and the broker lost: nothing on the right.
+    const never = feed(W.initial(), [{ event: "config", state: "ok" }, { event: "broker", state: "lost" }], NOW);
+    assert.deepEqual([W.view(never, NOW).sensor.message, W.view(never, NOW).sensor.heard], ["broker not reachable", ""]);
     // Back: the last reading counts again.
     const back = W.apply(W.apply(rain(), { event: "broker", state: "lost" }, NOW), { event: "broker", state: "connected" }, NOW);
     assert.equal(W.view(back, NOW).hero.big, "7.4°");
+    assert.equal(W.view(back, NOW).sensor.heard, "heard 2 min ago");
 });
 
 t("sensor offline in Zigbee2MQTT, or never heard", () => {
     let v = W.view(W.apply(rain(), sensor({ available: false }), NOW), NOW);
     assert.equal(v.hero.age, "forecast model · sensor offline");
-    assert.equal(v.source.split(" · ")[0], "sensor offline, last heard 15:18");
+    assert.deepEqual([v.sensor.heard, v.sensor.heardTone, v.sensor.battery.text, v.sensor.link.text], ["offline, last heard 15:18", "orange", "55 %", "link 168"]);
+    assert.equal(v.source.split(" · ")[0], "Open-Meteo 15:02");
     const none = feed(W.initial(), events("01-rain-dusk", NOW).filter(e => e.event !== "sensor"), NOW);
     v = W.view(none, NOW);
     assert.equal(v.hero.age, "forecast model · sensor not heard yet");
-    assert.equal(v.source.split(" · ")[0], "sensor: no reading yet");
+    assert.deepEqual(v.sensor, { message: "no reading yet", messageTone: "dim", battery: null, link: null, heard: "", heardTone: "orange" });
+    assert.equal(v.source.split(" · ")[0], "Open-Meteo 15:02");
     // A reading with no temperature: the model's.
     v = W.view(W.apply(rain(), sensor({ temperature: null }), NOW), NOW);
     assert.equal(v.hero.big, "7.8°");
     assert.equal(v.hero.age, "forecast model · sensor sent no temperature");
     assert.equal(v.stats[0].value, "78");
+    assert.equal(v.sensor.heard, "heard 2 min ago");
 });
 
-t("battery low at 15 % and below, in yellow", () => {
-    let v = W.view(W.apply(rain(), sensor({ battery: 16 }), NOW), NOW);
-    assert.equal(v.hero.age, "outdoor sensor · 2 min ago");
-    assert.equal(v.hero.ageTone, "soft");
-    v = W.view(W.apply(rain(), sensor({ battery: 15 }), NOW), NOW);
-    assert.equal(v.hero.age, "outdoor sensor · 2 min ago · battery 15 %");
-    v = W.view(W.apply(rain(), sensor({ battery: 9 }), NOW), NOW);
-    assert.equal(v.hero.age, "outdoor sensor · 2 min ago · battery 9 %");
-    assert.equal(v.hero.ageTone, "yellow");
-    assert.equal(W.view(W.apply(rain(), sensor({ battery: null }), NOW), NOW).hero.ageTone, "soft");
+t("the hero's label: empty on the sensor's figure, never the battery", () => {
+    for (const b of [0, 9, 15, 25, 55, null]) {
+        const v = W.view(W.apply(rain(), sensor({ battery: b }), NOW), NOW);
+        assert.deepEqual([v.hero.age, v.hero.ageTone], ["", "soft"], `battery ${b}`);
+    }
+    const v = W.view(W.apply(rain(), sensor({ battery: 9, at: NOW - 4000 }), NOW), NOW);
+    assert.equal(v.hero.age, "forecast model · sensor silent for 1 h");
+    assert.equal(W.view(load("06-first-start", NOW), NOW).hero.age, "waiting for the sensor");
+});
+
+t("battery bands, both sides of each boundary; 0 % is an empty outline", () => {
+    const at = b => rowOf({ battery: b }).battery;
+    for (const [b, tone] of [[0, "red"], [10, "red"], [11, "orange"], [25, "orange"], [26, "yellow"], [50, "yellow"], [51, "green"], [100, "green"]])
+        assert.equal(at(b).tone, tone, `battery ${b}`);
+    assert.deepEqual(at(0), { percent: 0, text: "0 %", tone: "red", fill: 0 });
+    assert.equal(at(100).fill, 1);
+    assert.equal(at(18).fill, 0.18);
+    // A fraction is read as the whole percent it shows.
+    assert.deepEqual([at(10.4).text, at(10.4).tone, at(10.6).text, at(10.6).tone], ["10 %", "red", "11 %", "orange"]);
+});
+
+t("link bands and bars, both sides of each boundary", () => {
+    const at = q => rowOf({ linkquality: q }).link;
+    for (const [q, tone, bars] of [[0, "red", 1], [29, "red", 1], [30, "orange", 2], [79, "orange", 2], [80, "yellow", 3], [149, "yellow", 3], [150, "green", 4], [255, "green", 4]]) {
+        assert.equal(at(q).tone, tone, `link ${q}`);
+        assert.equal(at(q).bars, bars, `link ${q}`);
+    }
+    assert.deepEqual(at(22), { value: 22, text: "link 22", tone: "red", bars: 1 });
+});
+
+t("a value the sensor did not send is left out", () => {
+    let r = rowOf({ linkquality: null });
+    assert.equal(r.link, null);
+    assert.equal(r.battery.text, "55 %");
+    r = rowOf({ battery: null });
+    assert.equal(r.battery, null);
+    assert.equal(r.link.text, "link 168");
+    // An older helper's line without the key at all.
+    const old = sensor({});
+    delete old.linkquality;
+    assert.equal(W.view(W.apply(rain(), old, NOW), NOW).sensor.link, null);
+    r = rowOf({ battery: null, linkquality: null });
+    assert.deepEqual([r.battery, r.link, r.message, r.heard], [null, null, "", "heard 2 min ago"]);
+    assert.equal(rowOf({ at: NOW - 30 }).heard, "heard just now");
+});
+
+t("the row is there with no forecast too, and not with an error line", () => {
+    assert.equal(W.view(load("04-no-forecast", NOW), NOW).sensor.heard, "heard 2 min ago");
+    assert.equal(W.view(W.helperLost(rain(), "stopped", 8), NOW).sensor, null);
 });
 
 t("wind orange from 40 km/h", () => {
@@ -363,7 +431,7 @@ t("wind orange from 40 km/h", () => {
 t("forecast old after 2 h: carries on, past hours dropped, orange source", () => {
     const st = load("03-forecast-old", NOW);
     const v = W.view(st, NOW);
-    assert.equal(v.source, "sensor 2 min ago · forecast from 12:02, 3 h old · last fetch failed, retrying");
+    assert.equal(v.source, "forecast from 12:02, 3 h old · last fetch failed, retrying");
     assert.equal(v.sourceTone, "orange");
     assert.equal(v.body, "forecast");
     assert.equal(v.hours[0].label, "now");
@@ -378,9 +446,9 @@ t("forecast old after 2 h: carries on, past hours dropped, orange source", () =>
         f.fetched = NOW - age;
         return W.view(W.apply(rain(), f, NOW), NOW);
     };
-    assert.equal(at(7200).source.split(" · ")[1], "Open-Meteo 13:20");
+    assert.equal(at(7200).source.split(" · ")[0], "Open-Meteo 13:20");
     assert.equal(at(7200).sourceTone, "normal");
-    assert.equal(at(7201).source.split(" · ")[1], "forecast from 13:19, 2 h old");
+    assert.equal(at(7201).source.split(" · ")[0], "forecast from 13:19, 2 h old");
     assert.equal(at(7201).sourceTone, "orange");
 });
 
@@ -403,10 +471,10 @@ t("no forecast, sensor fine: blank sky, dashes, the sensor's figures", () => {
     assert.equal(v.message, "No forecast. The last one is from yesterday 21:02 and has run out. Retrying every minute.");
     assert.equal(v.scene.blank, true);
     assert.equal(v.scene.lit, false);
-    assert.deepEqual(v.hero, { big: "7.4°", bigTone: "normal", age: "outdoor sensor · 2 min ago", ageTone: "soft", condition: "", range: "" });
+    assert.deepEqual(v.hero, { big: "7.4°", bigTone: "normal", age: "", ageTone: "soft", condition: "", range: "" });
     assert.deepEqual(v.stats.map(s => [s.value, s.tone]), [["78", "normal"], [D, "dim"], [D, "dim"], [D, "dim"]]);
     assert.equal(v.stats[3].label, "SUNSET");
-    assert.equal(v.source, "sensor 2 min ago · forecast: could not reach the service");
+    assert.equal(v.source, "forecast: could not reach the service");
     assert.equal(v.sourceTone, "orange");
     assert.equal(v.hours, null);
     assert.equal(v.days, null);
@@ -418,12 +486,12 @@ t("retry wording follows the helper's doubling", () => {
     st = W.apply(st, { event: "forecast_error", at: NOW - 30, reason: "http" }, NOW);
     let v = W.view(st, NOW);
     assert.equal(v.message, "No forecast. The last one is from yesterday 21:02 and has run out. Retrying at 15:21.");
-    assert.equal(v.source, "sensor 2 min ago · forecast: the service answered with an error");
+    assert.equal(v.source, "forecast: the service answered with an error");
     for (let i = 0; i < 6; i++)
         st = W.apply(st, { event: "forecast_error", at: NOW, reason: "parse" }, NOW);
     v = W.view(st, NOW);
     assert.equal(v.message.split(". ").pop(), "Retrying at 15:35.");
-    assert.equal(v.source, "sensor 2 min ago · forecast: could not read the answer from the service");
+    assert.equal(v.source, "forecast: could not read the answer from the service");
     // Never a forecast.
     const fresh = feed(W.initial(), [{ event: "config", state: "ok" }, sensor({}), { event: "forecast_error", at: NOW, reason: "network" }], NOW);
     assert.equal(W.view(fresh, NOW).message, "No forecast has arrived yet. Retrying every minute.");
@@ -437,10 +505,14 @@ t("first start: waiting, blank, started at", () => {
     assert.equal(v.scene.blank, true);
     assert.equal(v.source, "started 15:20");
     assert.equal(v.sourceTone, "normal");
-    // The sensor first: its line, no forecast part yet.
+    assert.deepEqual(v.sensor, { message: "no reading yet", messageTone: "dim", battery: null, link: null, heard: "", heardTone: "orange" });
+    // The sensor first: the row has it, the source line still says when
+    // the helper started; the warnings join it once read.
     const s = W.apply(load("06-first-start", NOW), sensor({}), NOW);
-    assert.equal(W.view(s, NOW).source, "sensor 2 min ago");
+    assert.equal(W.view(s, NOW).source, "started 15:20");
+    assert.equal(W.view(s, NOW).sensor.heard, "heard 2 min ago");
     assert.equal(W.view(s, NOW).message, "Fetching the first forecast.");
+    assert.equal(W.view(W.apply(s, { event: "warnings", fetched: NOW, items: [] }, NOW), NOW).source, "started 15:20 · no warnings, Met Office 15:20");
     assert.equal(W.view(W.initial(), NOW).source, "");
 });
 
@@ -450,7 +522,7 @@ t("nothing at all", () => {
     assert.equal(v.hero.age, "no sensor reading, no forecast");
     assert.equal(v.hero.ageTone, "orange");
     assert.equal(v.hero.big, D);
-    assert.equal(v.source, "sensor: message broker not reachable · forecast: could not reach the service");
+    assert.equal(v.source, "forecast: could not reach the service");
     assert.equal(v.sourceTone, "orange");
     const never = feed(W.initial(), [{ event: "config", state: "ok" }, { event: "forecast_error", at: NOW, reason: "network" }], NOW);
     assert.equal(W.view(never, NOW).message, "Nothing to show. The sensor has not been heard and no forecast has arrived. Retrying every minute.");
@@ -470,7 +542,7 @@ t("warnings: strips most severe first, the expired one gone", () => {
     // Times that did not parse: the feed's own words.
     assert.equal(v.warnings[2].detail, "Westshire · 0400 Tue 24 Nov to 1100 Tue 24 Nov · Met Office");
     assert.equal(v.warnings[2].link, "");
-    assert.equal(v.source, "sensor 2 min ago · Open-Meteo 15:02 · 3 warnings, Met Office 15:10");
+    assert.equal(v.source, "Open-Meteo 15:02 · 3 warnings, Met Office 15:10");
     // The day rows: yellow today, amber Monday; the unplaced one marks none.
     assert.deepEqual(v.days.map(d => d.mark), ["yellow", "orange", "", "", "", ""]);
     // Across midnight from today.
@@ -490,12 +562,12 @@ t("warnings feed not read: no strip, no 'no warnings', kept items stay", () => {
     st = W.apply(st, { event: "warnings_error", at: NOW - 60, reason: "network" }, NOW);
     let v = W.view(st, NOW);
     assert.deepEqual(v.warnings, []);
-    assert.equal(v.source, "sensor 2 min ago · Open-Meteo 15:02 · warnings not checked since 13:10: could not reach the Met Office");
+    assert.equal(v.source, "Open-Meteo 15:02 · warnings not checked since 13:10: could not reach the Met Office");
     assert.equal(v.sourceTone, "orange");
     const never = feed(W.initial(), events("01-rain-dusk", NOW).filter(e => e.event !== "warnings").concat([{ event: "warnings_error", at: NOW, reason: "http" }]), NOW);
     assert.equal(W.view(never, NOW).source.split(" · ").pop(), "warnings not checked: the Met Office answered with an error");
     // Not read at all yet: no part.
-    assert.equal(W.view(feed(W.initial(), events("01-rain-dusk", NOW).filter(e => e.event !== "warnings"), NOW), NOW).source, "sensor 2 min ago · Open-Meteo 15:02");
+    assert.equal(W.view(feed(W.initial(), events("01-rain-dusk", NOW).filter(e => e.event !== "warnings"), NOW), NOW).source, "Open-Meteo 15:02");
     // An earlier read's warnings stay through an error until they end.
     v = W.view(W.apply(warned(), { event: "warnings_error", at: NOW, reason: "network" }, NOW), NOW);
     assert.equal(v.warnings.length, 3);
@@ -671,7 +743,7 @@ t("radar page: the newest frame, paused", () => {
     assert.deepEqual([r.left, r.right], ["13:10", "15:10"]);
     assert.equal(r.timeline, true);
     assert.deepEqual(r.block, { zoom: 6, tile: 256, x0: 30, y0: 18, cols: 3, rows: 4, centre: [412.3, 520.8] });
-    assert.equal(r.source, "sensor 2 min ago · radar: RainViewer · outline: Natural Earth");
+    assert.equal(r.source, "radar: RainViewer · outline: Natural Earth");
     assert.equal(r.sourceTone, "normal");
     assert.deepEqual(W.hints(ui, st).keys, [["Space", "play"], ["← →", "frame"], ["M", "forecast"], ["Esc", "close"]]);
     const back = W.key(ui, st, "M", false);
@@ -746,7 +818,7 @@ t("radar behind after 30 min", () => {
     assert.equal(r.labelTone, "orange");
     r = W.radarView(st, NOW + 3600, null, false);
     assert.equal(r.label, "15:10 · 1 h 10 min ago, radar is behind");
-    assert.equal(r.source, "sensor last heard 15:18 · radar: RainViewer, no new frame since 15:10");
+    assert.equal(r.source, "radar: RainViewer, no new frame since 15:10");
     assert.equal(r.sourceTone, "orange");
     // An older frame keeps the orange, not the words.
     r = W.radarView(st, NOW + 3600, NOW - 1200, false);
@@ -764,7 +836,8 @@ t("radar not available: no frame under 2 h, an error, still loading", () => {
     assert.equal(r.timeline, false);
     assert.deepEqual(r.ticks, []);
     assert.equal(r.frameDir, "");
-    assert.equal(r.source.split(" · ")[1], "radar: no frame in the last 2 hours");
+    assert.equal(r.source, "radar: no frame in the last 2 hours");
+    assert.equal(r.sourceTone, "orange");
     assert.notEqual(r.block, null, "the outline and marker still draw");
     const gone = W.tick(W.key(W.key(W.initialUi(NOW), st, "M", false).ui, st, "Space", false).ui, st, NOW + 6600).ui;
     assert.equal(gone.playing, false);
@@ -773,14 +846,32 @@ t("radar not available: no frame under 2 h, an error, still loading", () => {
     assert.equal(W.key(gone, st, "Left", false).ui, gone);
     const err = W.apply(rain(), { event: "radar_error", at: NOW, reason: "network" }, NOW);
     r = W.radarView(err, NOW, null, false);
-    assert.deepEqual([r.state, r.note, r.source, r.sourceTone], ["unavailable", "Radar not available.", "sensor 2 min ago · radar: could not reach RainViewer", "orange"]);
+    assert.deepEqual([r.state, r.note, r.source, r.sourceTone], ["unavailable", "Radar not available.", "radar: could not reach RainViewer", "orange"]);
     assert.equal(r.block, null);
     r = W.radarView(rain(), NOW, null, false);
-    assert.deepEqual([r.state, r.note, r.source, r.sourceTone], ["loading", "Fetching the radar…", "sensor 2 min ago · radar: RainViewer", "normal"]);
+    assert.deepEqual([r.state, r.note, r.source, r.sourceTone], ["loading", "Fetching the radar…", "radar: RainViewer", "normal"]);
     // A failed fetch with fresh frames still shows them.
     assert.equal(W.radarView(W.apply(st, { event: "radar_error", at: NOW, reason: "http" }, NOW), NOW, null, false).state, "frames");
+});
+
+t("radar: an event with no frame yet is still fetching, until an error", () => {
     const empty = W.apply(rain(), { event: "radar", fetched: NOW, zoom: 6, tile: 256, x0: 30, y0: 18, cols: 3, rows: 4, centre: [1, 2], frames: [] }, NOW);
-    assert.equal(W.radarView(empty, NOW, null, false).state, "unavailable");
+    let r = W.radarView(empty, NOW, null, false);
+    assert.deepEqual([r.state, r.note, r.source, r.sourceTone, r.timeline], ["loading", "Fetching the radar…", "radar: RainViewer", "normal", false]);
+    assert.deepEqual(r.block, { zoom: 6, tile: 256, x0: 30, y0: 18, cols: 3, rows: 4, centre: [1, 2] });
+    // Still no frame an hour on: no error, so still fetching.
+    assert.equal(W.radarView(empty, NOW + 3600, null, false).state, "loading");
+    const failed = W.apply(empty, { event: "radar_error", at: NOW + 5, reason: "tile" }, NOW + 5);
+    r = W.radarView(failed, NOW + 5, null, false);
+    assert.deepEqual([r.state, r.note, r.sourceTone], ["unavailable", "Radar not available.", "orange"]);
+    // A new empty event after the error: fetching again.
+    assert.equal(W.radarView(W.apply(failed, empty.radar.last, NOW + 300), NOW + 300, null, false).state, "loading");
+    // Frames only from more than 2 hours ago: not available, not fetching.
+    const old = W.apply(rain(), Object.assign({}, empty.radar.last, { frames: [{ time: NOW - 7200, dir: "/cache/radar/old", dry: false }] }), NOW);
+    r = W.radarView(old, NOW, null, false);
+    assert.deepEqual([r.state, r.note, r.source], ["unavailable", "Radar not available.", "radar: no frame in the last 2 hours"]);
+    assert.equal(W.radarView(old, NOW - 1, null, false).state, "frames");
+    assert.deepEqual(W.hints(W.key(W.initialUi(NOW), empty, "M", false).ui, empty).keys, [["M", "forecast"], ["Esc", "close"]]);
 });
 
 t("a night and a day across the clock change", () => {
@@ -812,7 +903,7 @@ t("a night and a day across the clock change", () => {
     assert.equal(v.stats[1].value, D, "the current block is from the night");
     // Fetched 00:20 BST: 12 h 40 min of real time to 12:00 GMT, though the
     // wall clock moved 11 h 40 min.
-    assert.equal(v.source, "sensor 1 min ago · forecast from 00:20, 12 h old");
+    assert.equal(v.source, "forecast from 00:20, 12 h old");
     assert.equal(W.when(CC + 1800, noon), "01:00");
     assert.equal(W.when(CC + 5400, noon), "01:00");
     assert.equal(W.when(CC - 86400, noon), "yesterday 00:30");

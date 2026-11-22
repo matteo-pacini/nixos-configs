@@ -33,7 +33,9 @@ are Unix seconds (integers, UTC). Missing values are null, never absent keys.
       Sent on each change; "lost" also when the first connection fails.
       Reconnects every 10 s.
   {"event":"sensor","temperature":7.4,"humidity":78.0,"battery":55,
-   "at":1795345000,"available":true}
+   "linkquality":86,"at":1795345000,"available":true}
+      linkquality = Zigbee2MQTT's linkquality, an integer 0..255; null when
+      the message has none or it is not an integer in that range.
       at = the reading's time (Zigbee2MQTT last_seen if present, else
       arrival; null before any reading). available = Zigbee2MQTT
       availability (true when unknown). Sent on each reading and on each
@@ -866,6 +868,23 @@ def reading_time(last_seen, arrival):
     return arrival
 
 
+def link_quality(v):
+    """Zigbee2MQTT's linkquality as an integer 0..255, else None."""
+    if not is_number(v) or v != int(v) or not 0 <= v <= 255:
+        return None
+    return int(v)
+
+
+def reading(payload, arrival):
+    """The sensor event's reading fields from one Zigbee2MQTT state message
+    (a dict), in the event's key order."""
+    return {"temperature": number(payload.get("temperature")),
+            "humidity": number(payload.get("humidity")),
+            "battery": number(payload.get("battery")),
+            "linkquality": link_quality(payload.get("linkquality")),
+            "at": reading_time(payload.get("last_seen"), arrival)}
+
+
 def availability_of(payload):
     """True, False, or None (not an availability message)."""
     text = payload.decode(errors="replace").strip()
@@ -881,7 +900,8 @@ class Sensor:
     def __init__(self, config):
         self.topic = f"{config['base']}/{config['sensor']}"
         self.config = config
-        self.reading = {"temperature": None, "humidity": None, "battery": None, "at": None}
+        self.reading = {"temperature": None, "humidity": None, "battery": None,
+                        "linkquality": None, "at": None}
         self.available = True
         self.broker = None
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, clean_session=True)
@@ -947,10 +967,7 @@ class Sensor:
                 return
             if not isinstance(payload, dict):
                 return
-            self.reading = {"temperature": number(payload.get("temperature")),
-                            "humidity": number(payload.get("humidity")),
-                            "battery": number(payload.get("battery")),
-                            "at": reading_time(payload.get("last_seen"), int(time.time()))}
+            self.reading = reading(payload, int(time.time()))
             self.report()
 
     def report(self):

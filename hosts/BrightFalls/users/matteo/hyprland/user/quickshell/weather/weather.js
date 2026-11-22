@@ -28,8 +28,10 @@
 //     settings errors); singleParts: [{ text, code }] the same line in pieces,
 //     code true for a name drawn in the mono font. With single set, every
 //     other field below is null.
-//   hero: { big ("7.4°", "−1.8°", "–"), bigTone, age (the line top right),
-//     ageTone, condition ("Light rain" | ""), range ("today 3° to 9°" | "") }
+//   hero: { big ("7.4°", "−1.8°", "–"), bigTone, age (the line top right:
+//     "" while big is the sensor's, else why it is the forecast model's or
+//     why there is none), ageTone, condition ("Light rain" | ""), range
+//     ("today 3° to 9°" | "") }
 //   scene: { blank, day, frac (along the day or the night arc), edge (sun in
 //     its first or last 12 % of the day), cloud 0..1, rain (0 none, else
 //     0.5..3, streak density), snow, fog, lit (windows) }
@@ -56,11 +58,23 @@
 //     ("µg/m³"), highest ("NO₂" | ""), pollen ("" | "grass pollen 34 grains/
 //     m³"), text (the whole second line, plain), message, messageTone }:
 //     shown false means draw only message.
-//   source, sourceTone: the line above the footer.
+//   sensor: the OUTDOOR SENSOR row, under the body whichever it is: {
+//     message ("" | "no reading yet" | "broker not reachable", drawn in
+//     place of the figures), messageTone ("dim"), battery (null when not
+//     sent or with a message | { percent (whole), text ("55 %"), tone
+//     (red to 10, orange to 25, yellow to 50, else green), fill 0..1 }),
+//     link (null likewise | { value, text ("link 86"), tone (red under 30,
+//     orange under 80, yellow under 150, else green), bars 1..4 }), heard
+//     (the right-hand text: "heard 2 min ago" | "last heard 12:14" |
+//     "offline, last heard 12:14" | "" before any reading), heardTone
+//     ("dim" while the sensor is fresh, else "orange") }
+//   source, sourceTone: the line above the footer; it starts at the
+//     forecast's source and never names the sensor.
 // }
 //
-// radarView(state, now, frame, playing) -> { state: "frames" | "loading" |
-//   "unavailable", head ("past 2 hours, not a forecast" | ""), note ("" |
+// radarView(state, now, frame, playing) -> { state: "frames" | "loading" (no
+//   frame listed and no radar error since the last radar event) |
+//   "unavailable" (a radar error, or every frame 2 h old or more), head ("past 2 hours, not a forecast" | ""), note ("" |
 //   "No rain on the radar." | "Radar not available." | "Fetching the
 //   radar…"), frames: [{ time, dir }] oldest first, index (the shown one, or
 //   -1), frameDir ("" when none), label ("15:10 · 10 min ago"), labelTone,
@@ -82,7 +96,11 @@
 //   replaces them), tone }.
 
 const SENSOR_SILENT = 1800;
-const BATTERY_LOW = 15;
+// The sensor row's bands, worst first: [values below this, tone, bars]. The
+// battery's are whole percents (red to 10, orange to 25, yellow to 50); the
+// link's are Zigbee2MQTT's linkquality, 0..255.
+const BATTERY_BANDS = [[11, "red"], [26, "orange"], [51, "yellow"], [Infinity, "green"]];
+const LINK_BANDS = [[30, "red", 1], [80, "orange", 2], [150, "yellow", 3], [Infinity, "green", 4]];
 const FORECAST_OLD = 7200;
 const MIN_FUTURE_HOURS = 3;
 const WIND_STRONG = 40;
@@ -310,8 +328,8 @@ function source() {
 // The state before the helper has said anything. Fields: helper "running" |
 // "stopped" | "missing"; retryIn (s, as helperLost gave it); started (the
 // first line's time); config null | { state, key }; broker null |
-// "connected" | "lost"; sensor null | { temperature, humidity, battery, at,
-// available }; forecast, air, warnings, radar: { last, error, errors }.
+// "connected" | "lost"; sensor null | { temperature, humidity, battery,
+// linkquality, at, available }; forecast, air, warnings, radar: { last, error, errors }.
 function initial() {
     return {
         helper: "running",
@@ -345,6 +363,7 @@ function apply(st, ev, now) {
             temperature: num(ev.temperature),
             humidity: num(ev.humidity),
             battery: num(ev.battery),
+            linkquality: num(ev.linkquality),
             at: pick(num(ev.at), now),
             available: ev.available !== false
         };
@@ -703,21 +722,37 @@ function statsView(st, m, now, fresh) {
     return out;
 }
 
-// The parts of the source line: [{ text, warn }].
-function sensorPart(st, now, forecastFailed) {
-    const s = st.sensor;
-    switch (sensorState(st, now)) {
-    case "fresh":
-        return { text: `sensor ${ago(s.at, now)}`, warn: false };
-    case "unreachable":
-        return { text: "sensor: message broker not reachable" + (forecastFailed ? "" : ", retrying"), warn: true };
-    case "never":
-        return { text: "sensor: no reading yet", warn: true };
-    case "offline":
-        return { text: `sensor offline, last heard ${when(s.at, now)}`, warn: true };
-    }
-    return { text: `sensor last heard ${when(s.at, now)}`, warn: true };
+function bandOf(bands, v) {
+    return bands.find(b => v < b[0]);
 }
+
+// The outdoor sensor row; the fields are in the header comment.
+function sensorView(st, now) {
+    const s = st.sensor;
+    const state = sensorState(st, now);
+    const out = { message: "", messageTone: "dim", battery: null, link: null, heard: "", heardTone: "dim" };
+    if (s && state !== "never")
+        out.heard = state === "fresh" ? `heard ${ago(s.at, now)}`
+            : `${state === "offline" ? "offline, " : ""}last heard ${when(s.at, now)}`;
+    if (state !== "fresh")
+        out.heardTone = "orange";
+    if (state === "unreachable" || state === "never") {
+        out.message = state === "unreachable" ? "broker not reachable" : "no reading yet";
+        return out;
+    }
+    if (s.battery !== null) {
+        const p = Math.round(s.battery);
+        out.battery = { percent: p, text: `${p} %`, tone: bandOf(BATTERY_BANDS, p)[1], fill: Math.min(1, Math.max(0, p / 100)) };
+    }
+    if (s.linkquality !== null) {
+        const q = Math.round(s.linkquality);
+        const b = bandOf(LINK_BANDS, q);
+        out.link = { value: q, text: `link ${q}`, tone: b[1], bars: b[2] };
+    }
+    return out;
+}
+
+// The parts of the source line: [{ text, warn }].
 
 function warningsPart(st, now) {
     const w = st.warnings;
@@ -752,9 +787,9 @@ function forecastSource(st, m, now) {
     } else if (f.last) {
         parts.push({ text: `forecast from ${when(f.last.fetched, now)} has run out`, warn: true });
     }
-    if (firstStart && sensorState(st, now) === "never")
-        return { text: st.started === null ? "" : `started ${clock(st.started)}`, tone: "normal" };
-    return join([sensorPart(st, now, !m && !!f.error)].concat(parts, [warningsPart(st, now)]));
+    if (firstStart && st.started !== null)
+        parts.push({ text: `started ${clock(st.started)}`, warn: false });
+    return join(parts.concat([warningsPart(st, now)]));
 }
 
 function heroView(st, m, now, state) {
@@ -775,14 +810,8 @@ function heroView(st, m, now, state) {
         if (d && num(d.tmin) !== null && num(d.tmax) !== null)
             out.range = `today ${degrees(d.tmin, 0)} to ${degrees(d.tmax, 0)}`;
     }
-    if (sensorTemp !== null) {
-        out.age = `outdoor sensor · ${ago(s.at, now)}`;
-        if (s.battery !== null && s.battery <= BATTERY_LOW) {
-            out.age += ` · battery ${Math.round(s.battery)} %`;
-            out.ageTone = "yellow";
-        }
+    if (sensorTemp !== null)
         return out;
-    }
     const why = state === "unreachable" ? "sensor not reachable"
         : state === "never" ? "sensor not heard yet"
         : state === "offline" ? "sensor offline"
@@ -820,13 +849,14 @@ function messageView(st, now, fresh) {
 // Everything the forecast page draws; the fields are in the header comment.
 function view(st, now) {
     const one = single(st);
-    const out = { single: one.text, singleParts: one.parts, hero: null, scene: null, stats: null, warnings: null, body: null, message: null, hoursHead: null, precipHead: null, hours: null, days: null, air: null, source: null, sourceTone: null };
+    const out = { single: one.text, singleParts: one.parts, hero: null, scene: null, stats: null, warnings: null, body: null, message: null, hoursHead: null, precipHead: null, hours: null, days: null, air: null, sensor: null, source: null, sourceTone: null };
     if (one.text)
         return out;
     const m = model(st, now);
     const state = sensorState(st, now);
     const fresh = state === "fresh" && st.sensor.temperature !== null;
     out.hero = heroView(st, m, now, state);
+    out.sensor = sensorView(st, now);
     out.scene = sceneView(m, now);
     out.stats = statsView(st, m, now, state === "fresh");
     out.warnings = warningsView(st, now);
@@ -875,19 +905,20 @@ function frameIndex(frames, time) {
 // Everything the radar page draws; the fields are in the header comment.
 function radarView(st, now, frame, playing) {
     const r = st.radar;
-    const sensor = sensorPart(st, now, false);
     const frames = radarFrames(st);
     const out = { state: "frames", head: "", note: "", frames: [], index: -1, frameDir: "", label: "", labelTone: "normal", ticks: [], left: "", right: "", timeline: false, block: null, playing: false, source: "", sourceTone: "normal" };
     if (r.last)
         out.block = { zoom: r.last.zoom, tile: r.last.tile, x0: r.last.x0, y0: r.last.y0, cols: r.last.cols, rows: r.last.rows, centre: r.last.centre };
     if (!radarReady(st, now)) {
-        const loading = !r.last && !r.error;
+        // An event with no frame yet is the helper's first word on a fetch
+        // it has only started; an error since is what ends the wait.
+        const loading = !r.error && frames.length === 0;
         out.state = loading ? "loading" : "unavailable";
         out.note = loading ? "Fetching the radar…" : "Radar not available.";
         const radar = r.error ? { text: `radar: ${reasonWords(r.error.reason, "RainViewer")}`, warn: true }
             : loading ? { text: "radar: RainViewer", warn: false }
             : { text: "radar: no frame in the last 2 hours", warn: true };
-        const j = join([sensor, radar]);
+        const j = join([radar]);
         out.source = j.text;
         out.sourceTone = j.tone;
         return out;
@@ -910,8 +941,8 @@ function radarView(st, now, frame, playing) {
     out.timeline = true;
     out.playing = !!playing;
     const j = behind
-        ? join([sensor, { text: `radar: RainViewer, no new frame since ${clock(newest)}`, warn: true }])
-        : join([sensor, { text: "radar: RainViewer", warn: false }, { text: "outline: Natural Earth", warn: false }]);
+        ? join([{ text: `radar: RainViewer, no new frame since ${clock(newest)}`, warn: true }])
+        : join([{ text: "radar: RainViewer", warn: false }, { text: "outline: Natural Earth", warn: false }]);
     out.source = j.text;
     out.sourceTone = j.tone;
     return out;
@@ -1070,7 +1101,7 @@ function hints(ui, st) {
 
 if (typeof module !== "undefined")
     module.exports = {
-        SENSOR_SILENT, BATTERY_LOW, FORECAST_OLD, MIN_FUTURE_HOURS, WIND_STRONG, RADAR_BEHIND, RADAR_GONE, KEY_NAMES, WMO,
+        SENSOR_SILENT, FORECAST_OLD, MIN_FUTURE_HOURS, WIND_STRONG, RADAR_BEHIND, RADAR_GONE, KEY_NAMES, WMO,
         initial, apply, healthy, helperLost, view, radarView, barView, initialUi, key, tick, hints, artFor, conditionFor,
         degrees, compass, span, ago, radarAgo, when
     };
