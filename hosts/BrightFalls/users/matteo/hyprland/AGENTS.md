@@ -481,7 +481,7 @@ not.
 | `desk-fleet.nix`, `desk-fleet.py` | `desk-fleet`, the fleet panel's helper (JSON lines on stdin/stdout): probes this machine and its SSH mesh hosts read-only, reads the pipeline through `gh`, decides each host's row (`host_row()`, pure) and runs switch, boot and mode through `comin-deploy` and reboot through `systemctl reboot`, in private tmux sessions; the host list is generated from `lib/ssh-mesh.nix` and `lib/host-kinds.nix` (README, "Fleet: desk-fleet"). Run by `fleet/FleetShared.qml` |
 | `desk-tokens.nix`, `desk-tokens.py`, `desk-tokens-prices.json` | `desk-tokens`, the token panel's helper (JSON lines on stdin/stdout): reads Claude Code's transcripts incrementally into a SQLite index of replies (counters, ids, model, time, working directory; never text), folds working directories into projects (`fold_cwd()`, pure) and answers the overview, projects, project and days pages; the price table is built in (README, "Tokens: desk-tokens") |
 | `desk-weather.nix`, `desk-weather.py` | `desk-weather`, the weather panel's helper (JSON lines on stdin/stdout): Open-Meteo forecast and air quality, Met Office warnings from the whole-UK feed filtered locally, RainViewer's past radar tiles of a fixed block (only while the radar page is open), the outdoor sensor over MQTT, subscribe only; the location, region and broker in the `brightfalls/weather` secret, not declared yet (README, "Weather: desk-weather"). Run by `weather/WeatherShared.qml` |
-| `desk-tunes.nix`, `desk-tunes.py` | `desk-tunes`, the tunes panel's service and client: `serve` (the `desk-tunes` user unit) runs mpv and, while the composer switch is on, the model server as children, keeps the queue, the files, scraps and their undo, the stage timings and the weights download, decides holds, silences and the device; `attach` relays the shell's JSON lines to its socket. Protocol, files and behaviour in the `.py`'s docstring (README, "Tunes: desk-tunes"). Run by `tunes/TunesShared.qml` (attach only) |
+| `desk-tunes.nix`, `desk-tunes.py` | `desk-tunes`, the tunes panel's service and client: `serve` (the `desk-tunes` user unit) runs mpv and, while the composer switch is on, the model server as children, keeps the queue, the files, scraps and their undo, the modes (shuffle, repeat), the keep-for-good marks, exports, the stage timings and the weights download, decides holds, silences and the device; `attach` relays the shell's JSON lines to its socket. Protocol, files and behaviour in the `.py`'s docstring (README, "Tunes: desk-tunes"). Run by `tunes/TunesShared.qml` (attach only) |
 | `desk-tunes-config.nix` | The service's config JSON: the model files (pinned revision, sha256, sizes), the silence code, the memory threshold, the 780M's PCI ids, the game regex read from `user/hypr/rules.lua`'s `games` rule (an `assert` fails evaluation if that rule's shape changes), keep, ahead, duration |
 | `../../../../../packages/acestep-cpp.nix` | `ace-server` from acestep.cpp, with ggml's Vulkan backend: the model server `desk-tunes` runs; also the `acestep-cpp` check |
 | `weather-coast.nix` | The radar map's British Isles outline from Natural Earth (pinned by hash), clipped and simplified; installed at `~/.local/share/desk/weather/coast.json` by `default.nix` |
@@ -538,7 +538,7 @@ Directories (`import qs.<dir>`):
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`, `said`), `tokens.js` (all token-panel decisions: applying the helper's answers and events and which of them reset the restart back-off, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading, its "as of" times and the line after R, the bar look, the hand-set `PLAN`; node-tested) |
 | `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml`, `SensorRow.qml` (the outdoor sensor's battery and link row) (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
-| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command, one notification through `common/notify.js`, and the bar note's one-shot flash), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection, the waveform's columns, the position between snapshots, keys, clicks, the footer and its undo line, the global scrap, the bar view and its flash, the genre editor (its fields, the service's rules and texts, the commands, the 5 s wait for an answer and `linkDown()` when the link drops); node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows), `Strip.qml` (the tinted strip) and `EditField.qml` (one field of the genre editor: label, growing box, placeholder, error) |
+| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command, one notification through `common/notify.js`, and the bar note's one-shot flash), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection and numbering, the waveform's columns, the position between snapshots, the mode pills, the share sheet and the commands it runs (`wl-copy`, `gdbus` ShowItems, `uwsm app -- xdg-open`), keys, clicks, the footer and its undo line, the global scrap, the bar view and its flash, the genre editor (its fields, the service's rules and texts, the commands, the 5 s wait for an answer and `linkDown()` when the link drops); node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows), `Strip.qml` (the tinted strip) and `EditField.qml` (one field of the genre editor: label, growing box, placeholder, error) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -608,7 +608,7 @@ on M, through `desk-weather`).
 tunes panel (Super+M, Super+Shift+M: instrumental music in a genre through
 the `desk-tunes` service, composed by `ace-server` on the Radeon 780M and
 played by mpv; README, "Tunes panel" and "Tunes: desk-tunes"), deployed
-from the branch. In three stages:
+from the branch. As of 2026-11-23:
 - **The first design** (playing and composing one thing, U to unload),
   deployed and run live, then replaced. Proven on real hardware, by the
   owner at the keyboard with the coordinator reading the logs: the unit and
@@ -616,49 +616,60 @@ from the branch. In three stages:
   downloaded with their checksums; a first tune about two minutes after a
   genre was picked; a silent tail trimmed; pause; the RX 6800 XT's memory
   flat while composing; Super+M.
-- **The redesign, deployed**: the three sections, the composer switch (off
-  at start and after every pick), scrap and undo, a genre change that
-  starts clean, and `vulkaninfo` run without `DISPLAY` and
-  `WAYLAND_DISPLAY` (the first design's call crashed in the unit). Used live
-  by the owner, who reported that it works; that report is the whole of the
-  live evidence, so anything a report lists as expected only (below) stays
-  so until someone looks.
-- **The shell reload at the end of `desk-sync activate`**: its first
-  automatic use, at the genre editor's switch, did not reload. The shell's
-  own watcher had started a reload mid-copy that read the old `tunes.js`,
-  the activation's call came while that reload's two generations were alive,
-  the shell refused it, `qs ipc call` exited 0 anyway, and activation said
-  `reloaded`. The panel ran the new `Tunes.qml` against the old script until
-  a reload by hand, which cleared it (proven on real hardware by the
-  coordinator; the refusal is read in Quickshell 0.3.2's source, its message
-  was not captured). Fixed in the repository, not deployed: `reload()`
-  answers `reloaded` and activation retries until it gets that (README,
-  "Activation"); simulated by the `desk-sync` check's fake `qs`. Its first
-  real test is the next switch that writes a `quickshell/` file: the log
-  should show one `Reloading configuration...` after desk-sync's last
-  `updated` line.
-- **The genre editor, deployed**: E, A, D and `+ New genre` in the chooser, the editor card
+- **Deployed and used live by the owner**: the three sections, the composer
+  switch (off at start and after every pick), scrap and undo, a genre
+  change that starts clean, and `vulkaninfo` run without `DISPLAY` and
+  `WAYLAND_DISPLAY` (the first design's call crashed in the unit). The
+  owner reported that they work; that report is the whole of the live
+  evidence, so anything a report lists as expected only (below) stays so
+  until someone looks. The genre editor's build is deployed too: E, A, D
+  and `+ New genre` in the chooser, the editor card
   (`tunes/EditField.qml`), the delete question, the service's
   `genre_get`, `genre_save` (with `base`) and `genre_delete`, the rename of
-  a genre's folder, and the genres file moved to its own folder
+  a genre's folder, and the genres file in its own folder
   (`~/.config/desk/tunes/genres.json`) so the unit can write that folder
-  and nothing else in `~/.config/desk`. Simulated: `tunes-helper` (the
-  service against fakes, and in the test's own process the failures the
-  service cannot be made to meet), `tunes-panel` (tunes.js against
-  hand-written lines). Proven on this machine by an agent's script: a
-  `systemd-run` probe with the unit's protection on a throwaway tree, where
-  the granted folder took a file replaced by a rename and its sibling files
-  could be neither written nor created (with the old grant, the whole
-  folder, the sibling was written). Proven on real hardware by the
-  coordinator, after the reload by hand above: the panel opens on a playing
-  genre with no warning and the player drawn as designed. Expected only:
-  all the editor's QML
+  and nothing else in `~/.config/desk`. Proven on real hardware by the
+  coordinator, after a reload by hand (next bullet): the panel opens on a
+  playing genre with no warning and the player drawn as designed. The
+  editor itself has not been reported on: all its QML is expected only
   (focus landing in a field that just became visible, Tab and Shift+Tab
   reaching the panel before the field, Ctrl+S and the input method in a
   layer-shell text field, the fields growing, the BPM suffix, long names
-  eliding), the clock read before every key (`TunesShared.qml`), the save
-  and the folder rename in the real unit, and `desk-sync status` and
-  `pull` with the file the service wrote.
+  eliding), and so are the clock read before every key
+  (`TunesShared.qml`), a save and a folder rename in the real unit, and
+  `desk-sync status` and `pull` with the file the service wrote. Simulated:
+  `tunes-helper` (the service against fakes, and in the test's own process
+  the failures the service cannot be made to meet), `tunes-panel`
+  (tunes.js against hand-written lines). Proven on this machine by an
+  agent's script: a `systemd-run` probe with the unit's protection on a
+  throwaway tree, where the granted folder took a file replaced by a
+  rename and its sibling files could be neither written nor created.
+- **Proven live, by the coordinator**: the first automatic shell reload
+  after a switch (the genre editor's) ran the new `Tunes.qml` against the
+  old `tunes.js`. The shell's own watcher had started a reload mid-copy
+  that read the old script; the activation's call came while that
+  reload's two generations were alive, the shell refused it, `qs ipc call`
+  exited 0 anyway, and activation said `reloaded`. A reload by hand cleared
+  it. (The refusal is read in Quickshell 0.3.2's source; its message was
+  not captured.)
+- **Built and checked in the repository only, not deployed**: the
+  answer-checked reload (`reload()` answers `reloaded`, and activation asks
+  again until it gets that; README, "Activation"; simulated by the
+  `desk-sync` check's fake `qs`), and this round: shuffle and repeat (S, L,
+  the pills, the headings, the ended state, persisted modes, MPRIS
+  LoopStatus and Shuffle), the share sheet (Y: F, P, O run by the shell; E
+  export and K keep for good by the service) and keep for good with its
+  marks and the keep rule, `Exports` reserved. Simulated by `tunes-helper`
+  (the service against fakes, with the real mpv, its MPRIS plugin and
+  ffmpeg) and `tunes-panel`; nothing of it has run in the real unit or
+  panel. Only a live run can tell: whether a FileManager1 service answers
+  ShowItems on BrightFalls and what the fallback opens; whether a pasted
+  `text/uri-list` arrives as a file in a chat or mail app; whether
+  `wl-copy`'s background child outlives its `Process` and the exit is
+  reported without waiting on it; LoopStatus and Shuffle in the media
+  widget and keys under a busy mpv; the position resetting at each loop
+  under repeat one; the memory the resting model server holds while repeat
+  one loops for hours.
 - Expected only, from the earlier stages: the order of mpv's events after a
   pick; the scrap's move between the music folder and the cache in the
   real unit (separate bind mounts, hence a copy); that the deployed unit
@@ -693,13 +704,17 @@ live on 2026-11-22 and load without a warning from them; Super+H is loaded
   bar's weather item should show the outdoor temperature within a minute or
   two. Until the owner has seen that, everything with the real helper is
   expected only.
-- Tunes, at the switch that brings the genre editor: delete
-  `~/.config/desk/tunes-genres.json` by hand (nothing reads it any more, and
-  `desk-sync` leaves a dropped file alone; carry any edit made to it over
-  to `~/.config/desk/tunes/genres.json` first). That switch is also the
-  first automatic use of the shell reload in `desk-sync activate`: its
-  output should end with `desk-sync: quickshell: reloaded`. After a save
-  from the panel, `desk-sync status` shows `desk/tunes/genres.json` as
+- Tunes, at the next switch from the branch (the one that brings the
+  modes, sharing and keep for good): it is the first real test of the
+  answer-checked reload. Its output should end with `desk-sync:
+  quickshell: reloaded`, and the shell's log should show one `Reloading
+  configuration...` after desk-sync's last `updated` line; if the panel
+  then behaves as before this round, the reload ran the old `tunes.js`
+  again. From the genre editor's switch, done or not by now, no report
+  says: delete `~/.config/desk/tunes-genres.json` by hand (nothing reads
+  it any more, and `desk-sync` leaves a dropped file alone; carry any edit
+  made to it over to `~/.config/desk/tunes/genres.json` first). After a
+  save from the panel, `desk-sync status` shows `desk/tunes/genres.json` as
   `edited`, and `desk-sync pull` brings it to the repository (public).
   From the redesign's deploy, done or not by now, no report says: one
   `hyprctl reload` (then `hyprctl configerrors`) for Super+Shift+M, and

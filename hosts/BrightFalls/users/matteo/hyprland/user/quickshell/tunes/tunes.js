@@ -757,7 +757,7 @@ function leftWords(expect, spent) {
     return `about ${clock(Math.max(10, Math.round(left / 10) * 10))} left`;
 }
 
-function jobRow(s, n, sel, now) {
+function jobRow(s, sel, now) {
     const j = s.job;
     const spent = j.started !== null ? Math.max(0, now - j.started) : null;
     const parts = [];
@@ -772,7 +772,7 @@ function jobRow(s, n, sel, now) {
         parts.push(`written in ${clock(j.written)}`);
     return {
         kind: "job",
-        n,
+        n: "",
         nTone: "cyan",
         name: j.stage === "rendering" ? "Being rendered" : "Being written",
         nameTone: "soft",
@@ -791,10 +791,13 @@ function nextView(s, ui) {
     const sel = rowIndex(ui, s);
     // Under repeat one the queue waits behind the repeat.
     const waits = s.repeat === "one";
+    // Only kept tunes are numbered: by their place in the order made while
+    // shuffle is off, else by their turn among the kept rows. New tunes
+    // carry their tag instead.
+    let keptRows = 0;
     const rows = s.queue.map((q, i) => ({
         kind: "tune",
-        // A kept tune's place in the order made, while shuffle is off.
-        n: num(q.pos) !== null ? q.pos : i + 1,
+        n: !q.kept ? "" : num(q.pos) !== null ? q.pos : ++keptRows,
         nTone: "dim",
         name: q.name,
         nameTone: "normal",
@@ -808,13 +811,13 @@ function nextView(s, ui) {
         sel: i === sel
     }));
     if (jobShown(s))
-        rows.push(jobRow(s, rows.length + 1, sel === s.queue.length, ui.now));
+        rows.push(jobRow(s, sel === s.queue.length, ui.now));
     if (s.composing) {
         const missing = s.ahead - s.ready - (s.job !== null ? 1 : 0);
         for (let i = 0; i < missing; i++)
             rows.push({
                 kind: "placeholder",
-                n: rows.length + 1,
+                n: "",
                 nTone: "dim",
                 name: "Not started",
                 nameTone: "dim",
@@ -1160,7 +1163,11 @@ function shareAnswer(ui, ev, now) {
     if (ui.mode !== "share" || !sh)
         return ui;
     if (ev.event === "share") {
-        if (w.kind !== "info" || ev.name !== sh.name || str(ev.path) === null)
+        const path = str(ev.path);
+        // By name, or by file: the name can change from the file name to
+        // the title while the line is on its way.
+        const same = path !== null && (ev.name === sh.name || (sh.file !== "" && path.slice(path.lastIndexOf("/") + 1) === `${sh.file}.mp3`));
+        if (!w || w.kind !== "info" || !same)
             return ui;
         const info = {
             name: ev.name,
@@ -1274,7 +1281,9 @@ function shareAction(u, st, letter) {
     const s = st.snap;
     const same = q => q.name === sh.name || (sh.file && q.file === sh.file);
     const j = sh.i !== null ? s.queue.findIndex(same) : -1;
-    const name = j >= 0 ? s.queue[j].name : s.tune && same(s.tune) ? s.tune.name : sh.name;
+    // Found nowhere (it has finished meanwhile): its file name, which the
+    // service finds in the genre's folder.
+    const name = j >= 0 ? s.queue[j].name : s.tune && same(s.tune) ? s.tune.name : sh.file || sh.name;
     const cmd = letter === "E" ? { cmd: "export", name } : { cmd: "pin", on: !i.pinned, name };
     if (j >= 0)
         cmd.i = j;

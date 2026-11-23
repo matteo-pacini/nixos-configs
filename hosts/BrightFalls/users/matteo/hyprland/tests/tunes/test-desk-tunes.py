@@ -371,12 +371,12 @@ SHUF = list(reversed(K))  # handed over in no order: the order made is the file 
 eq("round: all left at the start, oldest first", dt.round_left(SHUF, set(), False, None), K)
 eq("round: played and busy ones are not left", dt.round_left(K, {K[0], K[3]}, True, None, {K[5]}),
    [K[1], K[2], K[4]])
-eq("round: shuffle off, only those after the anchor",
-   dt.round_left(K, {K[2]}, False, K[2]), K[3:])
+eq("round: shuffle off, on from the anchor, then those before it",
+   dt.round_left(K, {K[2]}, False, K[2]), K[3:] + K[:2])
 eq("round: shuffle on ignores the anchor", dt.round_left(K, {K[2]}, True, K[2]),
    [K[0], K[1]] + K[3:])
 eq("round: an anchor whose file is gone still places the order",
-   dt.round_left(K[:2] + K[3:], {K[1]}, False, K[2]), K[3:])
+   dt.round_left(K[:2] + K[3:], {K[1]}, False, K[2]), K[3:] + K[:1])
 
 
 def play_rounds(kept, shuffle, repeat, n, seed=5, anchor=None, played=None):
@@ -416,9 +416,11 @@ eq("one kept tune, playing: nothing else to choose",
    dt.choose_kept(K[:1], {K[0]}, {K[0]}, True, None, "all", random.Random(1)), (None, False))
 eq("no kept tunes", dt.choose_kept([], set(), set(), True, None, "all", random.Random(1)), (None, False))
 # Shuffle switched off mid-round: on from the tune that plays, skipping what
-# this round has played.
-eq("shuffle off mid-round: carries on after the playing tune",
-   play_rounds(K, False, "off", 10, anchor=K[2], played={K[2], K[4]}), [K[3], K[5]])
+# this round has played, then round to those before it.
+eq("shuffle off mid-round: carries on after the playing tune, then the earlier ones",
+   play_rounds(K, False, "off", 10, anchor=K[2], played={K[2], K[4]}), [K[3], K[5], K[0], K[1]])
+eq("shuffle off from a late tune: the round still plays every one",
+   play_rounds(K, False, "off", 10, anchor=K[4], played={K[2], K[4]}), [K[5], K[0], K[1], K[3]])
 eq("shuffle on mid-round: the rest of the round, each once",
    sorted(play_rounds(K, True, "off", 10, anchor=K[2], played={K[2], K[4]})), [K[0], K[1], K[3], K[5]])
 # A new tune: once it has started it is the newest kept tune, played this round.
@@ -452,7 +454,10 @@ eq("exports: refused as a genre name in any case",
 eq("exports: a name that only contains it is fine", fe(name="Exports Two"), None)
 gs = json.loads(REAL_GENRES_TEXT)["genres"]
 gs[2]["name"] = "exports"
-raises("exports: never a genre in the file", dt.parse_genres, json.dumps({"genres": gs}), match="Exports")
+skipped = []
+eq("exports: a genre of that name in the file is skipped, the rest load",
+   ([g["name"] for g in dt.parse_genres(json.dumps({"genres": gs}), skipped)], skipped),
+   (["Lo-fi", "Ambient", "Deep house", "Jazz", "Classical", "Downtempo", "Post-rock", "Acoustic"], ["exports"]))
 M = "/h/Music/Tunes"
 eq("scrap: ours in a genre folder", dt.scrappable(f"{M}/Jazz/20260103-100000-120bpm-F-major.mp3", M), True)
 for what, p in (("another name", f"{M}/Jazz/my own song.mp3"),
@@ -475,6 +480,52 @@ for what, mpv in (("dropped", None), ("not connected", {"sock": None})):
         check(f"mpv socket event with mpv {what}: ignored", True)
     except Exception as e:
         check(f"mpv socket event with mpv {what}: ignored", False, repr(e))
+
+
+class ModesStub:
+    """Just what the MPRIS settle reads: mpv's loop properties read as
+    "off" while the service wants repeat all."""
+    shuffle, repeat, current = True, "all", None
+    mpv_want = dt.Service.mpv_want
+    set_timer = dt.Service.set_timer
+    mpv_modes_settled = dt.Service.mpv_modes_settled
+    mpv_modes_answered = dt.Service.mpv_modes_answered
+
+    def __init__(self, out):
+        self.mpv = {"modes": {"loop-file": False, "loop-playlist": False, "shuffle": True}, "modes_out": out}
+        self.timers, self.calls = {}, []
+
+    def set_modes(self, *args, **kw):
+        self.calls.append(args)
+
+
+ms = ModesStub(1)
+ms.mpv_modes_settled()
+eq("mpris: a settle while our own writes are unanswered changes nothing", ms.calls, [])
+ms.mpv_modes_answered({})
+check("mpris: the last answer settles again", "mpv_modes" in ms.timers, ms.timers)
+ms.mpv_modes_settled()
+eq("mpris: then a change is read as the user's", ms.calls, [(True, "off")])
+
+# An export's copy that times out leaves no part file in Exports.
+EXP = tempfile.mkdtemp(prefix="exports-", dir=WORK)
+real_run = dt.subprocess.run
+
+
+def run_times_out(cmd, **kw):
+    open(cmd[-1], "w").close()
+    raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+
+
+dt.subprocess.run = run_times_out
+try:
+    dt.export_copy("ffmpeg", "/nowhere.mp3", EXP, "Jazz", "Lazy Avenue", {})
+    check("export: a timeout is an error", False, "no exception")
+except subprocess.TimeoutExpired:
+    pass
+finally:
+    dt.subprocess.run = real_run
+eq("export: a timeout leaves nothing in Exports", os.listdir(EXP), [])
 
 # -- genre writes, in this process: what the running service cannot be made
 # to meet from outside (a folder sync failing, a decode still running at a
@@ -1637,11 +1688,21 @@ try:
     os.replace(LIVE_GENRES + ".tmp", LIVE_GENRES)
     A.send({"cmd": "refresh"})
     s = A.until("genres: a change on disk is read", lambda s: s["genres"][0]["name"] == "Invented Lo-fi Two", 5)
+    data["genres"][1]["name"] = "Exports"
+    with open(LIVE_GENRES + ".tmp", "w") as f:
+        json.dump(data, f)
+    os.replace(LIVE_GENRES + ".tmp", LIVE_GENRES)
+    A.send({"cmd": "refresh"})
+    s = A.until("genres: a genre named Exports is skipped", lambda s: s["error"] and len(s["genres"]) == 8, 5)
+    eq("genres: Exports skipped and said, the rest loaded",
+       (s["error"], [g["name"] for g in s["genres"]][:2]),
+       ("The genre Exports is skipped: that name is the folder for exported copies.",
+        ["Invented Lo-fi Two", "Synthwave"]))
     with open(LIVE_GENRES, "w") as f:
         f.write('{"genres": [')
     A.send({"cmd": "refresh"})
-    s = A.until("genres: a broken file is reported", lambda s: s["error"], 5)
-    check("genres: the error says which file", "tunes/genres.json" in s["error"], s["error"])
+    s = A.until("genres: a broken file is reported, saying which file",
+                lambda s: s["error"] and "tunes/genres.json" in s["error"], 5)
     eq("genres: the last good list stays", s["genres"][0]["name"], "Invented Lo-fi Two")
     shutil.copyfile(GENRES, LIVE_GENRES)
     A.send({"cmd": "refresh"})
@@ -2210,6 +2271,15 @@ try:
        [(stem(p), i, False, True) for i, p in enumerate(ACO[1:], 2)])
     eq("order made: the playing tune's place, the round", (s["tune"]["pos"], s["round_left"], s["kept_total"]),
        (1, 3, 4))
+    # A kept tune scrapped from the queue and brought back has still to play.
+    A.send({"cmd": "toggle"})
+    A.until("order made: paused", lambda s: s["player"] == "paused", 5)
+    A.send({"cmd": "scrap", "i": 0, "name": s["queue"][0]["name"]})
+    A.until("order made: the second scrapped", lambda s: s["undo"], 5)
+    A.send({"cmd": "undo"})
+    s = A.until("order made: the second back", lambda s: s["undo"] is None and files_of(s)[:1] == [stem(ACO[1])], 5)
+    eq("order made: a tune brought back still counts as left", s["round_left"], 3)
+    A.send({"cmd": "toggle"})
     s = A.until("order made: the second follows by itself", lambda s: playing_file(s) == stem(ACO[1]), 10)
     eq("order made: then the rest, in order", files_of(s), [stem(ACO[2]), stem(ACO[3]), stem(ACO[0])])
     # Repeat off mid-tune: the tune plays on; the round ends after the last one.
@@ -2363,6 +2433,17 @@ try:
        os.path.join(ACO_DIR, entry["file"] + ".mp3"))
     eq("share: a tune no longer there", answer(A, {"cmd": "share_info", "name": entry["name"], "i": 5}),
        {"event": "share_result", "ok": False, "text": "That tune is no longer there."})
+    # A tune that finished while its sheet was open: neither playing nor
+    # queued, found by its file name in the genre's folder.
+    gone = next(p for p in ACO if stem(p) not in (tune["file"], entry["file"]))
+    eq("share: a finished tune, by its file name", answer(A, {"cmd": "share_info", "name": stem(gone)}).get("path"), gone)
+    eq("pin: a finished tune, by its file name",
+       (answer(A, {"cmd": "pin", "on": True, "name": stem(gone)}).get("ok"), os.path.exists(dt.pin_mark(gone))),
+       (True, True))
+    answer(A, {"cmd": "pin", "on": False, "name": stem(gone)})
+    eq("pin: only a tune file in the selected genre's folder",
+       [answer(A, {"cmd": "pin", "on": True, "name": n}).get("ok")
+        for n in ("../Acoustic/" + stem(gone), "Invented Nobody", stem(gone) + ".pin")], [False] * 3)
     paths = [answer(A, {"cmd": "export", "name": tune["name"]}).get("path") for _ in range(2)]
     eq("export: two copies, the second under a free name", paths,
        [os.path.join(EXPORTS, f"Acoustic - {tune['name']}{n}.mp3") for n in ("", " (2)")])

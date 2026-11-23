@@ -38,7 +38,8 @@ Files:
            keeps that tune for good; one whose tune is gone is deleted at
            start
   exports  ~/Music/Tunes/Exports/<genre name> - <tune name>.mp3 (" (2)" ...
-           when taken); "Exports" is never a genre's name
+           when taken); "Exports" is never a genre's name: a genre of that
+           name in the genres file is skipped, and "error" says so
   waves    $XDG_CACHE_HOME/desk-tunes/wave/<genre id>/<tune file>.json
   scrapped $XDG_CACHE_HOME/desk-tunes/scrapped/<tune file>: a scrapped tune
            while it can be undone; emptied at start
@@ -133,7 +134,8 @@ second; nothing periodic otherwise):
        rests because the queue is full; ram_used_bytes = the server's RSS
        plus what the device's VRAM and GTT grew by since the server
        started; null with no server.
-   "error":null|"text"}       the first of: the genres file is broken, mpv
+   "error":null|"text"}       the first of: the genres file is broken or
+                              a genre in it is skipped, mpv
                               could not play the last tune (until one plays),
                               the last scrap or undo could not move its file
                               (until one can), hyprctl cannot list the
@@ -182,7 +184,8 @@ Behaviour:
             has started it is a kept tune (the newest). Kept tunes play in
             rounds, each once a round: shuffle on, at random; off, in the
             order made (file names), carrying on after the last kept tune
-            started in order. repeat all: rounds follow each other; off:
+            started and going round to the unplayed ones before it, so a
+            round never skips one. repeat all: rounds follow each other; off:
             once a round is played and nothing new is queued nothing plays
             ("ended"; toggle, or a repeat other than off, starts the next
             round; a tune the composer finishes starts by itself unless
@@ -410,8 +413,10 @@ def validate_config(raw):
     return raw
 
 
-def parse_genres(text):
-    """The genres list from the file's text, or ValueError with the reason."""
+def parse_genres(text, skipped=None):
+    """The genres list from the file's text, or ValueError with the reason.
+    A genre named Exports (any case) is left out, and its name appended to
+    `skipped` when given."""
     try:
         raw = json.loads(text)
     except ValueError:
@@ -430,7 +435,9 @@ def parse_genres(text):
                 or name in names or any(ord(c) < 32 or ord(c) == 127 for c in name)):
             raise ValueError(f"{where}: name missing, repeated, or usable as no folder name")
         if name.lower() == EXPORTS.lower():
-            raise ValueError(f"{where}: {EXPORTS} is the folder for exported copies, not a genre")
+            if skipped is not None:
+                skipped.append(name)
+            continue
         if not isinstance(g.get("caption"), str) or not g["caption"].strip():
             raise ValueError(f"{where}: caption missing")
         for key in ("turns", "moods", "things"):
@@ -833,14 +840,18 @@ def read_modes(raw):
 
 
 def round_left(kept, played, shuffle, anchor, busy=()):
-    """The kept tunes (paths) this round has still to play, oldest first:
-    not played this round and not busy (playing or queued), and with
-    shuffle off only those made after `anchor`, the last kept tune started
-    in order. File names begin with when the tune was made, so they sort
+    """The kept tunes (paths) this round has still to play: not played this
+    round and not busy (playing or queued). Oldest first; with shuffle off
+    those made after `anchor`, the last kept tune started, come first,
+    then those before it, so the order goes round from the anchor and
+    skips none. File names begin with when the tune was made, so they sort
     in the order made."""
-    after = None if shuffle or anchor is None else os.path.basename(anchor)
-    return [p for p in sorted(kept, key=os.path.basename)
-            if p not in played and p not in busy and (after is None or os.path.basename(p) > after)]
+    left = [p for p in sorted(kept, key=os.path.basename) if p not in played and p not in busy]
+    if shuffle or anchor is None:
+        return left
+    after = os.path.basename(anchor)
+    return ([p for p in left if os.path.basename(p) > after]
+            + [p for p in left if os.path.basename(p) <= after])
 
 
 def choose_kept(kept, played, busy, shuffle, anchor, repeat, rng):
@@ -1079,8 +1090,8 @@ def export_copy(ffmpeg, src, directory, genre, title, tags):
            "-map", "0:a", "-c", "copy", "-map_metadata", "0", "-id3v2_version", "3"]
     for k, v in tags.items():
         cmd += ["-metadata", f"{k}={v}"]
-    out = subprocess.run(cmd + ["-f", "mp3", part], capture_output=True, timeout=120)
     try:
+        out = subprocess.run(cmd + ["-f", "mp3", part], capture_output=True, timeout=120)
         if out.returncode != 0:
             raise RuntimeError("ffmpeg could not copy the tune: "
                                + out.stderr.decode(errors="replace").strip()[-200:])
@@ -1511,7 +1522,11 @@ class Service:
         return q
 
     def round_left(self):
-        return round_left(self.kept_paths(), self.played, self.shuffle, self.anchor, self.busy())
+        # A kept tune queued by undo has still to play, unless it played
+        # this round before its scrap.
+        new = {t["path"] for t in self.ready if not t.get("kept")}
+        current = {self.current["path"]} if self.current else set()
+        return round_left(self.kept_paths(), self.played, self.shuffle, self.anchor, new | current)
 
     def ended(self):
         """Repeat off and every kept tune of this round played: nothing
@@ -1684,9 +1699,11 @@ class Service:
             self.genres_error = "the genres file is missing"
             return
         try:
+            skipped = []
             with open(self.genres_file, encoding="utf-8") as f:
-                self.genres = parse_genres(f.read())
-            self.genres_error = None
+                self.genres = parse_genres(f.read(), skipped)
+            self.genres_error = (f"The genre {skipped[0]} is skipped: that name is the folder for exported copies."
+                                 if skipped else None)
         except (OSError, UnicodeDecodeError, ValueError) as e:
             self.genres_error = f"tunes/genres.json: {e}"
 
@@ -1992,7 +2009,13 @@ class Service:
             return
         for prop, on in self.mpv_want().items():
             value = on if prop == "shuffle" else ("inf" if on else "no")
-            self.mpv_cmd(["set_property", prop, value])
+            self.mpv["modes_out"] += 1
+            self.mpv_cmd(["set_property", prop, value], self.mpv_modes_answered)
+
+    def mpv_modes_answered(self, _ev):
+        self.mpv["modes_out"] -= 1
+        if not self.mpv["modes_out"]:
+            self.set_timer("mpv_modes", MODES_SETTLE, self.mpv_modes_settled)
 
     def mpv_mode_seen(self, prop, data):
         self.mpv["modes"][prop] = data not in (False, None, "no")
@@ -2001,8 +2024,11 @@ class Service:
         self.set_timer("mpv_modes", MODES_SETTLE, self.mpv_modes_settled)
 
     def mpv_modes_settled(self):
-        seen = self.mpv and self.mpv["modes"]
-        if not seen or len(seen) < 3 or seen == self.mpv_want():
+        # Our own writes, not all answered yet, are no change by the user.
+        if not self.mpv or self.mpv["modes_out"]:
+            return
+        seen = self.mpv["modes"]
+        if len(seen) < 3 or seen == self.mpv_want():
             return
         repeat = "one" if seen["loop-file"] else ("all" if seen["loop-playlist"] else "off")
         reshuffled = seen["shuffle"] != self.shuffle
@@ -2166,9 +2192,13 @@ class Service:
 
     def tune_at(self, i, name):
         """The playing tune (i None) or queue entry i, if `name` names it
-        and its file is ours and there."""
+        and its file is ours and there. With i None and the playing tune
+        not named, a tune of the selected genre whose file name (without
+        ".mp3") is `name`: one that has finished since the sender saw it."""
         q = self.queue_now() if i is not None else None
         t = self.current if i is None else (q[i] if i < len(q) else None)
+        if i is None and (t is None or not names_tune(t, name)) and self.genre and name:
+            t = self.kept_tune(os.path.join(self.genre_dir(self.genre), name + ".mp3"), decode=False)
         if (t is None or not names_tune(t, name) or not scrappable(t["path"], self.music)
                 or not os.path.isfile(t["path"])):
             return None
@@ -2418,7 +2448,7 @@ class Service:
         child = Child(argv, lambda line: say(f"mpv: {line}"), self.mpv_exited, env=env)
         self.sel.register(child.proc.stderr, selectors.EVENT_READ, ("child", child))
         self.mpv = {"child": child, "path": path, "sock": None, "buf": b"", "out": [], "tries": 0,
-                    "req": 0, "wait": {}, "end_reason": None, "modes": {}}
+                    "req": 0, "wait": {}, "end_reason": None, "modes": {}, "modes_out": 0}
         self.set_timer("mpv_connect", 0.05, self.mpv_connect)
 
     def mpv_connect(self):

@@ -210,7 +210,7 @@ t("queue full: the composer rests", () => {
     assert.equal(p.now.wave.played, Math.floor(145 / 177 * 78));
     assert.deepEqual([p.now.main, p.now.mainLit, p.now.nextLit], ["pause", true, true]);
     assert.equal(p.next.head, "2 ready");
-    assert.deepEqual(rows(p), [[1, "Brass Lantern", "112 BPM · F major", "2:54"], [2, "Quiet Ledger", "96 BPM · D minor", "2:49"]]);
+    assert.deepEqual(rows(p), [["", "Brass Lantern", "112 BPM · F major", "2:54"], ["", "Quiet Ledger", "96 BPM · D minor", "2:49"]]);
     assert.ok(p.next.rows.every(r => r.kind === "tune" && !r.sel));
     assert.deepEqual([p.composer.on, p.composer.label], [true, "on"]);
     assert.deepEqual(lines(p), ["Makes Jazz, keeps 2 ahead | resting, queue is full"]);
@@ -235,7 +235,7 @@ t("the first tune of a genre: being rendered, with an estimate", () => {
     assert.deepEqual([p.now.wave, p.now.time, p.now.mainLit, p.now.nextLit], [null, null, false, false]);
     assert.equal(p.next.head, "0 ready");
     // 58 s expected, 18 s spent: 40 s left.
-    assert.deepEqual(rows(p), [[1, "Being rendered", "about 0:40 left · written in 1:04", "composing"], [2, "Not started", "after the one above", ""]]);
+    assert.deepEqual(rows(p), [["", "Being rendered", "about 0:40 left · written in 1:04", "composing"], ["", "Not started", "after the one above", ""]]);
     const job = p.next.rows[0];
     assert.deepEqual([job.kind, job.nTone, job.rightTone], ["job", "cyan", "cyan"]);
     assert.ok(Math.abs(job.bar - 18 / 58) < 1e-9);
@@ -275,10 +275,10 @@ t("the job row: the time left, never negative, never longer than the estimate", 
 
 t("the placeholder rows: only with the switch on, up to ahead", () => {
     const p = viewAt("10-writing").player;
-    assert.deepEqual(rows(p), [[1, "Being written", "about 1:10 left", "composing"], [2, "Not started", "after the one above", ""]]);
+    assert.deepEqual(rows(p), [["", "Being written", "about 1:10 left", "composing"], ["", "Not started", "after the one above", ""]]);
     assert.deepEqual(p.next.rows.map(r => r.nameTone), ["soft", "dim"]);
     // Held with one ready: one placeholder, with no job above it.
-    assert.deepEqual(rows(viewAt("12-held-game").player), [[1, "Dusty Notebook", "88 BPM · A major", "2:52"], [2, "Not started", "", ""]]);
+    assert.deepEqual(rows(viewAt("12-held-game").player), [["", "Dusty Notebook", "88 BPM · A major", "2:52"], ["", "Not started", "", ""]]);
     // Nothing ready and no job: two.
     assert.deepEqual(rows(viewAt("13-held-memory").player).map(r => r[1]), ["Not started", "Not started"]);
     // ahead from the snapshot.
@@ -433,7 +433,7 @@ t("just after a scrap: Z and the undo footer with its countdown", () => {
     const u = ui(st, NOW);
     const p = T.view(st, u).player;
     assert.deepEqual([p.now.name, p.now.time.left, p.next.head], ["Brass Lantern", "0:03", "1 ready"]);
-    assert.deepEqual(rows(p), [[1, "Quiet Ledger", "96 BPM · D minor", "2:49"], [2, "Being written", "about 1:50 left", "composing"]]);
+    assert.deepEqual(rows(p), [["", "Quiet Ledger", "96 BPM · D minor", "2:49"], ["", "Being written", "about 1:50 left", "composing"]]);
     assert.deepEqual(lines(p), ["Makes Jazz, keeps 2 ahead | using 5.8 GiB of RAM", "ACE-Step 1.5 Turbo · 4B Q8 · Radeon 780M"]);
     assert.equal(T.undoLine(st, u), "Scrapped Lazy Avenue. Z brings it back for 10 s.");
     assert.equal(T.undoLine(st, ui(st, NOW + 2.5)), "Scrapped Lazy Avenue. Z brings it back for 8 s.");
@@ -1240,7 +1240,8 @@ t("every heading and wording in every combination of shuffle, repeat, composer, 
                         const tunes = p.next.rows.filter(r => r.kind === "tune");
                         assert.ok(tunes.every(r => r.dim === (repeat === "one")), at);
                         assert.deepEqual(tunes.map(r => r.tag), queue.map(q => q.new ? "new" : ""), at);
-                        assert.deepEqual(tunes.map(r => r.n), queue.map((q, i) => q.pos || i + 1), at);
+                        // New tunes carry no number; kept ones their place (5, 6, 7 in the fixture), or their turn with shuffle on.
+                        assert.deepEqual(tunes.map(r => r.n), ended ? [] : (fresh ? [""] : []).concat(shuffle ? [1] : [5, 6, 7]), at);
                         const wait = lines(p).filter(l => l.includes("until the repeat ends"));
                         assert.deepEqual(wait, repeat === "one" && fresh ? ["1 new tune waits until the repeat ends."] : [], at);
                         assert.deepEqual([p.now.name, p.now.meta], ended ? ["Played all 14 Jazz tunes", "Space starts over. L turns repeat on."] : ["Lazy Avenue", "139 BPM · C major"], at);
@@ -1254,7 +1255,7 @@ t("every heading and wording in every combination of shuffle, repeat, composer, 
     // Two new tunes waiting: the plural, in the composer's well under its first line.
     const two = T.view(load("32-repeat-one", NOW), ui(load("32-repeat-one", NOW), NOW)).player;
     assert.deepEqual(lines(two), ["Makes Jazz, keeps 2 ahead | resting, queue is full", "2 new tunes wait until the repeat ends."]);
-    assert.deepEqual(rows(two), [[1, "Neon Harbour", "104 BPM · A minor", "2:55"], [2, "Slow Signal", "118 BPM · E minor", "2:50"]]);
+    assert.deepEqual(rows(two), [["", "Neon Harbour", "104 BPM · A minor", "2:55"], ["", "Slow Signal", "118 BPM · E minor", "2:50"]]);
     assert.deepEqual(T.hints(load("32-repeat-one", NOW), ui(load("32-repeat-one", NOW), NOW)).map(h => h.join(" ")),
         ["Space pause", "N next", "S shuffle", "L repeat off", "Y share", "X scrap Lazy Avenue", "C composer off", "G genre", "Esc close"]);
 });
@@ -1356,6 +1357,14 @@ t("the share sheet's keys: Up/Down and Enter, the letters, Esc, held keys once",
         assert.equal(T.key(d, st, k, false).effect.kind, "none", k);
 });
 
+t("the service's description is taken by name or by file: the name can change to the title on its way", () => {
+    const [st, u] = sheet("30-modes-default");
+    const titled = T.answer(u, st, Object.assign({}, SHARE[0], { name: "Invented Title" }), NOW);
+    assert.deepEqual([titled.waiting, titled.share.info.name], [null, "Invented Title"]);
+    const other = Object.assign({}, SHARE[0], { name: "Invented Title", path: "/home/someone/Music/Tunes/Jazz/20261101-090000-112bpm-F-major.mp3" });
+    assert.equal(T.answer(u, st, other, NOW), u);
+});
+
 t("a path with spaces and quotes: the URI percent-encoded, the GVariant quoted", () => {
     const [st, u] = sheet("30-modes-default");
     const odd = "/home/someone/Music/Tunes/Deep house/it's #1.mp3";
@@ -1418,11 +1427,14 @@ t("export and keep for good: the service's answer closes the sheet with its line
     assert.deepEqual(T.key(b, st, "K", false).effect.cmd, { cmd: "pin", on: false, name: "Brass Lantern", i: 0 });
     assert.equal(T.notice(st, T.answer(T.key(b, st, "K", false).ui, st, Object.assign({}, SHARE[3], { name: "Brass Lantern" }), NOW)), "Brass Lantern is no longer kept for good.");
     // The queue moved while the sheet was open: the command follows the
-    // tune to its place, or names it alone when it is not in the queue.
+    // tune to its place, or names it by its file when it is nowhere (it has
+    // finished, and the service finds it in the genre's folder).
     const moved = edit("30-modes-default", { queue: [load("31-shuffle-off", NOW).snap.queue[1], load("30-modes-default", NOW).snap.queue[0]] });
     assert.deepEqual(T.key(b, moved, "E", false).effect.cmd, { cmd: "export", name: "Brass Lantern", i: 1 });
     const gone = edit("30-modes-default", { queue: [] });
-    assert.deepEqual(T.key(b, gone, "E", false).effect.cmd, { cmd: "export", name: "Brass Lantern" });
+    assert.deepEqual(T.key(b, gone, "E", false).effect.cmd, { cmd: "export", name: "20261101-090000-112bpm-F-major" });
+    const ended = edit("30-modes-default", { tune: load("31-shuffle-off", NOW).snap.queue[2], queue: [] });
+    assert.deepEqual(T.key(d, ended, "K", false).effect.cmd, { cmd: "pin", on: true, name: "20261123-070612-139bpm-C-major" });
     // Refusals: for the info (the tune gone meanwhile), the export, the pin.
     const [, asking] = sheet("30-modes-default");
     for (const w of [asking, e, k]) {

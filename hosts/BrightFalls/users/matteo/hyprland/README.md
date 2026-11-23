@@ -1194,7 +1194,8 @@ panel's keys, clicks and clock, the global scrap) and `tunes/tunes.js`
 change the state, which card shows, every text and tone of the three
 sections and the bar item, what each key and click does, the footer and its
 undo line, the global scrap, the position between snapshots, the genre
-editor's fields, rules and commands; node-tested).
+editor's fields, rules and commands, the mode pills, the share sheet and
+the commands it runs; node-tested).
 The drawings are `tunes/SecHead.qml` (a section's heading, with the
 composer's switch), `tunes/DotWave.qml` (the waveform), `tunes/Strip.qml`
 (the tinted strip) and `tunes/EditField.qml` (one field of the genre
@@ -1269,10 +1270,17 @@ is switched on.
   cursor on that genre; after a rename the footer says `Renamed <old> to
   <new>. Its folder in ~/Music/Tunes moved with it.` for 6 s.
 - **The player**, in three sections:
-  - **NOW PLAYING** (the genre at the right, `· kept tunes` for a kept
-    tune): the tune's name; `88 BPM · A major` (and `paused`); a waveform of
+  - **NOW PLAYING** (the genre at the right, `· repeating` under repeat
+    one, else `· kept tunes` for a kept tune): the tune's name, with `★
+    kept for good` beside it for a pinned tune; `88 BPM · A major` (and
+    `paused`); a waveform of
     78 dot columns, nine dots high, the played part purple, where a click
     seeks; the position and the length; the play/pause and next buttons.
+    Under them a row of three pills, each a button: `shuffle` and `repeat
+    all|one|off`, lit while on, and `share`, dimmed when there is nothing
+    to share. A round ended under repeat off reads `Played all 14 <genre>
+    tunes` / `Space starts over. L turns repeat on.`, and Space's hint is
+    `start over`.
     With nothing loaded: `Stopped. Space plays.` after the user stopped the
     player (a media Stop, or a tune mpv could not play) and there is
     something to play; `Nothing playing. Space plays.` when there is
@@ -1281,15 +1289,22 @@ is switched on.
     player is stopped: Space starts it once a tune is ready.`); `No <genre> tunes yet`
     / `Turn the composer on to make some.` with the composer off and
     nothing kept. A genre just picked is never shown stopped or paused.
-  - **UP NEXT** (`2 ready`, or `from 31 kept, shuffled` while kept tunes
-    play because no new tune is queued, at the right): what N would play,
-    in order, each row with its
-    name, `BPM · key` and length; then, with the composer on, the tune
+  - **UP NEXT** (at the right: `2 ready`; while kept tunes play because no
+    new tune is queued, `from 31 kept, shuffled` with shuffle on or `4 of
+    14, in the order made` with it off, the playing tune counted as played;
+    `after the repeat` under repeat one, the rows dimmed; `nothing`): what
+    N would play, in order, each row with its
+    name, `BPM · key` and length, and a star for a pinned tune. New tunes
+    come first, with a cyan `new` tag and no number; then the kept ones,
+    numbered: with shuffle on the next one (`1`), with it off the next
+    three, each by its place in the order made (`5`, `6`, `7`). Then, with
+    the composer on, the tune
     being made as a row, `Being written` or `Being rendered`, with `about
     1:10 left` and a bar once a tune has been timed (the stage's median
     time, to the nearest 10 s; `any moment now` once it has run out), else
     the time spent so far, and while rendering `written in M:SS`; then
-    `Not started` rows up to the two the composer keeps ahead.
+    `Not started` rows up to the two the composer keeps ahead (neither
+    numbered: they become new tunes).
   - **COMPOSER** (the switch at the right, labelled `on`, `off`, `held for
     a game` or `held for memory` in orange, or `failed` or `no device` in
     red), over a
@@ -1304,8 +1319,11 @@ is switched on.
     model server did not find the Radeon 780M among the Vulkan devices:
     <what it found>. R tries again, C turns the composer off.` (red); and
     the model line (name · variant · device) while it works or after a
-    failure. With no device the player above keeps its tune and its keys.
-- **Strip over the player**: the service's `error`: the genres file's, a
+    failure. Under repeat one with new tunes ready: `2 new tunes wait
+    until the repeat ends.` With no device the player above keeps its tune
+    and its keys.
+- **Strip over the player**: the service's `error`: the genres file's
+  (broken, or a genre in it skipped), a
   tune mpv could not play (mpv's reason, until a tune plays), a scrap or an
   undo whose file could not be moved (`could not scrap <name>: <reason>`,
   until one can; the tune stays where it was and an undo stays offered),
@@ -1328,6 +1346,30 @@ is switched on.
   notification naming the tune (`Scrapped <name>`, or `Brought back <name>`
   with `It plays next.`, or where it went back to when another genre has
   been picked since); with nothing playing it does nothing.
+- **Share sheet** (Y, or a click on the `share` pill: the selected queue
+  row, else the playing tune): a card of its own with the genre at the
+  right, the tune's name and `139 BPM · C major · 2:57 · MP3, 4.1 MB` (the
+  service's `share_info` answer; `Asking the tunes service…` until it
+  comes, `The tunes service did not answer.` after 5 s), and five rows:
+  F `Copy the file` (`paste it into a chat, a mail or a folder`: the file's
+  URI on the clipboard as `text/uri-list`, through `wl-copy`), P `Copy its
+  path` (the path under it, the home folder as `~`; `wl-copy`), O `Show it
+  in the file manager` (`org.freedesktop.FileManager1.ShowItems` over
+  `gdbus`; when that fails or times out, `uwsm app -- xdg-open` on its
+  folder), E `Export a copy` (the export path under it; done by the
+  service), K `Keep it for good` (`never removed by the newest-50 rule`,
+  `on` or `off` at the right; the service's `pin`). ↑↓ and Enter, or the
+  letter; Esc goes back. Nothing leaves the machine: F, P and O are run by
+  the shell (they need the session), each with a 10 s watchdog (SIGTERM,
+  SIGKILL 2 s later), and E and K are files the service writes. After an
+  action the sheet closes and the footer says what happened for 6 s:
+  `Copied <name> as a file. Paste it anywhere.`, `Copied the path of
+  <name>.`, `Showed <name> in the file manager.` (or `Opened the folder of
+  <name>.`), `Exported <name> to ~/Music/Tunes/Exports.`, `<name> is kept
+  for good.`, `<name> is no longer kept for good.`; a failure says the
+  service's or the command's own words. E and K follow the tune to its
+  place in the queue, and name it by its file when it is neither queued
+  nor playing any more (it finished while the sheet was open).
 - **The link**: `Connecting to the tunes service…` before the first
   snapshot; `The tunes service is not installed` (`desk-tunes` not on
   PATH), `The tunes service is not running` (no socket) or `The link to the
@@ -1341,6 +1383,9 @@ is switched on.
   |-----|------|
   | Space | Play or pause (with a tune, or with none playing and one to start) |
   | N | Next (when the snapshot's `can_next` says there is a next tune) |
+  | S | Shuffle on or off |
+  | L | Repeat: all, then one, then off, then all (the hint names the mode it switches to) |
+  | Y | The share sheet for the selected row, else the playing tune |
   | X | Scrap the selected row, else the playing tune |
   | Z | Undo the last scrap, within 10 s |
   | R | Try now, after a failure or with no device |
@@ -2041,7 +2086,7 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   on its sockets with no timer armed. After a start nothing plays until a
   genre is picked, and the composer is off.
 - **Playing and composing are separate.** Picking a genre plays the tunes
-  kept for it, shuffled (none twice until all have played); with none kept
+  kept for it, in the order the modes set (below); with none kept
   nothing plays. A pick starts clean: not paused, not stopped, the old
   genre's tune out of the player, the old genre's queued tunes dropped
   (their files stay), and the composer off. Picking the genre already
@@ -2051,6 +2096,59 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   genre, one job at a time, and the first one finished starts by itself
   when nothing plays, unless the user stopped the player. Off cancels the
   job and stops the model server.
+- **Shuffle and repeat** (`{"cmd":"shuffle","on":…}`,
+  `{"cmd":"repeat","mode":"all"|"one"|"off"}`; the snapshot's `shuffle`,
+  `repeat`, `ended` and `round_left`). Defaults shuffle on and repeat all,
+  kept across restarts in `state.json`. The rules:
+  - A new tune always plays next, ahead of the kept ones, in every mode.
+    Once it has started it is a kept tune like the others, the newest
+    (the last in the order made), and it does not play again in that round.
+  - Kept tunes play in rounds, each once a round. Shuffle on: in random
+    order, never the same tune twice in a row across two rounds. Shuffle
+    off: in the order made (the file names' timestamps, oldest first),
+    carrying on after the last kept tune started and going round to the
+    ones before it not yet played, so a round never skips one.
+  - Repeat all: rounds follow each other for ever. Repeat off: once every
+    kept tune has played in this round and nothing new is ready, nothing
+    plays (`ended`); `toggle` (Space) starts a new round, and a tune the
+    composer finishes afterwards starts by itself unless the user stopped
+    the player. Repeat one: the playing tune repeats (mpv's `loop-file`);
+    next, `play` and scrap move to another tune, which then repeats. The
+    composer still fills its two and rests; they wait behind the repeat.
+  - A change takes effect from the next tune and never interrupts the
+    playing one. A genre pick keeps the modes and starts a new round.
+  - MPRIS: mpv's `loop-file`, `loop-playlist` and `shuffle` follow the
+    modes, so its plugin shows LoopStatus and Shuffle; a change made there
+    (media widget, `playerctl loop`, `playerctl shuffle`) is read once the
+    three properties have rested 0.2 s, and only while none of the
+    service's own writes to them is unanswered, and taken as the user's.
+    The service never writes back what it read, so there is no echo.
+- **Keep for good** (`{"cmd":"pin","on":…,"name":…[,"i":N]}`, the playing
+  tune or queue entry i, answered `{"event":"share_result","ok":true,
+  "what":"pin","on","name"}` to the sender): an empty mark file
+  `.<tune file>.pin` beside the tune, in the genre's folder, so a rename
+  carries it and the tune-file pattern never matches it. A pinned tune is
+  neither deleted nor counted by the newest-50 rule, so a genre's folder
+  holds its 50 newest unpinned tunes plus every pinned one. Scrap still
+  removes a pinned tune (and its mark); undo brings both back. A mark whose
+  tune is gone is deleted at the service's start. Snapshots carry `pinned`
+  on the tune and each queue entry, read from the marks each time.
+- **Sharing** (`share_info` and `export`, with the tune's `name` and an
+  optional `i`, answered to the sender only): `share_info` gives the
+  tune's name, genre, BPM, key, length, size, absolute path, whether it is
+  pinned, and the path an export would take now. `export` copies it with
+  ffmpeg (the audio as is; title, genre, `TBPM` and `TKEY` tags written)
+  to `~/Music/Tunes/Exports/<genre> - <tune name>.mp3`, ` (2)`, ` (3)`…
+  when the name is taken, in a thread; the copy is written under a hidden
+  temporary name and linked into place, so two exports never take one name
+  and a failed or timed-out copy leaves nothing behind. `/` in a name
+  becomes `-`, control characters are dropped and a leading `.` is
+  stripped. Copying to the clipboard and showing in the file manager are
+  the shell's. A name that matches neither the playing tune nor the queue
+  entry is looked up as a file name (without `.mp3`) in the selected
+  genre's folder, so a tune that finished while its sheet was open can
+  still be pinned or exported; anything else is answered `That tune is no
+  longer there.`
 - **A tune**: the caption is the genre's caption, two different random
   "turns" from its list and `, instrumental`; the tempo a random whole BPM
   in the genre's range; lyrics `[Instrumental]`; 180 s. The language model
@@ -2067,8 +2165,11 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   plan for one tune is a failure. A backstop on the rendered audio: a run
   over 5 s under −50 dB that is not the tail discards the tune as a
   failure.
-- **Queue**: what N plays next, in order: the finished new tunes, or with
-  none the next kept tune. A paused player gets its two and no more. With
+- **Queue**: what N plays next, in order: the finished new tunes (and a
+  tune brought back by undo), then the next kept tune, and with shuffle
+  off the two kept tunes after it. Each entry has `new` and `pinned`, and
+  with shuffle off a kept one has `pos`, its place in the order made. A
+  paused player gets its two and no more. With
   two queued the model is `idle` (resting), its server running or not.
   `play` plays a queue entry at once, the rest keeping their order.
   `kept_playing` is true when a kept tune plays because no new tune is
@@ -2136,11 +2237,14 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   asked for right after waits for the cancelled one to stop writing.
 - **Files**: tunes in `~/Music/Tunes/<genre name>/`, named
   `<YYYYMMDD-HHMMSS>-<bpm>bpm-<key>.mp3` (`20261122-174501-88bpm-A-major.mp3`);
-  the newest 50 per genre are kept, and only files matching that pattern are
-  ever deleted, never the playing or queued ones. A `.<tune file>.part`
-  left by an encode that never finished is deleted at the service's start.
-  Waveforms in `~/.cache/desk-tunes/wave/`, scrapped tunes waiting for
-  their undo in `~/.cache/desk-tunes/scrapped/`; the stage timings in
+  the newest 50 unpinned per genre are kept, and only files matching that
+  pattern are ever deleted, never the playing or queued ones, never a
+  pinned one. A `.<tune file>.part` left by an encode that never finished
+  is deleted at the service's start. Keep-for-good marks beside the tunes
+  (`.<tune file>.pin`); exported copies in `~/Music/Tunes/Exports/`, never
+  a genre's folder and never pruned. Waveforms in
+  `~/.cache/desk-tunes/wave/`, scrapped tunes waiting for their undo in
+  `~/.cache/desk-tunes/scrapped/`; the stage timings and the modes in
   `~/.local/state/desk-tunes/state.json`, written atomically and only on a
   change.
 - **Config**: `desk-tunes-config.nix` generates the JSON the service reads
@@ -2199,7 +2303,12 @@ non-empty lists, and a genre without them takes its tunes' names from a word
 list built into the service. Unknown keys are kept. Nine to start: Lo-fi,
 Ambient, Synthwave, Deep house, Jazz, Classical, Downtempo, Post-rock,
 Acoustic. A file that does not parse, or breaks a rule, keeps the last good
-list, and the panel shows the reason.
+list, and the panel shows the reason. `Exports` (in any case) is reserved
+for the folder of exported copies: the editor refuses it (`Exports is the
+folder for exported copies; pick another name.`), and a genre of that name
+in the file (an older file, or a hand edit) is skipped while the others
+load, the panel's strip saying `The genre Exports is skipped: that name is
+the folder for exported copies.`
 
 Generations before the file had its folder installed it at
 `~/.config/desk/tunes-genres.json`. Nothing reads that path any more, and
@@ -2503,11 +2612,24 @@ config on GitHub's runners, cause not known.
   refused and not rewritten, add with an existing folder adopted, rename
   with tunes playing, queued and being made, refused onto an existing
   folder, delete of another and of the selected genre, never the last),
-  and, in the test's own process, what the running service cannot be made
+  the modes (rounds in both orders, shuffle switched off mid-round going
+  round to the tunes before the playing one, a tune brought back by undo
+  still counted as left, repeat off ending and starting over, repeat one
+  holding across next, `play`, scrap and undo, persisted, a pick keeping
+  them; MPRIS LoopStatus and Shuffle both ways, with no echo), keep for
+  good (the mark, a queue entry, scrap and undo, the keep rule leaving
+  pinned tunes out, a genre rename carrying the marks), sharing
+  (`share_info`, a tune finished meanwhile found by its file name and
+  nothing outside the genre's folder, two exports under free names, their
+  tags), `Exports` (never listed, refused by the editor, skipped in the
+  file with the rest loaded and said in `error`), and, in the test's own
+  process, what the running service cannot be made
   to meet: a rename whose file write fails putting the folder back, a
   folder sync failing after the file is in place, a decode still running
-  at a rename, a tune finishing for a genre just deleted, and no pruning
-  for a genre that is gone; shutdown and a restart that plays nothing
+  at a rename, a tune finishing for a genre just deleted, no pruning
+  for a genre that is gone, the MPRIS settle ignoring the service's own
+  unanswered writes, and an export copy that times out leaving nothing in
+  `Exports`; shutdown and a restart that plays nothing
   (a leftover `.genres.json.new` deleted), and nothing written outside the
   service's directories.
   The installed build has no test flags. About a minute.
@@ -2534,7 +2656,15 @@ config on GitHub's runners, cause not known.
   editor's keys and fields, every rule at and across its boundary, the
   service's answers and refusals, `base` sent back, a result left over from
   a command given up on, the 5 s wait (the tick while it runs, the line
-  after it, the link dropping); and a protocol version other than 1.
+  after it, the link dropping); the mode pills, S, L and Y, every heading
+  and wording in every combination of shuffle, repeat, composer, new tunes
+  and a round ended, the queue's numbers (none for new tunes, the kept
+  tunes' places from a fixture); the share sheet (its rows and keys, the
+  commands for paths with spaces and quotes, each result in the footer,
+  ShowItems falling back to the folder, the service's description taken by
+  name or by file, E and K following the tune or naming a finished one by
+  its file, the wait running out), the star and the badge; and a protocol
+  version other than 1.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
