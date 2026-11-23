@@ -7,11 +7,13 @@ the real ones; mpv's MPRIS plugin is driven with playerctl on a private
 session bus.
 
 Usage: test-desk-tunes.py <desk-tunes built for testing> <desk-tunes.py>
-           <tunes-genres.json> <config json> <work dir>
+           <genres.json> <config json> <work dir>
 Needs python3, ffmpeg, ffprobe, mpv, dbus-daemon and playerctl on PATH and
 MPV_MPRIS set to mpris.so. Every tune name, file and figure is invented.
 """
 
+import argparse
+import errno
 import hashlib
 import importlib.util
 import json
@@ -22,6 +24,7 @@ import re
 import shutil
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -207,7 +210,19 @@ for what, kw, want in [
     eq(f"rules: {what}", got and got[0], want)
 eq("rules: the message names the clash", fe(name="jazz"), ("name", "There is already a genre called Jazz."))
 eq("rules: which variation is too long", fe(turns=["ok", "t" * 121])[1],
-   "Variation 2 has more than 120 characters.")
+   "Line 2 is longer than 120 characters.")
+eq("rules: the panel's texts",
+   [fe(**kw)[1] for kw in ({"name": " "}, {"name": "a\nb"}, {"name": "a/b"}, {"name": ".a"}, {"name": "n" * 41},
+                           {"caption": ""}, {"caption": "c" * 401}, {"turns": [f"t{i}" for i in range(21)]},
+                           {"bpm": [90.5, 100]}, {"bpm": [90, 100.5]}, {"bpm": [29, 100]}, {"bpm": [91, 90]})],
+   ["A genre needs a name.", "A name cannot hold control characters or line breaks.",
+    "A name cannot contain a slash: it is also a folder's name.", "A name cannot start with a dot.",
+    "A name is at most 40 characters; this one has 41.", "A genre needs a prompt.",
+    "A prompt is at most 400 characters; this one has 401.", "At most 20 variations; this has 21.",
+    "The slowest tempo needs a whole number.", "The fastest tempo needs a whole number.",
+    "Tempos go from 30 to 300 BPM.", "The slowest tempo is above the fastest."])
+eq("rules: the panel's order: a slash before the length", fe(name="/" * 41)[1],
+   "A name cannot contain a slash: it is also a folder's name.")
 eq("rules: a genre keeps its own name, in any case",
    dt.field_error(dt.edit_fields(dict(FIELDS, name="JAZZ")), genres, "jazz"), None)
 eq("id: from the name", dt.new_genre_id("Hard Bop!", set()), "hard-bop")
@@ -372,6 +387,96 @@ for what, mpv in (("dropped", None), ("not connected", {"sock": None})):
     except Exception as e:
         check(f"mpv socket event with mpv {what}: ignored", False, repr(e))
 
+# -- genre writes, in this process: what the running service cannot be made
+# to meet from outside (a folder sync failing, a decode still running at a
+# rename, a tune finishing for a genre just deleted) --
+IP = tempfile.mkdtemp(prefix="in-process-", dir=WORK)
+IP_ENV = {"HOME": IP, "XDG_CONFIG_HOME": f"{IP}/.config", "XDG_DATA_HOME": f"{IP}/.local/share",
+          "XDG_STATE_HOME": f"{IP}/.local/state", "XDG_CACHE_HOME": f"{IP}/.cache"}
+OLD_ENV = {k: os.environ.get(k) for k in IP_ENV}
+os.environ.update(IP_ENV)
+try:
+    IP_GENRES = os.path.join(IP, ".config", "desk", "tunes", "genres.json")
+    os.makedirs(os.path.dirname(IP_GENRES))
+    shutil.copyfile(GENRES, IP_GENRES)
+    IP_MUSIC = os.path.join(IP, "Music", "Tunes")
+    os.makedirs(os.path.join(IP_MUSIC, "Jazz"))
+    svc = dt.Service(argparse.Namespace(genres=None, test_scale=None), REAL_CONFIG)
+    eq("in process: the default genres file is desk/tunes/genres.json", svc.genres_file, IP_GENRES)
+    jz = {k: v for k, v in svc.genre_by_id("jazz").items() if k in dt.EDIT_KEYS}
+
+    # A rename whose file write fails puts the folder back.
+    os.chmod(os.path.dirname(IP_GENRES), 0o555)
+    try:
+        r = svc.genre_save("jazz", dict(jz, name="Invented Rollback"))
+    finally:
+        os.chmod(os.path.dirname(IP_GENRES), 0o755)
+    check("write fails: refused, naming no field",
+          r.get("ok") is False and r.get("field") is None and r.get("text", "").startswith("Nothing was saved: "), r)
+    eq("write fails: the folder is moved back",
+       sorted(os.listdir(IP_MUSIC)), ["Jazz"])
+    eq("write fails: the file is unchanged", open(IP_GENRES).read(), REAL_GENRES_TEXT)
+
+    # A missing file is refused, not made again.
+    os.rename(IP_GENRES, IP_GENRES + ".aside")
+    eq("missing file: refused", svc.genre_save("jazz", dict(jz, caption="Invented")),
+       dt.refused(None, "Nothing was saved: the genres file is missing."))
+    eq("missing file: not made again", os.path.exists(IP_GENRES), False)
+    os.rename(IP_GENRES + ".aside", IP_GENRES)
+
+    # A kept tune still being decoded when its genre is renamed, and a folder
+    # sync that fails after the file is in place: the save stands.
+    KEPT = os.path.join(IP_MUSIC, "Jazz", "20260101-100000-100bpm-C-major.mp3")
+    with open(KEPT, "wb") as f:
+        f.write(b"invented")
+    decodes = []
+    svc.in_thread = lambda fn, done: decodes.append(done)
+    svc.kept_tune(KEPT)
+    real_fsync = os.fsync
+
+    def fsync_files_only(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            raise OSError(errno.EIO, "Input/output error")
+        return real_fsync(fd)
+    os.fsync = fsync_files_only
+    try:
+        r = svc.genre_save("jazz", dict(jz, name="Invented Modal"))
+    finally:
+        os.fsync = real_fsync
+    eq("folder sync fails: the save stands", r, {"event": "genre_result", "ok": True, "id": "jazz",
+                                                  "renamed": {"from": "Jazz", "to": "Invented Modal"}})
+    eq("folder sync fails: the folder and the file both renamed",
+       (sorted(os.listdir(IP_MUSIC)), svc.genre_by_id("jazz")["name"]), (["Invented Modal"], "Invented Modal"))
+    MODAL = os.path.join(IP_MUSIC, "Invented Modal", os.path.basename(KEPT))
+    eq("decode at a rename: one running", len(decodes), 1)
+    decodes[0](True, {"name": "Invented Title", "length": 3.0, "wave": [0.5] * 78})
+    eq("decode at a rename: its wave cached under the new folder, nothing left pending",
+       (os.path.exists(svc.wave_file(MODAL)), svc.meta_pending), (True, {}))
+
+    # Deleting the selected genre while its tune is encoded: the tune is
+    # thrown away, and nothing is pruned for a genre that is gone.
+    svc.genre, svc.composing = svc.genre_by_id("ambient"), True
+    svc.job = {"stage": "finish", "token": 41}
+    eq("delete while finishing: ok", svc.genre_delete("ambient").get("ok"), True)
+    eq("delete while finishing: the job's tune is thrown away", 41 in svc.scrapped_jobs, True)
+    many = [f"20260101-1000{i:02d}-100bpm-C-major.mp3" for i in range(REAL_CONFIG["keep"] + 1)]
+    for folder in ("Ambient", "Invented Modal"):
+        os.makedirs(os.path.join(IP_MUSIC, folder), exist_ok=True)
+        for n in many:
+            open(os.path.join(IP_MUSIC, folder, n), "w").close()
+    svc.prune({"id": "ambient", "name": "Ambient"})
+    eq("prune: a deleted genre's folder is left alone", len(os.listdir(os.path.join(IP_MUSIC, "Ambient"))),
+       len(many))
+    svc.prune(svc.genre_by_id("jazz"))
+    eq("prune: ... while a genre that exists keeps its newest", len(svc.list_tunes(svc.genre_by_id("jazz"))),
+       REAL_CONFIG["keep"])
+finally:
+    for k, v in OLD_ENV.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
 # ---- the service against fakes ----------------------------------------------
 
 print("service", flush=True)
@@ -387,7 +492,7 @@ XDG = {"XDG_CONFIG_HOME": f"{HOME}/.config", "XDG_DATA_HOME": f"{HOME}/.local/sh
 MUSIC = os.path.join(HOME, "Music", "Tunes")
 MODELS = os.path.join(XDG["XDG_DATA_HOME"], "desk-tunes", "models")
 STATE = os.path.join(XDG["XDG_STATE_HOME"], "desk-tunes", "state.json")
-LIVE_GENRES = os.path.join(XDG["XDG_CONFIG_HOME"], "desk", "tunes-genres.json")
+LIVE_GENRES = os.path.join(XDG["XDG_CONFIG_HOME"], "desk", "tunes", "genres.json")
 os.makedirs(os.path.dirname(LIVE_GENRES))
 shutil.copyfile(GENRES, LIVE_GENRES)
 os.chmod(LIVE_GENRES, 0o644)  # as desk-sync installs it
@@ -1435,7 +1540,7 @@ try:
         f.write('{"genres": [')
     A.send({"cmd": "refresh"})
     s = A.until("genres: a broken file is reported", lambda s: s["error"], 5)
-    check("genres: the error says which file", "tunes-genres.json" in s["error"], s["error"])
+    check("genres: the error says which file", "tunes/genres.json" in s["error"], s["error"])
     eq("genres: the last good list stays", s["genres"][0]["name"], "Invented Lo-fi Two")
     shutil.copyfile(GENRES, LIVE_GENRES)
     A.send({"cmd": "refresh"})
@@ -1736,7 +1841,8 @@ try:
                 {"cmd": "genre_save", "id": 7, "genre": fields_of(jazz)},
                 {"cmd": "genre_save", "id": "jazz"},
                 {"cmd": "genre_save", "id": "jazz", "genre": dict(fields_of(jazz), turns="x")},
-                {"cmd": "genre_save", "id": "jazz", "genre": dict(fields_of(jazz), bpm=[90])}):
+                {"cmd": "genre_save", "id": "jazz", "genre": dict(fields_of(jazz), bpm=[90])},
+                {"cmd": "genre_save", "id": "jazz", "genre": fields_of(jazz), "base": "x"}):
         eq(f"malformed: {json.dumps(bad)[:60]}", answer(A, bad).get("event"), "error")
 
     # Saving what is there writes nothing.
@@ -1748,9 +1854,9 @@ try:
     B.quiet(0.3)
 
     # A refusal per field, through the service; the file is untouched.
-    for field, kw, text in (("name", {"name": "a/b"}, "A name cannot contain a slash."),
-                            ("caption", {"caption": "c" * 401}, "A prompt can have at most 400 characters."),
-                            ("turns", {"turns": [str(i) for i in range(21)]}, "There can be at most 20 variations."),
+    for field, kw, text in (("name", {"name": "a/b"}, "A name cannot contain a slash: it is also a folder's name."),
+                            ("caption", {"caption": "c" * 401}, "A prompt is at most 400 characters; this one has 401."),
+                            ("turns", {"turns": [str(i) for i in range(21)]}, "At most 20 variations; this has 21."),
                             ("bpm", {"bpm": [140, 120]}, "The slowest tempo is above the fastest.")):
         eq(f"refused: {field}", answer(A, {"cmd": "genre_save", "id": "jazz",
                                            "genre": dict(fields_of(jazz), **kw)}), no(field, text))
@@ -1770,7 +1876,7 @@ try:
     eq("edit: replaced by a rename, mode kept, a regular file",
        (st.st_ino != ino, oct(st.st_mode & 0o777), os.path.isfile(LIVE_GENRES) and not os.path.islink(LIVE_GENRES)),
        (True, "0o644", True))
-    eq("edit: nothing else left in the directory", sorted(os.listdir(DESK)), ["tunes-genres.json"])
+    eq("edit: nothing else left in the directory", sorted(os.listdir(DESK)), ["genres.json"])
     got = [e.get("event") for e in B.quiet(0.5)]
     eq("edit: the result to the sender only, the snapshot to all", (got.count("genre_result"), "state" in got),
        (0, True))
@@ -1785,7 +1891,7 @@ try:
     hand["genres"][1]["caption"] = "Invented ambient by hand"
     with open(LIVE_GENRES, "w") as f:
         f.write(json.dumps(hand, indent=4))
-    ev = answer(A, {"cmd": "genre_save", "id": "jazz",
+    ev = answer(A, {"cmd": "genre_save", "id": "jazz", "base": fields_of(ev),
                     "genre": dict(fields_of(ev), turns=ev["turns"] + ["  invented added turn ", ""])})
     eq("hand edit: the save is ok", ev.get("ok"), True)
     saved = json.loads(live())
@@ -1797,6 +1903,18 @@ try:
         new_caption))
     eq("hand edit: the new turn trimmed, the blank dropped", sj["turns"][-1], "invented added turn")
     eq("hand edit: laid out as the repository's file again", live(), dt.format_genres(saved))
+
+    # A hand edit to the genre open in the editor is not overwritten.
+    base = fields_of(answer(A, {"cmd": "genre_get", "id": "jazz"}))
+    hand = json.loads(live())
+    next(g for g in hand["genres"] if g["id"] == "jazz")["caption"] = "Invented caption by hand"
+    with open(LIVE_GENRES, "w") as f:
+        f.write(dt.format_genres(hand))
+    eq("hand edit to it: refused",
+       answer(A, {"cmd": "genre_save", "id": "jazz", "genre": dict(base, caption="Invented in the panel"),
+                  "base": base}),
+       no(None, "Jazz was changed in the file since you opened it."))
+    eq("hand edit to it: the file keeps it", live(), dt.format_genres(hand))
 
     # A broken file is not overwritten.
     with open(LIVE_GENRES, "w") as f:
@@ -1984,7 +2102,7 @@ try:
     LEFT = os.path.join(SCR, "20260101-000000-80bpm-C-major.mp3")
     with open(LEFT, "w") as f:
         f.write("a scrap the last run never finalised")
-    GENRES_TMP = os.path.join(os.path.dirname(LIVE_GENRES), ".tunes-genres.json.new")
+    GENRES_TMP = os.path.join(os.path.dirname(LIVE_GENRES), ".genres.json.new")
     with open(GENRES_TMP, "w") as f:
         f.write('{"genres": [')
     serve = subprocess.Popen(serve.args, env=ENV, stdout=subprocess.DEVNULL, stderr=SERVE_LOG)

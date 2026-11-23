@@ -410,7 +410,7 @@ pkgs.lib.fix (self: {
               }
             )
           } \
-          ${../desk-tunes.py} ${../user/desk/tunes-genres.json} ${tunesConfig} "$PWD/work"
+          ${../desk-tunes.py} ${../user/desk/tunes/genres.json} ${tunesConfig} "$PWD/work"
         touch $out
       '';
 

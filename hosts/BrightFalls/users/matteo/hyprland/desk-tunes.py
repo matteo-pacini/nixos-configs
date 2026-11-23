@@ -22,7 +22,7 @@ Usage: desk-tunes serve [--config FILE] [--genres FILE] [--ace-server EXE]
        desk-tunes attach
 
 Defaults are the paths the package was built with; --genres defaults to
-$XDG_CONFIG_HOME/desk/tunes-genres.json. hyprctl is the one on PATH (with
+$XDG_CONFIG_HOME/desk/tunes/genres.json. hyprctl is the one on PATH (with
 `-i 0` when HYPRLAND_INSTANCE_SIGNATURE is unset).
 
 Files:
@@ -135,7 +135,8 @@ Client -> service: {"cmd":"genre","id":"lofi"} | {"cmd":"toggle"} |
 {"cmd":"undo"} | {"cmd":"play","i":N} | {"cmd":"retry"} | {"cmd":"download"}
 | {"cmd":"cancel_download"} | {"cmd":"refresh"} |
 {"cmd":"genre_get","id":"jazz"} | {"cmd":"genre_save","id":"jazz"|null,
-"genre":{"name","caption","turns":[str, ...],"bpm":[lo,hi]}} |
+"genre":{"name","caption","turns":[str, ...],"bpm":[lo,hi]},
+"base":{"name","caption","turns","bpm"}} ("base" optional) |
 {"cmd":"genre_delete","id":"jazz"}. A command that does not apply is
 ignored. scrap (but for the job) and play take an optional
 "name": the name the sender saw for that tune, or its file; a command whose
@@ -223,7 +224,9 @@ Behaviour:
             then checked (field_error): name 1-40 characters, no "/", no
             leading ".", no control characters, unique ignoring case;
             caption 1-400; 0-20 turns of 1-120; bpm two integers,
-            30 <= lo <= hi <= 300. A new name renames the genre's folder
+            30 <= lo <= hi <= 300. With "base" (the fields genre_get gave),
+            refused when the genre in the file differs from it, so an edit
+            by hand meanwhile is not lost. A new name renames the genre's folder
             (refused when a folder of that name exists); the id never
             changes, so its wave cache stays, and the tunes playing and
             queued play on from the new folder. The selected genre's new
@@ -422,35 +425,40 @@ def field_error(fields, genres, self_id):
     """(field, text for the user) for the first rule `fields` (from
     edit_fields) breaks, or None. Names are unique among `genres` ignoring
     case, not counting the genre `self_id`."""
+    # The panel (tunes.js check()) applies these rules in this order with
+    # these texts; keep the two the same.
     name = fields["name"]
     if not name:
-        return "name", "Give the genre a name."
-    if len(name) > NAME_MAX:
-        return "name", f"A name can have at most {NAME_MAX} characters."
+        return "name", "A genre needs a name."
+    if any(unicodedata.category(c) == "Cc" for c in name):
+        return "name", "A name cannot hold control characters or line breaks."
     if "/" in name:
-        return "name", "A name cannot contain a slash."
+        return "name", "A name cannot contain a slash: it is also a folder's name."
     if name.startswith("."):
         return "name", "A name cannot start with a dot."
-    if any(unicodedata.category(c) == "Cc" for c in name):
-        return "name", "A name cannot contain control characters."
+    if len(name) > NAME_MAX:
+        return "name", f"A name is at most {NAME_MAX} characters; this one has {len(name)}."
     other = next((g for g in genres if g["id"] != self_id
-                  and g["name"].casefold() == name.casefold()), None)
+                  and g["name"].lower() == name.lower()), None)
     if other:
         return "name", f"There is already a genre called {other['name']}."
     if not fields["caption"]:
-        return "caption", "Write a prompt."
+        return "caption", "A genre needs a prompt."
     if len(fields["caption"]) > CAPTION_MAX:
-        return "caption", f"A prompt can have at most {CAPTION_MAX} characters."
+        return "caption", (f"A prompt is at most {CAPTION_MAX} characters; "
+                           f"this one has {len(fields['caption'])}.")
     for i, s in enumerate(fields["turns"], 1):
         if len(s) > TURN_MAX:
-            return "turns", f"Variation {i} has more than {TURN_MAX} characters."
+            return "turns", f"Line {i} is longer than {TURN_MAX} characters."
     if len(fields["turns"]) > TURNS_MAX:
-        return "turns", f"There can be at most {TURNS_MAX} variations."
+        return "turns", f"At most {TURNS_MAX} variations; this has {len(fields['turns'])}."
     lo, hi = fields["bpm"]
-    if not (is_int(lo) and is_int(hi)):
-        return "bpm", "The tempo needs two whole numbers."
+    if not is_int(lo):
+        return "bpm", "The slowest tempo needs a whole number."
+    if not is_int(hi):
+        return "bpm", "The fastest tempo needs a whole number."
     if not (BPM_MIN <= lo <= BPM_MAX and BPM_MIN <= hi <= BPM_MAX):
-        return "bpm", f"The tempo must be between {BPM_MIN} and {BPM_MAX} BPM."
+        return "bpm", f"Tempos go from {BPM_MIN} to {BPM_MAX} BPM."
     if lo > hi:
         return "bpm", "The slowest tempo is above the fastest."
     return None
@@ -491,6 +499,8 @@ def dumps(v):
 
 
 GENRE_GONE = "That genre no longer exists."
+# The fields the editor shows, and genre_get's and "base"'s keys.
+EDIT_KEYS = ("name", "caption", "turns", "bpm")
 
 
 def refused(field, text):
@@ -1020,7 +1030,7 @@ class Service:
         self.mpv_cache = os.path.join(cache, "mpv")
         self.music = os.path.join(os.path.expanduser("~"), "Music", "Tunes")
         self.genres_file = args.genres or os.path.join(xdg("XDG_CONFIG_HOME", ".config"), "desk",
-                                                       "tunes-genres.json")
+                                                       "tunes", "genres.json")
         self.genres, self.genres_sig, self.genres_error = [], None, None
 
         self.saved = self.load_state()
@@ -1049,7 +1059,7 @@ class Service:
         self.wants_play = False
         self.pause = False
         self.pos, self.pos_at = 0.0, time.time()
-        self.meta_pending = set()
+        self.meta_pending = {}  # path: {"path"} for each kept tune being read
 
         self.composing = False
         self.state, self.since = "unloaded", time.time()
@@ -1263,10 +1273,12 @@ class Service:
                 if "id" not in msg or not (msg["id"] is None or isinstance(msg["id"], str)):
                     raise TypeError("genre_save needs id, a genre's id or null")
                 fields = edit_fields(msg.get("genre"))
+                if msg.get("base") is not None and not isinstance(msg["base"], dict):
+                    raise TypeError("genre_save's base is the fields genre_get gave")
             except TypeError as e:
                 self.send(conn, {"event": "error", "text": str(e)})
                 return
-            self.send(conn, self.genre_save(msg["id"], fields))
+            self.send(conn, self.genre_save(msg["id"], fields, msg.get("base")))
             self.changed()
         elif cmd in ("genre_get", "genre_delete"):
             self.send(conn, handlers[cmd](msg["id"]))
@@ -1465,7 +1477,7 @@ class Service:
                 self.genres = parse_genres(f.read())
             self.genres_error = None
         except (OSError, UnicodeDecodeError, ValueError) as e:
-            self.genres_error = f"tunes-genres.json: {e}"
+            self.genres_error = f"tunes/genres.json: {e}"
 
     # -- editing genres ------------------------------------------------------
 
@@ -1513,11 +1525,16 @@ class Service:
                 except OSError:
                     pass
                 raise
-            dfd = os.open(os.path.dirname(path), os.O_RDONLY)
+            # The file is replaced by now; a failure here only weakens the
+            # rename's durability across a crash, so the save stands.
             try:
-                os.fsync(dfd)
-            finally:
-                os.close(dfd)
+                dfd = os.open(os.path.dirname(path), os.O_RDONLY)
+                try:
+                    os.fsync(dfd)
+                finally:
+                    os.close(dfd)
+            except OSError as e:
+                say(f"cannot sync the genres file's folder: {e.strerror}")
         self.read_genres()
         if self.genre:
             self.genre = self.genre_by_id(self.genre["id"]) or self.genre
@@ -1530,15 +1547,18 @@ class Service:
         g = self.genre_by_id(gid)
         if g is None:
             return refused(None, GENRE_GONE)
-        return dict({k: g[k] for k in ("id", "name", "caption", "turns", "bpm")}, event="genre")
+        return dict({k: g[k] for k in EDIT_KEYS}, event="genre", id=g["id"])
 
-    def genre_save(self, gid, fields):
+    def genre_save(self, gid, fields, base=None):
         try:
             doc, genres, text = self.genres_on_disk()
         except ValueError as e:
             return refused(None, f"Nothing was saved: {e}.")
-        if gid is not None and not any(g["id"] == gid for g in genres):
+        on_disk = next((g for g in genres if g["id"] == gid), None) if gid is not None else None
+        if gid is not None and on_disk is None:
             return refused(None, GENRE_GONE)
+        if on_disk and base is not None and base != {k: on_disk[k] for k in EDIT_KEYS}:
+            return refused(None, f"{on_disk['name']} was changed in the file since you opened it.")
         bad = field_error(fields, genres, gid)
         if bad:
             return refused(*bad)
@@ -1590,6 +1610,8 @@ class Service:
         except OSError as e:
             return refused(None, f"Nothing was deleted: {e.strerror}.")
         if self.genre and self.genre["id"] == gid:
+            if self.job and self.job["stage"] == "finish":
+                self.scrapped_jobs.add(self.job["token"])
             self.composer_off()
             self.genre, self.ready, self.next_kept, self.played = None, [], None, set()
             self.wants_play, self.loading = False, None
@@ -1604,6 +1626,9 @@ class Service:
             if t:
                 t["path"] = moved(t["path"])
         self.played = {moved(p) for p in self.played}
+        self.meta_pending = {moved(p): h for p, h in self.meta_pending.items()}
+        for h in self.meta_pending.values():
+            h["path"] = moved(h["path"])
         self.loading = moved(self.loading)
         if self.scrap:
             self.scrap["from"] = moved(self.scrap["from"])
@@ -1905,9 +1930,9 @@ class Service:
         if cached:
             t.update(cached)
         elif path not in self.meta_pending:
-            self.meta_pending.add(path)
+            pending = self.meta_pending[path] = {"path": path}
             self.in_thread(lambda: kept_meta(self.args.ffmpeg, self.args.ffprobe, path),
-                           lambda ok, v: self.kept_meta_done(path, ok, v))
+                           lambda ok, v: self.kept_meta_done(pending, ok, v))
         return t
 
     def wave_file(self, path):
@@ -1934,8 +1959,9 @@ class Service:
         except OSError as e:
             say(f"cannot write the wave cache: {e.strerror}")
 
-    def kept_meta_done(self, path, ok, value):
-        self.meta_pending.discard(path)
+    def kept_meta_done(self, pending, ok, value):
+        path = pending["path"]
+        self.meta_pending.pop(path, None)
         if not ok:
             say(f"cannot read a kept tune: {value}")
             return
@@ -2561,6 +2587,9 @@ class Service:
         self.maybe_compose()
 
     def prune(self, genre):
+        # A deleted genre's folder is the user's now: delete leaves its tunes.
+        if self.genre_by_id(genre["id"]) is None:
+            return
         protected = {os.path.basename(t["path"]) for t in self.ready + [self.current, self.next_kept]
                      if t and os.path.dirname(t["path"]) == self.genre_dir(genre)}
         for name in keep_victims(self.list_tunes(genre), self.cfg["keep"], protected):

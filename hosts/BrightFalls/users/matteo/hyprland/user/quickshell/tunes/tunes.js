@@ -31,7 +31,9 @@
 //   open, ui.now kept current at least once a second whenever needsTick(st,
 //   ui). A key: r = key(ui, st, name, isAutoRepeat); ui = r.ui; run r.effect.
 //   Each line also while open: ui = answer(ui, st, ev, now), for the
-//   results of the genre commands, which come to this client only.
+//   results of the genre commands, which come to this client only; the
+//   attach process stopping while open: ui = linkDown(ui, now). ui.now made
+//   current before every key() and pick().
 //   A click: on a button, the key it stands for; on a genre cell or the
 //   "+ New genre" cell after them, pick(ui, st, index); on the waveform,
 //   seek(st, fraction across). The genre editor's fields: every change of a
@@ -93,6 +95,8 @@ const NOTICE_S = 6;
 // How long a genre command sent counts as unanswered: its result is lost
 // with the link.
 const WAIT_S = 5;
+// Under the editor's last field when a save got no answer.
+const NO_ANSWER = "The tunes service did not answer. Ctrl+S tries again.";
 
 const SETUP = ["missing", "downloading", "ready", "failed"];
 const PLAYER = ["none", "playing", "paused"];
@@ -576,8 +580,10 @@ function editorView(s, ui) {
     const kept = g ? g.kept : 0;
     const c = check(e.values, s.genres, e.id);
     const shown = f => (e.id !== null && !e.loading) || e.tried || (f === "bpm" ? e.touched.lo === true || e.touched.hi === true : e.touched[f] === true);
-    const refusedAt = e.refused ? e.refused.field || "bpm" : "";
-    const err = f => (shown(f) && c.errors[f]) || (refusedAt === f ? e.refused.text : "");
+    const unanswered = ui.waiting && ui.waiting.kind === "save" && !busy(ui);
+    const refused = e.refused || (unanswered ? { field: null, text: NO_ANSWER } : null);
+    const refusedAt = refused ? refused.field || "bpm" : "";
+    const err = f => (shown(f) && c.errors[f]) || (refusedAt === f ? refused.text : "");
     const bpmRefused = refusedAt === "bpm" && !(shown("bpm") && c.errors.bpm);
     const field = (label, side, placeholder, error) => ({ label, side, placeholder, error, bad: error !== "" });
     const box = (label, isBad) => ({ label, side: "", placeholder: "", error: "", bad: isBad });
@@ -841,7 +847,8 @@ function view(st, ui) {
 // the title gives it), values ({ name, caption, turns, lo, hi }: the
 // fields' text), focus (one of FIELDS), touched (by field), tried (a save
 // with errors), refused (null | { field, text }: the service's refusal),
-// loading (genre_get unanswered) }); rev rises whenever values are replaced
+// loading (genre_get unanswered), base (null | the fields genre_get
+// gave, sent back with the save) }); rev rises whenever values are replaced
 // by anything but typing, so the QML puts them in its fields; waiting:
 // null | { kind ("get" | "save" | "delete"), id, at }, the genre command
 // whose result comes next; notice: null | { text, until }, the chooser's
@@ -864,7 +871,7 @@ function emptyValues() {
 function editorUi(u, id, name, values, loading) {
     return copy(u, {
         mode: "editor",
-        ed: { id, name, values, focus: FIELDS[0], touched: {}, tried: false, refused: null, loading },
+        ed: { id, name, values, focus: FIELDS[0], touched: {}, tried: false, refused: null, loading, base: null },
         rev: (u.rev || 0) + 1,
         notice: null,
         ask: null
@@ -892,7 +899,10 @@ function save(u, st) {
     const c = check(e.values, st.snap.genres, e.id);
     if (!c.genre || (e.refused && e.refused.field !== null))
         return { ui: copy(u, { ed: copy(e, { tried: true }) }), effect: effect("none") };
-    return { ui: copy(u, { waiting: { kind: "save", id: e.id, at: u.now } }), effect: effect("send", { cmd: "genre_save", id: e.id, genre: c.genre }) };
+    const cmd = { cmd: "genre_save", id: e.id, genre: c.genre };
+    if (e.base)
+        cmd.base = e.base;
+    return { ui: copy(u, { waiting: { kind: "save", id: e.id, at: u.now } }), effect: effect("send", cmd) };
 }
 
 // The text in one of the editor's FIELDS as typed. Returns the ui.
@@ -941,9 +951,15 @@ function answer(ui, st, ev, now) {
             lo: tempo(bpm[0]),
             hi: tempo(bpm[1])
         };
-        return copy(ui, { waiting: null, rev: ui.rev + 1, ed: copy(ui.ed, { values, loading: false }) });
+        const base = { name: ev.name, caption: ev.caption, turns: ev.turns, bpm: ev.bpm };
+        return copy(ui, { waiting: null, rev: ui.rev + 1, ed: copy(ui.ed, { values, loading: false, base }) });
     }
     if (ev.event !== "genre_result")
+        return ui;
+    // A result left over from a command given up on (Esc, or no answer in
+    // WAIT_S) must not close what waits now: a get fails only by a refusal,
+    // and a success names the genre it was for.
+    if (w.kind === "get" ? ev.ok !== false : ev.ok === true && w.id !== null && ev.id !== w.id)
         return ui;
     const text = str(ev.text) || "";
     if (w.kind === "get")
@@ -966,6 +982,20 @@ function answer(ui, st, ev, now) {
     }
     const field = ["name", "caption", "turns", "bpm"].indexOf(ev.field) >= 0 ? ev.field : null;
     return copy(ui, { waiting: null, ed: copy(ui.ed, { refused: { field, text: text || "The genre was not saved." } }) });
+}
+
+// The attach link dropped while a genre command waited: its result will not
+// come. A save says so under the last field; an editor still waiting for its
+// genre goes back to the chooser, which says so. Returns the ui.
+function linkDown(ui, now) {
+    if (!ui || !ui.waiting)
+        return ui;
+    const w = ui.waiting;
+    if (w.kind === "save" && ui.mode === "editor" && ui.ed)
+        return copy(ui, { waiting: null, ed: copy(ui.ed, { refused: { field: null, text: NO_ANSWER } }) });
+    if (w.kind === "get" && ui.mode === "editor")
+        return copy(ui, { waiting: null, mode: "chooser", ed: null, selId: w.id, notice: { text: "The tunes service did not answer.", until: now + NOTICE_S } });
+    return copy(ui, { waiting: null });
 }
 
 function effect(kind, cmd) {
@@ -1185,13 +1215,16 @@ function globalScrap(st, now) {
 
 // Whether the open panel shows something that changes with the clock alone:
 // the position while playing, the job's time, the undo countdown, a retry
-// countdown, the chooser's notice until it goes.
+// countdown, the chooser's notice until it goes, a genre command's wait
+// until it runs out.
 function needsTick(st, ui) {
     if (st.link === "missing" || st.link === "down" || st.link === "lost")
         return st.retryAt !== null;
     if (st.link !== "up" || !st.snap)
         return false;
     const s = st.snap;
+    if (busy(ui))
+        return true;
     if (notice(st, ui) !== "")
         return true;
     if (view(st, ui).kind !== "player")
@@ -1228,6 +1261,6 @@ if (typeof module !== "undefined")
     module.exports = {
         COLS, ROWS, GRID, KEY_NAMES, FLASH_MS, FIELDS, NOTICE_S, WAIT_S,
         initial, apply, healthy, linkLost, view, initialUi, key, pick, seek, hints, undoLine, notice, globalScrap, needsTick, barView,
-        typed, focus, answer, check, parseTurns,
+        typed, focus, answer, linkDown, check, parseTurns, NO_ANSWER,
         position, waveColumns, clock, gib, rate, elapsed
     };

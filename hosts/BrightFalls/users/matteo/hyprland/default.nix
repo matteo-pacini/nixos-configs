@@ -188,15 +188,16 @@ in
       RuntimeDirectoryMode = "0700";
       # systemd has no directory setting for these two; "+" runs mkdir
       # outside the sandbox, which needs them to exist.
-      ExecStartPre = "+${lib.getExe' pkgs.coreutils "mkdir"} -p ${config.xdg.dataHome}/desk-tunes ${config.home.homeDirectory}/Music/Tunes ${config.xdg.configHome}/desk";
+      ExecStartPre = "+${lib.getExe' pkgs.coreutils "mkdir"} -p ${config.xdg.dataHome}/desk-tunes ${config.home.homeDirectory}/Music/Tunes ${config.xdg.configHome}/desk/tunes";
       ReadWritePaths = [
         "${config.xdg.dataHome}/desk-tunes"
         "${config.home.homeDirectory}/Music/Tunes"
-        # The directory, not the genres file: the service replaces the file
-        # by a rename beside it, and a file bind mount can be neither
-        # renamed over inside the unit nor kept writable once desk-sync (or
-        # an editor) renames a new copy over it from outside.
-        "${config.xdg.configHome}/desk"
+        # The genres file's own folder, not the file: the service replaces
+        # the file by a rename beside it, and a file bind mount can be
+        # neither renamed over inside the unit nor kept writable once
+        # desk-sync (or an editor) renames a new copy over it from outside.
+        # Not ~/.config/desk, which holds the shell's other files.
+        "${config.xdg.configHome}/desk/tunes"
       ];
       # Mesa's shader cache under ~/.cache is read-only here.
       Environment = [ "MESA_SHADER_CACHE_DIR=${config.xdg.cacheHome}/desk-tunes/mesa" ];

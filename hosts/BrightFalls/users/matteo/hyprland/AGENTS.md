@@ -493,7 +493,7 @@ not.
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
 | `user/desk/theme.json` | The palette |
-| `user/desk/tunes-genres.json` | The tunes genres, hand-edited, live at `~/.config/desk/tunes-genres.json` (README, "The genres file") |
+| `user/desk/tunes/genres.json` | The tunes genres, live at `~/.config/desk/tunes/genres.json`, edited by hand or from the panel (the service writes it; its folder is the only part of `~/.config/desk` the unit may write) (README, "The genres file") |
 | `../../../audio/` | PipeWire and WirePlumber settings the audio panel reports, Bluetooth codecs |
 
 **Hyprland** (`user/hypr/`): `hyprland.lua` (entry, requires the rest, then
@@ -538,7 +538,7 @@ Directories (`import qs.<dir>`):
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`, `said`), `tokens.js` (all token-panel decisions: applying the helper's answers and events and which of them reset the restart back-off, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading, its "as of" times and the line after R, the bar look, the hand-set `PLAN`; node-tested) |
 | `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml`, `SensorRow.qml` (the outdoor sensor's battery and link row) (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
-| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command, one notification through `common/notify.js`, and the bar note's one-shot flash), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection, the waveform's columns, the position between snapshots, keys, clicks, the footer and its undo line, the global scrap, the bar view and its flash; node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows) and `Strip.qml` (the tinted strip) |
+| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command, one notification through `common/notify.js`, and the bar note's one-shot flash), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection, the waveform's columns, the position between snapshots, keys, clicks, the footer and its undo line, the global scrap, the bar view and its flash, the genre editor (its fields, the service's rules and texts, the commands, the 5 s wait for an answer and `linkDown()` when the link drops); node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows), `Strip.qml` (the tinted strip) and `EditField.qml` (one field of the genre editor: label, growing box, placeholder, error) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -607,47 +607,49 @@ on M, through `desk-weather`).
 **Tunes, on a branch (`feat/brightfalls-tunes`), not on `master`:** the
 tunes panel (Super+M, Super+Shift+M: instrumental music in a genre through
 the `desk-tunes` service, composed by `ace-server` on the Radeon 780M and
-played by mpv; README, "Tunes panel" and "Tunes: desk-tunes"). Two
-versions, only the first deployed:
-- **The first design** (playing and composing one thing, U to unload) was
-  deployed and run live. Proven on real hardware, by the owner at the
-  keyboard with the coordinator reading the logs: the unit and its sandbox,
-  with Vulkan on the 780M and audio out; the weights downloaded with their
-  checksums; a first tune about two minutes after a genre was picked; a
-  silent tail trimmed; pause; the RX 6800 XT's memory flat while composing;
-  Super+M. Its `vulkaninfo` call crashed in the unit (a core dump at every
-  model-server start; the device was still resolved from the output
-  printed before the crash).
-- **Built and checked in the repository only, not deployed:** the redesign
-  (the three sections, the composer switch off at start and after every
-  pick, scrap and undo, queue selection, the estimate, the bar's dot,
-  Super+Shift+M and the IPC `scrap`, the bar note's flash on it), and after
-  its review: a pick never shows the old genre's tune or pause, scrap and
-  play name their tune, a quick second Super+Shift+M is an undo, a failed
-  scrap or undo is said and loses nothing, no device is said in the
-  composer section with the player kept, `vulkaninfo` run without `DISPLAY`
-  and `WAYLAND_DISPLAY`, and the shell reload at the end of `desk-sync
-  activate`. Simulated: `tunes-helper` (the service against a fake
-  `ace-server`, `vulkaninfo`, `hyprctl` and Hugging Face, with the real
-  ffmpeg, mpv to the null output and mpv's MPRIS plugin on a private bus),
-  `tunes-panel` (tunes.js against hand-written snapshots) and `desk-sync`
-  (the reload against a stand-in `qs`). `quickshell-lint` and `hypr-config`
-  accept the QML, Super+M and Super+Shift+M. Proven on real hardware by an
-  agent's script: the crash and its fix (`vulkaninfo` in a transient unit
-  with the service's sandbox crashes with `DISPLAY` set and lists the same
-  devices without it).
-- Expected only: all the redesign's QML (layout, the switch, the row
-  selection, the bar's dot and the note's flash, the notification of the
-  global scrap, no binding loops or JS errors); the order of mpv's events
-  after a pick (the position is not sampled until the new tune is
-  reported); the scrap's move between the music folder
-  and the cache in the real unit (separate bind mounts, hence a copy, not a
-  rename); that the deployed unit leaves no `vulkaninfo` core; the real
-  `qs` found by the activation's reload; the estimate from real timings;
-  real `hyprctl -j clients` while a game runs, and the game regex matched
-  as Hyprland matches the rule; media keys on the real session bus with
-  another player open; keeping ahead of playback over an hour; Super+Shift+M
-  free in the running Hyprland (checked in the repository's binds only).
+played by mpv; README, "Tunes panel" and "Tunes: desk-tunes"), deployed
+from the branch. In three stages:
+- **The first design** (playing and composing one thing, U to unload),
+  deployed and run live, then replaced. Proven on real hardware, by the
+  owner at the keyboard with the coordinator reading the logs: the unit and
+  its sandbox, with Vulkan on the 780M and audio out; the weights
+  downloaded with their checksums; a first tune about two minutes after a
+  genre was picked; a silent tail trimmed; pause; the RX 6800 XT's memory
+  flat while composing; Super+M.
+- **The redesign, deployed**: the three sections, the composer switch (off
+  at start and after every pick), scrap and undo, a genre change that
+  starts clean, and `vulkaninfo` run without `DISPLAY` and
+  `WAYLAND_DISPLAY` (the first design's call crashed in the unit). Used live
+  by the owner, who reported that it works; that report is the whole of the
+  live evidence, so anything a report lists as expected only (below) stays
+  so until someone looks. The shell reload at the end of `desk-sync
+  activate` is deployed too; its first automatic use is the next switch.
+- **The genre editor, built and checked in the repository only, not
+  deployed**: E, A, D and `+ New genre` in the chooser, the editor card
+  (`tunes/EditField.qml`), the delete question, the service's
+  `genre_get`, `genre_save` (with `base`) and `genre_delete`, the rename of
+  a genre's folder, and the genres file moved to its own folder
+  (`~/.config/desk/tunes/genres.json`) so the unit can write that folder
+  and nothing else in `~/.config/desk`. Simulated: `tunes-helper` (the
+  service against fakes, and in the test's own process the failures the
+  service cannot be made to meet), `tunes-panel` (tunes.js against
+  hand-written lines). Proven on this machine by an agent's script: a
+  `systemd-run` probe with the unit's protection on a throwaway tree, where
+  the granted folder took a file replaced by a rename and its sibling files
+  could be neither written nor created (with the old grant, the whole
+  folder, the sibling was written). Expected only: all the editor's QML
+  (focus landing in a field that just became visible, Tab and Shift+Tab
+  reaching the panel before the field, Ctrl+S and the input method in a
+  layer-shell text field, the fields growing, the BPM suffix, long names
+  eliding), the clock read before every key (`TunesShared.qml`), the save
+  and the folder rename in the real unit, and `desk-sync status` and
+  `pull` with the file the service wrote.
+- Expected only, from the earlier stages: the order of mpv's events after a
+  pick; the scrap's move between the music folder and the cache in the
+  real unit (separate bind mounts, hence a copy); that the deployed unit
+  leaves no `vulkaninfo` core; the estimate from real timings; real
+  `hyprctl -j clients` while a game runs; media keys on the real session
+  bus with another player open; keeping ahead of playback over an hour.
 - The Shell Atlas has no tunes section yet.
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
@@ -676,19 +678,17 @@ live on 2026-11-22 and load without a warning from them; Super+H is loaded
   bar's weather item should show the outdoor temperature within a minute or
   two. Until the owner has seen that, everything with the real helper is
   expected only.
-- The shell reload: the running shell has no `shell` IPC target until the
-  switch that brings it, so that switch's activation prints `desk-sync:
-  quickshell: not reloaded: …` and the shell may be left on a half-written
-  tree. Read `journalctl --user -u quickshell --since "-2min" --no-pager`:
-  if the last load line is not `Configuration Loaded`, nudge it once (save
-  `~/.config/quickshell/shell.qml` unchanged: that switch changed it, so its
-  content differs from the running generation's; or `systemctl --user
-  restart quickshell`). From the next switch on, activation ends with
-  `desk-sync: quickshell: reloaded`.
-- Tunes: one `hyprctl reload` (then `hyprctl configerrors`) for
-  Super+Shift+M, and a look at `hyprctl binds` that it is free. Note
-  `coredumpctl list` for `vulkaninfo` before turning the composer on; the
-  count must not grow.
+- Tunes, at the switch that brings the genre editor: delete
+  `~/.config/desk/tunes-genres.json` by hand (nothing reads it any more, and
+  `desk-sync` leaves a dropped file alone; carry any edit made to it over
+  to `~/.config/desk/tunes/genres.json` first). That switch is also the
+  first automatic use of the shell reload in `desk-sync activate`: its
+  output should end with `desk-sync: quickshell: reloaded`. After a save
+  from the panel, `desk-sync status` shows `desk/tunes/genres.json` as
+  `edited`, and `desk-sync pull` brings it to the repository (public).
+  From the redesign's deploy, done or not by now, no report says: one
+  `hyprctl reload` (then `hyprctl configerrors`) for Super+Shift+M, and
+  `coredumpctl list` showing no new `vulkaninfo` core since it.
 
 From the token panel's deploy, done or not by now, no report says:
 - One `hyprctl reload` (then `hyprctl configerrors`) for Super+O, Super+G,

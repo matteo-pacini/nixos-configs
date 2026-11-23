@@ -1021,7 +1021,7 @@ t("the service's answers: a rename, refusals under their field, a genre gone", (
     const [st, u] = jazzEditor();
     const bebop = T.typed(u, "name", "Bebop");
     const sent = T.key(bebop, st, "CtrlS", false);
-    assert.deepEqual(sent.effect.cmd, { cmd: "genre_save", id: "jazz", genre: { name: "Bebop", caption: JAZZ.caption, turns: JAZZ.turns, bpm: [90, 150] } });
+    assert.deepEqual(sent.effect.cmd, { cmd: "genre_save", id: "jazz", genre: { name: "Bebop", caption: JAZZ.caption, turns: JAZZ.turns, bpm: [90, 150] }, base: { name: "Jazz", caption: JAZZ.caption, turns: JAZZ.turns, bpm: [90, 150] } });
     // Saved and renamed: the chooser on the genre, the footer says so for
     // NOTICE_S and the tick runs until it goes.
     const done = T.answer(sent.ui, st, RESULTS[0], NOW);
@@ -1067,6 +1067,57 @@ t("the service's answers: a rename, refusals under their field, a genre gone", (
     // Unknown fields and texts.
     const odd = T.answer(sent.ui, st, { event: "genre_result", ok: false, field: "moods" }, NOW);
     assert.equal(T.view(st, odd).editor.tempoError, "The genre was not saved.");
+});
+
+t("a genre command unanswered: the tick runs, the wait runs out and a save says so; the link dropping ends the wait", () => {
+    const [st, u] = jazzEditor();
+    const sent = T.key(T.typed(u, "name", "Bebop"), st, "CtrlS", false);
+    assert.equal(sent.effect.kind, "send");
+    // Nothing in the editor moves with the clock but the wait.
+    assert.deepEqual([T.needsTick(st, u), T.needsTick(st, sent.ui)], [false, true]);
+    const waited = Object.assign({}, sent.ui, { now: NOW + T.WAIT_S });
+    assert.equal(T.needsTick(st, waited), false);
+    assert.equal(T.view(st, sent.ui).editor.tempoError, "");
+    assert.equal(T.NO_ANSWER, "The tunes service did not answer. Ctrl+S tries again.");
+    assert.deepEqual([T.view(st, waited).editor.tempoError, T.view(st, waited).editor.fields.hi.bad], [T.NO_ANSWER, true]);
+    // Ctrl+S sends again, and the line goes while that waits; a late answer still lands.
+    const again = T.key(waited, st, "CtrlS", false);
+    assert.equal(again.effect.kind, "send");
+    assert.equal(T.view(st, again.ui).editor.tempoError, "");
+    assert.equal(T.answer(waited, st, RESULTS[0], NOW).mode, "chooser");
+    // The link drops: no wait left, the line at once, Ctrl+S sends.
+    const down = T.linkDown(sent.ui, NOW);
+    assert.equal(down.waiting, null);
+    assert.equal(T.view(st, down).editor.tempoError, T.NO_ANSWER);
+    assert.equal(T.key(down, st, "CtrlS", false).effect.kind, "send");
+    // An editor still waiting for its genre: back to the chooser, which says so.
+    const [, c] = chooserOf("05-queue-full");
+    const lost = T.linkDown(T.key(c, st, "E", false).ui, NOW);
+    assert.deepEqual([lost.mode, lost.ed, lost.waiting, lost.selId, T.notice(st, lost)], ["chooser", null, null, "jazz", "The tunes service did not answer."]);
+    // The delete question: the wait cleared, Enter sends again.
+    const asked = T.key(T.key(press(st, c, ["Right"]).ui, st, "D", false).ui, st, "Enter", false).ui;
+    assert.equal(T.needsTick(st, asked), true);
+    const askDown = T.linkDown(asked, NOW);
+    assert.deepEqual([askDown.mode, askDown.waiting], ["ask", null]);
+    assert.equal(T.key(askDown, st, "Enter", false).effect.kind, "send");
+    // Nothing waiting: nothing changes.
+    assert.equal(T.linkDown(u, NOW), u);
+    assert.equal(T.linkDown(null, NOW), null);
+});
+
+t("a result left over from a command given up on closes nothing that waits now", () => {
+    const [st, u] = jazzEditor();
+    const saving = T.key(u, st, "CtrlS", false).ui;
+    const asked = T.key(T.key(saving, st, "Esc", false).ui, st, "E", false).ui;
+    assert.deepEqual([asked.mode, asked.waiting.kind, asked.waiting.id], ["editor", "get", "jazz"]);
+    // The old save's success: the new editor stays, its genre still asked for.
+    assert.equal(T.answer(asked, st, RESULTS[0], NOW), asked);
+    assert.equal(T.answer(asked, st, JAZZ, NOW).ed.loading, false);
+    // A save of one genre: another genre's success is not its own.
+    assert.equal(T.answer(saving, st, RESULTS[1], NOW), saving);
+    const [, c] = chooserOf("05-queue-full");
+    const deleting = T.key(T.key(press(st, c, ["Right"]).ui, st, "D", false).ui, st, "Enter", false).ui;
+    assert.equal(T.answer(deleting, st, RESULTS[0], NOW), deleting);
 });
 
 t("genre lines: healthy for the back-off, no change to the state", () => {

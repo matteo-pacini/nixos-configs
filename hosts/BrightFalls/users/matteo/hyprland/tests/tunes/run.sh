@@ -2,7 +2,7 @@
 # The tunes-helper check: desk-tunes' pure functions, then the service built
 # with testing = true against fakes (test-desk-tunes.py says which).
 # Usage: run.sh <desk-tunes built for testing> <desk-tunes.py>
-#               <tunes-genres.json> <config json> <work dir>
+#               <genres.json> <config json> <work dir>
 # Needs python3, ffmpeg (with ffprobe), mpv, dbus-daemon and playerctl on
 # PATH, and MPV_MPRIS set to the path of mpv's mpris.so.
 set -euo pipefail

@@ -57,17 +57,22 @@ Singleton {
         return e.kind;
     }
 
-    // A key name from T.KEY_NAMES pressed in the open panel.
+    // A key name from T.KEY_NAMES pressed in the open panel. The clock is
+    // read first: the tick does not run in every view, and a genre command's
+    // wait is timed against ui.now.
     function key(name: string, repeat: bool): string {
         if (!ui)
             return "none";
+        tick();
         return run(T.key(ui, st, name, repeat));
     }
 
     // The chooser's genre cell `index` clicked.
     function pick(index: int): void {
-        if (ui)
-            run(T.pick(ui, st, index));
+        if (!ui)
+            return;
+        tick();
+        run(T.pick(ui, st, index));
     }
 
     // The genre editor's field `field` (one of T.FIELDS) now holds `text`.
@@ -191,6 +196,8 @@ Singleton {
                 root.st = T.linkLost(root.st, "exited", root.exitCode, root.lastStderr, at);
             else
                 root.st = T.linkLost(root.st, "missing", null, "", at);
+            if (root.ui)
+                root.ui = T.linkDown(root.ui, Date.now() / 1000);
             root.started = false;
             restart.start();
         }

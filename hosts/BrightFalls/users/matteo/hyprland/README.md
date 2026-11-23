@@ -1187,10 +1187,12 @@ panel's keys, clicks and clock, the global scrap) and `tunes/tunes.js`
 (every decision: how the service's snapshots and the link's ups and downs
 change the state, which card shows, every text and tone of the three
 sections and the bar item, what each key and click does, the footer and its
-undo line, the global scrap, the position between snapshots; node-tested).
+undo line, the global scrap, the position between snapshots, the genre
+editor's fields, rules and commands; node-tested).
 The drawings are `tunes/SecHead.qml` (a section's heading, with the
-composer's switch), `tunes/DotWave.qml` (the waveform) and `tunes/Strip.qml`
-(the tinted strip). Super+M, or a click on the bar item left of the audio
+composer's switch), `tunes/DotWave.qml` (the waveform), `tunes/Strip.qml`
+(the tinted strip) and `tunes/EditField.qml` (one field of the genre
+editor). Super+M, or a click on the bar item left of the audio
 item, opens it. It plays instrumental music in a chosen genre, composed on
 this computer by [`desk-tunes`](#tunes-desk-tunes); the panel only shows its
 state and sends it commands. Playing and composing are separate: a genre
@@ -1225,7 +1227,41 @@ is switched on.
   selected genre reads `back to <genre>` and only closes the chooser. Esc
   goes back to the player (or closes, before any genre). A genres file the
   service could not read shows its error in an orange strip, and the last
-  good list stays.
+  good list stays. E edits the genre under the cursor, A (or Enter or a
+  click on the last cell, `+ New genre`) adds one, D deletes it (not
+  offered for the last genre): the card asks `Delete <genre>?` / `Its 31
+  kept tunes stay in ~/Music/Tunes/<genre>. Only the genre leaves the
+  panel.` (with none kept, only the second sentence), Enter deletes, Esc
+  keeps it; a refusal shows under the question. The tunes stay on disk;
+  deleting the selected genre takes its tune out of the player, turns the
+  composer off and leaves no genre selected.
+- **Genre editor** (`Edit <genre>` with its kept count as the chip, or `New
+  genre`): NAME, PROMPT (`what every tune has`), VARIATIONS (one per line;
+  two are picked per tune; optional for a new genre), SLOWEST and FASTEST
+  (BPM; a new genre starts at 70 to 120). E fills the fields from the
+  service (`genre_get`); until it answers they are empty and Ctrl+S does
+  nothing. Tab and Shift+Tab move between fields, Enter moves to the next
+  field except in VARIATIONS, where it adds a line; Ctrl+S saves, Esc
+  discards (so do a click outside and Super+M). While a field has the
+  keyboard no single-letter panel key acts: letters, the arrows and
+  Ctrl+A/C/V/Z are the field's. The service's rules are checked as you
+  type, each error in red under its field, the tempo's under the two boxes
+  with the box it is about in red; Save does nothing while one stands:
+  name trimmed, 1 to 40 characters, no `/`, no leading `.`, no control
+  characters or line breaks, not another genre's name in any case; prompt
+  trimmed, 1 to 400 characters; at most 20 variations after blank and
+  repeated lines are dropped, each at most 120 characters; tempos whole
+  numbers, 30 to 300, the slowest not above the fastest. The hint line:
+  `Changes apply to the next tune composed. The 14 kept tunes stay as they
+  are.`, or for a new genre `Tune names come from a shared word list until
+  this genre has its own.` The service's refusal shows under the field it
+  names, or under the last one; `<genre> was changed in the file since you
+  opened it.` when the genre was edited by hand meanwhile (Esc and E again
+  read it afresh). A save with no answer within 5 s (or the link to the
+  service dropping) says `The tunes service did not answer. Ctrl+S tries
+  again.` under the last field. After a save the chooser returns with the
+  cursor on that genre; after a rename the footer says `Renamed <old> to
+  <new>. Its folder in ~/Music/Tunes moved with it.` for 6 s.
 - **The player**, in three sections:
   - **NOW PLAYING** (the genre at the right, `· kept tunes` for a kept
     tune): the tune's name; `88 BPM · A major` (and `paused`); a waveform of
@@ -1325,8 +1361,10 @@ is switched on.
   snapshot only when something changes. While open, a
   one-second tick runs only when something shown changes with the clock
   alone: in the player, the position while playing, the undo countdown,
-  the time spent on the tune being made or a retry countdown; on the
-  link's cards, the countdown to the next try.
+  the time spent on the tune being made or a retry countdown; in the
+  chooser, its footer notice until it goes; while a genre command waits for
+  its answer, until the 5 s run out; on the link's cards, the countdown to
+  the next try.
 - **What it does not show, and why**: no composing percentage (the model
   server reports none; the time left is an estimate from earlier tunes); no
   lyrics (instrumental only); the disk as `free on disk`, not a named file
@@ -2107,8 +2145,10 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   that rule's shape fails evaluation (an `assert`).
 - **Sandbox**: the unit is read-only everywhere (`ProtectSystem=strict`,
   `ProtectHome=read-only`, a private `/tmp`) except its state, cache and
-  runtime directories, `~/.local/share/desk-tunes` and `~/Music/Tunes`
-  (created before the start). Mesa's shader cache is pointed at
+  runtime directories, `~/.local/share/desk-tunes`, `~/Music/Tunes` and the
+  genres file's own folder `~/.config/desk/tunes` (created before the
+  start; the folder rather than the file, because the file is replaced by a
+  rename, and not `~/.config/desk`, which holds the shell's other files). Mesa's shader cache is pointed at
   `~/.cache/desk-tunes/mesa`, and mpv's `XDG_CACHE_HOME` (where its
   fontconfig writes the font cache) at `~/.cache/desk-tunes/mpv`. The sockets it connects to (PipeWire, the
   session bus, Hyprland) need no write access.
@@ -2127,26 +2167,71 @@ behaviour are the docstring at the top of `desk-tunes.py`.
 
 ### The genres file
 
-`user/desk/tunes-genres.json`, installed by the two layers at
-`~/.config/desk/tunes-genres.json` (beside `theme.json`), and edited there
-live like any user file (`--genres` points the service elsewhere). The
-service reads it again when its size, modification time or inode has
-changed, checked at every snapshot it sends and every pick; it does not
-watch the file, so an edit shows at the next snapshot (opening the panel
-asks for one):
+`user/desk/tunes/genres.json`, installed by the two layers at
+`~/.config/desk/tunes/genres.json`, in a folder of its own so the unit can
+write it and nothing else of the shell's (`--genres` points the service
+elsewhere). It is edited from the panel's genre editor, which has the
+service write it, or by hand like any user file. Either way it is a live
+edit: `desk-sync status` shows it as `edited`, and `desk-sync pull` brings
+it back to the repository, which is public, so a genre's words are as
+public as the rest of this directory. The service reads it again when its
+size, modification time or inode has changed, checked at every snapshot it
+sends and every pick; it does not watch the file, so an edit by hand shows
+at the next snapshot (opening the panel asks for one):
 
 ```json
 {"genres": [{"id": "lofi", "name": "Lo-fi",
-             "caption": "…", "turns": ["…", "… at least 6"],
+             "caption": "…", "turns": ["…", "…"],
              "bpm": [70, 92],
-             "moods": ["… at least 8"], "things": ["… at least 8"]}]}
+             "moods": ["…"], "things": ["…"]}]}
 ```
 
-`id` is lower-case letters, digits and dashes; `name` is the folder under
-`~/Music/Tunes`, so renaming a genre starts a new folder. Nine to start:
-Lo-fi, Ambient, Synthwave, Deep house, Jazz, Classical, Downtempo,
-Post-rock, Acoustic. A file that does not parse, or breaks a rule, keeps the
-last good list, and the panel shows the reason.
+`id` is lower-case letters, digits and dashes, and never changes; `name` is
+the folder under `~/Music/Tunes`. `turns` may be empty (with fewer than two
+the caption gets what there is); `moods` and `things`, if present, are
+non-empty lists, and a genre without them takes its tunes' names from a word
+list built into the service. Unknown keys are kept. Nine to start: Lo-fi,
+Ambient, Synthwave, Deep house, Jazz, Classical, Downtempo, Post-rock,
+Acoustic. A file that does not parse, or breaks a rule, keeps the last good
+list, and the panel shows the reason.
+
+Generations before the file had its folder installed it at
+`~/.config/desk/tunes-genres.json`. Nothing reads that path any more, and
+`desk-sync` leaves a file dropped from the repository alone, so delete it by
+hand (after carrying over any edit made to it).
+
+**Editing from the panel** (the service's side; the protocol is in
+`desk-tunes.py`'s docstring). Three commands, each answered to the client
+that sent it only, then the usual snapshot to all:
+`{"cmd":"genre_get","id":"jazz"}` answers `{"event":"genre","id","name",
+"caption","turns","bpm"}`; `{"cmd":"genre_save","id":"jazz"|null,
+"genre":{"name","caption","turns","bpm"},"base":{…}}` (id null adds a genre
+at the end, with an id made from its name; `base`, what `genre_get` gave,
+is sent for an existing genre) and `{"cmd":"genre_delete","id":"jazz"}`
+answer `{"event":"genre_result","ok":true,"id",…}` (a save adds `"renamed":
+null|{"from","to"}`) or `{"event":"genre_result","ok":false,"field":"name"|
+"caption"|"turns"|"bpm"|null,"text":"…"}`, the text a sentence for the user.
+The service is the authority on the rules the editor checks (the same
+rules, in the same order, with the same texts). A save or delete reads the
+file again first, so another genre edited by hand meanwhile, unknown keys
+and a genre's moods and things are kept; it is refused when the file is
+missing or broken (`Nothing was saved: …`), and a save when the genre
+differs from `base`. The file is written beside itself as
+`.genres.json.new` and renamed over (a crash leaves the old file or the
+new one; a leftover `.new` is deleted at the start), in the repository
+copy's layout, so a `pull` diff is only the change, and not at all when the
+text is the same. A rename renames the genre's folder in `~/Music/Tunes`
+(refused when a folder of the new name exists), and the tunes playing and
+queued play on from it; adding a genre whose folder exists adopts its
+tunes. Deleting leaves the folder and its tunes; the last genre cannot be
+deleted. An edit to the selected genre applies from the next tune started.
+
+If the service dies between renaming the folder and writing the file (a
+window of a few milliseconds that no order of the two steps closes), the
+folder has the new name and the genre the old one, and renaming it again is
+refused (`A folder called <new> already exists in ~/Music/Tunes.`). By hand,
+with the service running: rename `~/Music/Tunes/<new>` back to `<old>`, then
+rename the genre again from the panel.
 
 ## Tailscale: status and mesh hosts
 
@@ -2404,8 +2489,21 @@ config on GitHub's runners, cause not known.
   killed three times (restarted no sooner than 2 s, the service alive), a
   tune mpv cannot play (its reason in `error`, nothing more tried, cleared
   by a tune that plays), an unfinished encode's file removed at start,
-  shutdown and a restart that plays nothing, and nothing written outside
-  the service's directories.
+  editing genres (`genre_get`, `genre_save` and `genre_delete`: each rule
+  at and across its boundary with the panel's texts, results to the sender
+  only, a save that changes nothing writing nothing, the file laid out as
+  the repository's so the diff is the change, a hand edit to another genre
+  kept and one to the genre being edited refused, a broken or missing file
+  refused and not rewritten, add with an existing folder adopted, rename
+  with tunes playing, queued and being made, refused onto an existing
+  folder, delete of another and of the selected genre, never the last),
+  and, in the test's own process, what the running service cannot be made
+  to meet: a rename whose file write fails putting the folder back, a
+  folder sync failing after the file is in place, a decode still running
+  at a rename, a tune finishing for a genre just deleted, and no pruning
+  for a genre that is gone; shutdown and a restart that plays nothing
+  (a leftover `.genres.json.new` deleted), and nothing written outside the
+  service's directories.
   The installed build has no test flags. About a minute.
 - `nix build .#checks.x86_64-linux.tunes-panel`: runs
   `user/quickshell/tunes/tunes.js` under node
@@ -2425,8 +2523,12 @@ config on GitHub's runners, cause not known.
   between snapshots and a seek; the waveform's columns; every key in every
   fixture, the held-key rule, the footer and the tick; the bar's note and
   dot in every combination and the note's flash; the global scrap, a
-  second press before the answer as an undo, and its notification; and a
-  protocol version other than 1.
+  second press before the answer as an undo, and its notification; the
+  genre chooser's E, A, D and `+ New genre`, the delete question, the
+  editor's keys and fields, every rule at and across its boundary, the
+  service's answers and refusals, `base` sent back, a result left over from
+  a command given up on, the 5 s wait (the tick while it runs, the line
+  after it, the link dropping); and a protocol version other than 1.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
