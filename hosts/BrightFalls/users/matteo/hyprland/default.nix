@@ -17,6 +17,7 @@ let
       gnugrep
       gnused
       git
+      quickshell
     ];
     text = ''
       manifest="${./user}"
