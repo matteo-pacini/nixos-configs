@@ -119,6 +119,7 @@ bind("Session", "SUPER + V", "Tailscale", hl.dsp.exec_cmd("qs ipc call tailscale
 bind("Session", "SUPER + U", "Tokens", hl.dsp.exec_cmd("qs ipc call tokens toggle"))
 bind("Session", "SUPER + H", "Weather", hl.dsp.exec_cmd("qs ipc call weather toggle"))
 bind("Session", "SUPER + M", "Tunes", hl.dsp.exec_cmd("qs ipc call tunes toggle"))
+bind("Session", "SUPER + SHIFT + M", "Scrap the playing tune", hl.dsp.exec_cmd("qs ipc call tunes scrap"))
 -- Super+Shift+B is Firefox.
 bind("Session", "SUPER + CTRL + B", "Bluetooth on/off", hl.dsp.exec_cmd("qs ipc call bluetooth power"))
 -- logind must ignore a short press (HandlePowerKey in desktop-hyprland.nix),

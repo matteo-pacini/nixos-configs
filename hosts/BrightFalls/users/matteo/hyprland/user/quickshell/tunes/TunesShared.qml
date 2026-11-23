@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "tunes.js" as T
+import "../common/notify.js" as Notify
 
 // What Bar.qml and Tunes.qml share: where the panel is open, and the tunes
 // service's state as tunes.js keeps it from `desk-tunes attach` (desk-tunes.py
@@ -70,6 +71,17 @@ Singleton {
         const cmd = T.seek(st, fraction);
         if (cmd)
             send(cmd);
+    }
+
+    // The global scrap: an undo while one is offered, else a scrap of the
+    // playing tune, and one notification naming the tune; nothing when there
+    // is nothing to act on.
+    function scrapPlaying(): void {
+        const r = T.globalScrap(st, Date.now() / 1000);
+        if (!r)
+            return;
+        send(r.cmd);
+        Quickshell.execDetached(Notify.command("Tunes", 0, "audio-x-generic", r.summary, r.body, "[]", "{}", "int32 -1"));
     }
 
     // R while the link is down: start the client now, back-off reset.
