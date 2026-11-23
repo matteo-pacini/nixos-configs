@@ -621,6 +621,25 @@ try:
     eq("prune: never the tune just placed", (os.path.exists(FRESH), len(svc.list_tunes(jz))),
        (True, REAL_CONFIG["keep"] + 1))
     svc.genre, svc.ready = None, []
+    # mpv names a file some events after the command that loaded it, so a
+    # report can name the tune a genre pick has just replaced.
+    sent = []
+    svc.mpv_cmd = lambda command, reply=None: sent.append(command)
+    svc.composing, svc.genre = False, jz
+    old = os.path.join(IP_MUSIC, "Invented Modal", many[0])
+    picked = svc.kept_paths()[0]
+    svc.current = svc.kept_tune(picked, decode=False)
+    svc.play_now(svc.current)
+    svc.on_track(old)
+    eq("late report of the replaced tune: not taken as playing", (svc.current["path"], svc.loading, svc.played),
+       (picked, picked, set()))
+    svc.current = None
+    svc.cmd_toggle()
+    eq("toggle while a tune loads: pauses it, starts no other", sent[-1], ["cycle", "pause"])
+    svc.current = svc.kept_tune(picked, decode=False)
+    svc.on_track(picked)
+    eq("the tune asked for: playing", (svc.current["path"], svc.loading, svc.played), (picked, None, {picked}))
+    svc.genre, svc.current, svc.played, svc.anchor = None, None, set(), None
 finally:
     for k, v in OLD_ENV.items():
         if v is None:
@@ -1025,6 +1044,12 @@ class Client:
                 out.append(ev)
         return out
 
+    def settle(self, gap=0.5):
+        """Waits until no event has come for `gap` seconds: a tune that has
+        just started still sends its position some events later."""
+        while self.quiet(gap):
+            pass
+
     def ask_timers(self):
         self.send({"cmd": "test_timers"})
         while True:
@@ -1140,12 +1165,13 @@ def finish():
 try:
     wait("serve: the socket appears", lambda: os.path.exists(SOCK), 10)
     eq("serve: socket directory is 0700", os.stat(os.path.dirname(SOCK)).st_mode & 0o777, 0o700)
-    check("serve: an unfinished encode's file is deleted at start", not os.path.exists(STALE_PART))
 
     # -- attach and the first snapshot --
     print("  snapshot and protocol", flush=True)
     A = Client(attach=True)
     s = A.until("attach: a snapshot at once", lambda s: True, 5)
+    # The socket is bound before the start-up clean-up; a snapshot comes after it.
+    check("serve: an unfinished encode's file is deleted at start", not os.path.exists(STALE_PART))
     eq("snapshot: v", s.get("v"), 1)
     eq("snapshot: setup missing", s.get("setup"), "missing")
     eq("snapshot: no download", s.get("download"), None)
@@ -1552,7 +1578,7 @@ try:
     A.send({"cmd": "next"})
     A.until("next: and round again", lambda s: s["tune"] and s["tune"]["bpm"] == first, 5)
     A.until("kept tune: its title read", lambda s: s["tune"]["name"].startswith("Invented"), 10)
-    A.quiet(0.3)
+    A.settle()
     A.send({"cmd": "genre", "id": "jazz"})
     eq("genre: the one already picked is ignored", A.quiet(0.8), [])
     t = wait("idle while playing, unloaded: no timer",
@@ -1569,6 +1595,7 @@ try:
     s = A.until("one kept tune: its title read", lambda s: s["genre"] == "classical" and s["tune"]
                 and s["tune"]["name"] == "Invented Lone Hall" and s["player"] == "playing", 10)
     eq("one kept tune: next not offered", s["can_next"], False)
+    A.settle()
     A.send({"cmd": "next"})
     eq("one kept tune: next does nothing", A.quiet(0.8), [])
 
@@ -1623,9 +1650,12 @@ try:
 
     # -- holds --
     print("  holds", flush=True)
-    A.send({"cmd": "next"})
+    # A job started before the scenario changes is a short one.
     scenario(lm_time=3.0, synth_time=0.2)
-    A.until("hold: a job runs", lambda s: model(s)["state"] == "writing", 15)
+    t_long = time.time()
+    A.send({"cmd": "next"})
+    A.until("hold: a job runs", lambda s: model(s)["state"] == "writing" and s["job"]
+            and s["job"]["started"] >= t_long - 0.001, 15)
     n_hypr = len(open(os.path.join(CTL, "hyprctl.log")).read().splitlines())
     put("clients.json", json.dumps([{"class": "kitty"}, {"class": "steam_app_1245620"}]))
     t0 = time.time()
