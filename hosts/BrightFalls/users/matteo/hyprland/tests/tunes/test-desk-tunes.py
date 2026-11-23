@@ -740,6 +740,7 @@ try:
     eq("snapshot: all nine", len(s.get("genres", [])), 9)
     eq("snapshot: nothing picked, nothing plays", (s.get("genre"), s.get("player"), s.get("tune")),
        (None, "none", None))
+    eq("snapshot: no tune, no next", s.get("can_next"), False)
     eq("snapshot: model", {k: model(s).get(k) for k in ("name", "variant", "device", "state",
                                                          "ram_used_bytes", "ram_free_bytes")},
        {"name": "ACE-Step 1.5 Turbo", "variant": "4B Q8", "device": "Radeon 780M",
@@ -910,6 +911,7 @@ try:
                 len(s["tune"]["wave"]) == 78)
     check("kept tune: its length", abs((s["tune"]["length"] or 0) - 90) < 0.5, s["tune"])
     s = A.until("queue: two new tunes", lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 40)
+    eq("queue: next offered", s["can_next"], True)
     log = ace_log()
     reqs = [e for e in log if e["kind"] == "req"][n_lm:]
     lm = [e for e in log if e.get("path") == "/lm"][n_lm:]
@@ -1030,6 +1032,7 @@ try:
     eq("genre change: the old queue is dropped", s["ready"], 0)
     eq("genre change: the old genre's files stay", kept_files("Lo-fi"), lofi_before)
     first = s["tune"]["bpm"]
+    eq("next: offered with another kept tune", s["can_next"], True)
     A.send({"cmd": "next"})
     s = A.until("next: the next kept tune", lambda s: s["tune"] and s["tune"]["bpm"] != first, 5)
     eq("next: still kept", (s["tune"]["kept"], s["kept_playing"]), (True, True))
@@ -1048,6 +1051,13 @@ try:
     check("idle: no timer, one thread", t, t)
     A.send({"cmd": "toggle"})
     A.until("playing", lambda s: s["player"] == "playing")
+    mp3(os.path.join(MUSIC, "Classical", "20260105-100000-70bpm-G-major.mp3"), 90, "Invented Lone Hall")
+    A.send({"cmd": "genre", "id": "classical"})
+    s = A.until("one kept tune: its title read", lambda s: s["genre"] == "classical" and s["tune"]
+                and s["tune"]["name"] == "Invented Lone Hall" and s["player"] == "playing", 10)
+    eq("one kept tune: next not offered", s["can_next"], False)
+    A.send({"cmd": "next"})
+    eq("one kept tune: next does nothing", A.quiet(0.8), [])
 
     # -- silence: rewrite, three in a row; retry timing --
     print("  silence and failures", flush=True)

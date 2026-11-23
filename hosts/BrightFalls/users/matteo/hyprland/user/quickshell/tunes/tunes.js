@@ -9,6 +9,9 @@
 // since and retry_at are. Tones are names: "normal", "soft", "dim", "cyan",
 // "green", "orange", "red", "purple"; QML maps them to Theme.
 //
+// The snapshot's can_next is true when "next" would play another tune; N is
+// offered only then.
+//
 // The QML's part:
 //   st = initial(); each stdout line of `desk-tunes attach`: st = apply(st,
 //   JSON.parse(line), now), and the restart back-off resets when
@@ -171,6 +174,7 @@ function snapshot(ev) {
         posAt: num(ev.pos_at),
         ready: count(ev.ready),
         keptPlaying: ev.kept_playing === true,
+        canNext: ev.can_next === true,
         model: {
             name: str(m.name) || "",
             variant: str(m.variant) || "",
@@ -462,7 +466,7 @@ function playerView(s, ui) {
         right: null,
         main: s.player === "playing" ? "pause" : "play",
         mainLit: t !== null,
-        nextLit: s.ready > 0 || s.keptPlaying,
+        nextLit: s.canNext,
         well: wellView(s, strip !== null && m.state === "failed", ui.now)
     };
     if (t) {
@@ -569,7 +573,7 @@ function table(ui, st) {
     const t = [];
     if (s.tune)
         t.push({ keys: ["Space"], hint: ["Space", s.player === "playing" ? "pause" : "play"], run: send({ cmd: "toggle" }) });
-    if (s.ready > 0 || s.keptPlaying)
+    if (s.canNext)
         t.push({ keys: ["N"], hint: ["N", "next"], run: send({ cmd: "next" }) });
     if (m === "failed")
         t.push(retry);

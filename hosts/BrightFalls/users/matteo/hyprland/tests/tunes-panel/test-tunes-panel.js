@@ -469,6 +469,22 @@ t("unloaded, kept tunes playing", () => {
     assert.deepEqual(T.barView(st), { tone: "normal", text: "Lo-fi" });
 });
 
+t("a kept tune not read yet, the only one: no time, no seek, no next", () => {
+    const [ev] = events("12-unloaded-kept", NOW);
+    ev.tune = Object.assign(ev.tune, { name: "20260105-100000-70bpm-G-major", bpm: 70, key: "G major", length: null, wave: [] });
+    ev.can_next = false;
+    const st = T.apply(T.initial(), ev, NOW);
+    const p = T.view(st, ui(st, NOW + 5)).player;
+    assert.equal(p.name, "20260105-100000-70bpm-G-major");
+    assert.deepEqual([p.left, p.right], ["1:03", "–:––"]);
+    assert.deepEqual([p.wave.played, p.wave.forming], [0, false]);
+    assert.ok(p.wave.cols.length === T.COLS && p.wave.cols.every(c => c === 1));
+    assert.equal(p.nextLit, false);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["G", "genres"], ["U", "load"], ["Esc", "close"]]);
+    assert.equal(T.key(ui(st, NOW), st, "N", false).effect.kind, "none");
+    assert.equal(T.seek(st, 0.5), null);
+});
+
 t("unloaded with nothing to play", () => {
     const p = viewAt("15-unloaded-nothing").player;
     assert.equal(p.name, "Nothing to play. U loads the model.");

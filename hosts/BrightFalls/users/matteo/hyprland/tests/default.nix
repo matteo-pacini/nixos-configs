@@ -400,7 +400,7 @@ pkgs.lib.fix (self: {
       }
       ''
         mkdir work
-        bash ${./tunes/run.sh} \
+        bash ${./tunes}/run.sh \
           ${
             pkgs.lib.getExe (
               pkgs.callPackage ../desk-tunes.nix {

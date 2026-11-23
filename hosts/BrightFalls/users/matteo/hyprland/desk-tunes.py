@@ -32,6 +32,8 @@ Files:
            genre are kept, and only files matching that pattern are ever
            deleted, never the playing or queued ones
   waves    $XDG_CACHE_HOME/desk-tunes/wave/<genre id>/<tune file>.json
+  mpv      $XDG_CACHE_HOME/desk-tunes/mpv: mpv's XDG_CACHE_HOME, where its
+           fontconfig writes the font cache
   state    $XDG_STATE_HOME/desk-tunes/state.json: {"last_genre","counter"},
            written atomically and only on change
 
@@ -68,6 +70,7 @@ second; nothing periodic otherwise):
    "pos":84.0,"pos_at":1795390000.25,  the panel interpolates while playing
    "ready":2,                 new tunes queued behind the playing one
    "kept_playing":false,      the playing tune is a kept one
+   "can_next":false,          "next" would play another tune
    "model":{"name","variant","device",
             "state":"unloaded"|"starting"|"idle"|"writing"|"rendering"|
                     "held_game"|"held_memory"|"failed"|"no_device",
@@ -725,6 +728,7 @@ class Service:
         cache = os.path.join(xdg("XDG_CACHE_HOME", ".cache"), "desk-tunes")
         self.wave_dir = os.path.join(cache, "wave")
         self.work_dir = os.path.join(cache, "work")
+        self.mpv_cache = os.path.join(cache, "mpv")
         self.music = os.path.join(os.path.expanduser("~"), "Music", "Tunes")
         self.genres_file = args.genres or os.path.join(xdg("XDG_CONFIG_HOME", ".config"), "desk",
                                                        "tunes-genres.json")
@@ -1026,6 +1030,7 @@ class Service:
             "pos": round(pos, 2), "pos_at": round(time.time(), 3),
             "ready": len(self.ready),
             "kept_playing": bool(self.current and self.current.get("kept")),
+            "can_next": bool(self.current is not None and self.appended),
             "model": {"name": self.model["name"], "variant": self.model["variant"],
                       "device": self.cfg["device"]["label"], "state": self.state,
                       "since": round(self.since, 3), "silence_s": self.silence_s,
@@ -1335,7 +1340,10 @@ class Service:
             argv.append(f"--script={self.args.mpris}")
         if getattr(self.args, "test_ao", None):
             argv.append(f"--ao={self.args.test_ao}")
-        child = Child(argv, lambda line: say(f"mpv: {line}"), self.mpv_exited)
+        # mpv starts fontconfig even with no video, and its cache would go to
+        # ~/.cache/fontconfig, which the unit cannot write.
+        env = dict(os.environ, XDG_CACHE_HOME=self.mpv_cache)
+        child = Child(argv, lambda line: say(f"mpv: {line}"), self.mpv_exited, env=env)
         self.sel.register(child.proc.stderr, selectors.EVENT_READ, ("child", child))
         self.mpv = {"child": child, "path": path, "sock": None, "buf": b"", "out": [], "tries": 0,
                     "req": 0, "wait": {}, "end_reason": None}
