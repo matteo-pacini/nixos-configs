@@ -109,8 +109,9 @@ raises("genres: empty list", dt.parse_genres, '{"genres": []}')
 for what, mutate in [
     ("a repeated id", lambda gs: gs[1].update(id=gs[0]["id"])),
     ("a name with a slash", lambda gs: gs[0].update(name="Lo/fi")),
-    ("five turns", lambda gs: gs[0].update(turns=gs[0]["turns"][:5])),
-    ("seven moods", lambda gs: gs[0].update(moods=gs[0]["moods"][:7])),
+    ("a blank turn", lambda gs: gs[0].update(turns=gs[0]["turns"] + [" "])),
+    ("no moods", lambda gs: gs[0].update(moods=[])),
+    ("things not a list", lambda gs: gs[0].update(things="Window")),
     ("bpm upside down", lambda gs: gs[0].update(bpm=[120, 90])),
     ("bpm as floats", lambda gs: gs[0].update(bpm=[80.0, 90])),
     ("an upper-case id", lambda gs: gs[0].update(id="LoFi")),
@@ -120,6 +121,101 @@ for what, mutate in [
     gs = json.loads(REAL_GENRES_TEXT)["genres"]
     mutate(gs)
     raises(f"genres: {what}", dt.parse_genres, json.dumps({"genres": gs}))
+
+gs = json.loads(REAL_GENRES_TEXT)["genres"]
+for g in gs:
+    g.pop("moods"), g.pop("things")
+gs[0]["turns"] = []
+gs[1]["turns"] = gs[1]["turns"][:1]
+bare = dt.parse_genres(json.dumps({"genres": gs}))
+eq("genres: no moods or things takes the default words",
+   (bare[0]["moods"], bare[0]["things"]), (dt.DEFAULT_WORDS["moods"], dt.DEFAULT_WORDS["things"]))
+check("genres: the default words are enough for names",
+      all(len(set(v)) >= 8 for v in dt.DEFAULT_WORDS.values()), dt.DEFAULT_WORDS)
+nm = dt.name_for(bare[0], random.Random(3)).split(" ")
+check("name: from the default words", nm[0] in dt.DEFAULT_WORDS["moods"]
+      and " ".join(nm[1:]) in dt.DEFAULT_WORDS["things"], nm)
+eq("caption: no turns", dt.caption_for(bare[0], random.Random(1)), bare[0]["caption"] + ", instrumental")
+eq("caption: one turn", dt.caption_for(bare[1], random.Random(1)),
+   f"{bare[1]['caption']}, {bare[1]['turns'][0]}, instrumental")
+eq("caption: one turn twice is one", dt.caption_for(dict(bare[1], turns=["a", "a"]), random.Random(1)),
+   f"{bare[1]['caption']}, a, instrumental")
+
+# -- genre editing --
+eq("format: the repository's file round-trips byte for byte",
+   dt.format_genres(json.loads(REAL_GENRES_TEXT)), REAL_GENRES_TEXT)
+doc = {"genres": [{"id": "x", "name": "Café", "x-note": {"a": [1, 2]}, "turns": []}], "comment": "kept"}
+eq("format: unknown keys inline, no turns, raw UTF-8, top-level keys kept",
+   dt.format_genres(doc),
+   '{\n  "genres": [\n    {\n      "id": "x",\n      "name": "Café",\n      "x-note": {"a": [1, 2]},\n'
+   '      "turns": []\n    }\n  ],\n  "comment": "kept"\n}\n')
+
+FIELDS = {"name": "Invented", "caption": "a prompt", "turns": ["one"], "bpm": [70, 120]}
+
+
+def fe(**kw):
+    return dt.field_error(dt.edit_fields(dict(FIELDS, **kw)), genres, None)
+
+
+eq("fields: trimmed, blank and repeated turns dropped",
+   dt.edit_fields({"name": "  Bebop ", "caption": " fast \n", "turns": [" a", "", "  ", "a ", "b"],
+                   "bpm": [90, 140]}),
+   {"name": "Bebop", "caption": "fast", "turns": ["a", "b"], "bpm": [90, 140]})
+for what, raw in (("not an object", []), ("a name that is not text", dict(FIELDS, name=3)),
+                  ("no caption", {k: v for k, v in FIELDS.items() if k != "caption"}),
+                  ("turns not a list", dict(FIELDS, turns="one")),
+                  ("a turn that is not text", dict(FIELDS, turns=["a", 1])),
+                  ("one bpm", dict(FIELDS, bpm=[90])), ("bpm as text", dict(FIELDS, bpm=["90", "100"])),
+                  ("bpm as booleans", dict(FIELDS, bpm=[True, 100]))):
+    try:
+        dt.edit_fields(raw)
+        check(f"fields: {what} is malformed", False, "no TypeError")
+    except TypeError:
+        CHECKS[0] += 1
+eq("rules: a good genre passes", fe(), None)
+for what, kw, want in [
+    ("name blank after trimming", {"name": "   "}, "name"),
+    ("name 40 characters", {"name": "n" * 40}, None),
+    ("name 41 characters", {"name": "n" * 41}, "name"),
+    ("name 41 with spaces trimmed to 40", {"name": " " + "n" * 40}, None),
+    ("name one character", {"name": "n"}, None),
+    ("name with a slash", {"name": "Lo/fi"}, "name"),
+    ("name with a leading dot", {"name": ".hidden"}, "name"),
+    ("name with a dot inside", {"name": "Vol. 2"}, None),
+    ("name with a tab inside", {"name": "a\tb"}, "name"),
+    ("name with a C1 control", {"name": "a\x85b"}, "name"),
+    ("name with DEL", {"name": "a\x7fb"}, "name"),
+    ("name of another genre in other case", {"name": "JAZZ"}, "name"),
+    ("caption blank", {"caption": " \n "}, "caption"),
+    ("caption 400", {"caption": "c" * 400}, None),
+    ("caption 401", {"caption": "c" * 401}, "caption"),
+    ("no turns", {"turns": []}, None),
+    ("20 turns", {"turns": [f"t{i}" for i in range(20)]}, None),
+    ("21 turns", {"turns": [f"t{i}" for i in range(21)]}, "turns"),
+    ("21 lines, one blank and one repeated, are 19", {"turns": [f"t{i}" for i in range(19)] + ["", "t0"]},
+     None),
+    ("a turn of 120", {"turns": ["t" * 120]}, None),
+    ("a turn of 121", {"turns": ["ok", "t" * 121]}, "turns"),
+    ("bpm 30 to 300", {"bpm": [30, 300]}, None),
+    ("bpm 29", {"bpm": [29, 100]}, "bpm"),
+    ("bpm 301", {"bpm": [100, 301]}, "bpm"),
+    ("bpm equal ends", {"bpm": [90, 90]}, None),
+    ("bpm upside down", {"bpm": [91, 90]}, "bpm"),
+    ("bpm not whole", {"bpm": [90.5, 100]}, "bpm"),
+]:
+    got = fe(**kw)
+    eq(f"rules: {what}", got and got[0], want)
+eq("rules: the message names the clash", fe(name="jazz"), ("name", "There is already a genre called Jazz."))
+eq("rules: which variation is too long", fe(turns=["ok", "t" * 121])[1],
+   "Variation 2 has more than 120 characters.")
+eq("rules: a genre keeps its own name, in any case",
+   dt.field_error(dt.edit_fields(dict(FIELDS, name="JAZZ")), genres, "jazz"), None)
+eq("id: from the name", dt.new_genre_id("Hard Bop!", set()), "hard-bop")
+eq("id: accents dropped", dt.new_genre_id("Café Crème", set()), "cafe-creme")
+eq("id: unique", dt.new_genre_id("Jazz", {"jazz", "jazz-2"}), "jazz-3")
+eq("id: nothing usable", dt.new_genre_id("!!!", set()), "genre")
+check("id: always a valid id", all(dt.GENRE_ID.match(dt.new_genre_id(n, set()))
+                                    for n in ("Hard Bop!", "--x--", "日本", "Ö")))
 
 g0 = genres[0]
 rng = random.Random(7)
@@ -293,7 +389,8 @@ MODELS = os.path.join(XDG["XDG_DATA_HOME"], "desk-tunes", "models")
 STATE = os.path.join(XDG["XDG_STATE_HOME"], "desk-tunes", "state.json")
 LIVE_GENRES = os.path.join(XDG["XDG_CONFIG_HOME"], "desk", "tunes-genres.json")
 os.makedirs(os.path.dirname(LIVE_GENRES))
-shutil.copy(GENRES, LIVE_GENRES)
+shutil.copyfile(GENRES, LIVE_GENRES)
+os.chmod(LIVE_GENRES, 0o644)  # as desk-sync installs it
 
 FAKE_ACE = r'''
 import json, math, os, random, signal, struct, sys, threading, time, wave, io
@@ -1340,7 +1437,7 @@ try:
     s = A.until("genres: a broken file is reported", lambda s: s["error"], 5)
     check("genres: the error says which file", "tunes-genres.json" in s["error"], s["error"])
     eq("genres: the last good list stays", s["genres"][0]["name"], "Invented Lo-fi Two")
-    shutil.copy(GENRES, LIVE_GENRES)
+    shutil.copyfile(GENRES, LIVE_GENRES)
     A.send({"cmd": "refresh"})
     s = A.until("genres: fixed", lambda s: s["error"] is None and s["genres"][0]["name"] == "Lo-fi", 5)
     A.send({"cmd": "genre", "id": "synthwave"})
@@ -1596,6 +1693,262 @@ try:
     A.send({"cmd": "genre", "id": "jazz"})
     A.until("mpv error: cleared once a tune plays", lambda s: s["player"] == "playing" and s["error"] is None, 10)
 
+    # -- editing genres --
+    print("  editing genres", flush=True)
+    DESK = os.path.dirname(LIVE_GENRES)
+
+    def answer(c, cmd):
+        """The non-snapshot line `cmd` gets back."""
+        c.send(cmd)
+        end = time.time() + 5
+        while time.time() < end:
+            ev = c.get(end - time.time())
+            if ev and ev.get("event") != "state":
+                return ev
+        check(f"answer to {cmd}", False, "none within 5 s")
+        return {}
+
+    def live():
+        with open(LIVE_GENRES) as f:
+            return f.read()
+
+    def fields_of(g):
+        return {k: g[k] for k in ("name", "caption", "turns", "bpm")}
+
+    def no(field, text):
+        return {"event": "genre_result", "ok": False, "field": field, "text": text}
+
+    jazz = next(g for g in genres if g["id"] == "jazz")
+    B = Client()
+    B.until("editing: B attached", lambda s: True, 5)
+    for c in (A, B):
+        c.quiet(0.3)
+    ev = answer(A, {"cmd": "genre_get", "id": "jazz"})
+    eq("get: the genre's fields", ev, dict(fields_of(jazz), event="genre", id="jazz"))
+    after = A.get(5)
+    eq("get: then the usual snapshot", after and after.get("event"), "state")
+    got = B.quiet(0.5)
+    eq("get: the other client gets the snapshot only", [e.get("event") for e in got], ["state"])
+    eq("get: an unknown id", answer(A, {"cmd": "genre_get", "id": "no-such"}),
+       no(None, "That genre no longer exists."))
+    for bad in ({"cmd": "genre_get"}, {"cmd": "genre_delete", "id": 3},
+                {"cmd": "genre_save", "genre": fields_of(jazz)},
+                {"cmd": "genre_save", "id": 7, "genre": fields_of(jazz)},
+                {"cmd": "genre_save", "id": "jazz"},
+                {"cmd": "genre_save", "id": "jazz", "genre": dict(fields_of(jazz), turns="x")},
+                {"cmd": "genre_save", "id": "jazz", "genre": dict(fields_of(jazz), bpm=[90])}):
+        eq(f"malformed: {json.dumps(bad)[:60]}", answer(A, bad).get("event"), "error")
+
+    # Saving what is there writes nothing.
+    ino = os.stat(LIVE_GENRES).st_ino
+    eq("save unchanged: ok", answer(A, {"cmd": "genre_save", "id": "jazz", "genre": fields_of(jazz)}),
+       {"event": "genre_result", "ok": True, "id": "jazz", "renamed": None})
+    eq("save unchanged: the file is byte for byte the repository's, not rewritten",
+       (live() == REAL_GENRES_TEXT, os.stat(LIVE_GENRES).st_ino), (True, ino))
+    B.quiet(0.3)
+
+    # A refusal per field, through the service; the file is untouched.
+    for field, kw, text in (("name", {"name": "a/b"}, "A name cannot contain a slash."),
+                            ("caption", {"caption": "c" * 401}, "A prompt can have at most 400 characters."),
+                            ("turns", {"turns": [str(i) for i in range(21)]}, "There can be at most 20 variations."),
+                            ("bpm", {"bpm": [140, 120]}, "The slowest tempo is above the fastest.")):
+        eq(f"refused: {field}", answer(A, {"cmd": "genre_save", "id": "jazz",
+                                           "genre": dict(fields_of(jazz), **kw)}), no(field, text))
+    eq("refused: the file is untouched", (live() == REAL_GENRES_TEXT, os.stat(LIVE_GENRES).st_ino),
+       (True, ino))
+    eq("refused: an unknown id", answer(A, {"cmd": "genre_save", "id": "gone", "genre": fields_of(jazz)}),
+       no(None, "That genre no longer exists."))
+
+    # An edit: the diff against the repository's file is only that line.
+    new_caption = "Invented small group jazz, brushes and upright bass"
+    A.quiet(0.3)
+    ev = answer(A, {"cmd": "genre_save", "id": "jazz", "genre": dict(fields_of(jazz), caption=new_caption)})
+    eq("edit: ok", ev, {"event": "genre_result", "ok": True, "id": "jazz", "renamed": None})
+    eq("edit: only the caption's line changed",
+       live(), REAL_GENRES_TEXT.replace(json.dumps(jazz["caption"]), json.dumps(new_caption)))
+    st = os.stat(LIVE_GENRES)
+    eq("edit: replaced by a rename, mode kept, a regular file",
+       (st.st_ino != ino, oct(st.st_mode & 0o777), os.path.isfile(LIVE_GENRES) and not os.path.islink(LIVE_GENRES)),
+       (True, "0o644", True))
+    eq("edit: nothing else left in the directory", sorted(os.listdir(DESK)), ["tunes-genres.json"])
+    got = [e.get("event") for e in B.quiet(0.5)]
+    eq("edit: the result to the sender only, the snapshot to all", (got.count("genre_result"), "state" in got),
+       (0, True))
+
+    # A hand edit between reading a genre and saving it is kept, with unknown keys and moods.
+    ev = answer(A, {"cmd": "genre_get", "id": "jazz"})
+    hand = json.loads(live())
+    hand["note"] = "invented top-level key"
+    hj = next(g for g in hand["genres"] if g["id"] == "jazz")
+    hj["moods"] = ["Invented"] * 8
+    hj["x-colour"] = {"hue": 30}
+    hand["genres"][1]["caption"] = "Invented ambient by hand"
+    with open(LIVE_GENRES, "w") as f:
+        f.write(json.dumps(hand, indent=4))
+    ev = answer(A, {"cmd": "genre_save", "id": "jazz",
+                    "genre": dict(fields_of(ev), turns=ev["turns"] + ["  invented added turn ", ""])})
+    eq("hand edit: the save is ok", ev.get("ok"), True)
+    saved = json.loads(live())
+    sj = next(g for g in saved["genres"] if g["id"] == "jazz")
+    eq("hand edit: kept, with unknown keys, moods and things",
+       (saved.get("note"), sj.get("moods"), sj.get("x-colour"), sj.get("things"), saved["genres"][1]["caption"],
+        sj["caption"]),
+       ("invented top-level key", ["Invented"] * 8, {"hue": 30}, jazz["things"], "Invented ambient by hand",
+        new_caption))
+    eq("hand edit: the new turn trimmed, the blank dropped", sj["turns"][-1], "invented added turn")
+    eq("hand edit: laid out as the repository's file again", live(), dt.format_genres(saved))
+
+    # A broken file is not overwritten.
+    with open(LIVE_GENRES, "w") as f:
+        f.write('{"genres": [')
+    for cmd, verb in (({"cmd": "genre_save", "id": "jazz", "genre": fields_of(jazz)}, "saved"),
+                      ({"cmd": "genre_delete", "id": "ambient"}, "deleted")):
+        ev = answer(A, cmd)
+        check(f"broken file: nothing {verb}", ev.get("ok") is False and ev.get("field") is None
+              and ev.get("text", "").startswith(f"Nothing was {verb}: the genres file has a mistake ("), ev)
+    eq("broken file: left as it was", live(), '{"genres": [')
+    s = A.until("broken file: reported", lambda s: s["error"], 5)
+
+    shutil.copyfile(GENRES, LIVE_GENRES)
+    A.send({"cmd": "refresh"})
+    A.until("restored", lambda s: s["error"] is None and s["genres"][4]["name"] == "Jazz", 5)
+
+    # Add: at the end, an id from the name, an existing folder adopted.
+    BEBOP = os.path.join(MUSIC, "Invented Bebop")
+    BEBOP_KEPT = [os.path.join(BEBOP, "20260105-100000-150bpm-G-major.mp3"),
+                  os.path.join(BEBOP, "20260106-100000-160bpm-C-major.mp3")]
+    for p in BEBOP_KEPT:
+        mp3(p, 90, "Invented Fast Line")
+    new = {"name": " Invented Bebop ", "caption": "invented bebop prompt", "turns": ["walking bass"],
+           "bpm": [160, 200]}
+    eq("add: a name taken in another case is refused",
+       answer(A, {"cmd": "genre_save", "id": None, "genre": dict(new, name="JAZZ")}),
+       no("name", "There is already a genre called Jazz."))
+    ev = answer(A, {"cmd": "genre_save", "id": None, "genre": new})
+    eq("add: ok, an id from the name", ev, {"event": "genre_result", "ok": True, "id": "invented-bebop",
+                                            "renamed": None})
+    s = A.until("add: last in the list, its folder's tunes kept",
+                lambda s: s["genres"][-1]["id"] == "invented-bebop", 5)
+    eq("add: the snapshot's entry", s["genres"][-1], {"id": "invented-bebop", "name": "Invented Bebop", "kept": 2})
+    eq("add: written as the repository's file, without moods or things",
+       live(), REAL_GENRES_TEXT[:-len("\n  ]\n}\n")] + ',\n    {\n      "id": "invented-bebop",\n'
+       '      "name": "Invented Bebop",\n      "caption": "invented bebop prompt",\n'
+       '      "turns": [\n        "walking bass"\n      ],\n      "bpm": [160, 200]\n    }\n  ]\n}\n')
+    ev = answer(A, {"cmd": "genre_save", "id": None, "genre": dict(new, name="Invented Bebop!")})
+    eq("add: a second id from a like name is unique", ev.get("id"), "invented-bebop-2")
+    eq("add: and deleted", answer(A, {"cmd": "genre_delete", "id": "invented-bebop-2"}).get("ok"), True)
+
+    # The default words, one variation, and an edit while a tune is written.
+    A.send({"cmd": "genre", "id": "invented-bebop"})
+    A.until("bebop: a kept tune plays", lambda s: s["genre"] == "invented-bebop" and s["player"] == "playing"
+            and s["can_next"], 10)
+    n_lm = len([e for e in ace_log() if e.get("path") == "/lm"])
+    scenario(lm_time=1.5, synth_time=0.3)
+    A.send({"cmd": "compose", "on": True})
+    A.until("bebop: writing", lambda s: s["job"] and s["job"]["stage"] == "writing", 15)
+    edited = dict(new, name="Invented Bebop", caption="invented changed prompt")
+    eq("edit while writing: ok", answer(A, {"cmd": "genre_save", "id": "invented-bebop", "genre": edited})
+       .get("ok"), True)
+    s = A.until("bebop: two ready", lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 30)
+    A.send({"cmd": "compose", "on": False})
+    lms = [e["body"]["caption"] for e in ace_log() if e.get("path") == "/lm"][n_lm:]
+    eq("edit while writing: the running tune keeps the old prompt, the next has the new",
+       [c.split(", ")[0] for c in lms[:2]], ["invented bebop prompt", "invented changed prompt"])
+    eq("one variation: the prompt gets it", lms[0], "invented bebop prompt, walking bass, instrumental")
+    words = [e["name"] for e in s["queue"]]
+    check("default words: the new tunes' names", all(
+        n.split(" ")[0] in dt.DEFAULT_WORDS["moods"] and n.split(" ", 1)[1] in dt.DEFAULT_WORDS["things"]
+        for n in words), words)
+
+    # Rename with a tune playing and two queued.
+    playing, q = s["tune"], [e["name"] for e in s["queue"]]
+    HARD = os.path.join(MUSIC, "Invented Hard Bop")
+    os.makedirs(os.path.join(MUSIC, "Invented Taken"))
+    eq("rename onto an existing folder: refused",
+       answer(A, {"cmd": "genre_save", "id": "invented-bebop", "genre": dict(edited, name="Invented Taken")}),
+       no("name", "A folder called Invented Taken already exists in ~/Music/Tunes."))
+    eq("rename onto an existing folder: nothing moved", (os.path.isdir(BEBOP), len(kept_files("Invented Taken"))),
+       (True, 0))
+    before = sorted(os.listdir(BEBOP))
+    ev = answer(A, {"cmd": "genre_save", "id": "invented-bebop", "genre": dict(edited, name="Invented Hard Bop")})
+    eq("rename: ok, said", ev, {"event": "genre_result", "ok": True, "id": "invented-bebop",
+                                "renamed": {"from": "Invented Bebop", "to": "Invented Hard Bop"}})
+    eq("rename: the folder moved whole", (os.path.exists(BEBOP), sorted(os.listdir(HARD))), (False, before))
+    s = A.until("rename: the snapshot", lambda s: s["genres"][-1]["name"] == "Invented Hard Bop", 5)
+    eq("rename: the same id, the same tune playing, the same queue",
+       (s["genre"], s["player"], s["tune"]["file"], [e["name"] for e in s["queue"]], s["genres"][-1]["kept"]),
+       ("invented-bebop", "playing", playing["file"], q, len(kept_files("Invented Hard Bop"))))
+    A.send({"cmd": "next"})
+    s = A.until("rename: next plays the first queued tune from the new folder",
+                lambda s: s["tune"] and s["tune"]["name"] == q[0] and s["player"] == "playing", 10)
+    A.quiet(1.0)
+    eq("rename: it plays on, no error", ((A.last["tune"] or {}).get("name"), A.last["player"], A.last["error"]),
+       (q[0], "playing", None))
+    A.send({"cmd": "scrap", "name": q[0]})
+    s = A.until("rename: a scrap after it", lambda s: s["undo"] and s["undo"]["name"] == q[0], 5)
+    eq("rename: the scrap goes back to the genre", s["undo"]["genre"], "invented-bebop")
+    A.send({"cmd": "undo"})
+    s = A.until("rename: undone", lambda s: s["undo"] is None and s["queue"] and s["queue"][0]["name"] == q[0], 5)
+    eq("rename: the file is back in the new folder", (s["error"], len(kept_files("Invented Hard Bop"))),
+       (None, len(before)))
+    # A rename while a tune is being made: it lands in the new folder.
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("rename while composing: writing", lambda s: s["job"] and s["job"]["stage"] == "writing", 15)
+    ready = s["ready"]
+    COOL = os.path.join(MUSIC, "Invented Cool Bop")
+    eq("rename while composing: ok", answer(A, {"cmd": "genre_save", "id": "invented-bebop",
+                                                "genre": dict(edited, name="Invented Cool Bop")}).get("renamed"),
+       {"from": "Invented Hard Bop", "to": "Invented Cool Bop"})
+    s = A.until("rename while composing: the tune is ready", lambda s: s["ready"] > ready, 30)
+    A.send({"cmd": "compose", "on": False})
+    cool = kept_files("Invented Cool Bop")
+    eq("rename while composing: in the new folder, the old one not made again",
+       (os.path.exists(HARD), len(set(cool) - set(before)), s["error"]), (False, 1, None))
+    # The wave cache is keyed by the genre's id, which a rename keeps: a
+    # pick shows the kept tune's wave at once, before any decode.
+    A.send({"cmd": "genre", "id": "jazz"})
+    A.until("rename: away", lambda s: s["genre"] == "jazz", 5)
+    A.send({"cmd": "genre", "id": "invented-bebop"})
+    s = A.until("rename: back", lambda s: s["genre"] == "invented-bebop" and s["tune"], 5)
+    eq("rename: the wave is read from the cache", (len(s["tune"]["wave"]), s["tune"]["length"] is not None),
+       (78, True))
+
+    # Delete another genre: its folder stays, nothing else changes.
+    AMB = os.path.join(MUSIC, "Ambient", "20260107-100000-70bpm-D-major.mp3")
+    mp3(AMB, 5, "Invented Fog")
+    eq("delete another: ok", answer(A, {"cmd": "genre_delete", "id": "ambient"}),
+       {"event": "genre_result", "ok": True, "id": "ambient"})
+    s = A.until("delete another: gone from the list", lambda s: "ambient" not in [g["id"] for g in s["genres"]], 5)
+    eq("delete another: its tunes stay, the selected genre plays on",
+       (os.path.exists(AMB), s["genre"], s["player"]), (True, "invented-bebop", "playing"))
+    eq("delete: unknown", answer(A, {"cmd": "genre_delete", "id": "ambient"}),
+       no(None, "That genre no longer exists."))
+
+    # Delete the selected genre while composing.
+    A.send({"cmd": "compose", "on": True})
+    A.until("delete selected: composing", lambda s: s["composing"], 5)
+    eq("delete selected: ok", answer(A, {"cmd": "genre_delete", "id": "invented-bebop"}).get("ok"), True)
+    s = A.until("delete selected: nothing selected, nothing plays, composer off",
+                lambda s: s["genre"] is None and s["player"] == "none", 5)
+    eq("delete selected: the snapshot",
+       {k: s[k] for k in ("composing", "job", "queue", "tune", "stopped", "kept_total")},
+       {"composing": False, "job": None, "queue": [], "tune": None, "stopped": False, "kept_total": 0})
+    eq("delete selected: the model unloaded", model(s)["state"], "unloaded")
+    eq("delete selected: the folder and its tunes stay", kept_files("Invented Cool Bop"), cool)
+    eq("delete selected: nothing starts", [e for e in A.quiet(1.0) if e.get("player") == "playing"], [])
+
+    # The last genre cannot go.
+    one = {"genres": [json.loads(REAL_GENRES_TEXT)["genres"][4]]}
+    with open(LIVE_GENRES, "w") as f:
+        f.write(dt.format_genres(one))
+    eq("delete last: refused", answer(A, {"cmd": "genre_delete", "id": "jazz"}),
+       no(None, "The last genre cannot be deleted."))
+    eq("delete last: the file stays", live(), dt.format_genres(one))
+    shutil.copyfile(GENRES, LIVE_GENRES)
+    A.send({"cmd": "genre", "id": "jazz"})
+    A.until("editing done: jazz plays", lambda s: s["genre"] == "jazz" and s["player"] == "playing", 10)
+    B.close()
+
     # -- writes stay inside the unit's directories --
     allowed = [os.path.join(XDG["XDG_STATE_HOME"], "desk-tunes"),
                os.path.join(XDG["XDG_CACHE_HOME"], "desk-tunes"),
@@ -1631,6 +1984,9 @@ try:
     LEFT = os.path.join(SCR, "20260101-000000-80bpm-C-major.mp3")
     with open(LEFT, "w") as f:
         f.write("a scrap the last run never finalised")
+    GENRES_TMP = os.path.join(os.path.dirname(LIVE_GENRES), ".tunes-genres.json.new")
+    with open(GENRES_TMP, "w") as f:
+        f.write('{"genres": [')
     serve = subprocess.Popen(serve.args, env=ENV, stdout=subprocess.DEVNULL, stderr=SERVE_LOG)
     wait("restart: the socket appears", lambda: os.path.exists(SOCK), 10)
     A = Client(attach=True)
@@ -1639,6 +1995,8 @@ try:
        (s["genre"], s["player"], model(s)["state"], s["composing"], s["undo"]),
        (None, "none", "unloaded", False, None))
     eq("restart: scrapped/ is emptied", scrapped(), [])
+    eq("restart: a genres save the last run never finished is deleted, the file kept",
+       (os.path.exists(GENRES_TMP), s["genres"][0]["name"], s["error"]), (False, "Lo-fi", None))
     eq("restart: the medians are read back", s["expect"], dt.expect_view(dt.read_timings(st)))
     check("restart: ... and there are some", s["expect"] is not None, s["expect"])
     A.send({"cmd": "genre", "id": "jazz"})
