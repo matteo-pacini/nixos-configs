@@ -45,7 +45,8 @@ Singleton {
     }
 
     // Performs a tunes.js result: keeps its ui and runs its effect. Returns
-    // the effect's kind for Tunes.qml, which performs "close".
+    // the effect's kind for Tunes.qml, which performs "close" and leaves a
+    // "pass" key to the editor's field.
     function run(r: var): string {
         ui = r.ui;
         const e = r.effect;
@@ -67,6 +68,20 @@ Singleton {
     function pick(index: int): void {
         if (ui)
             run(T.pick(ui, st, index));
+    }
+
+    // The genre editor's field `field` (one of T.FIELDS) now holds `text`.
+    function typed(field: string, text: string): void {
+        const u = ui ? T.typed(ui, field, text) : null;
+        if (u !== ui)
+            ui = u;
+    }
+
+    // The genre editor's field `field` took the keyboard.
+    function focusField(field: string): void {
+        const u = ui ? T.focus(ui, field) : null;
+        if (u !== ui)
+            ui = u;
     }
 
     // The waveform clicked `fraction` of the way across.
@@ -117,7 +132,13 @@ Singleton {
             console.warn("tunes service:", line);
             return;
         }
-        st = T.apply(st, ev, Date.now() / 1000);
+        const now = Date.now() / 1000;
+        st = T.apply(st, ev, now);
+        if (ui) {
+            const u = T.answer(ui, st, ev, now);
+            if (u !== ui)
+                ui = u;
+        }
         if (T.healthy(ev))
             restart.interval = 2000;
         if (ev && ev.event === "error")

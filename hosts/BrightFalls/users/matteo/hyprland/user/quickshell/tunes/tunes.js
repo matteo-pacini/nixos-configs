@@ -2,7 +2,9 @@
 // the attach link, which card shows, every text and tone the cards, the three
 // sections of the player (now playing, up next, composer), the waveform and
 // the bar item show, what each key and click does, the footer and its undo
-// line, the global scrap, and the position between snapshots. The QML draws
+// line, the global scrap, the position between snapshots, and the genre
+// editor: its fields, the service's rules for them and the commands it
+// sends. The QML draws
 // what these functions return and performs the effects; it decides nothing.
 // Plain JavaScript so node can run it too.
 //
@@ -28,21 +30,35 @@
 //   On every open: ui = initialUi(st, now) and send {"cmd":"refresh"}; while
 //   open, ui.now kept current at least once a second whenever needsTick(st,
 //   ui). A key: r = key(ui, st, name, isAutoRepeat); ui = r.ui; run r.effect.
-//   A click: on a button, the key it stands for; on a genre cell, pick(ui,
-//   st, index); on the waveform, seek(st, fraction across). The global
+//   Each line also while open: ui = answer(ui, st, ev, now), for the
+//   results of the genre commands, which come to this client only.
+//   A click: on a button, the key it stands for; on a genre cell or the
+//   "+ New genre" cell after them, pick(ui, st, index); on the waveform,
+//   seek(st, fraction across). The genre editor's fields: every change of a
+//   field's text, ui = typed(ui, field, text); a field taking the keyboard
+//   (a click), ui = focus(ui, field); the keyboard put in the field
+//   editor.focus names; the fields' texts set from editor.values whenever
+//   editor.rev changes; the keys a field gets offered to key() first, and
+//   left to the field when its effect is "pass". The global
 //   scrap (IPC, panel open or not): r = globalScrap(st, now); when not null,
 //   st = r.st, send r.cmd, notify with r.summary and r.body, and when
 //   r.flash, flash the bar's note for FLASH_MS.
 //
-// view(st, ui) -> { kind, setup, chooser, player }, one of the last three
-//   set and the others null:
+// view(st, ui) -> { kind, setup, chooser, player, editor }, one of the last
+//   four set and the others null:
 //   kind: "connecting" | "missing" | "down" | "lost" | "old" (the link) |
 //     "setup" | "failed" (the download stopped) | "download" | "chooser" |
-//     "player".
+//     "player" | "editor".
 //   setup: { title, detail, rows: [[label, value]], bar: null | 0..1 } for
 //     every kind before "chooser".
-//   chooser: { title, chip, cells: [{ name, sub, sel, cur }], empty ("" |
-//     the line in place of the cells), strip }. cur is the genre selected.
+//   chooser: { title, chip, cells: [{ name, sub, sel, cur }], add: { name,
+//     sel } (the cell after them), ask: null | { title, detail, error } (the
+//     delete question), empty ("" | the line over the cells), strip }. cur
+//     is the genre selected.
+//   editor: { title, chip ("" for none), rev, focus (one of FIELDS), values
+//     (FIELDS' texts), fields: { name, caption, turns, lo, hi } each { label,
+//     side (the label's note), placeholder, error ("" | under the box),
+//     bad (the box in red) }, tempoError (under the two tempo boxes), hint }.
 //   player: { strip, now, next, composer }.
 //   now: { head (right of NOW PLAYING), name, nameTone, meta, wave: null |
 //     { cols: COLS dot counts (odd, 1..ROWS), played (columns lit) }, time:
@@ -56,19 +72,27 @@
 //   strip: null | { tone, text }.
 // hints(st, ui) -> [[key, label]], the keys key() handles now that the
 //   footer names.
-// undoLine(st, ui) -> "" or the footer's text in place of the hints.
+// undoLine(st, ui), notice(st, ui) -> "" or the footer's text in place of
+//   the hints (at most one is set).
 // barView(st, flashing) -> { tone (the note), text ("" or the genre's name),
 //   dot ("" or the composer dot's tone) }; flashing: the note's flash after
 //   a global scrap is on.
-// key effect: { kind: "none" | "close" | "send" | "reattach", cmd (null
-//   unless send) }.
+// key effect: { kind: "none" | "close" | "send" | "reattach" | "pass" (the
+//   key is the focused field's), cmd (null unless send) }.
 
 const COLS = 78;
 const ROWS = 9;
 // The chooser's grid.
 const GRID = 3;
-const KEY_NAMES = ["Space", "N", "G", "C", "X", "Z", "R", "Enter", "Esc", "Left", "Right", "Up", "Down"];
+const KEY_NAMES = ["Space", "N", "G", "C", "X", "Z", "R", "E", "A", "D", "Enter", "Esc", "Left", "Right", "Up", "Down", "Tab", "ShiftTab", "CtrlS"];
 const MOVING_KEYS = ["Left", "Right", "Up", "Down"];
+// The genre editor's fields in Tab order.
+const FIELDS = ["name", "caption", "turns", "lo", "hi"];
+// How long the footer's notice (a rename, a genre gone) shows, in seconds.
+const NOTICE_S = 6;
+// How long a genre command sent counts as unanswered: its result is lost
+// with the link.
+const WAIT_S = 5;
 
 const SETUP = ["missing", "downloading", "ready", "failed"];
 const PLAYER = ["none", "playing", "paused"];
@@ -267,9 +291,10 @@ function apply(st, ev, now) {
 }
 
 // Whether a line shows the service answering, so the restart back-off
-// resets: a snapshot it can read, or its reply to a line it could not.
+// resets: a snapshot it can read, its reply to a line it could not, or its
+// answer to a genre command.
 function healthy(ev) {
-    return obj(ev) !== null && ((ev.event === "state" && ev.v === 1) || ev.event === "error");
+    return obj(ev) !== null && ((ev.event === "state" && ev.v === 1) || ["error", "genre", "genre_result"].indexOf(ev.event) >= 0);
 }
 
 // The shell's report on the attach process: "back" (running again),
@@ -355,7 +380,7 @@ function stop(text) {
 
 function linkView(st, now) {
     const again = sentence(retryWords(st.retryAt, now));
-    const card = (title, detail, rows) => ({ kind: st.link, setup: { title, detail, rows: rows || [], bar: null }, chooser: null, player: null });
+    const card = (title, detail, rows) => ({ kind: st.link, setup: { title, detail, rows: rows || [], bar: null }, chooser: null, player: null, editor: null });
     if (st.link === "connecting")
         return card("Connecting to the tunes service…", "");
     if (st.link === "old")
@@ -379,12 +404,12 @@ function setupView(s) {
         if (d && d.rate !== null)
             rows.push(["speed", rate(d.rate)]);
         const bar = d && d.done !== null && d.total ? Math.max(0, Math.min(1, d.done / d.total)) : 0;
-        return { kind: "download", setup: { title: "Downloading the music model", detail: what, rows, bar }, chooser: null, player: null };
+        return { kind: "download", setup: { title: "Downloading the music model", detail: what, rows, bar }, chooser: null, player: null, editor: null };
     }
     if (s.setup === "failed") {
         const rows = d && d.done !== null && d.total !== null ? [["downloaded", `${gib(d.done, 1).replace(" GiB", "")} of ${gib(d.total, 2)}`]] : [];
         const why = (d && d.error) || s.error || "The download did not finish.";
-        return { kind: "failed", setup: { title: "The download stopped", detail: `${stop(why)} Finished files are kept.`, rows, bar: null }, chooser: null, player: null };
+        return { kind: "failed", setup: { title: "The download stopped", detail: `${stop(why)} Finished files are kept.`, rows, bar: null }, chooser: null, player: null, editor: null };
     }
     const rows = [];
     if (s.need.download !== null)
@@ -402,7 +427,8 @@ function setupView(s) {
             bar: null
         },
         chooser: null,
-        player: null
+        player: null,
+        editor: null
     };
 }
 
@@ -410,8 +436,28 @@ function errorStrip(s) {
     return s.error ? { tone: "orange", text: s.error } : null;
 }
 
+// The chooser's cursor: a genre's index, or the genres' count for the "+ New
+// genre" cell after them. A genre just saved holds the cursor by its id
+// (selId) until the cursor moves, as the snapshot listing it may come later.
 function selected(ui, s) {
-    return Math.max(0, Math.min(s.genres.length - 1, ui.sel));
+    const i = typeof ui.selId === "string" ? s.genres.findIndex(g => g.id === ui.selId) : -1;
+    return i >= 0 ? i : Math.max(0, Math.min(s.genres.length, ui.sel));
+}
+
+// "Its 9 kept tunes stay in ~/Music/Tunes/Classical."
+function keptWords(n, name) {
+    return `Its ${n === 1 ? "1 kept tune stays" : `${n} kept tunes stay`} in ~/Music/Tunes/${name}.`;
+}
+
+function askView(s, ask) {
+    const g = genreOf(s, ask.id);
+    const name = g ? g.name : ask.name;
+    const kept = g ? g.kept : 0;
+    return {
+        title: `Delete ${name}?`,
+        detail: `${kept ? keptWords(kept, name) + " " : ""}Only the genre leaves the panel.`,
+        error: ask.error || ""
+    };
 }
 
 function chooserView(s, ui) {
@@ -427,10 +473,138 @@ function chooserView(s, ui) {
                 const sub = cur ? { playing: "playing now", paused: "paused" }[s.player] || "selected" : g.kept ? `${g.kept} kept` : "none yet";
                 return { name: g.name, sub, sel: i === sel, cur };
             }),
+            add: { name: "+ New genre", sel: sel === s.genres.length },
+            ask: ui.mode === "ask" && ui.ask ? askView(s, ui.ask) : null,
             empty: s.genres.length ? "" : "The genres file lists no genres.",
             strip: errorStrip(s)
         },
-        player: null
+        player: null,
+        editor: null
+    };
+}
+
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+
+// Characters as the service counts them: code points, not UTF-16 units.
+function chars(text) {
+    return Array.from(text).length;
+}
+
+// VARIATIONS' text as the list saved: each line trimmed, blank lines and
+// repeats dropped. long: the number (from 1) of the first kept line over 120
+// characters, or 0.
+function parseTurns(text) {
+    const turns = [];
+    let long = 0;
+    String(text).split(/\r\n|\r|\n/).forEach((l, i) => {
+        const t = l.trim();
+        if (t === "" || turns.indexOf(t) >= 0)
+            return;
+        if (!long && chars(t) > 120)
+            long = i + 1;
+        turns.push(t);
+    });
+    return { turns, long };
+}
+
+// A tempo field's text as a whole number, or null.
+function wholeNumber(text) {
+    const t = String(text).trim();
+    return /^[0-9]+$/.test(t) ? Number(t) : null;
+}
+
+// The editor's values ({ name, caption, turns, lo, hi }, as typed) against
+// the service's rules, among `genres` not counting the one with `id` (null
+// for a new genre). errors: { name, caption, turns, bpm }, each "" or a
+// sentence; bad: { lo, hi }, which tempo box the bpm error is about; genre:
+// what genre_save sends, or null while an error stands.
+function check(values, genres, id) {
+    const errors = { name: "", caption: "", turns: "", bpm: "" };
+    const bad = { lo: false, hi: false };
+    const name = values.name.trim();
+    if (name === "")
+        errors.name = "A genre needs a name.";
+    else if (CONTROL.test(name))
+        errors.name = "A name cannot hold control characters or line breaks.";
+    else if (name.indexOf("/") >= 0)
+        errors.name = "A name cannot contain a slash: it is also a folder's name.";
+    else if (name[0] === ".")
+        errors.name = "A name cannot start with a dot.";
+    else if (chars(name) > 40)
+        errors.name = `A name is at most 40 characters; this one has ${chars(name)}.`;
+    else {
+        const other = genres.find(g => g.id !== id && g.name.toLowerCase() === name.toLowerCase());
+        if (other)
+            errors.name = `There is already a genre called ${other.name}.`;
+    }
+    const caption = values.caption.trim();
+    if (caption === "")
+        errors.caption = "A genre needs a prompt.";
+    else if (chars(caption) > 400)
+        errors.caption = `A prompt is at most 400 characters; this one has ${chars(caption)}.`;
+    const t = parseTurns(values.turns);
+    if (t.long)
+        errors.turns = `Line ${t.long} is longer than 120 characters.`;
+    else if (t.turns.length > 20)
+        errors.turns = `At most 20 variations; this has ${t.turns.length}.`;
+    const lo = wholeNumber(values.lo);
+    const hi = wholeNumber(values.hi);
+    const range = n => n >= 30 && n <= 300;
+    if (lo === null || hi === null) {
+        bad.lo = lo === null;
+        bad.hi = hi === null;
+        errors.bpm = `The ${lo === null ? "slowest" : "fastest"} tempo needs a whole number.`;
+    } else if (!range(lo) || !range(hi)) {
+        bad.lo = !range(lo);
+        bad.hi = !range(hi);
+        errors.bpm = "Tempos go from 30 to 300 BPM.";
+    } else if (lo > hi) {
+        bad.lo = bad.hi = true;
+        errors.bpm = "The slowest tempo is above the fastest.";
+    }
+    const ok = Object.keys(errors).every(k => errors[k] === "");
+    return { errors, bad, genre: ok ? { name, caption, turns: t.turns, bpm: [lo, hi] } : null };
+}
+
+// The editor's view. An error shows once its field has been typed in, after
+// a save was tried, and from the start for a genre loaded from the file; the
+// service's refusal shows under its field, or the last one when it names
+// none.
+function editorView(s, ui) {
+    const e = ui.ed;
+    const g = e.id !== null ? genreOf(s, e.id) : null;
+    const kept = g ? g.kept : 0;
+    const c = check(e.values, s.genres, e.id);
+    const shown = f => (e.id !== null && !e.loading) || e.tried || (f === "bpm" ? e.touched.lo === true || e.touched.hi === true : e.touched[f] === true);
+    const refusedAt = e.refused ? e.refused.field || "bpm" : "";
+    const err = f => (shown(f) && c.errors[f]) || (refusedAt === f ? e.refused.text : "");
+    const bpmRefused = refusedAt === "bpm" && !(shown("bpm") && c.errors.bpm);
+    const field = (label, side, placeholder, error) => ({ label, side, placeholder, error, bad: error !== "" });
+    const box = (label, isBad) => ({ label, side: "", placeholder: "", error: "", bad: isBad });
+    let hint = "Tune names come from a shared word list until this genre has its own.";
+    if (e.id !== null)
+        hint = "Changes apply to the next tune composed." + (kept ? ` The ${kept === 1 ? "1 kept tune stays as it is" : `${kept} kept tunes stay as they are`}.` : "");
+    return {
+        kind: "editor",
+        setup: null,
+        chooser: null,
+        player: null,
+        editor: {
+            title: e.id === null ? "New genre" : `Edit ${e.name}`,
+            chip: e.id === null ? "" : kept ? `${kept} kept` : "none yet",
+            rev: ui.rev,
+            focus: e.focus,
+            values: e.values,
+            fields: {
+                name: field("NAME", "", "", err("name")),
+                caption: field("PROMPT", "what every tune has", "instruments, mood, style, in a few phrases", err("caption")),
+                turns: field("VARIATIONS", e.id === null ? "optional" : "one per line, two are picked per tune", "one per line", err("turns")),
+                lo: box("SLOWEST", bpmRefused || (shown("bpm") && c.bad.lo)),
+                hi: box("FASTEST", bpmRefused || (shown("bpm") && c.bad.hi))
+            },
+            tempoError: err("bpm"),
+            hint
+        }
     };
 }
 
@@ -641,7 +815,8 @@ function playerView(s, ui) {
         kind: "player",
         setup: null,
         chooser: null,
-        player: { strip: errorStrip(s), now: nowView(s, ui.now), next: nextView(s, ui), composer: composerView(s, ui.now) }
+        player: { strip: errorStrip(s), now: nowView(s, ui.now), next: nextView(s, ui), composer: composerView(s, ui.now) },
+        editor: null
     };
 }
 
@@ -652,19 +827,145 @@ function view(st, ui) {
     const s = st.snap;
     if (s.setup !== "ready")
         return setupView(s);
-    if (ui.mode === "chooser")
-        return chooserView(s, ui);
-    if (s.genre === null)
+    if (ui.mode === "editor" && ui.ed)
+        return editorView(s, ui);
+    if (ui.mode === "chooser" || ui.mode === "ask" || s.genre === null)
         return chooserView(s, ui);
     return playerView(s, ui);
 }
 
 // The ui of a panel just opened: the player, the chooser's cursor on the
-// selected genre, no queue row selected.
+// selected genre, no queue row selected. The rest belongs to the chooser
+// and the editor: mode "ask" is the delete question about ask ({ id, name,
+// error }); mode "editor" edits ed ({ id (null for a new genre), name (as
+// the title gives it), values ({ name, caption, turns, lo, hi }: the
+// fields' text), focus (one of FIELDS), touched (by field), tried (a save
+// with errors), refused (null | { field, text }: the service's refusal),
+// loading (genre_get unanswered) }); rev rises whenever values are replaced
+// by anything but typing, so the QML puts them in its fields; waiting:
+// null | { kind ("get" | "save" | "delete"), id, at }, the genre command
+// whose result comes next; notice: null | { text, until }, the chooser's
+// footer line.
 function initialUi(st, now) {
     const s = st.snap;
     const i = s ? s.genres.findIndex(g => g.id === s.genre) : -1;
-    return { now, mode: "player", sel: Math.max(0, i), row: null };
+    return { now, mode: "player", sel: Math.max(0, i), selId: null, row: null, ask: null, ed: null, rev: 0, waiting: null, notice: null };
+}
+
+// A genre command sent and not answered within WAIT_S: no other is sent.
+function busy(ui) {
+    return !!ui.waiting && ui.now - ui.waiting.at < WAIT_S;
+}
+
+function emptyValues() {
+    return { name: "", caption: "", turns: "", lo: "", hi: "" };
+}
+
+function editorUi(u, id, name, values, loading) {
+    return copy(u, {
+        mode: "editor",
+        ed: { id, name, values, focus: FIELDS[0], touched: {}, tried: false, refused: null, loading },
+        rev: (u.rev || 0) + 1,
+        notice: null,
+        ask: null
+    });
+}
+
+// E on a genre: the editor, empty until the service answers genre_get.
+function editGenre(u, g) {
+    const v = editorUi(u, g.id, g.name, emptyValues(), true);
+    return { ui: copy(v, { waiting: { kind: "get", id: g.id, at: u.now } }), effect: effect("send", { cmd: "genre_get", id: g.id }) };
+}
+
+// A or "+ New genre": an empty editor, tempo 70 to 120.
+function newGenre(u) {
+    return { ui: copy(editorUi(u, null, "", Object.assign(emptyValues(), { lo: "70", hi: "120" }), false), { waiting: null }), effect: effect("none") };
+}
+
+// Ctrl+S: genre_save when nothing stands in the way; with errors, they all
+// show and nothing is sent. A refusal under a field stands until that field
+// changes; one naming no field (the file on disk, say) does not block.
+function save(u, st) {
+    const e = u.ed;
+    if (e.loading || busy(u))
+        return { ui: u, effect: effect("none") };
+    const c = check(e.values, st.snap.genres, e.id);
+    if (!c.genre || (e.refused && e.refused.field !== null))
+        return { ui: copy(u, { ed: copy(e, { tried: true }) }), effect: effect("none") };
+    return { ui: copy(u, { waiting: { kind: "save", id: e.id, at: u.now } }), effect: effect("send", { cmd: "genre_save", id: e.id, genre: c.genre }) };
+}
+
+// The text in one of the editor's FIELDS as typed. Returns the ui.
+function typed(ui, field, text) {
+    if (!ui || ui.mode !== "editor" || !ui.ed || FIELDS.indexOf(field) < 0)
+        return ui;
+    const e = ui.ed;
+    const t = String(text);
+    if (e.values[field] === t)
+        return ui;
+    const group = field === "lo" || field === "hi" ? "bpm" : field;
+    const refused = e.refused && (e.refused.field === null || e.refused.field === group) ? null : e.refused;
+    return copy(ui, {
+        ed: copy(e, {
+            values: copy(e.values, { [field]: t }),
+            touched: copy(e.touched, { [field]: true }),
+            refused
+        })
+    });
+}
+
+// One of the editor's FIELDS took the keyboard (a click). Returns the ui.
+function focus(ui, field) {
+    if (!ui || ui.mode !== "editor" || !ui.ed || FIELDS.indexOf(field) < 0 || ui.ed.focus === field)
+        return ui;
+    return copy(ui, { ed: copy(ui.ed, { focus: field }) });
+}
+
+// The service's answer to a genre command this panel sent: {"event":"genre"}
+// fills the editor; {"event":"genre_result"} closes the editor or the delete
+// question, or says why not. Lines for no command waiting change nothing.
+// Returns the ui.
+function answer(ui, st, ev, now) {
+    if (!ui || !ui.waiting || !obj(ev))
+        return ui;
+    const w = ui.waiting;
+    if (ev.event === "genre") {
+        if (w.kind !== "get" || ev.id !== w.id || ui.mode !== "editor" || !ui.ed)
+            return ui;
+        const bpm = Array.isArray(ev.bpm) ? ev.bpm : [];
+        const tempo = v => num(v) !== null ? String(v) : "";
+        const values = {
+            name: str(ev.name) || "",
+            caption: str(ev.caption) || "",
+            turns: (Array.isArray(ev.turns) ? ev.turns : []).filter(x => typeof x === "string").join("\n"),
+            lo: tempo(bpm[0]),
+            hi: tempo(bpm[1])
+        };
+        return copy(ui, { waiting: null, rev: ui.rev + 1, ed: copy(ui.ed, { values, loading: false }) });
+    }
+    if (ev.event !== "genre_result")
+        return ui;
+    const text = str(ev.text) || "";
+    if (w.kind === "get")
+        return copy(ui, { waiting: null, mode: "chooser", ed: null, notice: { text: text || "That genre could not be read.", until: now + NOTICE_S } });
+    if (w.kind === "delete") {
+        if (ev.ok === true)
+            return copy(ui, { waiting: null, mode: "chooser", ask: null });
+        return copy(ui, { waiting: null, ask: copy(ui.ask, { error: text || "The genre was not deleted." }) });
+    }
+    if (ev.ok === true) {
+        const r = obj(ev.renamed);
+        const renamed = r && str(r.from) !== null && str(r.to) !== null;
+        return copy(ui, {
+            waiting: null,
+            mode: "chooser",
+            ed: null,
+            selId: str(ev.id) || w.id,
+            notice: renamed ? { text: `Renamed ${r.from} to ${r.to}. Its folder in ~/Music/Tunes moved with it.`, until: now + NOTICE_S } : null
+        });
+    }
+    const field = ["name", "caption", "turns", "bpm"].indexOf(ev.field) >= 0 ? ev.field : null;
+    return copy(ui, { waiting: null, ed: copy(ui.ed, { refused: { field, text: text || "The genre was not saved." } }) });
 }
 
 function effect(kind, cmd) {
@@ -690,35 +991,66 @@ function table(ui, st) {
     if (kind === "missing" || kind === "down" || kind === "lost")
         return [{ keys: ["R"], hint: ["R", "try now"], run: u => ({ ui: u, effect: effect("reattach") }) }, close];
     const s = st.snap;
-    const genres = { keys: ["G"], hint: ["G", "genre"], run: u => ({ ui: copy(u, { mode: "chooser", sel: Math.max(0, s.genres.findIndex(g => g.id === s.genre)) }), effect: effect("none") }) };
+    const genres = { keys: ["G"], hint: ["G", "genre"], run: u => ({ ui: copy(u, { mode: "chooser", sel: Math.max(0, s.genres.findIndex(g => g.id === s.genre)), selId: null, notice: null }), effect: effect("none") }) };
     const retry = { keys: ["R"], hint: ["R", "try now"], run: send({ cmd: "retry" }) };
     const composer = { keys: ["C"], hint: ["C", s.composing ? "composer off" : "composer on"], run: send({ cmd: "compose", on: !s.composing }) };
     if (kind === "setup" || kind === "failed")
         return [{ keys: ["Enter"], hint: ["Enter", kind === "failed" ? "resume" : "download"], run: send({ cmd: "download" }) }, close];
     if (kind === "download")
         return [{ keys: ["C"], hint: ["C", "cancel"], run: send({ cmd: "cancel_download" }) }, close];
-    if (kind === "chooser") {
-        const back = s.genre !== null
-            ? { keys: ["Esc"], hint: ["Esc", "back"], run: u => ({ ui: copy(u, { mode: "player" }), effect: effect("none") }) }
-            : close;
-        if (!s.genres.length)
-            return [back];
-        const last = s.genres.length - 1;
-        const at = s.genres[selected(ui, s)];
+    if (kind === "editor") {
+        const move = d => u => ({ ui: copy(u, { ed: copy(u.ed, { focus: FIELDS[(FIELDS.indexOf(u.ed.focus) + d + FIELDS.length) % FIELDS.length] }) }), effect: effect("none") });
+        return [
+            { keys: ["Tab"], hint: ["Tab", "next field"], run: move(1) },
+            { keys: ["ShiftTab"], hint: null, run: move(-1) },
+            // In VARIATIONS Enter is the field's: a new line.
+            { keys: ["Enter"], hint: null, run: ui.ed.focus === "turns" ? u => ({ ui: u, effect: effect("pass") }) : move(1) },
+            { keys: ["CtrlS"], hint: ["Ctrl+S", "save"], run: u => save(u, st) },
+            { keys: ["Esc"], hint: ["Esc", "discard"], run: u => ({ ui: copy(u, { mode: "chooser", ed: null, waiting: null, selId: u.ed.id }), effect: effect("none") }) }
+        ];
+    }
+    if (kind === "chooser" && ui.mode === "ask") {
+        const g = genreOf(s, ui.ask.id);
         return [
             {
+                keys: ["Enter"],
+                hint: ["Enter", `delete ${g ? g.name : ui.ask.name}`],
+                run: u => busy(u)
+                    ? { ui: u, effect: effect("none") }
+                    : { ui: copy(u, { waiting: { kind: "delete", id: u.ask.id, at: u.now }, ask: copy(u.ask, { error: "" }) }), effect: effect("send", { cmd: "genre_delete", id: u.ask.id }) }
+            },
+            { keys: ["Esc"], hint: ["Esc", "keep it"], run: u => ({ ui: copy(u, { mode: "chooser", ask: null, waiting: null }), effect: effect("none") }) }
+        ];
+    }
+    if (kind === "chooser") {
+        const back = s.genre !== null
+            ? { keys: ["Esc"], hint: ["Esc", "back"], run: u => ({ ui: copy(u, { mode: "player", notice: null }), effect: effect("none") }) }
+            : close;
+        // The last cell is "+ New genre".
+        const last = s.genres.length;
+        const i = selected(ui, s);
+        const at = s.genres[i] || null;
+        const add = { keys: ["A"], hint: at ? ["A", "add"] : null, run: newGenre };
+        return [
+            last > 0 ? {
                 keys: MOVING_KEYS,
                 hint: ["←↑↓→", "move"],
                 run: (u, k) => {
                     const step = { Left: -1, Right: 1, Up: -GRID, Down: GRID }[k];
-                    const i = selected(u, s);
-                    const j = i + step;
-                    return { ui: copy(u, { sel: j < 0 || j > last ? i : j }), effect: effect("none") };
+                    const from = selected(u, s);
+                    const j = from + step;
+                    return { ui: copy(u, { sel: j < 0 || j > last ? from : j, selId: null }), effect: effect("none") };
                 }
-            },
-            { keys: ["Enter"], hint: ["Enter", at.id === s.genre ? `back to ${at.name}` : `play ${at.name}`], run: u => pick(u, st, selected(u, s)) },
+            } : null,
+            at
+                ? { keys: ["Enter"], hint: ["Enter", at.id === s.genre ? `back to ${at.name}` : `play ${at.name}`], run: u => pick(u, st, selected(u, s)) }
+                : { keys: ["Enter"], hint: ["Enter", "add a genre"], run: newGenre },
+            at ? { keys: ["E"], hint: ["E", "edit"], run: u => editGenre(u, at) } : null,
+            add,
+            // The last genre cannot be deleted.
+            at && s.genres.length > 1 ? { keys: ["D"], hint: ["D", "delete"], run: u => ({ ui: copy(u, { mode: "ask", ask: { id: at.id, name: at.name, error: "" }, sel: i, selId: null, notice: null }), effect: effect("none") }) } : null,
             back
-        ];
+        ].filter(e => e);
     }
     const sel = rowIndex(ui, s);
     const rows = rowCount(s);
@@ -761,23 +1093,29 @@ function table(ui, st) {
 }
 
 // A key pressed in the open panel: one of KEY_NAMES. A held key's
-// auto-repeat acts only for the arrows. Returns { ui, effect }.
+// auto-repeat acts only for the arrows. Returns { ui, effect }; in the
+// editor, effect "pass" for every key it does not use, which then goes to
+// the focused field (typing, Backspace and the arrows, repeating there).
 function key(ui, st, name, isAutoRepeat) {
     const entry = table(ui, st).find(e => e.keys.indexOf(name) >= 0);
+    if (!entry && view(st, ui).kind === "editor")
+        return { ui, effect: effect("pass") };
     if (!entry || (isAutoRepeat && MOVING_KEYS.indexOf(name) < 0))
         return { ui, effect: effect("none") };
     return entry.run(ui, name);
 }
 
-// The chooser's genre `index` chosen (Enter or a click): back to the player,
-// and the genre asked for; the one already selected only closes the
-// chooser.
+// The chooser's cell `index` chosen (Enter or a click): a genre goes back
+// to the player and asks for that genre (the one already selected only
+// closes the chooser); "+ New genre" opens the editor.
 function pick(ui, st, index) {
     const s = st.snap;
+    if (s && index === s.genres.length && view(st, ui).kind === "chooser" && ui.mode !== "ask")
+        return newGenre(ui);
     const g = s ? s.genres[index] : undefined;
-    if (!g)
+    if (!g || ui.mode === "ask")
         return { ui, effect: effect("none") };
-    const u = copy(ui, { mode: "player", sel: index, row: null });
+    const u = copy(ui, { mode: "player", sel: index, selId: null, row: null, notice: null });
     if (g.id === s.genre)
         return { ui: u, effect: effect("none") };
     return { ui: u, effect: effect("send", { cmd: "genre", id: g.id }) };
@@ -807,6 +1145,14 @@ function undoLine(st, ui) {
     if (!undoActive(s, ui.now))
         return "";
     return `Scrapped ${s.undo.name}. Z brings it back for ${Math.ceil(s.undo.until - ui.now)} s.`;
+}
+
+// The footer's line in place of the hints in the chooser for NOTICE_S
+// after a rename, or after the genre asked for was gone; "" otherwise.
+function notice(st, ui) {
+    if (!ui.notice || ui.notice.until <= ui.now || ui.mode === "ask" || view(st, ui).kind !== "chooser")
+        return "";
+    return ui.notice.text;
 }
 
 // The global scrap (Super+Shift+M, the panel open or not): an undo while
@@ -839,13 +1185,15 @@ function globalScrap(st, now) {
 
 // Whether the open panel shows something that changes with the clock alone:
 // the position while playing, the job's time, the undo countdown, a retry
-// countdown.
+// countdown, the chooser's notice until it goes.
 function needsTick(st, ui) {
     if (st.link === "missing" || st.link === "down" || st.link === "lost")
         return st.retryAt !== null;
     if (st.link !== "up" || !st.snap)
         return false;
     const s = st.snap;
+    if (notice(st, ui) !== "")
+        return true;
     if (view(st, ui).kind !== "player")
         return false;
     if (s.player === "playing" || undoActive(s, ui.now))
@@ -878,7 +1226,8 @@ function barView(st, flashing) {
 
 if (typeof module !== "undefined")
     module.exports = {
-        COLS, ROWS, GRID, KEY_NAMES, FLASH_MS,
-        initial, apply, healthy, linkLost, view, initialUi, key, pick, seek, hints, undoLine, globalScrap, needsTick, barView,
+        COLS, ROWS, GRID, KEY_NAMES, FLASH_MS, FIELDS, NOTICE_S, WAIT_S,
+        initial, apply, healthy, linkLost, view, initialUi, key, pick, seek, hints, undoLine, notice, globalScrap, needsTick, barView,
+        typed, focus, answer, check, parseTurns,
         position, waveColumns, clock, gib, rate, elapsed
     };

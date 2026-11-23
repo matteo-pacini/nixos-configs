@@ -14,7 +14,8 @@ import "tunes/tunes.js" as T
 //   qs ipc call tunes scrap
 // Three sections: now playing, up next (the queue and the tune being
 // composed) and the composer's switch and well; or the model's download, the
-// genre chooser, or why there is nothing to show. The music itself is the
+// genre chooser (with its delete question) and the genre editor, or why
+// there is nothing to show. The music itself is the
 // desk-tunes service's and carries on with the panel closed. tunes.js
 // decides everything drawn and what each key and click does; this file
 // draws its views and passes keys and clicks on.
@@ -31,9 +32,14 @@ Scope {
     readonly property var setup: v ? v.setup : null
     readonly property var chooser: v ? v.chooser : null
     readonly property var player: v ? v.player : null
+    readonly property var editor: v ? v.editor : null
+    readonly property var fields: editor ? editor.fields : null
     readonly property string hintsJson: open && TunesShared.ui ? JSON.stringify(T.hints(TunesShared.st, TunesShared.ui)) : "[]"
     readonly property var hints: JSON.parse(hintsJson).map(h => [esc(h[0]), esc(h[1])])
     readonly property string undoLine: open && TunesShared.ui ? T.undoLine(TunesShared.st, TunesShared.ui) : ""
+    readonly property string notice: open && TunesShared.ui ? T.notice(TunesShared.st, TunesShared.ui) : ""
+    readonly property int editorRev: editor ? editor.rev : -1
+    readonly property bool editing: editor !== null
 
     // Nerd Font (Material Design) glyphs.
     readonly property var glyph: ({
@@ -83,9 +89,11 @@ Scope {
         TunesShared.screen = "";
     }
 
-    // Returns true when the key was used.
+    // Returns true when the key was used; in the genre editor the keys it
+    // does not use are left to the field.
     function key(event: var): bool {
-        const plain = (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier;
+        const mods = event.modifiers & ~Qt.KeypadModifier;
+        const plain = mods === Qt.NoModifier;
         const always = {
             [Qt.Key_Escape]: "Esc",
             [Qt.Key_Left]: "Left",
@@ -93,7 +101,9 @@ Scope {
             [Qt.Key_Up]: "Up",
             [Qt.Key_Down]: "Down",
             [Qt.Key_Return]: "Enter",
-            [Qt.Key_Enter]: "Enter"
+            [Qt.Key_Enter]: "Enter",
+            [Qt.Key_Tab]: "Tab",
+            [Qt.Key_Backtab]: "ShiftTab"
         };
         const letters = {
             [Qt.Key_Space]: "Space",
@@ -102,15 +112,39 @@ Scope {
             [Qt.Key_C]: "C",
             [Qt.Key_X]: "X",
             [Qt.Key_Z]: "Z",
-            [Qt.Key_R]: "R"
+            [Qt.Key_R]: "R",
+            [Qt.Key_E]: "E",
+            [Qt.Key_A]: "A",
+            [Qt.Key_D]: "D"
         };
-        const name = always[event.key] ?? (plain ? letters[event.key] : undefined);
+        let name = always[event.key] ?? (plain ? letters[event.key] : undefined);
+        if (event.key === Qt.Key_S && mods === Qt.ControlModifier)
+            name = "CtrlS";
         if (name === undefined)
             return false;
-        if (TunesShared.key(name, event.isAutoRepeat) === "close")
+        const kind = TunesShared.key(name, event.isAutoRepeat);
+        if (kind === "close")
             close();
-        return true;
+        return kind !== "pass";
     }
+
+    // The editor's texts are the fields' own; tunes.js gives them new ones
+    // only when it loads a genre or opens the editor (rev rises).
+    onEditorRevChanged: {
+        if (!editor)
+            return;
+        const values = editor.values;
+        Qt.callLater(() => {
+            nameField.set(values.name);
+            captionField.set(values.caption);
+            turnsField.set(values.turns);
+            loField.set(values.lo);
+            hiField.set(values.hi);
+        });
+    }
+    // Leaving the editor gives the keyboard back to the panel's keys.
+    onEditingChanged: if (!editing && open)
+        keys.forceActiveFocus()
 
     Component.onCompleted: Dropdowns.add("tunes", TunesShared)
 
@@ -273,49 +307,63 @@ Scope {
                     }
                 }
 
+                // The chooser's and the editor's title, and the chip at its
+                // right.
+                Item {
+                    id: titleRow
+
+                    readonly property string title: root.chooser ? root.chooser.title : root.editor ? root.editor.title : ""
+                    readonly property string chip: root.chooser ? root.chooser.chip : root.editor ? root.editor.chip : ""
+
+                    visible: root.chooser !== null || root.editor !== null
+                    width: parent.width
+                    height: chooserTitle.implicitHeight + 14
+
+                    Text {
+                        id: chooserTitle
+
+                        x: 14
+                        y: 14
+                        width: Math.min(implicitWidth, parent.width - 28 - (chip.visible ? chip.width + 10 : 0))
+                        elide: Text.ElideRight
+                        text: titleRow.title
+                        textFormat: Text.PlainText
+                        color: Theme.foreground
+                        font.family: Theme.fontUi
+                        font.pixelSize: 17
+                        font.weight: Font.DemiBold
+                    }
+
+                    Rectangle {
+                        id: chip
+
+                        // On the title's baseline.
+                        visible: chipText.text !== ""
+                        x: parent.width - 14 - width
+                        y: chooserTitle.y + chooserTitle.baselineOffset - chipText.y - chipText.baselineOffset
+                        width: chipText.implicitWidth + 12
+                        height: chipText.implicitHeight + 2
+                        radius: 5
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Theme.currentLine
+
+                        Text {
+                            id: chipText
+
+                            anchors.centerIn: parent
+                            text: titleRow.chip
+                            color: Theme.comment
+                            font.family: Theme.fontMono
+                            font.pixelSize: 11
+                        }
+                    }
+                }
+
                 // The genre chooser: the genre selected outlined.
                 Column {
                     visible: root.chooser !== null
                     width: parent.width
-
-                    Item {
-                        width: parent.width
-                        height: chooserTitle.implicitHeight + 14
-
-                        Text {
-                            id: chooserTitle
-
-                            x: 14
-                            y: 14
-                            text: root.chooser ? root.chooser.title : ""
-                            color: Theme.foreground
-                            font.family: Theme.fontUi
-                            font.pixelSize: 17
-                            font.weight: Font.DemiBold
-                        }
-
-                        Rectangle {
-                            // On the title's baseline.
-                            x: parent.width - 14 - width
-                            y: chooserTitle.y + chooserTitle.baselineOffset - chipText.y - chipText.baselineOffset
-                            width: chipText.implicitWidth + 12
-                            height: chipText.implicitHeight + 2
-                            radius: 5
-                            color: "transparent"
-                            border.width: 1
-                            border.color: Theme.currentLine
-
-                            Text {
-                                id: chipText
-
-                                anchors.centerIn: parent
-                                text: root.chooser ? root.chooser.chip : ""
-                                color: Theme.comment
-                                font.family: Theme.fontMono
-                                font.pixelSize: 11
-                            }
-                        }
-                    }
 
                     Column {
                         visible: root.chooser !== null && root.chooser.strip !== null
@@ -343,7 +391,6 @@ Scope {
                     }
 
                     Item {
-                        visible: root.chooser !== null && root.chooser.empty === ""
                         width: parent.width
                         height: cells.implicitHeight + 18
 
@@ -412,7 +459,224 @@ Scope {
                                     }
                                 }
                             }
+
+                            // "+ New genre", the cell after the genres.
+                            Rectangle {
+                                width: cells.cellWidth
+                                height: addText.implicitHeight + 16
+                                radius: 6
+                                color: root.chooser && root.chooser.add.sel ? Theme.currentLine : addArea.containsMouse ? Qt.rgba(Theme.currentLine.r, Theme.currentLine.g, Theme.currentLine.b, 0.5) : "transparent"
+                                border.width: 1
+                                border.color: Theme.currentLine
+
+                                // As tall as a genre's cell: a second, empty
+                                // line in its sub-line's font.
+                                Column {
+                                    id: addText
+
+                                    x: 8
+                                    y: 8
+                                    width: parent.width - 16
+                                    spacing: 2
+
+                                    Text {
+                                        width: parent.width
+                                        wrapMode: Text.Wrap
+                                        text: root.chooser ? root.chooser.add.name : ""
+                                        color: Theme.comment
+                                        font.family: Theme.fontUi
+                                        font.pixelSize: 14
+                                    }
+
+                                    Text {
+                                        text: ""
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 11
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: addArea
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: TunesShared.pick(root.chooser ? root.chooser.cells.length : 0)
+                                }
+                            }
                         }
+                    }
+
+                    // The delete question.
+                    Item {
+                        visible: root.chooser !== null && root.chooser.ask !== null
+                        width: parent.width
+                        height: askBox.height + 12
+
+                        Rectangle {
+                            id: askBox
+
+                            x: 12
+                            width: parent.width - 24
+                            height: askText.implicitHeight + 20
+                            radius: 6
+                            color: Qt.rgba(Theme.red.r, Theme.red.g, Theme.red.b, 0.12)
+
+                            Column {
+                                id: askText
+
+                                readonly property var ask: root.chooser ? root.chooser.ask : null
+
+                                x: 10
+                                y: 10
+                                width: parent.width - 20
+                                spacing: 6
+
+                                Text {
+                                    width: parent.width
+                                    wrapMode: Text.Wrap
+                                    text: askText.ask ? askText.ask.title : ""
+                                    textFormat: Text.PlainText
+                                    color: Theme.foreground
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 13
+                                    font.weight: Font.DemiBold
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                                    text: askText.ask ? askText.ask.detail : ""
+                                    textFormat: Text.PlainText
+                                    color: Style.soft
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 12
+                                }
+
+                                Text {
+                                    visible: text !== ""
+                                    width: parent.width
+                                    wrapMode: Text.Wrap
+                                    text: askText.ask ? askText.ask.error : ""
+                                    textFormat: Text.PlainText
+                                    color: Theme.red
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // The genre editor: name, prompt, variations, the tempo range.
+                Column {
+                    visible: root.editor !== null
+                    x: 14
+                    width: parent.width - 28
+                    topPadding: 10
+                    bottomPadding: 12
+                    spacing: 10
+
+                    EditField {
+                        id: nameField
+
+                        width: parent.width
+                        spec: root.fields ? root.fields.name : null
+                        wanted: root.editor !== null && root.editor.focus === "name"
+                        onEdited: text => TunesShared.typed("name", text)
+                        onFocused: TunesShared.focusField("name")
+                        onKeyPressed: event => {
+                            if (root.key(event))
+                                event.accepted = true;
+                        }
+                    }
+
+                    EditField {
+                        id: captionField
+
+                        width: parent.width
+                        spec: root.fields ? root.fields.caption : null
+                        wanted: root.editor !== null && root.editor.focus === "caption"
+                        onEdited: text => TunesShared.typed("caption", text)
+                        onFocused: TunesShared.focusField("caption")
+                        onKeyPressed: event => {
+                            if (root.key(event))
+                                event.accepted = true;
+                        }
+                    }
+
+                    EditField {
+                        id: turnsField
+
+                        width: parent.width
+                        fontSize: 13
+                        spec: root.fields ? root.fields.turns : null
+                        wanted: root.editor !== null && root.editor.focus === "turns"
+                        onEdited: text => TunesShared.typed("turns", text)
+                        onFocused: TunesShared.focusField("turns")
+                        onKeyPressed: event => {
+                            if (root.key(event))
+                                event.accepted = true;
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: 4
+
+                        Row {
+                            width: parent.width
+                            spacing: 10
+
+                            EditField {
+                                id: loField
+
+                                width: (parent.width - parent.spacing) / 2
+                                suffix: "BPM"
+                                spec: root.fields ? root.fields.lo : null
+                                wanted: root.editor !== null && root.editor.focus === "lo"
+                                onEdited: text => TunesShared.typed("lo", text)
+                                onFocused: TunesShared.focusField("lo")
+                                onKeyPressed: event => {
+                                    if (root.key(event))
+                                        event.accepted = true;
+                                }
+                            }
+
+                            EditField {
+                                id: hiField
+
+                                width: (parent.width - parent.spacing) / 2
+                                suffix: "BPM"
+                                spec: root.fields ? root.fields.hi : null
+                                wanted: root.editor !== null && root.editor.focus === "hi"
+                                onEdited: text => TunesShared.typed("hi", text)
+                                onFocused: TunesShared.focusField("hi")
+                                onKeyPressed: event => {
+                                    if (root.key(event))
+                                        event.accepted = true;
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: text !== ""
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            text: root.editor ? root.editor.tempoError : ""
+                            textFormat: Text.PlainText
+                            color: Theme.red
+                            font.family: Theme.fontMono
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: root.editor ? root.editor.hint : ""
+                        color: Theme.comment
+                        font.family: Theme.fontMono
+                        font.pixelSize: 12
                     }
                 }
 
@@ -756,7 +1020,7 @@ Scope {
 
                 KeyHints {
                     keys: root.hints
-                    message: root.undoLine
+                    message: root.undoLine !== "" ? root.undoLine : root.notice
                     messageColor: Theme.orange
                 }
             }

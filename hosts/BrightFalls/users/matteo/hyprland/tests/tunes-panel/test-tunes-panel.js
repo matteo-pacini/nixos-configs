@@ -154,11 +154,13 @@ t("the chooser, first open: no genre yet", () => {
         ["Lo-fi", "31 kept", true, false], ["Ambient", "12 kept", false, false], ["Synthwave", "none yet", false, false],
         ["Deep house", "4 kept", false, false], ["Jazz", "14 kept", false, false]
     ]);
-    assert.deepEqual(T.hints(st, u), [["←↑↓→", "move"], ["Enter", "play Lo-fi"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, u), [["←↑↓→", "move"], ["Enter", "play Lo-fi"], ["E", "edit"], ["A", "add"], ["D", "delete"], ["Esc", "close"]]);
     const sel = list => press(st, u, list).ui.sel;
     assert.equal(sel(["Right"]), 1);
     assert.equal(sel(["Up"]), 0);
-    assert.equal(sel(["Down", "Down", "Down"]), 6);
+    // Nine genres, then "+ New genre" as the tenth cell.
+    assert.equal(sel(["Down", "Down", "Down"]), 9);
+    assert.equal(sel(["Down", "Down", "Down", "Down", "Right"]), 9);
     assert.equal(T.key(u, st, "Down", true).ui.sel, 3);
     const moved = press(st, u, ["Down", "Right"]);
     assert.deepEqual(T.hints(st, moved.ui)[1], ["Enter", "play Jazz"]);
@@ -178,7 +180,7 @@ t("the chooser: the selected genre says playing now, the cursor opens on it, Ent
     const cells = T.view(st, g.ui).chooser.cells;
     assert.deepEqual(cells[4], { name: "Jazz", sub: "playing now", sel: true, cur: true });
     assert.deepEqual(cells.filter(c => c.cur).length, 1);
-    assert.deepEqual(T.hints(st, g.ui), [["←↑↓→", "move"], ["Enter", "back to Jazz"], ["Esc", "back"]]);
+    assert.deepEqual(T.hints(st, g.ui), [["←↑↓→", "move"], ["Enter", "back to Jazz"], ["E", "edit"], ["A", "add"], ["D", "delete"], ["Esc", "back"]]);
     const back = T.key(g.ui, st, "Enter", false);
     assert.deepEqual([back.ui.mode, back.effect.kind], ["player", "none"]);
     assert.deepEqual(T.hints(st, T.key(g.ui, st, "Left", false).ui)[1], ["Enter", "play Deep house"]);
@@ -742,6 +744,347 @@ t("the tick runs only while something on screen counts", () => {
     assert.equal(tick("02-downloading"), false);
     assert.equal(tick("17-paused"), false);
     assert.equal(tick("21-stopped"), false);
+});
+
+// The genre editor. The chooser opened over 05-queue-full, the cursor on
+// Jazz (14 kept); the service's answers in 26-genre-jazz and
+// 27-genre-results.
+const chooserOf = name => {
+    const st = load(name, NOW);
+    return [st, T.key(ui(st, NOW), st, "G", false).ui];
+};
+const RESULTS = events("27-genre-results", NOW);
+const JAZZ = events("26-genre-jazz", NOW)[0];
+const typeIn = (u, fields) => Object.keys(fields).reduce((x, f) => T.typed(x, f, fields[f]), u);
+// The editor on Jazz with its line answered.
+const jazzEditor = () => {
+    const [st, c] = chooserOf("05-queue-full");
+    return [st, T.answer(T.key(c, st, "E", false).ui, st, JAZZ, NOW)];
+};
+const errorsOf = e => [e.fields.name.error, e.fields.caption.error, e.fields.turns.error, e.tempoError];
+const LETTERS = ["Space", "N", "G", "C", "X", "Z", "R", "E", "A", "D", "Left", "Right", "Up", "Down"];
+
+t("the chooser: the + New genre cell, and the keys with the cursor on it", () => {
+    const [st, c] = chooserOf("05-queue-full");
+    const add = press(st, c, ["Down", "Right", "Right"]).ui;
+    assert.equal(add.sel, 9);
+    const v = T.view(st, add).chooser;
+    assert.deepEqual(v.add, { name: "+ New genre", sel: true });
+    assert.ok(v.cells.every(x => !x.sel));
+    assert.equal(T.view(st, c).chooser.add.sel, false);
+    assert.deepEqual(T.hints(st, add), [["←↑↓→", "move"], ["Enter", "add a genre"], ["Esc", "back"]]);
+    for (const k of ["Enter", "A"]) {
+        const r = T.key(add, st, k, false);
+        assert.deepEqual([r.ui.mode, r.effect.kind, T.view(st, r.ui).editor.title], ["editor", "none", "New genre"], k);
+    }
+    assert.equal(T.key(add, st, "E", false).effect.kind, "none");
+    assert.equal(T.key(add, st, "D", false).ui.mode, "chooser");
+    // A click on the cell; past it, nothing.
+    assert.equal(T.pick(c, st, 9).ui.mode, "editor");
+    assert.deepEqual(T.pick(c, st, 10), { ui: c, effect: { kind: "none", cmd: null } });
+    // A file with no genres: only the cell, the line over it.
+    const none = edit("04-chooser-first", { genres: [] });
+    const n = ui(none, NOW);
+    assert.deepEqual([T.view(none, n).chooser.empty, T.view(none, n).chooser.add.sel], ["The genres file lists no genres.", true]);
+    assert.deepEqual(T.hints(none, n), [["Enter", "add a genre"], ["Esc", "close"]]);
+    assert.equal(T.key(n, none, "Enter", false).ui.mode, "editor");
+});
+
+t("deleting a genre: the question, its words, Enter sends, Esc keeps it, never the last", () => {
+    const [st, c] = chooserOf("05-queue-full");
+    const at = press(st, c, ["Right"]).ui;
+    const ask = T.key(at, st, "D", false);
+    assert.deepEqual([ask.ui.mode, ask.effect.kind], ["ask", "none"]);
+    const v = T.view(st, ask.ui);
+    assert.equal(v.kind, "chooser");
+    assert.deepEqual(v.chooser.ask, { title: "Delete Classical?", detail: "Its 9 kept tunes stay in ~/Music/Tunes/Classical. Only the genre leaves the panel.", error: "" });
+    assert.equal(v.chooser.cells[5].sel, true);
+    assert.deepEqual(T.hints(st, ask.ui), [["Enter", "delete Classical"], ["Esc", "keep it"]]);
+    // Nothing else acts while it asks, a click on a cell included.
+    for (const k of LETTERS)
+        assert.equal(T.key(ask.ui, st, k, false).effect.kind, "none", k);
+    assert.equal(T.key(ask.ui, st, "Left", false).ui.sel, 5);
+    assert.equal(T.pick(ask.ui, st, 0).effect.kind, "none");
+    assert.equal(T.pick(ask.ui, st, 9).effect.kind, "none");
+    const keep = T.key(ask.ui, st, "Esc", false).ui;
+    assert.deepEqual([keep.mode, keep.ask], ["chooser", null]);
+    const sent = T.key(ask.ui, st, "Enter", false);
+    assert.deepEqual(sent.effect.cmd, { cmd: "genre_delete", id: "classical" });
+    assert.equal(T.key(ask.ui, st, "Enter", true).effect.kind, "none");
+    // Sent once until answered or WAIT_S has passed.
+    assert.equal(T.key(sent.ui, st, "Enter", false).effect.kind, "none");
+    assert.equal(T.key(Object.assign({}, sent.ui, { now: NOW + T.WAIT_S }), st, "Enter", false).effect.kind, "send");
+    // Answered: the chooser; refused: the reason in the question.
+    const done = T.answer(sent.ui, st, { event: "genre_result", ok: true, id: "classical" }, NOW);
+    assert.deepEqual([done.mode, done.ask, done.waiting], ["chooser", null, null]);
+    const no = T.answer(sent.ui, st, { event: "genre_result", ok: false, field: null, text: "The last genre cannot be deleted." }, NOW);
+    assert.deepEqual([no.mode, T.view(st, no).chooser.ask.error], ["ask", "The last genre cannot be deleted."]);
+    assert.equal(T.key(no, st, "Enter", false).effect.kind, "send");
+    assert.equal(T.view(st, T.key(no, st, "Enter", false).ui).chooser.ask.error, "");
+    // Nothing kept: only the genre leaves; one kept tune.
+    const detail = (s, u) => T.view(s, u).chooser.ask.detail;
+    assert.equal(detail(st, T.key(press(st, c, ["Left", "Left"]).ui, st, "D", false).ui), "Only the genre leaves the panel.");
+    const one = edit("05-queue-full", { genres: st.snap.genres.map(g => g.id === "classical" ? Object.assign({}, g, { kept: 1 }) : g) });
+    assert.equal(detail(one, ask.ui), "Its 1 kept tune stays in ~/Music/Tunes/Classical. Only the genre leaves the panel.");
+    // The last genre: D is not offered and does nothing.
+    const last = load("28-one-genre", NOW);
+    const l = ui(last, NOW);
+    assert.deepEqual(T.hints(last, l), [["←↑↓→", "move"], ["Enter", "play Ambient"], ["E", "edit"], ["A", "add"], ["Esc", "close"]]);
+    assert.equal(T.key(l, last, "D", false).ui.mode, "player");
+    assert.equal(T.view(last, T.key(l, last, "D", false).ui).chooser.ask, null);
+});
+
+t("editing a genre: E asks the service for it, its line fills the fields", () => {
+    const [st, c] = chooserOf("05-queue-full");
+    const r = T.key(c, st, "E", false);
+    assert.deepEqual(r.effect, { kind: "send", cmd: { cmd: "genre_get", id: "jazz" } });
+    assert.equal(T.key(c, st, "E", true).effect.kind, "none");
+    let e = T.view(st, r.ui).editor;
+    assert.deepEqual([T.view(st, r.ui).kind, e.title, e.chip, e.focus], ["editor", "Edit Jazz", "14 kept", "name"]);
+    assert.equal(e.hint, "Changes apply to the next tune composed. The 14 kept tunes stay as they are.");
+    assert.deepEqual(e.values, { name: "", caption: "", turns: "", lo: "", hi: "" });
+    // Nothing to complain about, nothing saved, before the answer.
+    assert.deepEqual(errorsOf(e), ["", "", "", ""]);
+    assert.equal(T.key(r.ui, st, "CtrlS", false).effect.kind, "none");
+    assert.deepEqual(T.hints(st, r.ui), [["Tab", "next field"], ["Ctrl+S", "save"], ["Esc", "discard"]]);
+    const filled = T.answer(r.ui, st, JAZZ, NOW);
+    e = T.view(st, filled).editor;
+    assert.deepEqual(e.values, {
+        name: "Jazz",
+        caption: "small combo jazz, walking upright bass, brushed snare, warm tenor saxophone lead",
+        turns: "smoky club\nlate set, slow and close\nmuted trumpet takes the lead\npiano trio, no horns\nvibraphone solo\nrainy evening\nbossa feel\na slow ballad",
+        lo: "90",
+        hi: "150"
+    });
+    assert.ok(e.rev > T.view(st, r.ui).editor.rev);
+    assert.equal(filled.waiting, null);
+    assert.deepEqual([e.fields.name.label, e.fields.caption.label, e.fields.turns.label, e.fields.lo.label, e.fields.hi.label], ["NAME", "PROMPT", "VARIATIONS", "SLOWEST", "FASTEST"]);
+    assert.deepEqual([e.fields.caption.side, e.fields.turns.side, e.fields.caption.placeholder, e.fields.turns.placeholder], ["what every tune has", "one per line, two are picked per tune", "instruments, mood, style, in a few phrases", "one per line"]);
+    // A line for another genre, or none asked for: nothing changes.
+    assert.equal(T.answer(r.ui, st, Object.assign({}, JAZZ, { id: "lofi" }), NOW), r.ui);
+    assert.equal(T.answer(filled, st, JAZZ, NOW), filled);
+    assert.equal(T.answer(null, st, JAZZ, NOW), null);
+    // The hint and the chip with one kept tune and with none.
+    const kept = n => T.view(edit("05-queue-full", { genres: st.snap.genres.map(g => g.id === "jazz" ? Object.assign({}, g, { kept: n }) : g) }), filled).editor;
+    assert.deepEqual([kept(1).chip, kept(1).hint], ["1 kept", "Changes apply to the next tune composed. The 1 kept tune stays as it is."]);
+    assert.deepEqual([kept(0).chip, kept(0).hint], ["none yet", "Changes apply to the next tune composed."]);
+});
+
+t("the editor's keys: Tab and Enter move, letters go to the field, held keys act once, Esc discards", () => {
+    const [st, u] = jazzEditor();
+    const focusAfter = list => T.view(st, press(st, u, list).ui).editor.focus;
+    assert.deepEqual(["Tab", "Tab", "Tab", "Tab", "Tab"].map((_, i, a) => focusAfter(a.slice(0, i + 1))), ["caption", "turns", "lo", "hi", "name"]);
+    assert.equal(focusAfter(["ShiftTab"]), "hi");
+    assert.equal(focusAfter(["Enter"]), "caption");
+    assert.equal(focusAfter(["Tab", "Tab", "Tab", "Tab", "Enter"]), "name");
+    // In VARIATIONS Enter is the field's: a new line.
+    const turns = press(st, u, ["Tab", "Tab"]).ui;
+    assert.deepEqual(T.key(turns, st, "Enter", false), { ui: turns, effect: { kind: "pass", cmd: null } });
+    // No single-letter panel key acts: they and the arrows type or move the caret.
+    for (const k of LETTERS) {
+        const r = T.key(u, st, k, false);
+        assert.deepEqual(r, { ui: u, effect: { kind: "pass", cmd: null } }, k);
+        assert.equal(T.key(u, st, k, true).effect.kind, "pass", `${k} held`);
+    }
+    // Held, the editor's own keys act once.
+    for (const k of ["Tab", "ShiftTab", "Enter", "CtrlS", "Esc"])
+        assert.deepEqual(T.key(u, st, k, true), { ui: u, effect: { kind: "none", cmd: null } }, k);
+    assert.equal(T.key(turns, st, "Enter", true).effect.kind, "none");
+    // A click on a field.
+    assert.equal(T.view(st, T.focus(u, "turns")).editor.focus, "turns");
+    assert.equal(T.focus(u, "moods"), u);
+    // Esc: nothing sent, the chooser with the cursor on the genre.
+    const esc = T.key(typeIn(u, { name: "Changed" }), st, "Esc", false);
+    assert.deepEqual([esc.ui.mode, esc.ui.ed, esc.effect.kind], ["chooser", null, "none"]);
+    assert.equal(T.view(st, esc.ui).chooser.cells[4].sel, true);
+    assert.equal(T.typed(esc.ui, "name", "x"), esc.ui);
+    // Esc while a save is out: its result is not waited for.
+    const saving = T.key(u, st, "CtrlS", false).ui;
+    const left = T.key(saving, st, "Esc", false).ui;
+    assert.equal(T.answer(left, st, RESULTS[0], NOW), left);
+});
+
+t("a new genre: its defaults, errors show as they are typed, Save does nothing while one stands", () => {
+    const [st, c] = chooserOf("05-queue-full");
+    let u = T.key(c, st, "A", false).ui;
+    let e = T.view(st, u).editor;
+    assert.deepEqual([e.title, e.chip, e.focus, e.hint], ["New genre", "", "name", "Tune names come from a shared word list until this genre has its own."]);
+    assert.deepEqual(e.values, { name: "", caption: "", turns: "", lo: "70", hi: "120" });
+    assert.equal(e.fields.turns.side, "optional");
+    assert.deepEqual(errorsOf(e), ["", "", "", ""]);
+    assert.ok(!e.fields.name.bad && !e.fields.lo.bad && !e.fields.hi.bad);
+    // The drawn mistake.
+    u = T.typed(u, "name", "Jazz");
+    e = T.view(st, u).editor;
+    assert.deepEqual([e.fields.name.error, e.fields.name.bad, e.fields.caption.error], ["There is already a genre called Jazz.", true, ""]);
+    assert.equal(T.view(st, T.typed(u, "name", "jAZZ")).editor.fields.name.error, "There is already a genre called Jazz.");
+    // Ctrl+S with errors: nothing sent, every error shown.
+    const tried = T.key(u, st, "CtrlS", false);
+    assert.equal(tried.effect.kind, "none");
+    assert.deepEqual(errorsOf(T.view(st, tried.ui).editor), ["There is already a genre called Jazz.", "A genre needs a prompt.", "", ""]);
+    // Fixed: trimmed, blank and repeated lines dropped.
+    u = typeIn(tried.ui, { name: "  Bossa nova ", caption: " nylon guitar, soft shaker ", turns: "beach at dusk\n\n  beach at dusk \nslow samba" });
+    assert.deepEqual(errorsOf(T.view(st, u).editor), ["", "", "", ""]);
+    const sent = T.key(u, st, "CtrlS", false);
+    assert.deepEqual(sent.effect.cmd, { cmd: "genre_save", id: null, genre: { name: "Bossa nova", caption: "nylon guitar, soft shaker", turns: ["beach at dusk", "slow samba"], bpm: [70, 120] } });
+    assert.equal(T.key(sent.ui, st, "CtrlS", false).effect.kind, "none");
+    // Saved: the chooser, the cursor on it once the snapshot lists it.
+    const done = T.answer(sent.ui, st, RESULTS[1], NOW);
+    assert.deepEqual([done.mode, done.ed, done.selId, T.notice(st, done)], ["chooser", null, "bossanova", ""]);
+    const after = load("29-after-save", NOW);
+    const v = T.view(after, done).chooser;
+    assert.deepEqual([v.cells[9].name, v.cells[9].sel, v.add.sel], ["Bossa nova", true, false]);
+    assert.deepEqual(T.hints(after, done)[1], ["Enter", "play Bossa nova"]);
+    assert.equal(press(after, done, ["Left"]).ui.sel, 8);
+    // An empty name typed and cleared shows its error; an untouched one does not.
+    assert.equal(T.view(st, typeIn(T.key(c, st, "A", false).ui, { name: "x" })).editor.fields.name.error, "");
+    assert.equal(T.view(st, T.typed(T.typed(T.key(c, st, "A", false).ui, "name", "x"), "name", "")).editor.fields.name.error, "A genre needs a name.");
+    // Tempo errors under the row, the boxes they are about in red.
+    const tempo = T.view(st, typeIn(T.key(c, st, "A", false).ui, { lo: "130" })).editor;
+    assert.deepEqual([tempo.tempoError, tempo.fields.lo.bad, tempo.fields.hi.bad], ["The slowest tempo is above the fastest.", true, true]);
+    const high = T.view(st, typeIn(T.key(c, st, "A", false).ui, { hi: "301" })).editor;
+    assert.deepEqual([high.tempoError, high.fields.lo.bad, high.fields.hi.bad], ["Tempos go from 30 to 300 BPM.", false, true]);
+});
+
+t("the rules, at and across each boundary, as the service has them", () => {
+    const genres = load("05-queue-full", NOW).snap.genres;
+    const ok = { name: "Bossa nova", caption: "nylon guitar", turns: "", lo: "70", hi: "120" };
+    const err = (changes, id) => T.check(Object.assign({}, ok, changes), genres, id === undefined ? null : id).errors;
+    const name = (n, id) => err({ name: n }, id).name;
+    const x = (c, n) => c.repeat(n);
+    assert.deepEqual(T.check(ok, genres, null), { errors: { name: "", caption: "", turns: "", bpm: "" }, bad: { lo: false, hi: false }, genre: { name: "Bossa nova", caption: "nylon guitar", turns: [], bpm: [70, 120] } });
+    // name: trimmed, 1..40 characters (code points), no slash, no leading
+    // dot, no control characters, unique ignoring case but for itself.
+    assert.equal(name(""), "A genre needs a name.");
+    assert.equal(name(" \t "), "A genre needs a name.");
+    assert.equal(name("a"), "");
+    assert.equal(name(x("a", 40)), "");
+    assert.equal(name(` ${x("a", 40)}\t`), "");
+    assert.equal(name(x("a", 41)), "A name is at most 40 characters; this one has 41.");
+    assert.equal(name(x("🎷", 40)), "");
+    assert.equal(name(x("🎷", 41)), "A name is at most 40 characters; this one has 41.");
+    assert.equal(name("AC/DC"), "A name cannot contain a slash: it is also a folder's name.");
+    assert.equal(name(".hidden"), "A name cannot start with a dot.");
+    assert.equal(name("  .hidden"), "A name cannot start with a dot.");
+    assert.equal(name("Vol. 2"), "");
+    for (const ch of ["\u0000", "\u0007", "\t", "\n", "\u001f", "\u007f", "\u0085", "\u009f"])
+        assert.equal(name(`a${ch}b`), "A name cannot hold control characters or line breaks.", JSON.stringify(ch));
+    assert.equal(name("a b"), "");
+    assert.equal(name("LO-FI"), "There is already a genre called Lo-fi.");
+    assert.equal(name(" deep HOUSE "), "There is already a genre called Deep house.");
+    assert.equal(name("lo-fi", "lofi"), "");
+    assert.equal(name("Jazz", "lofi"), "There is already a genre called Jazz.");
+    // caption: trimmed, 1..400.
+    const cap = c => err({ caption: c }).caption;
+    assert.equal(cap(""), "A genre needs a prompt.");
+    assert.equal(cap("   "), "A genre needs a prompt.");
+    assert.equal(cap("a"), "");
+    assert.equal(cap(x("a", 400)), "");
+    assert.equal(cap(`  ${x("a", 400)}  `), "");
+    assert.equal(cap(x("a", 401)), "A prompt is at most 400 characters; this one has 401.");
+    // turns: 0..20 after blank and repeated lines are dropped, each 1..120
+    // trimmed; the line counted is the one typed.
+    const lines = n => Array.from({ length: n }, (_, i) => `turn ${i + 1}`).join("\n");
+    const tu = t => err({ turns: t }).turns;
+    assert.equal(tu(""), "");
+    assert.equal(tu(lines(20)), "");
+    assert.equal(tu(lines(21)), "At most 20 variations; this has 21.");
+    assert.equal(tu(`${lines(20)}\n\n   \nturn 3\n turn 20 `), "");
+    assert.equal(tu(x("a", 120)), "");
+    assert.equal(tu(`  ${x("a", 120)}  `), "");
+    assert.equal(tu(`one\n\n${x("a", 121)}`), "Line 3 is longer than 120 characters.");
+    assert.equal(tu(`${x("é", 120)}`), "");
+    assert.deepEqual(T.parseTurns(" a \r\nb\r\rc\n a\n"), { turns: ["a", "b", "c"], long: 0 });
+    assert.deepEqual(T.check(Object.assign({}, ok, { turns: "x\ny\nx" }), genres, null).genre.turns, ["x", "y"]);
+    // bpm: whole numbers, 30 <= lo <= hi <= 300.
+    const bpm = (lo, hi) => {
+        const c = T.check(Object.assign({}, ok, { lo, hi }), genres, null);
+        return [c.errors.bpm, c.bad.lo, c.bad.hi];
+    };
+    assert.deepEqual(bpm("30", "300"), ["", false, false]);
+    assert.deepEqual(bpm("90", "90"), ["", false, false]);
+    assert.deepEqual(bpm(" 090 ", "150"), ["", false, false]);
+    assert.equal(T.check(Object.assign({}, ok, { lo: " 090 " }), genres, null).genre.bpm[0], 90);
+    assert.deepEqual(bpm("29", "120"), ["Tempos go from 30 to 300 BPM.", true, false]);
+    assert.deepEqual(bpm("70", "301"), ["Tempos go from 30 to 300 BPM.", false, true]);
+    assert.deepEqual(bpm("20", "400"), ["Tempos go from 30 to 300 BPM.", true, true]);
+    assert.deepEqual(bpm("91", "90"), ["The slowest tempo is above the fastest.", true, true]);
+    assert.deepEqual(bpm("", "120"), ["The slowest tempo needs a whole number.", true, false]);
+    assert.deepEqual(bpm("70", "fast"), ["The fastest tempo needs a whole number.", false, true]);
+    assert.deepEqual(bpm("", ""), ["The slowest tempo needs a whole number.", true, true]);
+    for (const v of ["7.5", "-40", "1e2", "+90", "9 0", "٩٠"])
+        assert.equal(bpm(v, "120")[0], "The slowest tempo needs a whole number.", v);
+    assert.equal(T.check(Object.assign({}, ok, { lo: "29" }), genres, null).genre, null);
+});
+
+t("the service's answers: a rename, refusals under their field, a genre gone", () => {
+    const [st, u] = jazzEditor();
+    const bebop = T.typed(u, "name", "Bebop");
+    const sent = T.key(bebop, st, "CtrlS", false);
+    assert.deepEqual(sent.effect.cmd, { cmd: "genre_save", id: "jazz", genre: { name: "Bebop", caption: JAZZ.caption, turns: JAZZ.turns, bpm: [90, 150] } });
+    // Saved and renamed: the chooser on the genre, the footer says so for
+    // NOTICE_S and the tick runs until it goes.
+    const done = T.answer(sent.ui, st, RESULTS[0], NOW);
+    assert.deepEqual([done.mode, done.selId], ["chooser", "jazz"]);
+    const after = load("29-after-save", NOW);
+    assert.equal(T.notice(after, done), "Renamed Jazz to Bebop. Its folder in ~/Music/Tunes moved with it.");
+    assert.equal(T.view(after, done).chooser.cells[4].sel, true);
+    assert.equal(T.needsTick(after, done), true);
+    const later = Object.assign({}, done, { now: NOW + T.NOTICE_S });
+    assert.deepEqual([T.notice(after, later), T.needsTick(after, later)], ["", false]);
+    assert.equal(T.notice(after, T.key(done, after, "Esc", false).ui), "");
+    // Refused for the name: under it, Save stays off until the name changes.
+    const name = T.answer(sent.ui, st, RESULTS[2], NOW);
+    let e = T.view(st, name).editor;
+    assert.deepEqual([name.mode, e.fields.name.error, e.fields.name.bad, e.tempoError], ["editor", "A folder called Bebop is already in ~/Music/Tunes.", true, ""]);
+    assert.equal(T.key(name, st, "CtrlS", false).effect.kind, "none");
+    const stillName = T.typed(name, "caption", "other");
+    assert.equal(T.view(st, stillName).editor.fields.name.error, "A folder called Bebop is already in ~/Music/Tunes.");
+    const renamed = T.typed(name, "name", "Hard bop");
+    assert.equal(T.view(st, renamed).editor.fields.name.error, "");
+    assert.equal(T.key(renamed, st, "CtrlS", false).effect.cmd.genre.name, "Hard bop");
+    // A local error shows in place of the refusal.
+    assert.equal(T.view(st, T.typed(T.typed(name, "caption", "x"), "name", "Lo-fi")).editor.fields.name.error, "There is already a genre called Lo-fi.");
+    // Refused naming no field: under the last one; Save may try again; any
+    // change clears it.
+    const file = T.answer(sent.ui, st, RESULTS[3], NOW);
+    e = T.view(st, file).editor;
+    assert.deepEqual([e.tempoError, e.fields.lo.bad, e.fields.hi.bad, e.fields.name.error], ["The genres file on disk is broken: line 4: expected a comma.", true, true, ""]);
+    assert.equal(T.key(file, st, "CtrlS", false).effect.kind, "send");
+    assert.equal(T.view(st, T.typed(file, "turns", "one")).editor.tempoError, "");
+    // Refused for the tempo: under the row until a tempo changes.
+    const bpm = T.answer(sent.ui, st, RESULTS[4], NOW);
+    assert.equal(T.view(st, bpm).editor.tempoError, "The tempo range is not valid.");
+    assert.equal(T.view(st, T.typed(bpm, "name", "Cool jazz")).editor.tempoError, "The tempo range is not valid.");
+    assert.equal(T.view(st, T.typed(bpm, "hi", "149")).editor.tempoError, "");
+    // The genre was gone when E asked for it: the chooser, and the footer says so.
+    const [, c] = chooserOf("05-queue-full");
+    const gone = T.answer(T.key(c, st, "E", false).ui, st, RESULTS[5], NOW);
+    assert.deepEqual([gone.mode, gone.ed, T.notice(st, gone)], ["chooser", null, "That genre no longer exists."]);
+    // No command waiting: results change nothing.
+    for (const ev of RESULTS)
+        assert.equal(T.answer(c, st, ev, NOW), c);
+    // Unknown fields and texts.
+    const odd = T.answer(sent.ui, st, { event: "genre_result", ok: false, field: "moods" }, NOW);
+    assert.equal(T.view(st, odd).editor.tempoError, "The genre was not saved.");
+});
+
+t("genre lines: healthy for the back-off, no change to the state", () => {
+    const st = load("05-queue-full", NOW);
+    for (const ev of [JAZZ].concat(RESULTS)) {
+        assert.equal(T.healthy(ev), true, ev.event);
+        assert.equal(T.apply(st, ev, NOW), st);
+    }
+});
+
+t("outside text in the editor and the delete question passes through unchanged", () => {
+    const st = edit("05-queue-full", { genres: [{ id: "x", name: "<i>X & co", kept: 2 }, { id: "y", name: "Y", kept: 0 }] });
+    const c = ui(st, NOW, { mode: "chooser", sel: 0 });
+    const q = T.view(st, T.key(c, st, "D", false).ui).chooser.ask;
+    assert.deepEqual([q.title, q.detail], ["Delete <i>X & co?", "Its 2 kept tunes stay in ~/Music/Tunes/<i>X & co. Only the genre leaves the panel."]);
+    assert.equal(T.view(st, T.key(c, st, "E", false).ui).editor.title, "Edit <i>X & co");
+    const n = T.view(st, T.typed(T.key(c, st, "A", false).ui, "name", "<I>x & CO")).editor.fields.name.error;
+    assert.equal(n, "There is already a genre called <i>X & co.");
 });
 
 t("unknown values fall back to the empty ones", () => {
