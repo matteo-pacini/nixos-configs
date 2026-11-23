@@ -97,5 +97,6 @@ Raw history covers 30 days (see [metrics.md](metrics.md)). To chart data that is
 ## Remotes
 
 - The media box has two integrations on purpose: `androidtv` (ADB) and `androidtv_remote`. Launching an app by package name through `androidtv_remote` (`remote.turn_on` with `activity`) does nothing and logs no error. Call `media_player.select_source` on the ADB entity with the package name as the source. List installed packages with `androidtv.adb_command` and `pm list packages -3`.
+- To open a YouTube URL in SmartTube, send `am start -a android.intent.action.VIEW -d <url> -n org.smarttube.stable/com.liskovsoft.smartyoutubetv2.tv.ui.main.SplashActivity` through `androidtv.adb_command`. Without `-n`, the official YouTube app also claims the link. `cmd package query-activities --brief -a android.intent.action.VIEW -d <url>` lists the apps that handle a URL, and works while the box is asleep without waking it.
 - The TV's media player entity is `unavailable` whenever the TV is off. That is its normal off state, not a network fault.
 - Wake-on-LAN does not reach the TV. To turn it on, wake the media box and let HDMI-CEC switch the TV on, which takes about 25 seconds.
