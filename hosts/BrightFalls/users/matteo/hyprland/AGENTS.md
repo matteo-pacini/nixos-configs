@@ -6,7 +6,7 @@ desktop shell (Quickshell), including work that starts in the live
 What each piece is and how it works is in [README.md](README.md); this file
 is how to work on it. Repo-wide rules are in the root `AGENTS.md`.
 
-State as of 2026-11-22. "State and open work" at the bottom says what is
+State as of 2026-11-23. "State and open work" at the bottom says what is
 unproven; check it before relying on anything.
 
 ## What this is
@@ -16,8 +16,9 @@ by greetd (automatic login once per boot, tuigreet after a logout), with a
 desktop shell written in
 QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
 session menu, polkit dialog, network, audio, calendar, system, Bluetooth,
-office, fleet, Tailscale, token and weather panels, tray menus, and a lock
-screen.
+office, fleet, Tailscale, token, weather and tunes panels, tray menus, and
+a lock screen. The tunes panel has a service of its own, `desk-tunes`, a
+user unit that composes music on the iGPU with a local model and plays it.
 
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
@@ -198,7 +199,7 @@ user as written.
 **Pure logic.** Decisions live in plain `.js` files that QML imports and node
 runs (see "Practices"). Run them with
 `nix shell nixpkgs#nodejs -c node <test.js> <library>`. Every check, what it
-covers and which run in CI: README, "Tests" (the 25 checks defined in
+covers and which run in CI: README, "Tests" (the 28 checks defined in
 `tests/default.nix`).
 One check: `nix build .#checks.x86_64-linux.<name>`; all but `hypr-config`:
 `nix build -L .#checks.x86_64-linux.brightfalls-tests`, which is what CI
@@ -316,7 +317,7 @@ Each was learned the hard way or is one mistake away.
 - **No truncation of information.** Only a name may elide; everything else
   wraps.
 - **Anatomy of a drop-down panel** (network, audio, calendar, system,
-  Bluetooth, office, fleet, tailscale, tokens, weather): a root component, one line in `shell.qml`; a small singleton
+  Bluetooth, office, fleet, tailscale, tokens, weather, tunes): a root component, one line in `shell.qml`; a small singleton
   shared with the bar for placement and open state; an IPC target with
   `toggle`; a bind through `bind()`; footer key hints; Overlay layer,
   exclusive keyboard, namespace `desk-<name>`, card under its bar item
@@ -360,7 +361,10 @@ What working on this shell has taught: the rule, its reason, what taught it.
   (5 s), the Tailscale light call (30 s), `desk-fleet`'s probe (5 min),
   `desk-mqtt`, the Bluetooth agent, `NoSignal.qml`, `Reminders.qml`, the
   token item's minute tick, weather (`desk-weather`, radar only while its
-  page is open, and the bar item's minute tick).
+  page is open, and the bar item's minute tick), tunes (`desk-tunes
+  attach`, blocked on the service's socket, which sends only on a change;
+  and the `desk-tunes` service itself, its own user unit, which composes and
+  plays with the panel closed and arms no timer while idle).
 - **Helpers speak JSON lines, protocol in the `.py`'s docstring.** The QML
   forwards stderr (unread, Quickshell closes it: 4c8dacf), restarts at 2 s
   doubling to 60 s, and resets the back-off only on a healthy line.
@@ -460,7 +464,7 @@ not.
 | Path | What |
 |------|------|
 | `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
-| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` and `hyprpaper` user services (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
+| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell`, `hyprpaper` and `desk-tunes` user services (the last sandboxed: README, "Tunes: desk-tunes") (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
@@ -468,15 +472,19 @@ not.
 | `desk-fleet.nix`, `desk-fleet.py` | `desk-fleet`, the fleet panel's helper (JSON lines on stdin/stdout): probes this machine and its SSH mesh hosts read-only, reads the pipeline through `gh`, decides each host's row (`host_row()`, pure) and runs switch, boot and mode through `comin-deploy` and reboot through `systemctl reboot`, in private tmux sessions; the host list is generated from `lib/ssh-mesh.nix` and `lib/host-kinds.nix` (README, "Fleet: desk-fleet"). Run by `fleet/FleetShared.qml` |
 | `desk-tokens.nix`, `desk-tokens.py`, `desk-tokens-prices.json` | `desk-tokens`, the token panel's helper (JSON lines on stdin/stdout): reads Claude Code's transcripts incrementally into a SQLite index of replies (counters, ids, model, time, working directory; never text), folds working directories into projects (`fold_cwd()`, pure) and answers the overview, projects, project and days pages; the price table is built in (README, "Tokens: desk-tokens") |
 | `desk-weather.nix`, `desk-weather.py` | `desk-weather`, the weather panel's helper (JSON lines on stdin/stdout): Open-Meteo forecast and air quality, Met Office warnings from the whole-UK feed filtered locally, RainViewer's past radar tiles of a fixed block (only while the radar page is open), the outdoor sensor over MQTT, subscribe only; the location, region and broker in the `brightfalls/weather` secret, not declared yet (README, "Weather: desk-weather"). Run by `weather/WeatherShared.qml` |
+| `desk-tunes.nix`, `desk-tunes.py` | `desk-tunes`, the tunes panel's service and client: `serve` (the `desk-tunes` user unit) runs the model server and mpv as children, keeps the queue, the files and the weights download, decides holds, silences and the device; `attach` relays the shell's JSON lines to its socket. Protocol, files and behaviour in the `.py`'s docstring (README, "Tunes: desk-tunes"). Run by `tunes/TunesShared.qml` (attach only) |
+| `desk-tunes-config.nix` | The service's config JSON: the model files (pinned revision, sha256, sizes), the silence code, the memory threshold, the 780M's PCI ids, the game regex read from `user/hypr/rules.lua`'s `games` rule (an `assert` fails evaluation if that rule's shape changes), keep, ahead, duration |
+| `../../../../../packages/acestep-cpp.nix` | `ace-server` from acestep.cpp, with ggml's Vulkan backend: the model server `desk-tunes` runs; also the `acestep-cpp` check |
 | `weather-coast.nix` | The radar map's British Isles outline from Natural Earth (pinned by hash), clipped and simplified; installed at `~/.local/share/desk/weather/coast.json` by `default.nix` |
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
+| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `tunes/` (`run.sh`: desk-tunes' pure functions, then the service built for testing against a fake `ace-server`, `vulkaninfo` (invented outputs in `fixtures/`), `hyprctl` and Hugging Face, with the real ffmpeg, mpv and its MPRIS plugin on a private bus), `tunes-panel/` (tunes.js under node, hand-written snapshot lines in `fixtures/`), the `acestep-cpp` check (the package build alone), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
 | `user/desk/theme.json` | The palette |
+| `user/desk/tunes-genres.json` | The tunes genres, hand-edited, live at `~/.config/desk/tunes-genres.json` (README, "The genres file") |
 | `../../../audio/` | PipeWire and WirePlumber settings the audio panel reports, Bluetooth codecs |
 
 **Hyprland** (`user/hypr/`): `hyprland.lua` (entry, requires the rest, then
@@ -497,7 +505,7 @@ component. Root components, one per file:
 | `Osd.qml` | The pill |
 | `Cheatsheet.qml` | Keybinding sheet from `hyprctl -j binds` |
 | `SessionMenu.qml`, `Polkit.qml` | Centred modals |
-| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml`, `Tailscale.qml`, `Tokens.qml`, `Weather.qml` | The ten drop-down panels (each the biggest file of its feature) |
+| `Network.qml`, `Audio.qml`, `Calendar.qml`, `System.qml`, `BluetoothPanel.qml`, `Office.qml`, `Fleet.qml`, `Tailscale.qml`, `Tokens.qml`, `Weather.qml`, `Tunes.qml` | The eleven drop-down panels (each the biggest file of its feature) |
 | `CalendarFull.qml` | The calendar's big view: a centred card 80 % of the monitor, blurred behind (layer rule in `hypr/rules.lua`), in `Dropdowns` as `calendarfull`, no bar item |
 | `Lockscreen.qml`, `LockState.qml` | The shell's side of the lock: IPC `lockscreen`, hold, sleep inhibitor; the launch command and `held` state |
 | `lock.qml` | The lock process itself (a separate Quickshell config) |
@@ -519,6 +527,7 @@ Directories (`import qs.<dir>`):
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`, `said`), `tokens.js` (all token-panel decisions: applying the helper's answers and events and which of them reset the restart back-off, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading, its "as of" times and the line after R, the bar look, the hand-set `PLAN`; node-tested) |
 | `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml`, `SensorRow.qml` (the outdoor sensor's battery and link row) (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
+| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the well, the waveform's columns, the position between snapshots, keys, clicks, the footer, the bar view; node-tested), the drawings `DotWave.qml` (the dot waveform) and `Strip.qml` (the tinted strip) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -538,7 +547,8 @@ runs the helper, so the bar has the light and the watts while the panel is
 closed), `fleet/FleetShared.qml` (which also runs the helper, so the bar has
 its count), `tailscale/TailscaleShared.qml`, `tokens/TokensShared.qml`
 (which also holds the limits reading the bar shows), `weather/WeatherShared.qml`
-(which also runs the helper, so the bar has the temperature) and, for the tray menu,
+(which also runs the helper, so the bar has the temperature), `tunes/TunesShared.qml`
+(which also runs the attach client, so the bar has the service's state) and, for the tray menu,
 `tray/TrayShared.qml`. `*Panel` and `*Shared` are the same role under two
 names; a new one is `*Shared`. "Panel" does not mean placement only:
 `CalendarPanel` holds the export and the minute clock, and
@@ -582,6 +592,45 @@ usage through `desk-tokens` and the plan limits from the status line's file,
 read-only), weather panel (Super+H: sky, figures, warnings, hours, days, air
 quality and the outdoor sensor's battery and link row, and the radar page
 on M, through `desk-weather`).
+
+**Built on a branch, never loaded or run live:** the tunes panel (Super+M:
+endless generated instrumental music in a genre, through the `desk-tunes`
+service, `ace-server` on the Radeon 780M and mpv; README, "Tunes panel"
+and "Tunes: desk-tunes"). No file of it is in the live `~/.config`, the
+unit has never run, the weights have never been downloaded by it, and
+nobody has listened to a tune it made. What rests on what:
+- Proven on real hardware, by an agent's script, before the build (a
+  spike with the same model set and a hand-run `ace-server`, not the
+  service): on the 780M a 180 s tune in 105 to 121 s, about 5.8 GiB of
+  system RAM while composing, the RX 6800 XT's memory untouched; ggml's
+  Vulkan numbering against `vulkaninfo`, `--device` pinning each card; a
+  cancel stopping the job within a second; long silences in some of the 4B
+  language model's plans (the reason for the silence rule). Also by an
+  agent's script: a transient unit with the service's sandbox settings
+  could write its data, music and runtime directories but not the rest of
+  the home, read `~/.config/desk`, and reach the
+  session bus, the PipeWire socket, the iGPU's render node, `hyprctl -i 0`,
+  Hugging Face and a loopback port. Not probed: Vulkan inside the sandbox,
+  audio out, MPRIS on the real bus.
+- Built: `ace-server` (the `acestep-cpp` check; `--help` runs), the
+  toplevel with the unit (`systemd-analyze --user verify` clean).
+- Simulated: everything in `tunes-helper` (the service against a fake
+  `ace-server`, `vulkaninfo`, `hyprctl` and Hugging Face, with the real
+  ffmpeg, mpv to the null output and mpv's MPRIS plugin on a private bus)
+  and `tunes-panel` (tunes.js against hand-written snapshots).
+  `quickshell-lint` and `hypr-config` accept the QML and Super+M.
+- Expected only: all QML (layout, the dots, clicks, hover, the card's
+  height, the bar item's tones, the tick, the attach back-off, no binding
+  loops or JS errors); the real model server on the 780M under the unit;
+  the real download (Hugging Face redirects to a CDN); real `hyprctl -j
+  clients` while a game runs; that the game regex is matched the way
+  Hyprland matches the rule (the service full-matches it; Hyprland's mode
+  not read); media keys on the real session bus with another player open;
+  Mesa honouring `MESA_SHADER_CACHE_DIR`; keeping ahead of playback over an
+  hour; Super+M free in the running Hyprland (checked in the repository's
+  binds only).
+- The Shell Atlas has no tunes section yet: it waits for the owner's live
+  test, and is drawn then.
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and
@@ -750,9 +799,9 @@ change what the user sees need the user's look first):
      so they need splitting into parse and apply first.
 2. **Shared drop-down window, row selection, bar open mark** (3 to 4 h):
    the `PanelWindow` shell (layer, focus, click-off, key forwarding) is
-   copied in eleven files, the ten panels and `tray/TrayMenu.qml`, with four
+   copied in twelve files, the eleven panels and `tray/TrayMenu.qml`, with four
    different key-forwarding signatures; Network, Audio and Bluetooth have
-   identical selection code; `Bar.qml` draws the 14×2 open mark ten times.
+   identical selection code; `Bar.qml` draws the 14×2 open mark eleven times.
 3. **Small ones** (minutes each): `#191a21` (text on purple) is hard-coded
    in `Polkit.qml:303` and `BluetoothPanel.qml:1021`; `lock/LockFace.qml`
    copies the "soft" formula (leave it until the lock can be re-tested);
