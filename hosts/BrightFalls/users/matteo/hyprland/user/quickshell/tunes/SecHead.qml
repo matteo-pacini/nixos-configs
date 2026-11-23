@@ -1,5 +1,6 @@
 import QtQuick
 import qs
+import qs.common
 
 // A section's heading in the tunes player: `title` in capitals at the left;
 // at the right `side` (plain text, eliding), or with `toggle` the composer's
@@ -42,7 +43,7 @@ Item {
             width: 22
             height: 12
             radius: 6
-            color: root.on ? Qt.tint(Theme.currentLine, Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.45)) : Theme.currentLine
+            color: root.on ? Style.switchOn : Theme.currentLine
 
             Rectangle {
                 x: root.on ? 12 : 2

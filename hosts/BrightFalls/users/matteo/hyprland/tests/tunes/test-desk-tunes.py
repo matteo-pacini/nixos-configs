@@ -261,7 +261,11 @@ for what, p in (("another name", f"{M}/Jazz/my own song.mp3"),
                 ("a nested folder", f"{M}/Jazz/old/20260103-100000-120bpm-F-major.mp3"),
                 ("the music folder itself", f"{M}/20260103-100000-120bpm-F-major.mp3")):
     eq(f"scrap: not {what}", dt.scrappable(p, M), False)
-files = [{"name": "a", "bytes": 10}, {"name": "b", "bytes": 5}]
+NT = {"name": "Invented Title", "path": f"{M}/Jazz/20260103-100000-120bpm-F-major.mp3"}
+for name, want in ((None, True), ("Invented Title", True), ("20260103-100000-120bpm-F-major", True),
+                   ("Another Title", False), ("", False)):
+    eq(f"name: {name!r} names the tune: {want}", dt.names_tune(NT, name), want)
+files =[{"name": "a", "bytes": 10}, {"name": "b", "bytes": 5}]
 eq("need: bytes over the whole set", dt.need_bytes(files, {"a": 10, "b": 2}), 3)
 # mpv's stderr and its IPC socket can close in one select() pass: the
 # socket's event then finds mpv dropped, or restarted and not yet connected.
@@ -825,7 +829,8 @@ try:
     for bad in ('{"cmd":"bogus"}', '{"cmd":"seek","t":"soon"}', '{"cmd":"genre"}', '[1]',
                 '{"cmd":"compose"}', '{"cmd":"compose","on":1}', '{"cmd":"play"}',
                 '{"cmd":"play","i":-1}', '{"cmd":"scrap","i":"1"}', '{"cmd":"scrap","job":false}',
-                '{"cmd":"load"}', '{"cmd":"unload"}'):
+                '{"cmd":"load"}', '{"cmd":"unload"}', '{"cmd":"scrap","name":3}',
+                '{"cmd":"play","i":0,"name":null}'):
         A.send(bad)
         ev = A.get(5)
         eq(f"malformed or gone: {bad}", ev and ev.get("event"), "error")
@@ -1047,6 +1052,8 @@ try:
           s["expect"]["rendering_s"] != s["expect"]["writing_s"], s["expect"])
     s = A.until("queue: two new tunes", lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 40)
     eq("queue: next offered, no job while resting", (s["can_next"], s["job"]), (True, None))
+    eq("queue: a kept tune plays, but not for want of new ones", (s["tune"]["kept"], s["kept_playing"]),
+       (True, False))
     eq("queue: the queued new tunes, named", [(e["kept"], bool(e["name"]), isinstance(e["bpm"], int),
                                                isinstance(e["length"], float)) for e in s["queue"]],
        [(False, True, True, True)] * 2)
@@ -1183,7 +1190,8 @@ try:
     eq("genre change: the old queue is dropped", s["ready"], 0)
     eq("genre change: the old genre's files stay", kept_files("Lo-fi"), lofi_before)
     first = s["tune"]["bpm"]
-    eq("next: offered with another kept tune", s["can_next"], True)
+    # Offered once mpv has the next one queued, a moment after the pick.
+    A.until("next: offered with another kept tune", lambda s: s["can_next"], 5)
     A.send({"cmd": "next"})
     s = A.until("next: the next kept tune", lambda s: s["tune"] and s["tune"]["bpm"] != first, 5)
     eq("next: still kept", (s["tune"]["kept"], s["kept_playing"]), (True, True))
@@ -1341,7 +1349,10 @@ try:
     # -- MPRIS stop --
     if name:
         A.send({"cmd": "genre", "id": "jazz"})
-        A.until("jazz again", lambda s: s["genre"] == "jazz" and s["player"] == "playing")
+        # can_next: mpv has loaded the tune, so the Stop below is not sent
+        # while it is still starting.
+        A.until("jazz again", lambda s: s["genre"] == "jazz" and s["player"] == "playing"
+                and s["can_next"])
         playerctl("-p", name, "stop")
         A.until("mpris: stop", lambda s: s["player"] == "none", 5)
         eq("mpris: nothing plays by itself after stop", [e for e in A.quiet(1.0)
@@ -1364,12 +1375,23 @@ try:
                     A.until(f"{how}: paused", lambda s: s["player"] == "paused", 5)
                 A.send({"cmd": "genre", "id": target})
                 want = "playing" if has_kept else "none"
+                seen = []
                 s = A.until(f"{how} then a pick of {target}: {want}, not stopped",
-                            lambda s: s["genre"] == target and s["player"] == want
-                            and s["stopped"] is False, 5)
-                if not has_kept:
+                            lambda s: seen.append(s) or (s["genre"] == target and s["player"] == want
+                                                         and s["stopped"] is False), 5)
+                seen += [e for e in A.quiet(0.8) if e.get("event") == "state"]
+                folder = next(g["name"] for g in genres if g["id"] == target)
+                if has_kept:
+                    # From the first snapshot of the new genre: never paused or
+                    # stopped, and no tune but one of the new genre's.
                     eq(f"{how} then a pick of {target}: stays clean",
-                       [(e["player"], e["stopped"]) for e in A.quiet(0.8) if e.get("event") == "state"
+                       [(e["player"], e["stopped"], e["tune"] and e["tune"]["name"]) for e in seen
+                        if e["genre"] == target and (e["player"] != "playing" or e["stopped"]
+                                                     or e["tune"]["file"] + ".mp3" not in kept_files(folder))],
+                       [])
+                else:
+                    eq(f"{how} then a pick of {target}: stays clean",
+                       [(e["player"], e["stopped"]) for e in seen if e["genre"] == target
                         and (e["player"], e["stopped"]) != ("none", False)], [])
                     A.send({"cmd": "genre", "id": "jazz"})
 
@@ -1420,6 +1442,7 @@ try:
     A.send({"cmd": "scrap", "i": 0})
     s = A.until("scrap kept: the queue entry leaves", lambda s: s["undo"], 5)
     eq("scrap kept: one kept left, the file set aside", (s["kept_total"], len(scrapped())), (1, 1))
+    eq("scrap kept: undo says where it goes back", s["undo"]["genre"], "jazz")
     check("scrap kept: undo for 10 s (scaled)",
           abs(s["undo"]["until"] - time.time() - 10 * SCALE) < 0.5, s["undo"])
     A.send({"cmd": "undo"})
@@ -1443,7 +1466,13 @@ try:
     # Slow plans from here, so no tune finishes (and prunes) between a scrap and its checks.
     scenario(lm_time=3.0, synth_time=0.3)
     q, playing, count = names(s), s["tune"]["name"], len(kept_files("Downtempo"))
-    A.send({"cmd": "scrap", "i": 1})
+    for cmd in ({"cmd": "scrap", "i": 1, "name": q[0]}, {"cmd": "play", "i": 0, "name": q[1]},
+                {"cmd": "scrap", "name": q[0]}):
+        A.send(cmd)
+    eq("name: a command naming another tune than the one at its place is ignored",
+       [e for e in A.quiet(0.5) if e.get("event") == "state"
+        and (e["undo"] or e["tune"]["name"] != playing or names(e) != q)], [])
+    A.send({"cmd": "scrap", "i": 1, "name": q[1]})
     s = A.until("scrap i: the entry leaves the queue at once", lambda s: s["undo"], 5)
     eq("scrap i: undo names it, the rest stays", (s["undo"]["name"], names(s)[:1]), (q[1], q[:1]))
     check("scrap i: gone from the queue", q[1] not in names(s), names(s))
@@ -1485,7 +1514,8 @@ try:
                 and names(s)[0] == q[1], 5)
 
     playing, nxt = s["tune"]["name"], names(s)[0]
-    A.send({"cmd": "scrap"})
+    # Named by its file, as before its file was read.
+    A.send({"cmd": "scrap", "name": s["tune"]["file"]})
     s = A.until("scrap playing: the next starts at once", lambda s: s["tune"]
                 and s["tune"]["name"] == nxt and s["player"] == "playing", 5)
     eq("scrap playing: undo names it", s["undo"]["name"], playing)
@@ -1514,6 +1544,30 @@ try:
     A.send({"cmd": "compose", "on": False})
     A.until("scrap: switched off", lambda s: not s["composing"] and s["job"] is None, 5)
     A.until("scrap: undo lapsed", lambda s: s["undo"] is None, 10)
+
+    # -- a scrap or an undo whose move fails: said, and nothing is lost --
+    s = A.until("move fails: playing", lambda s: s["player"] == "playing" and s["tune"], 15)
+    first = s["tune"]["name"]
+    A.send({"cmd": "scrap", "name": first})
+    s = A.until("move fails: a scrap to undo", lambda s: s["undo"] and s["undo"]["name"] == first
+                and s["tune"], 5)
+    second = s["tune"]["name"]
+    os.chmod(SCR, 0o500)
+    A.send({"cmd": "scrap", "name": second})
+    s = A.until("move fails: a scrap is said", lambda s: (s["error"] or "").startswith("could not scrap"), 5)
+    os.chmod(SCR, 0o700)
+    eq("move fails: the tune plays on, the earlier undo is kept with its file",
+       (s["tune"]["name"], s["undo"] and s["undo"]["name"], len(scrapped())), (second, first, 1))
+    os.chmod(DT, 0o500)
+    A.send({"cmd": "undo"})
+    s = A.until("move fails: an undo is said", lambda s: (s["error"] or "").startswith("could not bring"), 5)
+    os.chmod(DT, 0o755)
+    eq("move fails: the undo stays offered, its file kept",
+       (s["undo"] and s["undo"]["name"], len(scrapped())), (first, 1))
+    A.send({"cmd": "undo"})
+    s = A.until("move fails: the next undo works and clears the error",
+                lambda s: s["undo"] is None and s["error"] is None, 5)
+    eq("move fails: the file is back", scrapped(), [])
 
     # -- mpv exiting: restarted after a pause, the service lives on --
     for i in range(3):

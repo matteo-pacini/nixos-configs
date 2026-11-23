@@ -705,7 +705,7 @@ Scope {
                             width: parent.width - 24
                             height: wellLines.implicitHeight + 14
                             radius: 6
-                            color: Qt.darker(Theme.background, 1.15)
+                            color: Style.well
 
                             Column {
                                 id: wellLines

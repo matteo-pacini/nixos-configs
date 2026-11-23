@@ -160,8 +160,8 @@ ds "$work/gen2" reset "$cfg/hypr/a.lua"
 check "reset by live path" "0 a2" "$rc $(cat "$cfg/hypr/a.lua")"
 manifest shell quickshell/shell.qml=q1
 ds "$work/shell" reset quickshell/shell.qml
-check "reset: quickshell needs no reload" "0 reset quickshell/shell.qml
-To apply: nothing for quickshell (it reloads on file change)" "$rc $out"
+check "reset: quickshell gets the reload command" "0 reset quickshell/shell.qml
+To apply: qs ipc call shell reload" "$rc $out"
 ds "$work/gen2" reset hypr/nope.lua
 check "reset outside the manifest" "1 desk-sync: hypr/nope.lua: not in the manifest (see desk-sync status)" "$rc $out"
 
@@ -238,7 +238,7 @@ printf 'y2 edited\n' >"$cfg/quickshell/y.qml"
 ds "$work/r2" reset --all
 check "reset --all: every file, one hint each kind" "0 reset hypr/x.lua
 reset quickshell/y.qml
-To apply: hyprctl reload; nothing for quickshell (it reloads on file change)" "$rc $out"
+To apply: hyprctl reload; qs ipc call shell reload" "$rc $out"
 check "reset --all: store copies back" "x2 y2" "$(cat "$cfg/hypr/x.lua") $(cat "$cfg/quickshell/y.qml")"
 
 for args in "" "frobnicate" "status x" "reset" "reset a b" "pull a b"; do

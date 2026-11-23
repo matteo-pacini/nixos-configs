@@ -996,8 +996,8 @@ Scope {
                         id: tunes
 
                         readonly property bool panelOpen: TunesShared.screen === bar.modelData.name
-                        readonly property var shown: TunesView.barView(TunesShared.st)
-                        readonly property color tone: panelOpen ? Theme.purple : shown.tone === "dim" ? Theme.comment : Theme.foreground
+                        readonly property var shown: TunesView.barView(TunesShared.st, TunesShared.flashing)
+                        readonly property color tone: shown.tone === "orange" ? Theme.orange : panelOpen ? Theme.purple : shown.tone === "dim" ? Theme.comment : Theme.foreground
                         readonly property color dot: ({
                                 cyan: Theme.cyan,
                                 orange: Theme.orange,
@@ -1024,7 +1024,8 @@ Scope {
                             color: Theme.purple
                         }
 
-                        // The note for playback, dim while nothing plays; the
+                        // The note for playback, dim while nothing plays,
+                        // orange for a moment after a global scrap; the
                         // composer's dot beside it; the genre while a tune
                         // plays.
                         Row {

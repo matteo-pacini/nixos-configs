@@ -364,7 +364,8 @@ What working on this shell has taught: the rule, its reason, what taught it.
   `desk-mqtt`, the Bluetooth agent, `NoSignal.qml`, `Reminders.qml`, the
   token item's minute tick, weather (`desk-weather`, radar only while its
   page is open, and the bar item's minute tick), tunes (`desk-tunes
-  attach`, blocked on the service's socket, which sends only on a change;
+  attach`, blocked on the service's socket, which sends only on a change,
+  and the bar note's one-shot 0.6 s flash after a global scrap;
   and the `desk-tunes` service itself, its own user unit, which plays with
   the panel closed, composes only while its composer is on, and arms no
   timer while idle).
@@ -524,7 +525,7 @@ Directories (`import qs.<dir>`):
 
 | Directory | What |
 |-----------|------|
-| `common/` | Shared by panels: `Style.qml` (singleton: bar metrics, `panelTop`, edge, radius, the cards' `growDuration`, surface, soft, track, scrim colours), `Dropdowns.qml` (singleton registry: `add()` a panel, `closeOthers()`, `anchor()`/`centre()` for placement), `DropCard.qml` (the card, shadow, placement and eased height), `KeyHints.qml` (the drop-downs' footer: hints that wrap, or a wrapped `message` in their place), `LockedList.qml` (loads `locked.json` for an area), `NixTag.qml`, `SectionHeader.qml`, `notify.js` (the `gdbus … Notify` command for the shell's three notification senders, its text quoted so gdbus passes it unchanged; node-tested) |
+| `common/` | Shared by panels: `Style.qml` (singleton: bar metrics, `panelTop`, edge, radius, the cards' `growDuration`, surface, soft, well, switchOn, track, scrim colours), `Dropdowns.qml` (singleton registry: `add()` a panel, `closeOthers()`, `anchor()`/`centre()` for placement), `DropCard.qml` (the card, shadow, placement and eased height), `KeyHints.qml` (the drop-downs' footer: hints that wrap, or a wrapped `message` in their place), `LockedList.qml` (loads `locked.json` for an area), `NixTag.qml`, `SectionHeader.qml`, `notify.js` (the `gdbus … Notify` command for the shell's three notification senders, its text quoted so gdbus passes it unchanged; node-tested) |
 | `launcher/` | `Calc.qml` (parser, evaluator), `Emoji.qml` (lazy list, search), `emoji.txt` (generated) |
 | `notifications/` | `Card.qml` (one card), `Entry.qml` (timeout, replacement, leave animation) |
 | `network/` | `NetworkPanel.qml` (singleton shared with the bar: `screen`, `toggleRequested`), `SpeedTest.qml` (providers, process, parsing), `Gauge.qml`, `PasswordModal.qml` (the Wi-Fi password modal: masked field, `take()` hands the text over once and empties it), `wifi.js` (all Wi-Fi decisions: section state, rows and order, security words, password check, the join/forget/cancel machine and its effects, hints, details, bar look; node-tested) |
@@ -537,7 +538,7 @@ Directories (`import qs.<dir>`):
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`, `said`), `tokens.js` (all token-panel decisions: applying the helper's answers and events and which of them reset the restart back-off, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading, its "as of" times and the line after R, the bar look, the hand-set `PLAN`; node-tested) |
 | `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml`, `SensorRow.qml` (the outdoor sensor's battery and link row) (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
-| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command and one notification through `common/notify.js`), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection, the waveform's columns, the position between snapshots, keys, clicks, the footer and its undo line, the global scrap, the bar view; node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows) and `Strip.qml` (the tinted strip) |
+| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command, one notification through `common/notify.js`, and the bar note's one-shot flash), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection, the waveform's columns, the position between snapshots, keys, clicks, the footer and its undo line, the global scrap, the bar view and its flash; node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows) and `Strip.qml` (the tinted strip) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -620,7 +621,11 @@ versions, only the first deployed:
 - **Built and checked in the repository only, not deployed:** the redesign
   (the three sections, the composer switch off at start and after every
   pick, scrap and undo, queue selection, the estimate, the bar's dot,
-  Super+Shift+M and the IPC `scrap`), `vulkaninfo` run without `DISPLAY`
+  Super+Shift+M and the IPC `scrap`, the bar note's flash on it), and after
+  its review: a pick never shows the old genre's tune or pause, scrap and
+  play name their tune, a quick second Super+Shift+M is an undo, a failed
+  scrap or undo is said and loses nothing, no device is said in the
+  composer section with the player kept, `vulkaninfo` run without `DISPLAY`
   and `WAYLAND_DISPLAY`, and the shell reload at the end of `desk-sync
   activate`. Simulated: `tunes-helper` (the service against a fake
   `ace-server`, `vulkaninfo`, `hyprctl` and Hugging Face, with the real
@@ -632,8 +637,10 @@ versions, only the first deployed:
   with the service's sandbox crashes with `DISPLAY` set and lists the same
   devices without it).
 - Expected only: all the redesign's QML (layout, the switch, the row
-  selection, the bar's dot, the notification of the global scrap, no
-  binding loops or JS errors); the scrap's move between the music folder
+  selection, the bar's dot and the note's flash, the notification of the
+  global scrap, no binding loops or JS errors); the order of mpv's events
+  after a pick (the position is not sampled until the new tune is
+  reported); the scrap's move between the music folder
   and the cache in the real unit (separate bind mounts, hence a copy, not a
   rename); that the deployed unit leaves no `vulkaninfo` core; the real
   `qs` found by the activation's reload; the estimate from real timings;

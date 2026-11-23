@@ -188,6 +188,9 @@ t("the chooser: the selected genre says playing now, the cursor opens on it, Ent
     const quiet = load("08-nothing-kept", NOW);
     const q = T.key(ui(quiet, NOW), quiet, "G", false).ui;
     assert.equal(T.view(quiet, q).chooser.cells[2].sub, "selected");
+    // Paused: "paused", not "playing now".
+    const paused = load("17-paused", NOW);
+    assert.equal(T.view(paused, T.key(ui(paused, NOW), paused, "G", false).ui).chooser.cells[4].sub, "paused");
     assert.deepEqual(T.pick(q, quiet, 2).effect, { kind: "none", cmd: null });
     assert.equal(T.needsTick(st, g.ui), false);
 });
@@ -247,7 +250,7 @@ t("the job row: the time left, never negative, never longer than the estimate", 
     const st = load("10-writing", NOW);
     const sub = now => T.view(st, ui(st, now)).player.next.rows[0].sub;
     const bar = now => T.view(st, ui(st, now)).player.next.rows[0].bar;
-    // 120 s expected, 50 s spent.
+    // 120 s expected (the writing median), 50 s spent.
     assert.equal(sub(NOW), "about 1:10 left");
     assert.equal(sub(NOW + 3), "about 1:10 left");
     assert.equal(sub(NOW + 6), "about 1:00 left");
@@ -303,6 +306,20 @@ t("composer off, kept tunes playing", () => {
     assert.deepEqual(lines(lofi), ["On, it makes new Lo-fi and keeps 2 ahead."]);
 });
 
+t("a kept tune playing with a new one ready: the heading counts the new one", () => {
+    const st = load("25-kept-playing-new-ready", NOW);
+    const p = T.view(st, ui(st, NOW)).player;
+    assert.equal(p.now.head, "Jazz · kept tunes");
+    assert.equal(p.next.head, "1 ready");
+    assert.deepEqual(rows(p).map(r => r[1]), ["Paper Kite", "Being written"]);
+    // Also when a service says kept_playing with a new tune first in line.
+    const old = edit("25-kept-playing-new-ready", { keptPlaying: true });
+    assert.equal(T.view(old, ui(old, NOW)).player.next.head, "1 ready");
+    // An undone kept tune first in line: still the kept heading.
+    const undone = edit("25-kept-playing-new-ready", { keptPlaying: true, ready: 0, queue: [Object.assign({}, st.snap.queue[0], { kept: true })] });
+    assert.equal(T.view(undone, ui(undone, NOW)).player.next.head, "from 14 kept, shuffled");
+});
+
 t("a genre with nothing kept: nothing happens by itself", () => {
     const st = load("08-nothing-kept", NOW);
     const p = T.view(st, ui(st, NOW)).player;
@@ -333,7 +350,7 @@ t("queue selection: Up/Down, clearing, Enter plays i, X scraps i, the hint names
     const u = ui(st, NOW);
     assert.equal(u.row, null);
     const d1 = T.key(u, st, "Down", false).ui;
-    assert.deepEqual(d1.row, { kind: "queue", i: 0, name: "Brass Lantern" });
+    assert.deepEqual(d1.row, { kind: "queue", i: 0, name: "Brass Lantern", file: "" });
     assert.deepEqual(T.view(st, d1).player.next.rows.map(r => r.sel), [true, false]);
     const d2 = press(st, u, ["Down", "Down"]).ui;
     assert.equal(d2.row.i, 1);
@@ -346,10 +363,10 @@ t("queue selection: Up/Down, clearing, Enter plays i, X scraps i, the hint names
     assert.equal(T.key(d2, st, "Up", false).ui.row.i, 0);
     assert.deepEqual(T.hints(st, d2), [["↑↓", "select"], ["Enter", "play it now"], ["X", "scrap Quiet Ledger"], ["Space", "pause"], ["Esc", "close"]]);
     const play = T.key(d2, st, "Enter", false);
-    assert.deepEqual(play.effect.cmd, { cmd: "play", i: 1 });
+    assert.deepEqual(play.effect.cmd, { cmd: "play", i: 1, name: "Quiet Ledger" });
     assert.equal(play.ui.row, null);
     const scrap = T.key(d2, st, "X", false);
-    assert.deepEqual(scrap.effect.cmd, { cmd: "scrap", i: 1 });
+    assert.deepEqual(scrap.effect.cmd, { cmd: "scrap", i: 1, name: "Quiet Ledger" });
     assert.equal(scrap.ui.row, null);
     // Held Enter and X act once.
     assert.equal(T.key(d2, st, "Enter", true).effect.kind, "none");
@@ -361,12 +378,21 @@ t("queue selection: Up/Down, clearing, Enter plays i, X scraps i, the hint names
     // The selection follows its tune when the head is played...
     const moved = edit("05-queue-full", { queue: [st.snap.queue[1]], ready: 1 });
     assert.deepEqual(T.view(moved, d2).player.next.rows.filter(r => r.kind === "tune").map(r => r.sel), [true]);
-    assert.deepEqual(T.key(d2, moved, "X", false).effect.cmd, { cmd: "scrap", i: 0 });
+    assert.deepEqual(T.key(d2, moved, "X", false).effect.cmd, { cmd: "scrap", i: 0, name: "Quiet Ledger" });
     // ...and is gone with it.
     const gone = edit("05-queue-full", { queue: [st.snap.queue[0]], ready: 1 });
     assert.deepEqual(T.view(gone, d2).player.next.rows.filter(r => r.kind === "tune").map(r => r.sel), [false]);
-    assert.deepEqual(T.key(d2, gone, "X", false).effect.cmd, { cmd: "scrap" });
+    assert.deepEqual(T.key(d2, gone, "X", false).effect.cmd, { cmd: "scrap", name: "Lazy Avenue" });
     assert.equal(T.key(d2, gone, "Enter", false).effect.kind, "none");
+    // A kept entry named by its file, then by its title once read: the
+    // selection stays on it, and the commands name it as it is now.
+    const FILE = "20260105-100000-70bpm-G-major";
+    const unread = edit("09-kept-tunes", { queue: [{ name: FILE, file: FILE, bpm: 70, key: "G major", length: null, kept: true }] });
+    const k = T.key(ui(unread, NOW), unread, "Down", false).ui;
+    assert.deepEqual(k.row, { kind: "queue", i: 0, name: FILE, file: FILE });
+    const read = edit("09-kept-tunes", { queue: [{ name: "Invented Hall", file: FILE, bpm: 70, key: "G major", length: 90, kept: true }] });
+    assert.deepEqual(T.view(read, k).player.next.rows.map(r => r.sel), [true]);
+    assert.deepEqual(T.key(k, read, "X", false).effect.cmd, { cmd: "scrap", i: 0, name: "Invented Hall" });
     // An empty queue: the arrows do nothing.
     const empty = load("08-nothing-kept", NOW);
     assert.equal(T.key(ui(empty, NOW), empty, "Down", false).ui.row, null);
@@ -391,7 +417,7 @@ t("the job row can be selected and scrapped; Enter does nothing on it", () => {
 
 t("X with no selection: the playing tune, or nothing", () => {
     const st = load("05-queue-full", NOW);
-    assert.deepEqual(T.key(ui(st, NOW), st, "X", false).effect.cmd, { cmd: "scrap" });
+    assert.deepEqual(T.key(ui(st, NOW), st, "X", false).effect.cmd, { cmd: "scrap", name: "Lazy Avenue" });
     assert.equal(T.key(ui(st, NOW), st, "X", true).effect.kind, "none");
     for (const f of ["06-first-tune", "08-nothing-kept", "13-held-memory", "21-stopped"]) {
         const s = load(f, NOW);
@@ -573,13 +599,23 @@ t("a broken genres file", () => {
     assert.deepEqual(T.view(st, T.key(ui(st, NOW), st, "G", false).ui).chooser.strip.text, "genres file: line 4: expected a comma");
 });
 
-t("no device: as built, with C to turn the composer off", () => {
+t("no device: the player stays, the composer says why, R and C", () => {
     const st = load("14-no-device", NOW);
     const v = T.view(st, ui(st, NOW));
-    assert.equal(v.kind, "device");
-    assert.deepEqual(v.setup.rows, [["found", "1 device, not this one"]]);
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["R", "try now"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
+    assert.equal(v.kind, "player");
+    assert.deepEqual([v.player.now.name, v.player.now.mainLit], ["Nothing playing. Space plays.", true]);
+    assert.deepEqual([v.player.composer.on, v.player.composer.label, v.player.composer.labelTone], [true, "no device", "red"]);
+    assert.deepEqual(lines(v.player), ["Makes Lo-fi, keeps 2 ahead", "The model server did not find the Radeon 780M among the Vulkan devices: 1 device, not this one. R tries again, C turns the composer off."]);
+    assert.equal(v.player.composer.lines[1].tone, "red");
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "play"], ["R", "try now"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.key(ui(st, NOW), st, "R", false).effect.cmd, { cmd: "retry" });
     assert.deepEqual(T.key(ui(st, NOW), st, "C", false).effect.cmd, { cmd: "compose", on: false });
+    // Kept tunes playing: Space, N and X stay.
+    const playing = edit("07-composer-off-kept", { composing: true, model: st.snap.model });
+    assert.deepEqual(T.hints(playing, ui(playing, NOW)).map(h => h[0]), ["Space", "N", "X", "R", "C", "G", "Esc"]);
+    // Nothing found to name.
+    const bare = edit("14-no-device", { model: Object.assign({}, st.snap.model, { detail: null }) });
+    assert.equal(lines(T.view(bare, ui(bare, NOW)).player)[1], "The model server did not find the Radeon 780M among the Vulkan devices. R tries again, C turns the composer off.");
     assert.deepEqual(T.barView(st), { tone: "dim", text: "", dot: "red" });
     assert.equal(T.needsTick(st, ui(st, NOW)), false);
 });
@@ -602,9 +638,26 @@ t("the bar: the note and the dot in every combination", () => {
 });
 
 t("the global scrap: undo, scrap, or nothing, and its notification", () => {
-    assert.deepEqual(T.globalScrap(load("05-queue-full", NOW), NOW), { cmd: { cmd: "scrap" }, summary: "Scrapped Lazy Avenue", body: "Super+Shift+M again within 10 s brings it back." });
+    const full = load("05-queue-full", NOW);
+    const first = T.globalScrap(full, NOW);
+    assert.deepEqual([first.cmd, first.summary, first.body, first.flash], [{ cmd: "scrap", name: "Lazy Avenue" }, "Scrapped Lazy Avenue", "Super+Shift+M again within 10 s brings it back.", true]);
+    // A second press before the service has answered: an undo, never a
+    // second scrap.
+    const second = T.globalScrap(first.st, NOW + 0.1);
+    assert.deepEqual([second.cmd, second.summary, second.body, second.flash], [{ cmd: "undo" }, "Brought back Lazy Avenue", "It plays next.", false]);
+    assert.equal(T.globalScrap(second.st, NOW + 0.2).cmd.cmd, "scrap");
+    // The service's next snapshot answers it; one it ignored lapses.
+    assert.equal(T.globalScrap(T.apply(first.st, events("05-queue-full", NOW)[0], NOW), NOW + 0.1).cmd.cmd, "scrap");
+    assert.equal(T.globalScrap(first.st, NOW + 2).cmd.cmd, "scrap");
     const after = load("11-after-scrap", NOW);
-    assert.deepEqual(T.globalScrap(after, NOW), { cmd: { cmd: "undo" }, summary: "Brought back Lazy Avenue", body: "It plays next." });
+    const undo = T.globalScrap(after, NOW);
+    assert.deepEqual([undo.cmd, undo.summary, undo.body, undo.flash], [{ cmd: "undo" }, "Brought back Lazy Avenue", "It plays next.", false]);
+    // Scrapped in another genre than the one picked now: it goes back there,
+    // it does not play next.
+    const elsewhere = edit("11-after-scrap", { undo: Object.assign({}, after.snap.undo, { genre: "lofi" }) });
+    assert.equal(T.globalScrap(elsewhere, NOW).body, "It is back with the kept Lo-fi tunes.");
+    const unknown = edit("11-after-scrap", { undo: Object.assign({}, after.snap.undo, { genre: "gone" }) });
+    assert.equal(T.globalScrap(unknown, NOW).body, "It is back in its folder.");
     // Once the undo has run out, a scrap of what plays.
     assert.equal(T.globalScrap(after, NOW + 10).summary, "Scrapped Brass Lantern");
     // Nothing plays: nothing.
@@ -612,6 +665,12 @@ t("the global scrap: undo, scrap, or nothing, and its notification", () => {
     // Nothing plays but an undo is offered: the undo.
     assert.equal(T.globalScrap(edit("11-after-scrap", { tune: null, player: "none" }), NOW).cmd.cmd, "undo");
     assert.equal(T.globalScrap(load("17-paused", NOW), NOW).cmd.cmd, "scrap");
+    // The bar's note flashes orange while the flash is on, over any playback
+    // tone; the dot is the composer's still.
+    assert.deepEqual(T.barView(full, true), { tone: "orange", text: "Jazz", dot: "" });
+    assert.deepEqual(T.barView(load("17-paused", NOW), true).tone, "orange");
+    assert.deepEqual(T.barView(full, false), T.barView(full));
+    assert.ok(T.FLASH_MS > 0 && T.FLASH_MS <= 1000);
     assert.equal(T.globalScrap(T.initial(), NOW), null);
 });
 
@@ -690,7 +749,7 @@ t("unknown values fall back to the empty ones", () => {
     const s = st.snap;
     assert.equal(s.composing, false);
     assert.deepEqual(s.job, { stage: "writing", started: null, expect: null, written: null });
-    assert.deepEqual(s.queue, [{ name: "", bpm: null, key: "", length: null, kept: false }]);
+    assert.deepEqual(s.queue, [{ name: "", file: "", bpm: null, key: "", length: null, kept: false }]);
     assert.equal(s.undo, null);
     assert.equal(s.expect, null);
     assert.equal(s.ahead, 2);

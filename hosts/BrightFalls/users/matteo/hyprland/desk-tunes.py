@@ -77,16 +77,18 @@ second; nothing periodic otherwise):
    "stopped":false,           the user stopped the player (Stop, or mpv
                               failed to play), so nothing starts by itself
                               until toggle, play or a genre pick
-   "tune":null|{"name","bpm","key","length","kept":false,
+   "tune":null|{"name","file","bpm","key","length","kept":false,
                 "wave":[78 numbers 0..1]},
        name is the file name, bpm, key and length null, until a kept
-       tune's file has been read
+       tune's file has been read; file is always the file name (without
+       ".mp3")
    "pos":84.0,"pos_at":1795390000.25,  the panel interpolates while playing
-   "queue":[{"name","bpm","key","length","kept"}, ...],
+   "queue":[{"name","file","bpm","key","length","kept"}, ...],
        what "next" would play, in order: the queued tunes, or with none
        queued the next kept tune (one entry); index i in scrap and play
    "ready":2,                 new tunes in the queue
-   "kept_playing":false,      the playing tune is a kept one
+   "kept_playing":false,      a kept tune plays because no new tune is
+                              queued
    "can_next":false,          "next" would play another tune
    "job":null|{"stage":"writing"|"rendering","started":unix,
                "expect_s":null|s,"written_s":null|s},
@@ -94,8 +96,9 @@ second; nothing periodic otherwise):
        written_s: how long this tune's writing took, set while rendering
    "expect":null|{"writing_s","rendering_s"},  the medians, null until
                               one tune has been timed
-   "undo":null|{"name","until":unix},  the scrapped tune that "undo"
-                              brings back until then
+   "undo":null|{"name","until":unix,"genre":null|"lofi"},  the scrapped
+                              tune that "undo" brings back until then, and
+                              the genre whose folder it goes back to
    "model":{"name","variant","device",
             "state":"unloaded"|"starting"|"idle"|"writing"|"rendering"|
                     "held_game"|"held_memory"|"failed"|"no_device",
@@ -108,7 +111,9 @@ second; nothing periodic otherwise):
        started; null with no server.
    "error":null|"text"}       the first of: the genres file is broken, mpv
                               could not play the last tune (until one plays),
-                              hyprctl cannot list the windows (until it can)
+                              the last scrap or undo could not move its file
+                              (until one can), hyprctl cannot list the
+                              windows (until it can)
   {"event":"error","text":"..."}  to the sender of a malformed line only.
 
 Client -> service: {"cmd":"genre","id":"lofi"} | {"cmd":"toggle"} |
@@ -116,7 +121,10 @@ Client -> service: {"cmd":"genre","id":"lofi"} | {"cmd":"toggle"} |
 | {"cmd":"scrap"} | {"cmd":"scrap","i":N} | {"cmd":"scrap","job":true} |
 {"cmd":"undo"} | {"cmd":"play","i":N} | {"cmd":"retry"} | {"cmd":"download"}
 | {"cmd":"cancel_download"} | {"cmd":"refresh"}. A command that does not
-apply is ignored.
+apply is ignored. scrap (but for the job) and play take an optional
+"name": the name the sender saw for that tune, or its file; a command whose
+name is not the tune's at that place now (the queue moved, or another tune
+started, since the sender's snapshot) is ignored.
 
 Behaviour:
   genre     picks the genre and plays what is kept for it (the genre
@@ -142,11 +150,14 @@ Behaviour:
             queue entry i, or the job (cancelled, and another starts; no
             undo). A scrapped tune leaves the player or queue at once; its
             file moves to scrapped/ and is deleted with its wave cache 10 s
-            later, or at once by the next scrap. Only files named as ours,
-            in a genre folder, are scrapped.
+            later, or at once by the next scrap once that one's file has
+            moved. Only files named as ours, in a genre folder, are
+            scrapped. A move that fails is said in "error" and leaves the
+            tune where it was and the previous undo offered.
   undo      within those 10 s: the file goes back and the tune to the head
             of the queue (its genre still picked), without interrupting
-            what plays.
+            what plays. A move back that fails is said in "error" and
+            leaves the undo offered.
   timing    how long writing (from the first plan asked for to the plan
             kept) and rendering (to the finished file) took is recorded for
             each finished tune; the medians of the last 5 are reported.
@@ -599,6 +610,18 @@ def queue_entries(ready, next_kept):
     return list(ready) if ready else ([next_kept] if next_kept else [])
 
 
+def file_stem(t):
+    """A tune's file name without ".mp3": its name until the file is read."""
+    return os.path.basename(t["path"])[:-4]
+
+
+def names_tune(t, name):
+    """Whether a command's `name` (None when it gave none) names tune `t`:
+    its name now, or its file name, which it showed before its file was
+    read."""
+    return name is None or name in (t.get("name"), file_stem(t))
+
+
 def scrappable(path, music):
     """True for a tune file named as ours directly in a genre folder of
     `music`."""
@@ -884,6 +907,8 @@ class Service:
         self.job_seq = 0
         self.play_error = None
         self.hypr_error = None
+        self.file_error = None  # the last scrap or undo whose move failed
+        self.loading = None     # a picked tune's path until mpv reports it playing
 
         self.mpv = None
         self.mpv_exits = 0
@@ -1068,6 +1093,10 @@ class Service:
         if cmd == "scrap" and "job" in msg and msg["job"] is not True:
             self.send(conn, {"event": "error", "text": "scrap's job can only be true"})
             return
+        name = msg.get("name")
+        if cmd in ("play", "scrap") and "name" in msg and not isinstance(name, str):
+            self.send(conn, {"event": "error", "text": f"{cmd}'s name is the tune's name"})
+            return
         if cmd == "genre":
             self.cmd_genre(msg["id"])
         elif cmd == "seek":
@@ -1075,14 +1104,14 @@ class Service:
         elif cmd == "compose":
             self.cmd_compose(msg["on"])
         elif cmd == "play":
-            self.cmd_play(index)
+            self.cmd_play(index, name)
         elif cmd == "scrap":
             if msg.get("job") is True:
                 self.scrap_job()
             elif "i" in msg:
-                self.scrap_queued(index)
+                self.scrap_queued(index, name)
             else:
-                self.scrap_playing()
+                self.scrap_playing(name)
         else:
             handlers[cmd]()
 
@@ -1100,7 +1129,8 @@ class Service:
     def tune_view(self, t):
         if t is None:
             return None
-        return {k: t.get(k) for k in ("name", "bpm", "key", "length", "kept", "wave")}
+        return dict({k: t.get(k) for k in ("name", "bpm", "key", "length", "kept", "wave")},
+                    file=file_stem(t))
 
     def job_view(self):
         j = self.job
@@ -1190,22 +1220,25 @@ class Service:
             "stopped": self.genre is not None and not self.wants_play,
             "tune": self.tune_view(self.current),
             "pos": round(pos, 2), "pos_at": round(time.time(), 3),
-            "queue": [{k: t.get(k) for k in ("name", "bpm", "key", "length", "kept")}
+            "queue": [dict({k: t.get(k) for k in ("name", "bpm", "key", "length", "kept")},
+                           file=file_stem(t))
                       for t in queue_entries(self.ready, self.next_kept)],
             "ready": self.new_ready(),
-            "kept_playing": bool(self.current and self.current.get("kept")),
+            "kept_playing": bool(self.current and self.current.get("kept") and not self.new_ready()),
             "can_next": bool(self.current is not None and self.appended),
             "job": self.job_view(),
             "expect": expect_view(self.timings),
-            "undo": None if self.scrap is None else {"name": self.scrap["tune"]["name"],
-                                                     "until": round(self.scrap["until"], 3)},
+            "undo": None if self.scrap is None else {
+                "name": self.scrap["tune"]["name"], "until": round(self.scrap["until"], 3),
+                "genre": next((g["id"] for g in self.genres
+                               if self.genre_dir(g) == os.path.dirname(self.scrap["from"])), None)},
             "model": {"name": self.model["name"], "variant": self.model["variant"],
                       "device": self.cfg["device"]["label"], "state": self.state,
                       "since": round(self.since, 3), "silence_s": self.silence_s,
                       "detail": self.detail, "failures": self.failures,
                       "retry_at": None if self.retry_at is None else round(self.retry_at, 3),
                       "ram_used_bytes": used, "ram_free_bytes": free},
-            "error": self.genres_error or self.play_error or self.hypr_error,
+            "error": self.genres_error or self.play_error or self.file_error or self.hypr_error,
         }
 
     # -- persisted state, genres, setup -------------------------------------
@@ -1354,6 +1387,12 @@ class Service:
         self.ensure_mpv()
         cand = self.next_candidate()
         if cand:
+            # Shown as playing at once: mpv reports the switch, and the old
+            # tune's pause, only some events later, and no snapshot may put
+            # the old genre's tune or pause under the new genre.
+            self.next_kept = None
+            self.current, self.pause, self.loading = cand, False, cand["path"]
+            self.pos, self.pos_at = 0.0, time.time()
             self.play_now(cand)
         else:
             self.halt_player()
@@ -1388,9 +1427,9 @@ class Service:
         self.set_state("unloaded")
         self.changed()
 
-    def cmd_play(self, i):
+    def cmd_play(self, i, name=None):
         q = queue_entries(self.ready, self.next_kept)
-        if i >= len(q):
+        if i >= len(q) or not names_tune(q[i], name):
             return
         if self.ready:
             self.ready.insert(0, self.ready.pop(i))
@@ -1400,20 +1439,27 @@ class Service:
     # -- scrap and undo ------------------------------------------------------
 
     def set_aside(self, tune):
-        """Move a tune's file to scrapped/ and arm its deletion; False when
-        it is not ours or cannot be moved."""
+        """Move a tune's file to scrapped/ and arm its deletion; the previous
+        scrap is finalised only once the move is done. False when the tune is
+        not ours or cannot be moved (said in "error")."""
         if not scrappable(tune["path"], self.music):
             return False
-        self.finalise_scrap()
         dest = os.path.join(self.scrapped_dir, os.path.basename(tune["path"]))
+        # Two genre folders can hold the same file name.
+        if self.scrap and self.scrap["to"] == dest:
+            self.finalise_scrap()
         try:
             os.makedirs(self.scrapped_dir, exist_ok=True)
             # A move, not a rename: in the unit ~/Music/Tunes and the cache
             # are separate bind mounts, and rename(2) across them is EXDEV.
             shutil.move(tune["path"], dest)
         except OSError as e:
-            say(f"cannot scrap a tune: {e.strerror}")
+            self.file_error = f"could not scrap {tune['name']}: {e.strerror}"
+            say(self.file_error)
+            self.changed()
             return False
+        self.file_error = None
+        self.finalise_scrap()
         self.scrap = {"tune": tune, "from": tune["path"], "to": dest,
                       "until": time.time() + SCRAP_HOLD * self.scale}
         self.set_timer("scrap", SCRAP_HOLD * self.scale, self.finalise_scrap)
@@ -1435,9 +1481,9 @@ class Service:
                 say(f"cannot delete a scrapped tune: {e.strerror}")
         self.changed()
 
-    def scrap_playing(self):
+    def scrap_playing(self, name=None):
         t = self.current
-        if t is None or not self.set_aside(t):
+        if t is None or not names_tune(t, name) or not self.set_aside(t):
             return
         self.current, self.appended = None, None
         cand = self.next_candidate()
@@ -1447,9 +1493,9 @@ class Service:
             self.mpv_cmd(["stop"])
         self.maybe_compose()
 
-    def scrap_queued(self, i):
+    def scrap_queued(self, i, name=None):
         q = queue_entries(self.ready, self.next_kept)
-        if i >= len(q) or not self.set_aside(q[i]):
+        if i >= len(q) or not names_tune(q[i], name) or not self.set_aside(q[i]):
             return
         if self.ready:
             self.ready.pop(i)
@@ -1473,14 +1519,18 @@ class Service:
         s = self.scrap
         if s is None:
             return
-        self.scrap = None
-        self.cancel_timer("scrap")
-        self.changed()
+        # The undo stays offered until the file is back.
         try:
             shutil.move(s["to"], s["from"])
         except OSError as e:
-            say(f"cannot bring a scrapped tune back: {e.strerror}")
+            self.file_error = f"could not bring {s['tune']['name']} back: {e.strerror}"
+            say(self.file_error)
+            self.changed()
             return
+        self.file_error = None
+        self.scrap = None
+        self.cancel_timer("scrap")
+        self.changed()
         if self.genre and os.path.dirname(s["from"]) == self.genre_dir(self.genre):
             self.ready.insert(0, s["tune"])
             self.sync_playlist()
@@ -1608,8 +1658,9 @@ class Service:
         elif self.next_kept and self.next_kept["path"] == path:
             self.current = self.next_kept
             self.next_kept = None
-        else:
+        elif not (self.current and self.current["path"] == path):
             self.current = self.kept_tune(path)
+        self.loading = None
         self.played.add(path)
         self.appended = None
         self.play_error = None
@@ -1621,6 +1672,7 @@ class Service:
     def on_idle(self, natural):
         self.current = None
         self.appended = None
+        self.loading = None
         if not natural:
             self.wants_play = False
         self.changed()
@@ -1751,11 +1803,13 @@ class Service:
             self.sample_pos()
 
     def sample_pos(self):
-        if self.current is None:
+        # While a picked tune loads, mpv's position may still be the old one's.
+        if self.current is None or self.loading:
             return
 
         def got(ev):
-            if ev.get("error") == "success" and isinstance(ev.get("data"), (int, float)):
+            if (ev.get("error") == "success" and isinstance(ev.get("data"), (int, float))
+                    and not self.loading):
                 self.pos, self.pos_at = float(ev["data"]), time.time()
                 self.changed()
         self.mpv_cmd(["get_property", "time-pos"], got)
@@ -1767,7 +1821,7 @@ class Service:
             self.mpv["sock"].close()
         self.cancel_timer("mpv_connect")
         self.mpv = None
-        self.current, self.appended = None, None
+        self.current, self.appended, self.loading = None, None, None
         self.changed()
         if not self.stop_requested and self.genre:
             self.mpv_exits += 1

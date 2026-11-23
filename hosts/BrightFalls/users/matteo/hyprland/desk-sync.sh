@@ -185,7 +185,7 @@ reset() {
   for rel in "${rels[@]}"; do
     case $rel in
     hypr/*) hints+=("hyprctl reload") ;;
-    quickshell/*) hints+=("nothing for quickshell (it reloads on file change)") ;;
+    quickshell/*) hints+=("qs ipc call shell reload") ;;
     esac
   done
   if [ ${#hints[@]} -gt 0 ]; then

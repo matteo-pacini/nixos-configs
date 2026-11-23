@@ -13,8 +13,9 @@ import "../common/notify.js" as Notify
 // The music is the desk-tunes user service's, not the shell's: this file runs
 // only its thin client, for as long as the shell does, since the bar shows
 // what plays. The client is started again if it exits. While the panel is
-// closed nothing else runs; while it is open a one-second tick runs only
-// when tunes.js says the panel shows something that moves with the clock.
+// closed nothing else runs but the bar note's flash, once, after a global
+// scrap; while it is open a one-second tick runs only when tunes.js says the
+// panel shows something that moves with the clock.
 Singleton {
     id: root
 
@@ -28,6 +29,8 @@ Singleton {
 
     // The current client process has started.
     property bool started: false
+    // The bar's note flashes after a global scrap.
+    property bool flashing: false
     property int exitCode: -1
     property string lastStderr: ""
 
@@ -73,14 +76,20 @@ Singleton {
             send(cmd);
     }
 
-    // The global scrap: an undo while one is offered, else a scrap of the
-    // playing tune, and one notification naming the tune; nothing when there
-    // is nothing to act on.
+    // The global scrap: an undo while one is offered or a scrap just sent is
+    // unanswered, else a scrap of the playing tune and the note's flash, and
+    // one notification naming the tune; nothing when there is nothing to act
+    // on.
     function scrapPlaying(): void {
         const r = T.globalScrap(st, Date.now() / 1000);
         if (!r)
             return;
+        st = r.st;
         send(r.cmd);
+        if (r.flash) {
+            flashing = true;
+            flash.restart();
+        }
         Quickshell.execDetached(Notify.command("Tunes", 0, "audio-x-generic", r.summary, r.body, "[]", "{}", "int32 -1"));
     }
 
@@ -176,6 +185,14 @@ Singleton {
             proc.running = true;
             interval = Math.min(interval * 2, 60000);
         }
+    }
+
+    // Runs once per global scrap, never while idle.
+    Timer {
+        id: flash
+
+        interval: T.FLASH_MS
+        onTriggered: root.flashing = false
     }
 
     Timer {
