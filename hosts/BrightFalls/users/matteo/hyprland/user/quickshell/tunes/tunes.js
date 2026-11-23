@@ -1,18 +1,22 @@
 // The tunes panel's decisions: the state held from desk-tunes' snapshots and
-// the attach link, which card shows, every text and tone the cards, the model
-// well, the waveform and the bar item show, what each key and click does,
-// the footer, and the position between snapshots. The QML draws what these
-// functions return and performs the effects; it decides nothing.
+// the attach link, which card shows, every text and tone the cards, the three
+// sections of the player (now playing, up next, composer), the waveform and
+// the bar item show, what each key and click does, the footer and its undo
+// line, the global scrap, and the position between snapshots. The QML draws
+// what these functions return and performs the effects; it decides nothing.
 // Plain JavaScript so node can run it too.
 //
 // Times are Unix seconds (Date.now() / 1000), as the service's pos_at,
-// since and retry_at are. Tones are names: "normal", "soft", "dim", "cyan",
-// "green", "orange", "red", "purple"; QML maps them to Theme.
+// since, retry_at, job.started and undo.until are. Tones are names:
+// "normal", "soft", "dim", "cyan", "green", "orange", "red", "purple"; QML
+// maps them to Theme. Every text is plain text, outside names included; the
+// QML escapes what it places in styled text (the footer's hints).
 //
-// The snapshot's can_next is true when "next" would play another tune; N is
-// offered only then. With nothing playing (after a stop, or a tune mpv could
-// not play) Space plays when there is a tune to start: one ready, or a kept
-// one of the genre.
+// Playing and composing are separate. The snapshot's "composing" is the
+// composer's switch, off after every genre pick; with it off the model is
+// unloaded and only kept tunes play. can_next is true when "next" would play
+// another tune; N is offered only then. "stopped" means the user stopped the
+// player, so nothing starts by itself until Space.
 //
 // The QML's part:
 //   st = initial(); each stdout line of `desk-tunes attach`: st = apply(st,
@@ -25,7 +29,9 @@
 //   open, ui.now kept current at least once a second whenever needsTick(st,
 //   ui). A key: r = key(ui, st, name, isAutoRepeat); ui = r.ui; run r.effect.
 //   A click: on a button, the key it stands for; on a genre cell, pick(ui,
-//   st, index); on the waveform, seek(st, fraction across, now).
+//   st, index); on the waveform, seek(st, fraction across). The global
+//   scrap (IPC, panel open or not): r = globalScrap(st, now); when not null,
+//   send r.cmd and notify with r.summary and r.body.
 //
 // view(st, ui) -> { kind, setup, chooser, player }, one of the last three
 //   set and the others null:
@@ -34,31 +40,39 @@
 //     "chooser" | "player".
 //   setup: { title, detail, rows: [[label, value]], bar: null | 0..1 } for
 //     every kind before "chooser".
-//   chooser: { title, cells: [{ name, sub, sel }], empty ("" | the line in
-//     place of the cells), strip }.
-//   player: { genre, chip, strip, name, nameTone, meta, wave: null | {
-//     cols: COLS dot counts (odd, 1..ROWS), played (columns lit),
-//     forming (cyan, nothing rendered yet) }, left, leftTone, right (null
-//     when there is no time row), main ("play" | "pause"), mainLit, nextLit,
-//     well }.
+//   chooser: { title, chip, cells: [{ name, sub, sel, cur }], empty ("" |
+//     the line in place of the cells), strip }. cur is the genre selected.
+//   player: { strip, now, next, composer }.
+//   now: { head (right of NOW PLAYING), name, nameTone, meta, wave: null |
+//     { cols: COLS dot counts (odd, 1..ROWS), played (columns lit) }, time:
+//     null | { left, leftTone, right }, main ("play" | "pause"), mainLit,
+//     nextLit }.
+//   next: { head (right of UP NEXT), rows: [{ kind ("tune" | "job" |
+//     "placeholder"), n, nTone, name, nameTone, sub, right, rightTone, bar
+//     (null | 0..1), sel }] }.
+//   composer: { on, label, labelTone, lines: [{ pre, em (drawn bold), post,
+//     tone, right, rightTone }] }.
 //   strip: null | { tone, text }.
-//   well: { name, sub, status, statusTone, line, ram }.
-// hints(st, ui) -> [[key, label]], the keys key() handles now.
-// barView(st) -> { tone (the glyph), text ("" or the genre's name) }.
+// hints(st, ui) -> [[key, label]], the keys key() handles now that the
+//   footer names.
+// undoLine(st, ui) -> "" or the footer's text in place of the hints.
+// barView(st) -> { tone (the note), text ("" or the genre's name), dot (""
+//   or the composer dot's tone) }.
 // key effect: { kind: "none" | "close" | "send" | "reattach", cmd (null
 //   unless send) }.
 
 const COLS = 78;
-const ROWS = 13;
+const ROWS = 9;
 // The chooser's grid.
 const GRID = 3;
-const KEY_NAMES = ["Space", "N", "G", "U", "R", "C", "Enter", "Esc", "Left", "Right", "Up", "Down"];
+const KEY_NAMES = ["Space", "N", "G", "C", "X", "Z", "R", "Enter", "Esc", "Left", "Right", "Up", "Down"];
 const MOVING_KEYS = ["Left", "Right", "Up", "Down"];
 
 const SETUP = ["missing", "downloading", "ready", "failed"];
 const PLAYER = ["none", "playing", "paused"];
 const MODEL = ["unloaded", "starting", "idle", "writing", "rendering", "held_game", "held_memory", "failed", "no_device"];
-const COMPOSING = ["starting", "writing", "rendering"];
+const STAGES = ["writing", "rendering"];
+const WORKING = ["starting", "writing", "rendering"];
 const HELD = ["held_game", "held_memory"];
 
 const DASH = "–";
@@ -70,6 +84,12 @@ function copy(o, changes) {
 
 function num(v) {
     return typeof v === "number" && isFinite(v) ? v : null;
+}
+
+// A duration: a number above zero, else null.
+function positive(v) {
+    const n = num(v);
+    return n !== null && n > 0 ? n : null;
 }
 
 function str(v) {
@@ -134,12 +154,28 @@ function elapsed(seconds) {
     return s % 60 ? `${m} min ${s % 60} s` : `${m} min`;
 }
 
+// A tune's or a queue entry's fields; name may be a file name and the rest
+// null until the service has read the file.
+function tuneOf(t) {
+    return {
+        name: str(t.name) || "",
+        bpm: num(t.bpm),
+        key: str(t.key) || "",
+        length: num(t.length),
+        kept: t.kept === true
+    };
+}
+
 // The snapshot's fields, each of its type or its empty value.
 function snapshot(ev) {
     const d = obj(ev.download);
     const need = obj(ev.need) || {};
     const m = obj(ev.model) || {};
     const t = obj(ev.tune);
+    const j = obj(ev.job);
+    const u = obj(ev.undo);
+    const e = obj(ev.expect);
+    const ahead = num(ev.ahead);
     return {
         setup: oneOf(ev.setup, SETUP, "missing"),
         download: d ? {
@@ -163,20 +199,28 @@ function snapshot(ev) {
         })),
         genre: str(ev.genre),
         player: oneOf(ev.player, PLAYER, "none"),
-        tune: t ? {
-            n: num(t.n),
-            name: str(t.name) || "",
-            bpm: num(t.bpm),
-            key: str(t.key) || "",
-            length: num(t.length),
-            kept: t.kept === true,
+        stopped: ev.stopped === true,
+        tune: t ? copy(tuneOf(t), {
             wave: (Array.isArray(t.wave) ? t.wave : []).map(v => Math.max(0, Math.min(1, num(v) || 0)))
-        } : null,
+        }) : null,
         pos: num(ev.pos) || 0,
         posAt: num(ev.pos_at),
         ready: count(ev.ready),
+        queue: (Array.isArray(ev.queue) ? ev.queue : []).filter(q => obj(q)).map(tuneOf),
+        keptTotal: count(ev.kept_total),
         keptPlaying: ev.kept_playing === true,
         canNext: ev.can_next === true,
+        composing: ev.composing === true,
+        // The config's 2 when a snapshot lacks it.
+        ahead: ahead === null ? 2 : count(ahead),
+        expect: e && positive(e.writing_s) !== null && positive(e.rendering_s) !== null ? { writing: positive(e.writing_s), rendering: positive(e.rendering_s) } : null,
+        job: j ? {
+            stage: oneOf(j.stage, STAGES, "writing"),
+            started: num(j.started),
+            expect: positive(j.expect_s),
+            written: positive(j.written_s)
+        } : null,
+        undo: u && str(u.name) !== null ? { name: u.name, until: num(u.until) } : null,
         model: {
             name: str(m.name) || "",
             variant: str(m.variant) || "",
@@ -234,15 +278,28 @@ function genreOf(s, id) {
     return s.genres.find(g => g.id === id) || null;
 }
 
-// Whether "toggle" would start a tune when none is playing.
-function canPlay(s) {
-    const g = genreOf(s, s.genre);
-    return s.player === "none" && g !== null && (s.ready > 0 || g.kept > 0);
-}
-
 function genreName(s) {
     const g = genreOf(s, s.genre);
     return g ? g.name : s.genre || "";
+}
+
+function keptOf(s) {
+    const g = genreOf(s, s.genre);
+    return Math.max(s.keptTotal, g ? g.kept : 0);
+}
+
+// Whether "toggle" would start a tune when none is playing.
+function canPlay(s) {
+    return s.player === "none" && s.genre !== null && (s.ready > 0 || s.queue.length > 0 || keptOf(s) > 0);
+}
+
+function undoActive(s, now) {
+    return s.undo !== null && s.undo.until !== null && s.undo.until > now;
+}
+
+// The job drawn as a queue row: only while the switch is on.
+function jobShown(s) {
+    return s.composing && s.job !== null;
 }
 
 // The playing tune's position now: the snapshot's, moved on by the time
@@ -369,8 +426,13 @@ function chooserView(s, ui) {
         kind: "chooser",
         setup: null,
         chooser: {
-            title: "What do you want to hear?",
-            cells: s.genres.map((g, i) => ({ name: g.name, sub: g.kept ? `${g.kept} kept` : "none yet", sel: i === sel })),
+            title: "Genre",
+            chip: "Enter plays what is kept",
+            cells: s.genres.map((g, i) => {
+                const cur = g.id === s.genre;
+                const sub = cur ? (s.player !== "none" ? "playing now" : "selected") : g.kept ? `${g.kept} kept` : "none yet";
+                return { name: g.name, sub, sel: i === sel, cur };
+            }),
             empty: s.genres.length ? "" : "The genres file lists no genres.",
             strip: errorStrip(s)
         },
@@ -378,136 +440,210 @@ function chooserView(s, ui) {
     };
 }
 
-function wellView(s, stripShown, now) {
-    const m = s.model;
-    const st = m.state;
-    const ready = s.ready ? plural(s.ready, "tune ready", "tunes ready") : "";
-    let status;
-    let tone;
-    if (COMPOSING.indexOf(st) >= 0) {
-        status = st === "starting" ? "starting" : "composing";
-        tone = "cyan";
-    } else if (st === "idle") {
-        status = ready || "idle";
-        tone = ready ? "green" : "soft";
-    } else if (st === "held_game") {
-        status = "held for a game";
-        tone = "orange";
-    } else if (st === "held_memory") {
-        status = "held for memory";
-        tone = "orange";
-    } else if (st === "failed") {
-        status = "failed";
-        tone = "red";
-    } else {
-        status = "unloaded";
-        tone = "dim";
-    }
-    let base;
-    if (st === "idle")
-        base = "idle, holding no memory";
-    else if (st === "starting")
-        base = "starting the model server";
-    else if (st === "writing")
-        base = m.silence !== null ? `writing again: the last plan had ${Math.round(m.silence)} s of silence` : "writing the song";
-    else if (st === "rendering")
-        base = "rendering the audio";
-    else
-        base = "server stopped";
-    const parts = [base];
-    if (st === "failed" && !stripShown) {
-        const again = retryWords(m.retryAt, now);
-        parts.push(again ? `${plural(m.failures, "failure", "failures")} in a row, ${again}` : plural(m.failures, "failure", "failures") + " in a row");
-    }
-    const g = genreOf(s, s.genre);
-    if (s.keptPlaying) {
-        const kept = `playing the ${g && g.kept ? `${g.kept} ` : ""}kept tunes, shuffled`;
-        if (st === "unloaded")
-            parts[0] = kept;
-        else
-            parts.push(kept);
-    } else if (ready && st !== "idle") {
-        parts.push(ready);
-    }
-    let ram = "";
-    if (COMPOSING.indexOf(st) >= 0 && m.ramUsed !== null)
-        ram = `using ${gib(m.ramUsed)} of RAM`;
-    else if (m.ramFree !== null)
-        ram = `${gib(m.ramFree)} of RAM free`;
-    return {
-        name: m.name || "Music model",
-        sub: [m.variant, m.device].filter(x => x).join(" · "),
-        status,
-        statusTone: tone,
-        line: parts.join(" · "),
-        ram
-    };
+function metaOf(t) {
+    return [t.bpm !== null ? `${Math.round(t.bpm)} BPM` : "", t.key].filter(x => x).join(" · ");
 }
 
-function playerView(s, ui) {
-    const m = s.model;
+function nowView(s, now) {
     const t = s.tune;
-    const composing = COMPOSING.indexOf(m.state) >= 0;
-    let strip = null;
-    if (m.state === "held_game")
-        strip = { tone: "orange", text: "A game is running. Composing is paused so the game keeps the processor and the memory; tunes already made keep playing." };
-    else if (m.state === "held_memory")
-        strip = {
-            tone: "orange",
-            text: `Not enough free memory to compose: a tune needs ${gib(s.need.ram) || "more"}${m.ramFree !== null ? ` and ${gib(m.ramFree)} is free` : ""}. Composing resumes by itself when there is room.`
-        };
-    else if (m.state === "failed" && s.player === "none")
-        strip = { tone: "red", text: `${stop(`Composing failed${m.detail ? `: ${m.detail}` : ""}`)} ${sentence(retryWords(m.retryAt, ui.now)) || "R tries again."}` };
-    else
-        strip = errorStrip(s);
-    const g = genreOf(s, s.genre);
+    const name = genreName(s);
     const p = {
-        genre: genreName(s),
-        chip: "instrumental",
-        strip,
+        head: t && t.kept ? `${name} · kept tunes` : name,
         name: "",
-        nameTone: "normal",
+        nameTone: "soft",
         meta: "",
         wave: null,
-        left: "",
-        leftTone: "dim",
-        right: null,
+        time: null,
         main: s.player === "playing" ? "pause" : "play",
         mainLit: t !== null || canPlay(s),
-        nextLit: s.canNext,
-        well: wellView(s, strip !== null && m.state === "failed", ui.now)
+        nextLit: s.canNext
     };
     if (t) {
         p.name = t.name;
         p.nameTone = s.player === "paused" ? "soft" : "normal";
-        p.meta = [t.kept ? "Kept tune" : t.n !== null ? `Tune ${t.n}` : "", t.bpm !== null ? `${Math.round(t.bpm)} BPM` : "", t.key, s.player === "paused" ? "paused" : ""].filter(x => x).join(" · ");
-        const pos = position(s, ui.now);
+        p.meta = [metaOf(t), s.player === "paused" ? "paused" : ""].filter(x => x).join(" · ");
+        const pos = position(s, now);
         const played = t.length ? Math.max(0, Math.min(COLS, Math.floor(pos / t.length * COLS))) : 0;
-        p.wave = { cols: waveColumns(t.wave), played, forming: false };
-        p.left = clock(pos);
-        p.leftTone = "soft";
-        p.right = clock(t.length);
-    } else if (composing) {
-        p.name = g && g.kept ? "Composing the next tune…" : "Composing the first tune…";
-        p.nameTone = "soft";
-        const stage = m.state === "starting" ? "starting the model server" : m.state === "rendering" ? "rendering the audio" : m.silence !== null ? "writing again" : "writing the song";
-        p.meta = m.since !== null ? `${stage} · ${elapsed(ui.now - m.since)}` : stage;
-        p.wave = { cols: waveColumns([]), played: 0, forming: true };
-        p.left = clock(null);
-        p.right = clock(null);
+        p.wave = { cols: waveColumns(t.wave), played };
+        p.time = { left: clock(pos), leftTone: "soft", right: clock(t.length) };
     } else if (canPlay(s)) {
-        p.name = "Stopped. Space plays.";
-        p.nameTone = "soft";
-    } else if (m.state === "unloaded") {
-        p.name = "Nothing to play. U loads the model.";
-        p.nameTone = "soft";
+        // Only the user's stop is worded as one: a genre just picked starts
+        // clean.
+        p.name = s.stopped ? "Stopped. Space plays." : "Nothing playing. Space plays.";
+    } else if (s.composing) {
+        p.name = "Nothing yet";
+        if (s.stopped)
+            p.meta = "The player is stopped: Space starts it once a tune is ready.";
+        else if (WORKING.indexOf(s.model.state) >= 0 || s.model.state === "idle")
+            p.meta = "The first tune starts by itself when it is ready.";
+    } else if (keptOf(s) === 0) {
+        p.name = `No ${name} tunes yet`;
+        p.meta = "Turn the composer on to make some.";
     } else {
         p.name = "Nothing to play";
-        p.nameTone = "soft";
-        if (m.state === "failed")
-            p.meta = plural(m.failures, "failure", "failures") + " in a row";
     }
-    return { kind: "player", setup: null, chooser: null, player: p };
+    return p;
+}
+
+// Which row of UP NEXT is selected, as an index into the queue followed by
+// the job, or -1. The selection follows its tune by name as the queue moves.
+function rowIndex(ui, s) {
+    const r = ui.row;
+    if (!r)
+        return -1;
+    if (r.kind === "job")
+        return jobShown(s) ? s.queue.length : -1;
+    if (r.i < s.queue.length && s.queue[r.i].name === r.name)
+        return r.i;
+    return s.queue.findIndex(q => q.name === r.name);
+}
+
+function rowCount(s) {
+    return s.queue.length + (jobShown(s) ? 1 : 0);
+}
+
+function rowAt(s, k) {
+    return k < s.queue.length ? { kind: "queue", i: k, name: s.queue[k].name } : { kind: "job" };
+}
+
+// "about 1:10 left" to the nearest 10 s, at least 0:10; "any moment now"
+// once the estimate has run out.
+function leftWords(expect, spent) {
+    const left = expect - spent;
+    if (left <= 0)
+        return "any moment now";
+    return `about ${clock(Math.max(10, Math.round(left / 10) * 10))} left`;
+}
+
+function jobRow(s, n, sel, now) {
+    const j = s.job;
+    const spent = j.started !== null ? Math.max(0, now - j.started) : null;
+    const parts = [];
+    let bar = null;
+    if (j.expect !== null && spent !== null) {
+        parts.push(leftWords(j.expect, spent));
+        bar = Math.min(1, spent / j.expect);
+    } else if (spent !== null) {
+        parts.push(`${clock(spent)} so far`);
+    }
+    if (j.stage === "rendering" && j.written !== null)
+        parts.push(`written in ${clock(j.written)}`);
+    return {
+        kind: "job",
+        n,
+        nTone: "cyan",
+        name: j.stage === "rendering" ? "Being rendered" : "Being written",
+        nameTone: "soft",
+        sub: parts.join(" · "),
+        right: "composing",
+        rightTone: "cyan",
+        bar,
+        sel
+    };
+}
+
+function nextView(s, ui) {
+    const sel = rowIndex(ui, s);
+    const rows = s.queue.map((q, i) => ({
+        kind: "tune",
+        n: i + 1,
+        nTone: "dim",
+        name: q.name,
+        nameTone: "normal",
+        sub: metaOf(q),
+        right: q.length !== null ? clock(q.length) : "",
+        rightTone: "dim",
+        bar: null,
+        sel: i === sel
+    }));
+    if (jobShown(s))
+        rows.push(jobRow(s, rows.length + 1, sel === s.queue.length, ui.now));
+    if (s.composing) {
+        const missing = s.ahead - s.ready - (s.job !== null ? 1 : 0);
+        for (let i = 0; i < missing; i++)
+            rows.push({
+                kind: "placeholder",
+                n: rows.length + 1,
+                nTone: "dim",
+                name: "Not started",
+                nameTone: "dim",
+                sub: s.job !== null ? "after the one above" : "",
+                right: "",
+                rightTone: "dim",
+                bar: null,
+                sel: false
+            });
+    }
+    let head;
+    if (s.keptPlaying)
+        head = `from ${keptOf(s)} kept, shuffled`;
+    else if (s.composing || s.queue.length)
+        head = `${s.ready} ready`;
+    else
+        head = "nothing";
+    return { head, rows };
+}
+
+function line(pre, em, post, tone, right, rightTone) {
+    return { pre, em: em || "", post: post || "", tone: tone || "dim", right: right || "", rightTone: rightTone || "dim" };
+}
+
+function composerView(s, now) {
+    const m = s.model;
+    const name = genreName(s);
+    if (!s.composing) {
+        const kept = keptOf(s) > 0;
+        const lines = [line(kept ? "On, it makes new " : "On, it makes ", name, ` and keeps ${s.ahead} ahead.`)];
+        if (!kept && s.need.ram !== null) {
+            const ram = gib(s.need.ram);
+            lines.push(line(s.expect
+                ? `A tune takes about ${Math.max(1, Math.round((s.expect.writing + s.expect.rendering) / 60))} min and ${ram} of RAM while it is made.`
+                : `A tune takes about ${ram} of RAM while it is made.`));
+        }
+        return { on: false, label: "off", labelTone: "soft", lines };
+    }
+    const st = m.state;
+    let right = "";
+    let rightTone = "dim";
+    if (st === "idle") {
+        right = "resting, queue is full";
+        rightTone = "green";
+    } else if (st === "starting") {
+        right = "starting the model";
+        rightTone = "cyan";
+    } else if ((st === "writing" || st === "rendering") && m.ramUsed !== null) {
+        right = `using ${gib(m.ramUsed)} of RAM`;
+    }
+    const lines = [line("Makes ", name, `, keeps ${s.ahead} ahead`, "dim", right, rightTone)];
+    if (st === "writing" && m.silence !== null)
+        lines.push(line(`Writing again: the last plan had ${Math.round(m.silence)} s of silence.`));
+    if (st === "held_game")
+        lines.push(line("A game is running. Composing waits and carries on by itself when the game closes; tunes already made keep playing.", "", "", "orange"));
+    else if (st === "held_memory")
+        lines.push(line(`Not enough free memory: a tune needs ${gib(s.need.ram) || "more"}${m.ramFree !== null ? ` and ${gib(m.ramFree)} is free` : ""}. Composing carries on by itself when there is room.`, "", "", "orange"));
+    else if (st === "failed")
+        lines.push(line(`${stop(`Failed${m.detail ? `: ${m.detail}` : ""}`)} ${plural(m.failures, "failure", "failures")} in a row. ${sentence(retryWords(m.retryAt, now)) || "R tries again."}`, "", "", "red"));
+    if ((WORKING.indexOf(st) >= 0 || st === "failed") && m.name)
+        lines.push(line([m.name, m.variant, m.device].filter(x => x).join(" · ")));
+    let label = "on";
+    let labelTone = "soft";
+    if (st === "held_game" || st === "held_memory") {
+        label = st === "held_game" ? "held for a game" : "held for memory";
+        labelTone = "orange";
+    } else if (st === "failed") {
+        label = "failed";
+        labelTone = "red";
+    }
+    return { on: true, label, labelTone, lines };
+}
+
+function playerView(s, ui) {
+    return {
+        kind: "player",
+        setup: null,
+        chooser: null,
+        player: { strip: errorStrip(s), now: nowView(s, ui.now), next: nextView(s, ui), composer: composerView(s, ui.now) }
+    };
 }
 
 function view(st, ui) {
@@ -526,12 +662,12 @@ function view(st, ui) {
     return playerView(s, ui);
 }
 
-// The ui of a panel just opened: the player, the chooser's selection on the
-// genre playing.
+// The ui of a panel just opened: the player, the chooser's cursor on the
+// selected genre, no queue row selected.
 function initialUi(st, now) {
     const s = st.snap;
     const i = s ? s.genres.findIndex(g => g.id === s.genre) : -1;
-    return { now, mode: "player", sel: Math.max(0, i) };
+    return { now, mode: "player", sel: Math.max(0, i), row: null };
 }
 
 function effect(kind, cmd) {
@@ -542,8 +678,13 @@ function send(cmd) {
     return u => ({ ui: u, effect: effect("send", cmd) });
 }
 
+function sendClearing(cmd) {
+    return u => ({ ui: copy(u, { row: null }), effect: effect("send", cmd) });
+}
+
 // The key table for the state and ui as they are: [{ keys, hint, run }] in
-// footer order. Only what is listed is handled and hinted.
+// footer order. Only what is listed is handled; an entry whose hint is null
+// is handled but not named in the footer.
 function table(ui, st) {
     const close = { keys: ["Esc"], hint: ["Esc", "close"], run: u => ({ ui: u, effect: effect("close") }) };
     const kind = view(st, ui).kind;
@@ -552,14 +693,15 @@ function table(ui, st) {
     if (kind === "missing" || kind === "down" || kind === "lost")
         return [{ keys: ["R"], hint: ["R", "try now"], run: u => ({ ui: u, effect: effect("reattach") }) }, close];
     const s = st.snap;
-    const genres = { keys: ["G"], hint: ["G", "genres"], run: u => ({ ui: copy(u, { mode: "chooser", sel: Math.max(0, s.genres.findIndex(g => g.id === s.genre)) }), effect: effect("none") }) };
+    const genres = { keys: ["G"], hint: ["G", "genre"], run: u => ({ ui: copy(u, { mode: "chooser", sel: Math.max(0, s.genres.findIndex(g => g.id === s.genre)) }), effect: effect("none") }) };
     const retry = { keys: ["R"], hint: ["R", "try now"], run: send({ cmd: "retry" }) };
+    const composer = { keys: ["C"], hint: ["C", s.composing ? "composer off" : "composer on"], run: send({ cmd: "compose", on: !s.composing }) };
     if (kind === "setup" || kind === "failed")
         return [{ keys: ["Enter"], hint: ["Enter", kind === "failed" ? "resume" : "download"], run: send({ cmd: "download" }) }, close];
     if (kind === "download")
         return [{ keys: ["C"], hint: ["C", "cancel"], run: send({ cmd: "cancel_download" }) }, close];
     if (kind === "device")
-        return [retry, genres, close];
+        return s.composing ? [retry, composer, genres, close] : [genres, close];
     if (kind === "chooser") {
         const back = s.genre !== null
             ? { keys: ["Esc"], hint: ["Esc", "back"], run: u => ({ ui: copy(u, { mode: "player" }), effect: effect("none") }) }
@@ -567,6 +709,7 @@ function table(ui, st) {
         if (!s.genres.length)
             return [back];
         const last = s.genres.length - 1;
+        const at = s.genres[selected(ui, s)];
         return [
             {
                 keys: MOVING_KEYS,
@@ -578,29 +721,52 @@ function table(ui, st) {
                     return { ui: copy(u, { sel: j < 0 || j > last ? i : j }), effect: effect("none") };
                 }
             },
-            { keys: ["Enter"], hint: ["Enter", "play"], run: u => pick(u, st, selected(u, s)) },
+            { keys: ["Enter"], hint: ["Enter", at.id === s.genre ? `back to ${at.name}` : `play ${at.name}`], run: u => pick(u, st, selected(u, s)) },
             back
         ];
     }
-    const m = s.model.state;
+    const sel = rowIndex(ui, s);
+    const rows = rowCount(s);
     const t = [];
-    if (s.tune || canPlay(s))
-        t.push({ keys: ["Space"], hint: ["Space", s.player === "playing" ? "pause" : "play"], run: send({ cmd: "toggle" }) });
-    if (s.canNext)
-        t.push({ keys: ["N"], hint: ["N", "next"], run: send({ cmd: "next" }) });
-    if (m === "failed")
-        t.push(retry);
-    t.push(genres);
-    if (m === "unloaded")
-        t.push({ keys: ["U"], hint: ["U", "load"], run: send({ cmd: "load" }) });
-    else if (HELD.indexOf(m) < 0)
-        t.push({ keys: ["U"], hint: ["U", "unload"], run: send({ cmd: "unload" }) });
-    t.push(close);
-    return t;
+    const move = {
+        keys: ["Up", "Down"],
+        hint: sel >= 0 ? ["↑↓", "select"] : null,
+        run: (u, k) => {
+            const i = rowIndex(u, s);
+            let j;
+            if (k === "Down")
+                j = Math.min(i + 1, rows - 1);
+            else
+                j = i - 1;
+            return { ui: copy(u, { row: j >= 0 ? rowAt(s, j) : null }), effect: effect("none") };
+        }
+    };
+    if (rows > 0)
+        t.push(move);
+    const space = s.tune || canPlay(s) ? { keys: ["Space"], hint: ["Space", s.player === "playing" ? "pause" : "play"], run: send({ cmd: "toggle" }) } : null;
+    let scrap = null;
+    if (sel >= 0 && sel < s.queue.length)
+        scrap = { keys: ["X"], hint: ["X", `scrap ${s.queue[sel].name}`], run: sendClearing({ cmd: "scrap", i: sel }) };
+    else if (sel >= 0)
+        scrap = { keys: ["X"], hint: ["X", `scrap the tune being ${s.job.stage === "rendering" ? "rendered" : "written"}`], run: sendClearing({ cmd: "scrap", job: true }) };
+    else if (s.tune)
+        scrap = { keys: ["X"], hint: ["X", `scrap ${s.tune.name}`], run: send({ cmd: "scrap" }) };
+    const next = s.canNext ? { keys: ["N"], hint: ["N", "next"], run: send({ cmd: "next" }) } : null;
+    const undo = undoActive(s, ui.now) ? { keys: ["Z"], hint: ["Z", "undo"], run: send({ cmd: "undo" }) } : null;
+    const canRetry = s.composing && s.model.state === "failed";
+    const quiet = e => e ? copy(e, { hint: null }) : null;
+    if (sel >= 0) {
+        if (sel < s.queue.length)
+            t.push({ keys: ["Enter"], hint: ["Enter", "play it now"], run: sendClearing({ cmd: "play", i: sel }) });
+        t.push(scrap, space, quiet(next), quiet(undo), quiet(canRetry ? retry : null), quiet(composer), quiet(genres), close);
+    } else {
+        t.push(space, next, scrap, undo, canRetry ? retry : null, composer, genres, close);
+    }
+    return t.filter(e => e);
 }
 
 // A key pressed in the open panel: one of KEY_NAMES. A held key's
-// auto-repeat acts only for the chooser's arrows. Returns { ui, effect }.
+// auto-repeat acts only for the arrows. Returns { ui, effect }.
 function key(ui, st, name, isAutoRepeat) {
     const entry = table(ui, st).find(e => e.keys.indexOf(name) >= 0);
     if (!entry || (isAutoRepeat && MOVING_KEYS.indexOf(name) < 0))
@@ -609,16 +775,16 @@ function key(ui, st, name, isAutoRepeat) {
 }
 
 // The chooser's genre `index` chosen (Enter or a click): back to the player,
-// and the genre asked for; the one already picked is started with "toggle"
-// when nothing plays, and left alone otherwise.
+// and the genre asked for; the one already selected only closes the
+// chooser.
 function pick(ui, st, index) {
     const s = st.snap;
     const g = s ? s.genres[index] : undefined;
     if (!g)
         return { ui, effect: effect("none") };
-    const u = copy(ui, { mode: "player", sel: index });
+    const u = copy(ui, { mode: "player", sel: index, row: null });
     if (g.id === s.genre)
-        return { ui: u, effect: s.player === "none" ? effect("send", { cmd: "toggle" }) : effect("none") };
+        return { ui: u, effect: effect("none") };
     return { ui: u, effect: effect("send", { cmd: "genre", id: g.id }) };
 }
 
@@ -632,56 +798,79 @@ function seek(st, fraction) {
     return { cmd: "seek", t: Math.round(f * s.tune.length * 10) / 10 };
 }
 
-// The footer.
+// The footer's hints.
 function hints(st, ui) {
-    return table(ui, st).map(e => e.hint);
+    return table(ui, st).filter(e => e.hint !== null).map(e => e.hint);
+}
+
+// The footer's line in place of the hints while a scrap can be undone, in
+// the player.
+function undoLine(st, ui) {
+    if (view(st, ui).kind !== "player")
+        return "";
+    const s = st.snap;
+    if (!undoActive(s, ui.now))
+        return "";
+    return `Scrapped ${s.undo.name}. Z brings it back for ${Math.ceil(s.undo.until - ui.now)} s.`;
+}
+
+// The global scrap (Super+Shift+M, the panel open or not): an undo while
+// one is offered, else a scrap of the playing tune; null with no link or
+// nothing to act on. { cmd, summary, body } for the command and the one
+// notification.
+function globalScrap(st, now) {
+    if (st.link !== "up" || !st.snap)
+        return null;
+    const s = st.snap;
+    if (undoActive(s, now))
+        return { cmd: { cmd: "undo" }, summary: `Brought back ${s.undo.name}`, body: "It plays next." };
+    if (!s.tune)
+        return null;
+    return { cmd: { cmd: "scrap" }, summary: `Scrapped ${s.tune.name}`, body: "Super+Shift+M again within 10 s brings it back." };
 }
 
 // Whether the open panel shows something that changes with the clock alone:
-// the position while playing, a countdown, the time spent composing.
+// the position while playing, the job's time, the undo countdown, a retry
+// countdown.
 function needsTick(st, ui) {
     if (st.link === "missing" || st.link === "down" || st.link === "lost")
         return st.retryAt !== null;
     if (st.link !== "up" || !st.snap)
         return false;
     const s = st.snap;
-    if (s.setup !== "ready" || s.model.state === "no_device" || ui.mode === "chooser" || s.genre === null)
+    if (view(st, ui).kind !== "player")
         return false;
-    if (s.player === "playing")
+    if (s.player === "playing" || undoActive(s, ui.now))
         return true;
-    if (s.model.state === "failed")
-        return s.model.retryAt !== null;
-    return s.tune === null && COMPOSING.indexOf(s.model.state) >= 0 && s.model.since !== null;
+    if (jobShown(s) && s.job.started !== null)
+        return true;
+    return s.composing && s.model.state === "failed" && s.model.retryAt !== null;
 }
 
-// The bar item. Dim with no link, no model or no genre, and while nothing
-// plays, composes or waits; orange while held, red after a failure, cyan
-// while composing or downloading; the genre's name only while playing.
+// The bar item: the note is playback (dim while nothing plays, the genre's
+// name only while playing), the dot the composer (cyan while it works or
+// the model downloads, orange while held, red after a failure or with no
+// device; none while off or resting).
 function barView(st) {
     if (st.link !== "up" || !st.snap)
-        return { tone: "dim", text: "" };
+        return { tone: "dim", text: "", dot: "" };
     const s = st.snap;
-    if (s.setup === "downloading")
-        return { tone: "cyan", text: "" };
-    if (s.setup !== "ready" || s.genre === null)
-        return { tone: "dim", text: "" };
     const m = s.model.state;
-    const text = s.player === "playing" ? genreName(s) : "";
-    let tone = "dim";
-    if (HELD.indexOf(m) >= 0)
-        tone = "orange";
-    else if (m === "failed" || m === "no_device")
-        tone = "red";
-    else if (COMPOSING.indexOf(m) >= 0)
-        tone = "cyan";
-    else if (s.player !== "none")
-        tone = "normal";
-    return { tone, text };
+    let dot = "";
+    if (s.setup === "downloading" || (s.composing && WORKING.indexOf(m) >= 0))
+        dot = "cyan";
+    else if (s.composing && HELD.indexOf(m) >= 0)
+        dot = "orange";
+    else if (s.composing && (m === "failed" || m === "no_device"))
+        dot = "red";
+    if (s.setup !== "ready" || s.genre === null)
+        return { tone: "dim", text: "", dot };
+    return { tone: s.player === "none" ? "dim" : "normal", text: s.player === "playing" ? genreName(s) : "", dot };
 }
 
 if (typeof module !== "undefined")
     module.exports = {
         COLS, ROWS, GRID, KEY_NAMES,
-        initial, apply, healthy, linkLost, view, initialUi, key, pick, seek, hints, needsTick, barView,
+        initial, apply, healthy, linkLost, view, initialUi, key, pick, seek, hints, undoLine, globalScrap, needsTick, barView,
         position, waveColumns, clock, gib, rate, elapsed
     };

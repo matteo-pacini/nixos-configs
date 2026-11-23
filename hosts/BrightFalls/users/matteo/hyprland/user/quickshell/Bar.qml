@@ -997,12 +997,12 @@ Scope {
 
                         readonly property bool panelOpen: TunesShared.screen === bar.modelData.name
                         readonly property var shown: TunesView.barView(TunesShared.st)
-                        readonly property color tone: panelOpen ? Theme.purple : {
-                            dim: Theme.comment,
-                            cyan: Theme.cyan,
-                            orange: Theme.orange,
-                            red: Theme.red
-                        }[shown.tone] ?? Theme.foreground
+                        readonly property color tone: panelOpen ? Theme.purple : shown.tone === "dim" ? Theme.comment : Theme.foreground
+                        readonly property color dot: ({
+                                cyan: Theme.cyan,
+                                orange: Theme.orange,
+                                red: Theme.red
+                            })[shown.dot] ?? "transparent"
 
                         width: tunesRow.implicitWidth
                         height: parent.height
@@ -1024,8 +1024,9 @@ Scope {
                             color: Theme.purple
                         }
 
-                        // The glyph in the service's tone, and the genre
-                        // while a tune plays.
+                        // The note for playback, dim while nothing plays; the
+                        // composer's dot beside it; the genre while a tune
+                        // plays.
                         Row {
                             id: tunesRow
 
@@ -1036,6 +1037,15 @@ Scope {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: root.glyph.music
                                 color: tunes.tone
+                            }
+
+                            Rectangle {
+                                visible: tunes.shown.dot !== ""
+                                y: 9
+                                width: 6
+                                height: 6
+                                radius: 3
+                                color: tunes.dot
                             }
 
                             Text {

@@ -42,6 +42,31 @@ manifest() { # dir, then path=content pairs
 }
 sha() { sha256sum <"$1" | cut -d' ' -f1; }
 
+# A stand-in for Quickshell's `qs`: logs its arguments and every file under
+# the live quickshell/ at the moment it is called, to $work/qs.log. It fails
+# with qs's message when $work/qs-down exists.
+mkdir -p "$work/bin"
+cat >"$work/bin/qs" <<EOF
+#!$BASH
+{
+  echo "qs \$*"
+  find "\$HOME/.config/quickshell" -type f | LC_ALL=C sort | while read -r f; do
+    echo "\${f#\$HOME/.config/}=\$(cat "\$f")"
+  done
+} >>"$work/qs.log"
+if [ -e "$work/qs-down" ]; then
+  echo 'No running instances for "x"'
+  echo 'second line'
+  exit 255
+fi
+EOF
+chmod +x "$work/bin/qs"
+export PATH="$work/bin:$PATH"
+qslog() { # the log since the last call, then emptied
+  cat "$work/qs.log" 2>/dev/null || true
+  rm -f "$work/qs.log"
+}
+
 manifest gen1 hypr/a.lua=a1 hypr/b.lua=b1 hypr/c.lua=c1 hypr/d.lua=d1 \
   hypr/gone.lua=g1 quickshell/shell.qml=q1
 manifest gen2 hypr/a.lua=a2 hypr/b.lua=b2 hypr/c.lua=c1 hypr/d.lua=d2 \
@@ -58,7 +83,10 @@ check "activate gen1 output" "desk-sync: hypr/a.lua: installed
 desk-sync: hypr/b.lua: installed
 desk-sync: hypr/d.lua: replaced the store link with a writable copy
 desk-sync: hypr/gone.lua: installed
-desk-sync: quickshell/shell.qml: installed" "$out"
+desk-sync: quickshell/shell.qml: installed
+desk-sync: quickshell: reloaded" "$out"
+check "activate gen1: one reload, after the last file" "qs ipc --any-display -p $cfg/quickshell call shell reload
+quickshell/shell.qml=q1" "$(qslog)"
 check "absent: installed as a regular 0644 file" "regular file 644 a1" \
   "$(stat -c '%F %a' "$cfg/hypr/a.lua") $(cat "$cfg/hypr/a.lua")"
 check "absent: hash recorded" "$(sha "$work/gen1/hypr/a.lua")" "$(cat "$state/hashes/hypr/a.lua")"
@@ -67,7 +95,7 @@ check "store link: now a regular file" "regular file 644 d1" \
 check "identical to store: hash recorded" "$(sha "$work/gen1/hypr/c.lua")" "$(cat "$state/hashes/hypr/c.lua")"
 
 ds "$work/gen1" activate
-check "activate again: silent" "0 " "$rc $out"
+check "activate again: silent, no reload" "0  " "$rc $out $(qslog)"
 
 # a.lua untouched, b.lua edited live, d.lua edited live, gone.lua edited live.
 printf 'b1 edited\n' >"$cfg/hypr/b.lua"
@@ -98,9 +126,11 @@ check "removed from manifest: live left alone" "g1 edited" "$(cat "$cfg/hypr/gon
 check "removed from manifest: record dropped" absent \
   "$([ -e "$state/hashes/hypr/gone.lua" ] && echo present || echo absent)"
 check "failed file: untouched" q1 "$(cat "$cfg/quickshell/shell.qml")"
+check "failed file, the only one under quickshell/: no reload" "" "$(qslog)"
 
 ds "$work/gen2" activate
-check "retry: failed file now updated" "0 desk-sync: quickshell/shell.qml: updated" "$rc $out"
+check "retry: failed file now updated" "0 desk-sync: quickshell/shell.qml: updated
+desk-sync: quickshell: reloaded" "$rc $out"
 
 rm "$cfg/hypr/new.lua"
 printf 'a2 edited\n' >"$cfg/hypr/a.lua"
@@ -194,7 +224,8 @@ ds "$work/r2" activate
 check "edited, then a new generation: incoming" present "$(present "$state/incoming/hypr/x.lua")"
 ds "$work/r1" activate
 check "rolled back: incoming dropped, the edit kept, the other file rolled back" \
-  "0 desk-sync: quickshell/y.qml: updated absent x1 edited" \
+  "0 desk-sync: quickshell/y.qml: updated
+desk-sync: quickshell: reloaded absent x1 edited" \
   "$rc $out $(present "$state/incoming/hypr/x.lua") $(cat "$cfg/hypr/x.lua")"
 ds "$work/r2" activate
 cp "$state/incoming/hypr/x.lua" "$cfg/hypr/x.lua"
@@ -278,5 +309,48 @@ check "symlink and directory after a new generation: still kept, never written t
   "0 desk-sync: hypr/l.lua: kept the live edit; the new version is in $state/incoming/hypr/l.lua
 desk-sync: hypr/m.lua: kept the live edit; the new version is in $state/incoming/hypr/m.lua mine $work/mine/l.lua directory l2 m2" \
   "$rc $out $(cat "$work/mine/l.lua") $(readlink "$cfg/hypr/l.lua") $(stat -c %F "$cfg/hypr/m.lua") $(cat "$state/incoming/hypr/l.lua") $(cat "$state/incoming/hypr/m.lua")"
+
+# ---- the shell's reload ----
+export HOME="$work/home5"
+mkdir -p "$HOME"
+cfg=$HOME/.config
+state=$HOME/.local/state/desk
+manifest s1 hypr/h.lua=h1 quickshell/shell.qml=s1 quickshell/Bar.qml=b1 quickshell/w/W.qml=w1 quickshell/w/w.js=j1
+# Bar.qml now imports a directory that sorts after it, and only a .js
+# changes in w/: the case the shell's own watcher misses.
+manifest s2 hypr/h.lua=h1 quickshell/shell.qml=s1 quickshell/Bar.qml=b2 quickshell/w/W.qml=w1 quickshell/w/w.js=j2 \
+  quickshell/x/X.qml=x2
+manifest s3 hypr/h.lua=h3 quickshell/shell.qml=s1 quickshell/Bar.qml=b2 quickshell/w/W.qml=w1 quickshell/w/w.js=j2 \
+  quickshell/x/X.qml=x2
+manifest s4 hypr/h.lua=h3 quickshell/shell.qml=s1 quickshell/Bar.qml=b4 quickshell/w/W.qml=w1 quickshell/w/w.js=j2 \
+  quickshell/x/X.qml=x2
+ds "$work/s1" activate
+qslog >/dev/null
+ds "$work/s2" activate
+check "new directory and a .js: one reload, with every file already in place" "0 desk-sync: quickshell/Bar.qml: updated
+desk-sync: quickshell/w/w.js: updated
+desk-sync: quickshell/x/X.qml: installed
+desk-sync: quickshell: reloaded
+qs ipc --any-display -p $cfg/quickshell call shell reload
+quickshell/Bar.qml=b2
+quickshell/shell.qml=s1
+quickshell/w/W.qml=w1
+quickshell/w/w.js=j2
+quickshell/x/X.qml=x2" "$rc $out
+$(qslog)"
+ds "$work/s3" activate
+check "only hypr/ changed: no reload" "0 desk-sync: hypr/h.lua: updated " "$rc $out $(qslog)"
+printf 'b2 edited\n' >"$cfg/quickshell/Bar.qml"
+ds "$work/s4" activate
+check "a quickshell/ file kept as edited, nothing written: no reload" \
+  "0 desk-sync: quickshell/Bar.qml: kept the live edit; the new version is in $state/incoming/quickshell/Bar.qml " \
+  "$rc $out $(qslog)"
+ds "$work/s3" reset quickshell/Bar.qml
+touch "$work/qs-down"
+ds "$work/s4" activate
+rm "$work/qs-down"
+check "no shell to reload: said, activation still succeeds" "0 desk-sync: quickshell/Bar.qml: updated
+desk-sync: quickshell: not reloaded: No running instances for \"x\" second line " "$rc $out"
+qslog >/dev/null
 
 exit "$failed"

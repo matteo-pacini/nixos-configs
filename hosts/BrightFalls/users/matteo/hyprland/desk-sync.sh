@@ -67,9 +67,11 @@ activate_one() { # rel
 
   if [ -L "$live" ] && [[ $(readlink "$live") == /nix/store/* ]]; then
     restore "$rel" || return 1
+    written "$rel"
     echo "desk-sync: $rel: replaced the store link with a writable copy"
   elif [ ! -e "$live" ] && [ ! -L "$live" ]; then
     restore "$rel" || return 1
+    written "$rel"
     echo "desk-sync: $rel: installed"
   elif [ -f "$live" ] && cmp -s "$live" "$manifest/$rel"; then
     record "$rel" || return 1
@@ -77,6 +79,7 @@ activate_one() { # rel
   elif [ -f "$live" ] && [ ! -L "$live" ] && [ -n "$recorded" ] &&
     [ "$(hash "$live")" = "$recorded" ]; then
     restore "$rel" || return 1
+    written "$rel"
     echo "desk-sync: $rel: updated"
   elif [ "$(hash "$manifest/$rel")" = "$recorded" ]; then
     # Edited live, and the store copy is the one already installed under the
@@ -90,8 +93,31 @@ activate_one() { # rel
   fi
 }
 
+written() { # rel: activate_one wrote it
+  [[ $1 == quickshell/* ]] && shell_written=1
+  return 0
+}
+
+# Quickshell reloads itself only when a .qml file it loaded changes: not for
+# a file it did not load (a new one, or one in a new directory), nor for any
+# .js file (src/core/scan.cpp, generation.cpp); and a reload that fails on a
+# half-installed tree keeps the old configuration until the next change it
+# sees. So, once every file is in place, it is asked for one reload through
+# shell.qml's "shell" IPC target. --any-display: activation has no display
+# variable, and qs would otherwise look only for instances started without
+# one.
+reload_shell() {
+  local out
+  if out=$(timeout 10 qs ipc --any-display -p "$config_home/quickshell" call shell reload 2>&1); then
+    echo "desk-sync: quickshell: reloaded"
+  else
+    echo "desk-sync: quickshell: not reloaded: $(tr '\n' ' ' <<<"$out")"
+  fi
+}
+
 activate() {
-  local rel failed=0
+  # Set by written(), which runs inside activate_one.
+  local rel failed=0 shell_written=0
   while IFS= read -r rel; do
     activate_one "$rel" || {
       echo "desk-sync: $rel: failed, left as it was" >&2
@@ -107,6 +133,8 @@ activate() {
       rm -f "$state/hashes/$rel" "$state/incoming/$rel"
     done < <(find "$state/hashes" -type f -printf '%P\n' | LC_ALL=C sort)
   fi
+
+  [ "$shell_written" = 1 ] && reload_shell
   return "$failed"
 }
 

@@ -111,9 +111,9 @@ hosts](#tailscale-status-and-mesh-hosts)).
 ## Activation
 
 Home Manager runs `desk-sync activate` after linking the generation, at boot
-(comin) and on `nixos-rebuild switch`. It never reloads anything. For each
-file in the manifest, with the hash of the store copy it last installed kept
-in `~/.local/state/desk/hashes/<path>`:
+(comin) and on `nixos-rebuild switch`. For each file in the manifest, with
+the hash of the store copy it last installed kept in
+`~/.local/state/desk/hashes/<path>`:
 
 | Live file | Result |
 |-----------|--------|
@@ -127,6 +127,20 @@ A file dropped from the manifest is left in place, and activation says so
 once. One file failing is reported and does not stop the others or Home
 Manager's activation.
 
+Activation never reloads Hyprland. It reloads the shell once, after the last
+file is in place, if it wrote any file under `quickshell/`: `qs ipc
+--any-display -p ~/.config/quickshell call shell reload`, the `shell` IPC
+target in `shell.qml` (10 s at most), and says `desk-sync: quickshell:
+reloaded` or why not (`not reloaded: No running instances…` when the shell
+is not running, as at boot, which is harmless: it loads the files when it
+starts). Quickshell's own reload on a file change is not enough for a
+switch: the files arrive one by one, so it reloads on a half-installed tree,
+and when that fails (a `.qml` already importing a directory not yet
+written) it keeps the old configuration; it never notices a new file or a
+changed `.js` file, so nothing reloads it after the last one lands. A switch
+that changes only files under `hypr/`, or only files kept as live edits,
+does not reload the shell.
+
 ## desk-sync
 
 - `desk-sync status [-v]`: each manifest file as `clean`, `edited`,
@@ -134,8 +148,10 @@ Manager's activation.
   `-v` adds a diff from the store copy to the live file.
 - `desk-sync reset <path>|--all`: put the store copy back, record its hash,
   drop its incoming copy, and print what applies it (`hyprctl reload` for
-  `hypr/`; nothing for `quickshell/`, which reloads itself). `<path>` is
-  relative to `~/.config` (`hypr/bindings.lua`) or the live path.
+  `hypr/`; nothing for `quickshell/`, which reloads itself for a `.qml`
+  file; a reset `.js` file reaches the shell only with its next reload, as
+  in [Activation](#activation)). `<path>` is relative to `~/.config`
+  (`hypr/bindings.lua`) or the live path.
 - `desk-sync pull <checkout-dir>`: copy edited live files into
   `<checkout-dir>/hosts/BrightFalls/users/matteo/hyprland/user/` and print
   `git status --short` for that subtree. No commit. Two kinds of file are

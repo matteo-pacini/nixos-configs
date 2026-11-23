@@ -10,12 +10,14 @@ import "tunes/tunes.js" as T
 // The tunes panel, hanging under the bar's tunes item on one monitor.
 // Toggled over IPC (on the focused monitor) or from the bar:
 //   qs ipc call tunes toggle
-// The genre playing, the tune with its dot waveform, the controls and the
-// music model's well; or the model's download, the genre chooser, or why
-// there is nothing to show. The music itself is the desk-tunes service's
-// and carries on with the panel closed. tunes.js decides everything drawn
-// and what each key and click does; this file draws its views and passes
-// keys and clicks on.
+// and the playing tune scrapped (or the last scrap undone) from anywhere:
+//   qs ipc call tunes scrap
+// Three sections: now playing, up next (the queue and the tune being
+// composed) and the composer's switch and well; or the model's download, the
+// genre chooser, or why there is nothing to show. The music itself is the
+// desk-tunes service's and carries on with the panel closed. tunes.js
+// decides everything drawn and what each key and click does; this file
+// draws its views and passes keys and clicks on.
 Scope {
     id: root
 
@@ -30,14 +32,14 @@ Scope {
     readonly property var chooser: v ? v.chooser : null
     readonly property var player: v ? v.player : null
     readonly property string hintsJson: open && TunesShared.ui ? JSON.stringify(T.hints(TunesShared.st, TunesShared.ui)) : "[]"
-    readonly property var hints: JSON.parse(hintsJson)
+    readonly property var hints: JSON.parse(hintsJson).map(h => [esc(h[0]), esc(h[1])])
+    readonly property string undoLine: open && TunesShared.ui ? T.undoLine(TunesShared.st, TunesShared.ui) : ""
 
     // Nerd Font (Material Design) glyphs.
     readonly property var glyph: ({
             play: "\u{f040a}",
             pause: "\u{f03e4}",
-            next: "\u{f04ad}",
-            grid: "\u{f0570}"
+            next: "\u{f04ad}"
         })
 
     // tunes.js's tone names.
@@ -60,6 +62,11 @@ Scope {
         default:
             return Theme.foreground;
         }
+    }
+
+    // For outside text placed inside styled text.
+    function esc(text: string): string {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     function toggle(screen: string): void {
@@ -92,9 +99,10 @@ Scope {
             [Qt.Key_Space]: "Space",
             [Qt.Key_N]: "N",
             [Qt.Key_G]: "G",
-            [Qt.Key_U]: "U",
-            [Qt.Key_R]: "R",
-            [Qt.Key_C]: "C"
+            [Qt.Key_C]: "C",
+            [Qt.Key_X]: "X",
+            [Qt.Key_Z]: "Z",
+            [Qt.Key_R]: "R"
         };
         const name = always[event.key] ?? (plain ? letters[event.key] : undefined);
         if (name === undefined)
@@ -119,6 +127,10 @@ Scope {
 
         function toggle(): void {
             root.toggle(Hyprland.focusedMonitor?.name ?? "");
+        }
+
+        function scrap(): void {
+            TunesShared.scrapPlaying();
         }
     }
 
@@ -261,21 +273,48 @@ Scope {
                     }
                 }
 
-                // The genre chooser.
+                // The genre chooser: the genre selected outlined.
                 Column {
                     visible: root.chooser !== null
                     width: parent.width
 
-                    Text {
-                        x: 14
-                        width: parent.width - 28
-                        topPadding: 14
-                        wrapMode: Text.Wrap
-                        text: root.chooser ? root.chooser.title : ""
-                        color: Theme.foreground
-                        font.family: Theme.fontUi
-                        font.pixelSize: 17
-                        font.weight: Font.DemiBold
+                    Item {
+                        width: parent.width
+                        height: chooserTitle.implicitHeight + 14
+
+                        Text {
+                            id: chooserTitle
+
+                            x: 14
+                            y: 14
+                            text: root.chooser ? root.chooser.title : ""
+                            color: Theme.foreground
+                            font.family: Theme.fontUi
+                            font.pixelSize: 17
+                            font.weight: Font.DemiBold
+                        }
+
+                        Rectangle {
+                            // On the title's baseline.
+                            x: parent.width - 14 - width
+                            y: chooserTitle.y + chooserTitle.baselineOffset - chipText.y - chipText.baselineOffset
+                            width: chipText.implicitWidth + 12
+                            height: chipText.implicitHeight + 2
+                            radius: 5
+                            color: "transparent"
+                            border.width: 1
+                            border.color: Theme.currentLine
+
+                            Text {
+                                id: chipText
+
+                                anchors.centerIn: parent
+                                text: root.chooser ? root.chooser.chip : ""
+                                color: Theme.comment
+                                font.family: Theme.fontMono
+                                font.pixelSize: 11
+                            }
+                        }
                     }
 
                     Column {
@@ -306,7 +345,7 @@ Scope {
                     Item {
                         visible: root.chooser !== null && root.chooser.empty === ""
                         width: parent.width
-                        height: cells.implicitHeight + 14
+                        height: cells.implicitHeight + 18
 
                         Grid {
                             id: cells
@@ -314,7 +353,7 @@ Scope {
                             readonly property real cellWidth: (width - 2 * spacing) / 3
 
                             x: 8
-                            y: 4
+                            y: 8
                             width: parent.width - 16
                             columns: 3
                             spacing: 4
@@ -332,6 +371,8 @@ Scope {
                                     height: cellText.implicitHeight + 16
                                     radius: 6
                                     color: modelData.sel ? Theme.currentLine : cellArea.containsMouse ? Qt.rgba(Theme.currentLine.r, Theme.currentLine.g, Theme.currentLine.b, 0.5) : "transparent"
+                                    border.width: 1
+                                    border.color: modelData.cur ? Theme.purple : "transparent"
 
                                     Column {
                                         id: cellText
@@ -356,7 +397,7 @@ Scope {
                                             width: parent.width
                                             wrapMode: Text.Wrap
                                             text: cell.modelData.sub
-                                            color: Theme.comment
+                                            color: cell.modelData.cur ? Theme.purple : Theme.comment
                                             font.family: Theme.fontMono
                                             font.pixelSize: 11
                                         }
@@ -375,54 +416,16 @@ Scope {
                     }
                 }
 
-                // The player.
+                // The player: now playing, up next, the composer.
                 Column {
+                    id: playerColumn
+
+                    readonly property var now: root.player ? root.player.now : null
+                    readonly property var next: root.player ? root.player.next : null
+                    readonly property var composer: root.player ? root.player.composer : null
+
                     visible: root.player !== null
                     width: parent.width
-
-                    Item {
-                        width: parent.width
-                        height: genreText.implicitHeight + 14
-
-                        Text {
-                            id: genreText
-
-                            x: 14
-                            y: 14
-                            width: parent.width - 28 - chip.width - 10
-                            elide: Text.ElideRight
-                            text: root.player ? root.player.genre : ""
-                            textFormat: Text.PlainText
-                            color: Theme.foreground
-                            font.family: Theme.fontUi
-                            font.pixelSize: 17
-                            font.weight: Font.DemiBold
-                        }
-
-                        Rectangle {
-                            id: chip
-
-                            // On the title's baseline.
-                            x: parent.width - 14 - width
-                            y: genreText.y + genreText.baselineOffset - chipText.y - chipText.baselineOffset
-                            width: chipText.implicitWidth + 12
-                            height: chipText.implicitHeight + 2
-                            radius: 5
-                            color: "transparent"
-                            border.width: 1
-                            border.color: Theme.currentLine
-
-                            Text {
-                                id: chipText
-
-                                anchors.centerIn: parent
-                                text: root.player ? root.player.chip : ""
-                                color: Theme.comment
-                                font.family: Theme.fontMono
-                                font.pixelSize: 11
-                            }
-                        }
-                    }
 
                     Column {
                         visible: root.player !== null && root.player.strip !== null
@@ -435,14 +438,19 @@ Scope {
                         }
                     }
 
+                    SecHead {
+                        title: "NOW PLAYING"
+                        side: playerColumn.now ? playerColumn.now.head : ""
+                    }
+
                     Text {
                         x: 14
                         width: parent.width - 28
-                        topPadding: 6
+                        topPadding: 4
                         elide: Text.ElideRight
-                        text: root.player ? root.player.name : ""
+                        text: playerColumn.now ? playerColumn.now.name : ""
                         textFormat: Text.PlainText
-                        color: root.player ? root.tone(root.player.nameTone) : Theme.foreground
+                        color: playerColumn.now ? root.tone(playerColumn.now.nameTone) : Theme.foreground
                         font.family: Theme.fontUi
                         font.pixelSize: 15
                         font.weight: Font.Medium
@@ -454,7 +462,7 @@ Scope {
                         width: parent.width - 28
                         topPadding: 2
                         wrapMode: Text.Wrap
-                        text: root.player ? root.player.meta : ""
+                        text: playerColumn.now ? playerColumn.now.meta : ""
                         textFormat: Text.PlainText
                         color: Theme.comment
                         font.family: Theme.fontMono
@@ -463,32 +471,30 @@ Scope {
 
                     // The waveform; a click seeks to that point.
                     Item {
-                        visible: root.player !== null && root.player.wave !== null
+                        visible: playerColumn.now !== null && playerColumn.now.wave !== null
                         width: parent.width
-                        height: wave.implicitHeight + 16
+                        height: wave.implicitHeight + 14
 
                         DotWave {
                             id: wave
 
                             x: 14
-                            y: 12
+                            y: 10
                             width: implicitWidth
                             height: implicitHeight
-                            cols: root.player && root.player.wave ? root.player.wave.cols : []
-                            played: root.player && root.player.wave ? root.player.wave.played : 0
-                            forming: root.player && root.player.wave ? root.player.wave.forming : false
+                            cols: playerColumn.now && playerColumn.now.wave ? playerColumn.now.wave.cols : []
+                            played: playerColumn.now && playerColumn.now.wave ? playerColumn.now.wave.played : 0
 
                             MouseArea {
                                 anchors.fill: parent
-                                enabled: root.player !== null && root.player.wave !== null && !root.player.wave.forming
-                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                cursorShape: Qt.PointingHandCursor
                                 onClicked: mouse => TunesShared.seek(mouse.x / width)
                             }
                         }
                     }
 
                     Item {
-                        visible: root.player !== null && root.player.right !== null
+                        visible: playerColumn.now !== null && playerColumn.now.time !== null
                         x: 14
                         width: parent.width - 28
                         height: leftTime.implicitHeight
@@ -496,58 +502,41 @@ Scope {
                         Text {
                             id: leftTime
 
-                            text: root.player ? root.player.left : ""
-                            color: root.player ? root.tone(root.player.leftTone) : Theme.comment
+                            text: playerColumn.now && playerColumn.now.time ? playerColumn.now.time.left : ""
+                            color: playerColumn.now && playerColumn.now.time ? root.tone(playerColumn.now.time.leftTone) : Theme.comment
                             font.family: Theme.fontMono
                             font.pixelSize: 12
                         }
 
                         Text {
                             anchors.right: parent.right
-                            text: root.player && root.player.right !== null ? root.player.right : ""
+                            text: playerColumn.now && playerColumn.now.time ? playerColumn.now.time.right : ""
                             color: Theme.comment
                             font.family: Theme.fontMono
                             font.pixelSize: 12
                         }
                     }
 
-                    // Genres, play or pause, next: the keys G, Space and N.
+                    // Play or pause, next: the keys Space and N.
                     Item {
                         width: parent.width
-                        height: 36 + 22
+                        height: 36 + 18
 
                         Row {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: 10
+                            y: 8
                             spacing: 18
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: root.glyph.grid
-                                color: gridArea.containsMouse ? Theme.foreground : Style.soft
-                                font.family: Theme.fontMono
-                                font.pixelSize: 18
-
-                                MouseArea {
-                                    id: gridArea
-
-                                    anchors.fill: parent
-                                    anchors.margins: -6
-                                    hoverEnabled: true
-                                    onClicked: TunesShared.key("G", false)
-                                }
-                            }
 
                             Rectangle {
                                 width: 36
                                 height: 36
                                 radius: 18
-                                color: root.player && root.player.mainLit ? Theme.purple : Theme.currentLine
+                                color: playerColumn.now && playerColumn.now.mainLit ? Theme.purple : Theme.currentLine
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: root.player && root.player.main === "pause" ? root.glyph.pause : root.glyph.play
-                                    color: root.player && root.player.mainLit ? Theme.background : Theme.comment
+                                    text: playerColumn.now && playerColumn.now.main === "pause" ? root.glyph.pause : root.glyph.play
+                                    color: playerColumn.now && playerColumn.now.mainLit ? Theme.background : Theme.comment
                                     font.family: Theme.fontMono
                                     font.pixelSize: 18
                                 }
@@ -561,8 +550,8 @@ Scope {
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: root.glyph.next
-                                opacity: root.player && root.player.nextLit ? 1 : 0.4
-                                color: nextArea.containsMouse && root.player && root.player.nextLit ? Theme.foreground : Style.soft
+                                opacity: playerColumn.now && playerColumn.now.nextLit ? 1 : 0.35
+                                color: nextArea.containsMouse && playerColumn.now && playerColumn.now.nextLit ? Theme.foreground : Style.soft
                                 font.family: Theme.fontMono
                                 font.pixelSize: 18
 
@@ -578,93 +567,186 @@ Scope {
                         }
                     }
 
-                    // The music model: what it is, where it runs, what it
-                    // does and holds now.
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: Theme.currentLine
+                    }
+
+                    SecHead {
+                        title: "UP NEXT"
+                        side: playerColumn.next ? playerColumn.next.head : ""
+                    }
+
+                    // The queue: ready tunes, the one being composed, and
+                    // the places still to fill.
+                    Column {
+                        x: 6
+                        width: parent.width - 12
+                        bottomPadding: 4
+                        spacing: 2
+
+                        Repeater {
+                            model: playerColumn.next ? playerColumn.next.rows : []
+
+                            Rectangle {
+                                id: qrow
+
+                                required property var modelData
+
+                                width: parent.width
+                                height: qbody.implicitHeight + 12
+                                radius: 6
+                                color: modelData.sel ? Theme.currentLine : "transparent"
+
+                                Text {
+                                    x: 8
+                                    width: 14
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: qrow.modelData.n
+                                    color: root.tone(qrow.modelData.nTone)
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 12
+                                }
+
+                                Column {
+                                    id: qbody
+
+                                    x: 32
+                                    y: 6
+                                    width: parent.width - 32 - 8 - qright.implicitWidth - (qright.implicitWidth > 0 ? 10 : 0)
+                                    spacing: 1
+
+                                    Text {
+                                        width: parent.width
+                                        elide: Text.ElideRight
+                                        text: qrow.modelData.name
+                                        textFormat: Text.PlainText
+                                        color: root.tone(qrow.modelData.nameTone)
+                                        font.family: Theme.fontUi
+                                        font.pixelSize: 14
+                                        font.weight: qrow.modelData.kind === "tune" ? Font.Medium : Font.Normal
+                                    }
+
+                                    Text {
+                                        visible: text !== ""
+                                        width: parent.width
+                                        wrapMode: Text.Wrap
+                                        text: qrow.modelData.sub
+                                        textFormat: Text.PlainText
+                                        color: Theme.comment
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 11
+                                    }
+
+                                    Item {
+                                        visible: qrow.modelData.bar !== null
+                                        width: parent.width
+                                        height: 7
+
+                                        Rectangle {
+                                            y: 4
+                                            width: parent.width
+                                            height: 3
+                                            radius: 1.5
+                                            color: Style.track
+
+                                            Rectangle {
+                                                width: qrow.modelData.bar !== null ? qrow.modelData.bar * parent.width : 0
+                                                height: parent.height
+                                                radius: 1.5
+                                                color: Theme.cyan
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    id: qright
+
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: qrow.modelData.right
+                                    color: root.tone(qrow.modelData.rightTone)
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: Theme.currentLine
+                    }
+
+                    SecHead {
+                        title: "COMPOSER"
+                        toggle: true
+                        on: playerColumn.composer !== null && playerColumn.composer.on
+                        side: playerColumn.composer ? playerColumn.composer.label : ""
+                        sideColor: playerColumn.composer ? root.tone(playerColumn.composer.labelTone) : Theme.comment
+                    }
+
+                    // What the composer makes or would make, what it holds,
+                    // why it waits.
                     Item {
                         width: parent.width
-                        height: well.height + 12
+                        height: well.height + 14
 
                         Rectangle {
                             id: well
 
-                            readonly property var w: root.player ? root.player.well : null
-
                             x: 12
+                            y: 2
                             width: parent.width - 24
-                            height: wellText.implicitHeight + 14
+                            height: wellLines.implicitHeight + 14
                             radius: 6
                             color: Qt.darker(Theme.background, 1.15)
 
                             Column {
-                                id: wellText
+                                id: wellLines
 
                                 x: 9
                                 y: 7
                                 width: parent.width - 18
-                                spacing: 5
+                                spacing: 4
 
-                                Item {
-                                    width: parent.width
-                                    height: Math.max(wellName.implicitHeight, wellStatus.implicitHeight)
+                                Repeater {
+                                    model: playerColumn.composer ? playerColumn.composer.lines : []
 
-                                    Flow {
-                                        id: wellName
+                                    Item {
+                                        id: wl
 
-                                        width: parent.width - wellStatus.implicitWidth - 8
+                                        required property var modelData
 
-                                        Text {
-                                            text: well.w ? well.w.name : ""
-                                            textFormat: Text.PlainText
-                                            color: Style.soft
-                                            font.family: Theme.fontMono
-                                            font.pixelSize: 11
-                                            font.weight: Font.Medium
-                                        }
+                                        width: parent.width
+                                        height: Math.max(wlText.implicitHeight, wlRight.implicitHeight)
 
                                         Text {
-                                            visible: well.w !== null && well.w.sub !== ""
-                                            text: well.w ? " · " + well.w.sub : ""
-                                            textFormat: Text.PlainText
-                                            color: Theme.comment
+                                            id: wlText
+
+                                            width: parent.width - (wlRight.implicitWidth > 0 ? wlRight.implicitWidth + 8 : 0)
+                                            wrapMode: Text.Wrap
+                                            textFormat: Text.StyledText
+                                            text: root.esc(wl.modelData.pre) + (wl.modelData.em !== "" ? `<font color="${Style.soft}"><b>${root.esc(wl.modelData.em)}</b></font>` : "") + root.esc(wl.modelData.post)
+                                            color: root.tone(wl.modelData.tone)
                                             font.family: Theme.fontMono
                                             font.pixelSize: 11
                                         }
-                                    }
 
-                                    Text {
-                                        id: wellStatus
+                                        Text {
+                                            id: wlRight
 
-                                        anchors.right: parent.right
-                                        text: well.w ? well.w.status : ""
-                                        color: well.w ? root.tone(well.w.statusTone) : Theme.comment
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: 11
-                                    }
-                                }
-
-                                Item {
-                                    width: parent.width
-                                    height: Math.max(wellLine.implicitHeight, wellRam.implicitHeight)
-
-                                    Text {
-                                        id: wellLine
-
-                                        width: parent.width - (wellRam.implicitWidth > 0 ? wellRam.implicitWidth + 8 : 0)
-                                        wrapMode: Text.Wrap
-                                        text: well.w ? well.w.line : ""
-                                        color: Theme.comment
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: 11
-                                    }
-
-                                    Text {
-                                        id: wellRam
-
-                                        anchors.right: parent.right
-                                        text: well.w ? well.w.ram : ""
-                                        color: Theme.comment
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: 11
+                                            anchors.right: parent.right
+                                            text: wl.modelData.right
+                                            color: root.tone(wl.modelData.rightTone)
+                                            font.family: Theme.fontMono
+                                            font.pixelSize: 11
+                                        }
                                     }
                                 }
                             }
@@ -674,6 +756,8 @@ Scope {
 
                 KeyHints {
                     keys: root.hints
+                    message: root.undoLine
+                    messageColor: Theme.orange
                 }
             }
         }
