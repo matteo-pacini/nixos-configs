@@ -22,7 +22,8 @@ work) is in [AGENTS.md](AGENTS.md).
   [System panel](#system-panel), [Bluetooth panel](#bluetooth-panel),
   [Office panel](#office-panel), [Fleet panel](#fleet-panel),
   [Tailscale panel](#tailscale-panel), [Token panel](#token-panel),
-  [Weather panel](#weather-panel), [Tray menu](#tray-menu)
+  [Weather panel](#weather-panel), [Tunes panel](#tunes-panel),
+  [Tray menu](#tray-menu)
 - [Wallpaper](#wallpaper)
 - [Lock screen](#lock-screen)
 - [single-monitor](#single-monitor)
@@ -33,6 +34,8 @@ work) is in [AGENTS.md](AGENTS.md).
   panel)
 - [Weather: desk-weather](#weather-desk-weather) (the helper behind the
   weather panel, and its secret)
+- [Tunes: desk-tunes](#tunes-desk-tunes) (the service behind the tunes
+  panel, the model server and the genres file)
 - [Tailscale: status and mesh hosts](#tailscale-status-and-mesh-hosts) (the
   decisions behind the Tailscale panel)
 - [Tests](#tests)
@@ -189,8 +192,8 @@ panels share (the measures in `Style.qml`, the panel registry, the card, key
 hints, the "Set in Nix" loader and tag) are in `common/`; AGENTS.md has the
 code map.
 
-The ten drop-down panels (network, audio, calendar, system, Bluetooth,
-office, fleet, tailscale, tokens, weather) behave alike: each opens under its bar item on that bar's monitor (or the
+The eleven drop-down panels (network, audio, calendar, system, Bluetooth,
+office, fleet, tailscale, tokens, weather, tunes) behave alike: each opens under its bar item on that bar's monitor (or the
 focused monitor from a key or IPC), centred on the item and kept 6 px inside
 the screen, with the item marked (purple, underlined) while open. Each takes
 the keyboard, closes on Esc or a click outside, and opening one closes the
@@ -216,6 +219,7 @@ which repeat (the lock screen is not guarded).
 | Tailscale | Super+V, bar Tailscale glyph | `tailscale` |
 | Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
 | Weather | Super+H, bar item (condition and temperature) | `weather` |
+| Tunes | Super+M, bar item (a note glyph, and the genre while playing) | `tunes` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
@@ -262,7 +266,8 @@ panel](#token-panel)), the fleet item (a server glyph and the number of hosts th
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, the Tailscale item (see
 [Tailscale panel](#tailscale-panel)), network (a small Wi-Fi mark beside
-it while the radio is on and Wi-Fi is not what it shows, see [Network panel](#network-panel)), and audio. The audio item
+it while the radio is on and Wi-Fi is not what it shows, see [Network panel](#network-panel)), the tunes item (a note glyph, and the
+genre's name while a tune plays, see [Tunes panel](#tunes-panel)), and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
 steps, middle click opens the audio panel; a red dot on it means an input
@@ -1155,6 +1160,94 @@ and radar on/off.
   UK air quality index (the source gives the European one; the UK's would
   be an estimate); no wind art (no weather code means wind).
 
+### Tunes panel
+
+`Tunes.qml`, with `tunes/TunesShared.qml` (shared with the bar: placement,
+the `desk-tunes attach` process and its restart, the state, the open
+panel's keys, clicks and clock) and `tunes/tunes.js` (every decision: how
+the service's snapshots and the link's ups and downs change the state,
+which card shows, every text and tone of the cards and the bar item, what
+each key and click does, the footer, the position between snapshots;
+node-tested). The drawings are `tunes/DotWave.qml` (the waveform) and
+`tunes/Strip.qml` (the tinted strip). Super+M, or a click on the bar item
+left of the audio item, opens it. It plays endless instrumental music in a
+chosen genre, composed on this computer by
+[`desk-tunes`](#tunes-desk-tunes); the panel only shows its state and sends
+it commands.
+
+- **Bar item**: a note glyph. Dimmed with no link to the service, before
+  the model is set up or a genre is picked, and while nothing plays or is
+  being composed; cyan while the model downloads, starts, writes or
+  renders; orange while composing is held (a game, or not enough memory);
+  red after a failure or with no graphics device; the foreground colour
+  while a tune plays or is paused and nothing else applies. The genre's
+  name beside it only while a tune plays. Purple with the open mark while
+  the panel is open.
+- **Setting up** (until the four model files are in place): `Tunes needs a
+  music model`, with the download's size, the free space the service
+  measured (`free on disk`) and the memory a tune takes while composing;
+  Enter downloads. While downloading: the file being fetched (`File 2 of 4:
+  the diffusion model.`), the bytes over the whole set, the speed and a
+  bar; C cancels. Closing the panel does not stop the download. A download
+  that stopped says why and that finished files are kept; Enter resumes.
+- **Genre chooser** (`What do you want to hear?`): what the panel opens on
+  until a genre is picked, and G from the player. One cell per genre of the
+  genres file, in its order, three across, each with its kept tunes (`31
+  kept`, or `none yet`). Arrows move, Enter or a click plays; picking the
+  genre already playing changes nothing. Esc goes back to the player (or
+  closes, before any genre). A genres file the service could not read shows
+  its error in an orange strip, and the last good list stays.
+- **Player**: the genre with an `instrumental` chip; the tune's name and
+  `Tune 4 · 88 BPM · A major` (`Kept tune` for one from the folder, and
+  `paused`); a waveform of 78 dot columns, the played part purple, where a
+  click seeks; the position and the length; play/pause and next buttons and
+  the genres button. Under it the model well: the model's name, variant and
+  device, a status (`composing` cyan, `2 tunes ready` green, `idle`, `held
+  for a game` or `held for memory` orange, `failed` red, `unloaded` dim), a
+  line saying what it is doing (`writing the song`, `rendering the audio`,
+  `writing again: the last plan had 39 s of silence`, `idle, holding no
+  memory`, `server stopped`, `playing the 31 kept tunes, shuffled`), and
+  the memory the server uses while composing, else the memory free.
+- **Before the first tune**: `Composing the first tune…` (or `the next
+  tune…` when the genre has kept ones), the stage and the time since it
+  began, and the waveform as a cyan row of single dots: the server reports
+  no progress, so none is drawn.
+- **Strips over the player**: a game running (composing is paused, tunes
+  already made keep playing); not enough memory (what a tune needs and what
+  is free; it resumes by itself); composing failed, with the server's
+  message and the countdown to the next try, only while nothing plays
+  (while something plays the well says it, with the failures in a row);
+  the genres file's error.
+- **No graphics device**: `No graphics device to compose on`, with what the
+  service found instead; kept tunes still play. R tries again, G genres.
+- **The link**: `Connecting to the tunes service…` before the first
+  snapshot; `The tunes service is not installed` (`desk-tunes` not on
+  PATH), `The tunes service is not running` (no socket) or `The link to the
+  tunes service closed`, each with the unit's name, the client's last line
+  and a countdown to the next try, R tries now; `The tunes service is newer
+  than this panel` for a protocol version other than 1.
+- **Keys**: Space play or pause (with a tune), N next (when there is a next
+  tune), R try now (after a failure), G genres, U unload or, while
+  unloaded, load (not offered while held), Esc closes. The footer lists
+  exactly the keys that do something. A held key acts once, except the
+  chooser's arrows.
+- **Where it comes from**: `TunesShared.qml` runs `desk-tunes attach` from
+  the shell's start, so the bar has the state while the panel is closed,
+  and restarts it 2 s after it exits, doubling to a minute; the back-off
+  resets only on a snapshot or the service's reply to a malformed line.
+  Each opening sends `refresh`, which samples the memory figures again. The
+  position moves on between snapshots from the snapshot's time while
+  playing.
+- **While closed**: only the attach client runs, blocked on the socket; the
+  service sends a snapshot only when something changes. While open, a
+  one-second tick runs only when something shown changes with the clock
+  alone (the position while playing, a countdown, the time spent
+  composing).
+- **What it does not show, and why**: no composing percentage (the model
+  server reports none); no lyrics (instrumental only); the disk as `free on
+  disk`, not a named file system (the panel cannot know which one the
+  service measured).
+
 ### Tray menu
 
 `tray/TrayMenu.qml`, with `tray/TrayShared.qml` (shared with the bar) and
@@ -1792,6 +1885,135 @@ wl-paste --no-newline | nix run nixpkgs#age -- -r "$(nix eval --raw --file lib/s
 wl-copy --clear
 ```
 
+## Tunes: desk-tunes
+
+`desk-tunes` (`desk-tunes.py`, `desk-tunes.nix`) is the service behind the
+[tunes panel](#tunes-panel). `desk-tunes serve` runs as the
+`desk-tunes.service` user unit (`default.nix`; part of the graphical
+session, restarted on failure); `desk-tunes attach` is the thin client the
+shell runs, relaying its stdin to the service's socket and the socket to its
+stdout (exit 3, with one line on stderr, when the socket does not exist; 1
+when it closes). The socket is `$XDG_RUNTIME_DIR/desk-tunes/sock`, in a
+0700 directory; several clients may attach, and each gets a full snapshot
+on attaching and after every change. The full protocol, files and
+behaviour are the docstring at the top of `desk-tunes.py`.
+
+- **What it runs**: the model server, `ace-server` from acestep.cpp
+  (`packages/acestep-cpp.nix`, built with ggml's Vulkan backend), as a
+  child niced by 10, bound to 127.0.0.1 on a port the service picks, in its
+  default mode that loads each part of the model for each job (never
+  `--keep-loaded`); started when there is something to compose and stopped
+  on unload, a hold or a failure. The player, mpv as a child: audio only,
+  `--no-config`, driven over its JSON IPC socket beside the service's,
+  PipeWire client name `desk-tunes`. Every program's path is baked in by
+  `desk-tunes.nix`, except `hyprctl`, taken from PATH (with `-i 0` when
+  `HYPRLAND_INSTANCE_SIGNATURE` is unset).
+- **Idle** (nothing playing, the model unloaded): it blocks on its sockets
+  with no timer armed. After a start nothing plays until a genre is picked.
+- **A tune**: the caption is the genre's caption, two different random
+  "turns" from its list and `, instrumental`; the tempo a random whole BPM
+  in the genre's range; lyrics `[Instrumental]`; 180 s. The language model
+  writes a plan (`POST /lm`, polled every 0.5 s), the plan's audio codes
+  are checked for silence, then the plan is rendered (`POST /synth`) to
+  WAV, and ffmpeg trims, fades and encodes the MP3 once, with the title,
+  genre, BPM and key in its tags. The name is a random mood and thing from
+  the genre's lists. A 78-bar waveform (mean level per bar, normalised to
+  the loudest) is decoded once and cached.
+- **Silence**: the model writes some plans with long silences. A silent run
+  that reaches the end and lasts at least 1 s is cut, with a 1.5 s fade; any
+  other run over 5 s throws the plan away and the language model writes
+  again (the well says so, with the length of the silence); the third such
+  plan for one tune is a failure. A backstop on the rendered audio: a run
+  over 5 s under −50 dB that is not the tail discards the tune as a
+  failure.
+- **Queue**: two finished tunes are kept ready behind the playing one, one
+  job at a time; a paused player gets its two and no more. Picking a genre
+  plays its kept tunes first, shuffled (none twice until all have played),
+  while new ones are composed; another genre cancels the job and drops the
+  old genre's queued tunes (their files stay). With no new tune ready, the
+  next one is a kept one.
+- **Failures**: the job is cancelled and the server stopped; retried after
+  3 s the first time, then every 30 s, and `retry` (R) tries at once. A
+  finished tune resets the count. Playback is never interrupted by one.
+- **Holds**: composing stops (the job cancelled, the server stopped) while a
+  window of `hyprctl -j clients` has a class matching the games rule's
+  regex in full (the `games` rule in `hypr/rules.lua`: Proton and Wine
+  windows, not native Linux games), or while `MemAvailable` is under 6 GiB
+  (the 780M's memory is system RAM). Checked before each job, every 10 s
+  while one runs (the game only: the server's own use would trip the
+  memory check) and every 30 s while held; never while unloaded or before a
+  genre is picked. Tunes already made keep playing, and composing resumes
+  by itself.
+- **The GPU**: always the Radeon 780M, never the RX 6800 XT, with no
+  fallback. At every server start the service finds the 780M's Vulkan
+  index from `vulkaninfo --summary` by its PCI ids (`0x1002:0x1900`),
+  counting devices as ggml does (discrete and integrated GPUs only, one per
+  device UUID), since the order can change (an absent eGPU, say); passes
+  `--device Vulkan<N>`; and checks the server's own `ggml_vulkan: N =
+  <name>` line names the 780M. Not found, or another card: the state
+  `no_device` with what was found.
+- **The model**: ACE-Step 1.5 Turbo, 4B language model Q8, turbo DiT Q8,
+  Qwen3 embedding Q8 and VAE BF16, from the Hugging Face repository
+  `Serveurperso/ACE-Step-1.5-GGUF` at a pinned revision, about 7.6 GiB in
+  all. Each file's name, size and sha256 are in `desk-tunes-config.nix`.
+  The panel's Enter downloads them into `~/.local/share/desk-tunes/models/`,
+  one at a time into `<name>.part`, resumed with a range request, checked
+  against its sha256, then renamed. It carries on with no client attached;
+  a cancel keeps the finished files and the partial one.
+- **Files**: tunes in `~/Music/Tunes/<genre name>/`, named
+  `<YYYYMMDD-HHMMSS>-<bpm>bpm-<key>.mp3` (`20261122-174501-88bpm-A-major.mp3`);
+  the newest 50 per genre are kept, and only files matching that pattern are
+  ever deleted, never the playing or queued ones. Waveforms in
+  `~/.cache/desk-tunes/wave/`; the last genre and the tune counter in
+  `~/.local/state/desk-tunes/state.json`, written atomically and only on a
+  change.
+- **Config**: `desk-tunes-config.nix` generates the JSON the service reads
+  (the model files and revision, the silence code, the memory threshold,
+  the device, the game regex, how many to keep and to queue, the length).
+  It reads the game regex from the `games` rule in `user/hypr/rules.lua`
+  at evaluation, so the hold and the rule cannot drift apart; a change to
+  that rule's shape fails evaluation (an `assert`).
+- **Sandbox**: the unit is read-only everywhere (`ProtectSystem=strict`,
+  `ProtectHome=read-only`, a private `/tmp`) except its state, cache and
+  runtime directories, `~/.local/share/desk-tunes` and `~/Music/Tunes`
+  (created before the start). Mesa's shader cache is pointed at
+  `~/.cache/desk-tunes/mesa`. The sockets it connects to (PipeWire, the
+  session bus, Hyprland) need no write access.
+- **MPRIS**: mpv's own plugin (`mpvScripts.mpris`), so media keys and
+  `playerctl` work with the panel closed: Play, Pause and Next (the same as
+  N: the service keeps mpv's playlist as the playing tune and the next
+  one); Stop leaves the player stopped, with nothing restarted by itself;
+  Previous does nothing. The bus name is
+  `org.mpris.MediaPlayer2.mpv.desk-tunes.instance-<n>`.
+- **Speed** (measured before the build, by an agent's script, with the
+  same model set on the 780M): a 180 s tune took 105 to 121 s from the
+  request to the file, so two queued tunes keep ahead of playback, and
+  about 5.8 GiB of system RAM while composing; the RX 6800 XT's memory did
+  not move.
+
+### The genres file
+
+`user/desk/tunes-genres.json`, installed by the two layers at
+`~/.config/desk/tunes-genres.json` (beside `theme.json`), and edited there
+live like any user file (`--genres` points the service elsewhere). The
+service reads it again when its size, modification time or inode has
+changed, checked at every snapshot it sends and every pick; it does not
+watch the file, so an edit shows at the next snapshot (opening the panel
+asks for one):
+
+```json
+{"genres": [{"id": "lofi", "name": "Lo-fi",
+             "caption": "…", "turns": ["…", "… at least 6"],
+             "bpm": [70, 92],
+             "moods": ["… at least 8"], "things": ["… at least 8"]}]}
+```
+
+`id` is lower-case letters, digits and dashes; `name` is the folder under
+`~/Music/Tunes`, so renaming a genre starts a new folder. Nine to start:
+Lo-fi, Ambient, Synthwave, Deep house, Jazz, Classical, Downtempo,
+Post-rock, Acoustic. A file that does not parse, or breaks a rule, keeps the
+last good list, and the panel shows the reason.
+
 ## Tailscale: status and mesh hosts
 
 `user/quickshell/tailscale/tailscale.js` holds every decision of the
@@ -2012,6 +2234,36 @@ config on GitHub's runners, cause not known.
   radar map places the coast and the ring with (the origin, Greenwich in the
   block, the inverse, metres per pixel), the sky scene's layout being the
   same for the same seed, and the rain lines' phase groups. Under 1 s.
+- `nix build .#checks.x86_64-linux.acestep-cpp`: builds `ace-server`
+  (`packages/acestep-cpp.nix`), so CI builds the model server the tunes
+  service runs; it runs nothing.
+- `nix build .#checks.x86_64-linux.tunes-helper`: `tests/tunes/run.sh` runs
+  `tests/tunes/test-desk-tunes.py`: `desk-tunes`' pure functions, then the
+  service built with `testing = true` (timers scaled), with the shipped
+  genres file and generated config, against fakes the test writes (an
+  `ace-server` on loopback that makes plans and WAVs from the request and
+  prints the device lines the test picks, `vulkaninfo` from the invented
+  outputs in `tests/tunes/fixtures/`, `hyprctl`, `/proc/meminfo` and the
+  GPU's memory files, a stand-in for Hugging Face) and the real ffmpeg,
+  mpv (to the null output) and mpv's MPRIS plugin, driven with `playerctl`
+  on a private session bus: the snapshot and protocol, the download
+  (resume, a bad checksum, cancel, no client attached, the progress rate),
+  the device (llvmpipe or the eGPU first, the 780M absent, the server
+  naming another card), the queue, MPRIS, kept tunes and idle (no timer
+  armed), silence and failures (the tail cut, a rewrite, the third, the
+  backstop, the retry times), holds, the genres file changed, broken and
+  fixed, shutdown and a restart that plays nothing, keep-50 touching only
+  its own files, and nothing written outside the service's directories.
+  The installed build has no test flags. About a minute.
+- `nix build .#checks.x86_64-linux.tunes-panel`: runs
+  `user/quickshell/tunes/tunes.js` under node
+  (`tests/tunes-panel/test-tunes-panel.js`) against snapshot lines
+  hand-written in the service's format in `tests/tunes-panel/fixtures/`
+  (one file per state; `"@-N"` or `"@+N"` in a time is N s before or after
+  the test's base time) and built in the test: every card, the strips and
+  the well, the link's states and back-off, the position between
+  snapshots, the waveform's columns, keys, the held-key rule, the footer,
+  the tick, the bar item and a protocol version other than 1.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the
