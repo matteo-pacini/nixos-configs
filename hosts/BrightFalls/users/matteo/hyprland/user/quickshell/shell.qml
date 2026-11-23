@@ -44,7 +44,6 @@ ShellRoot {
     Tailscale {}
     Tokens {}
     Weather {}
-    Tunes {}
     TrayMenu {}
     Reminders {}
     Lockscreen {}

@@ -1,6 +1,0 @@
-{"event":"share","name":"Lazy Avenue","genre":"Jazz","bpm":139,"key":"C major","length":177,"bytes":4128768,"path":"/home/someone/Music/Tunes/Jazz/20261123-070612-139bpm-C-major.mp3","export_path":"/home/someone/Music/Tunes/Exports/Jazz - Lazy Avenue.mp3","pinned":false}
-{"event":"share_result","ok":true,"what":"export","path":"/home/someone/Music/Tunes/Exports/Jazz - Lazy Avenue (2).mp3"}
-{"event":"share_result","ok":true,"what":"pin","on":true,"name":"Lazy Avenue"}
-{"event":"share_result","ok":true,"what":"pin","on":false,"name":"Lazy Avenue"}
-{"event":"share_result","ok":false,"text":"Lazy Avenue is no longer there."}
-{"event":"share","name":"Brass Lantern","genre":"Jazz","bpm":112,"key":"F major","length":174.3,"bytes":980000,"path":"/home/someone/Music/Tunes/Jazz/20261101-090000-112bpm-F-major.mp3","export_path":"/home/someone/Music/Tunes/Exports/Jazz - Brass Lantern.mp3","pinned":true}

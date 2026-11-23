@@ -1,6 +1,0 @@
-{"event":"genre_result","ok":true,"id":"jazz","renamed":{"from":"Jazz","to":"Bebop"}}
-{"event":"genre_result","ok":true,"id":"bossanova","renamed":null}
-{"event":"genre_result","ok":false,"field":"name","text":"A folder called Bebop is already in ~/Music/Tunes."}
-{"event":"genre_result","ok":false,"field":null,"text":"The genres file on disk is broken: line 4: expected a comma."}
-{"event":"genre_result","ok":false,"field":"bpm","text":"The tempo range is not valid."}
-{"event":"genre_result","ok":false,"field":null,"text":"That genre no longer exists."}

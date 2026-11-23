@@ -2,7 +2,6 @@
 -- Proton windows on the Wayland driver use the executable's name. The Steam
 -- client itself is "steam" and matches neither. Native Linux games keep their
 -- own class and are not covered.
--- desk-tunes-config.nix reads the class pattern out of this rule's text.
 hl.window_rule({
     name  = "games",
     match = { class = [[steam_app_\d+|.+\.exe]] },
