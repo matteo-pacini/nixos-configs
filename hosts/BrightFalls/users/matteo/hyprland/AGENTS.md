@@ -626,9 +626,10 @@ nobody has listened to a tune it made. What rests on what:
   clients` while a game runs; that the game regex is matched the way
   Hyprland matches the rule (the service full-matches it; Hyprland's mode
   not read); media keys on the real session bus with another player open;
-  Mesa honouring `MESA_SHADER_CACHE_DIR`; keeping ahead of playback over an
-  hour; Super+M free in the running Hyprland (checked in the repository's
-  binds only).
+  Mesa honouring `MESA_SHADER_CACHE_DIR`; mpv's reason in `error` for a
+  real audio-output failure in the unit (simulated only with a file that is
+  not audio); keeping ahead of playback over an hour; Super+M free in the
+  running Hyprland (checked in the repository's binds only).
 - The Shell Atlas has no tunes section yet: it waits for the owner's live
   test, and is drawn then.
 

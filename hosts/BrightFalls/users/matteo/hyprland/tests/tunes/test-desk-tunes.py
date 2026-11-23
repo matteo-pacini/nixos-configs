@@ -114,6 +114,8 @@ for what, mutate in [
     ("bpm upside down", lambda gs: gs[0].update(bpm=[120, 90])),
     ("bpm as floats", lambda gs: gs[0].update(bpm=[80.0, 90])),
     ("an upper-case id", lambda gs: gs[0].update(id="LoFi")),
+    ("a NUL in a name", lambda gs: gs[0].update(name="Lo\u0000fi")),
+    ("a line break in a name", lambda gs: gs[0].update(name="Lo\nfi")),
 ]:
     gs = json.loads(REAL_GENRES_TEXT)["genres"]
     mutate(gs)
@@ -168,6 +170,8 @@ raises("silence: no codes", dt.parse_codes, ",")
 
 eq("retry: first after 3 s", dt.retry_delay(1), 3.0)
 eq("retry: then every 30 s", [dt.retry_delay(n) for n in (2, 3, 9)], [30.0, 30.0, 30.0])
+eq("mpv restart: 2 s doubling to 60 s", [dt.mpv_restart_delay(n) for n in (1, 2, 3, 5, 6, 40)],
+   [2.0, 4.0, 8.0, 32.0, 60.0, 60.0])
 
 when = datetime(2026, 11, 22, 21, 5, 9)
 eq("file name", dt.tune_filename(when, 88, "C# minor"), "20261122-210509-88bpm-C#-minor.mp3")
@@ -234,6 +238,14 @@ raises("synth result: no audio part", dt.multipart_audio,
        b"--b\r\nContent-Type: application/json\r\n\r\n{}\r\n--b--\r\n")
 files = [{"name": "a", "bytes": 10}, {"name": "b", "bytes": 5}]
 eq("need: bytes over the whole set", dt.need_bytes(files, {"a": 10, "b": 2}), 3)
+# mpv's stderr and its IPC socket can close in one select() pass: the
+# socket's event then finds mpv dropped, or restarted and not yet connected.
+for what, mpv in (("dropped", None), ("not connected", {"sock": None})):
+    try:
+        dt.Service.mpv_readable(type("S", (), {"mpv": mpv})())
+        check(f"mpv socket event with mpv {what}: ignored", True)
+    except Exception as e:
+        check(f"mpv socket event with mpv {what}: ignored", False, repr(e))
 
 # ---- the service against fakes ----------------------------------------------
 
@@ -665,6 +677,21 @@ def tags(path):
     return {k.lower(): v for k, v in fmt.get("tags", {}).items()}, float(fmt["duration"])
 
 
+def mpv_pid():
+    """The pid of the service's mpv, or None."""
+    for p in os.listdir("/proc"):
+        if not p.isdigit():
+            continue
+        try:
+            with open(f"/proc/{p}/cmdline", "rb") as f:
+                argv = f.read().split(b"\0")
+        except OSError:
+            continue
+        if f"--input-ipc-server={RUNTIME}/desk-tunes/mpv.sock".encode() in argv:
+            return int(p)
+    return None
+
+
 def playerctl(*args):
     return subprocess.run(["playerctl", *args], env=ENV, capture_output=True, text=True, timeout=10)
 
@@ -679,10 +706,13 @@ JAZZ_KEPT = [os.path.join(MUSIC, "Jazz", "20260103-100000-120bpm-F-major.mp3"),
 mp3(JAZZ_KEPT[0], 90, "Invented Brass Corner")
 mp3(JAZZ_KEPT[1], 90, "Invented Late Cellar")
 FOREIGN = [os.path.join(MUSIC, "Lo-fi", n) for n in
-           ("my own song.mp3", "notes.txt", "20260101-000000-80bpm-C-major.mp3.bak")]
+           ("my own song.mp3", "notes.txt", "20260101-000000-80bpm-C-major.mp3.bak", ".my-notes.part")]
 for p in FOREIGN:
     with open(p, "w") as f:
         f.write("not ours")
+STALE_PART = os.path.join(MUSIC, "Lo-fi", ".20260101-000000-80bpm-C-major.mp3.part")
+with open(STALE_PART, "w") as f:
+    f.write("an encode that never finished")
 
 put("vulkaninfo.txt", fixture("vulkaninfo-no-igpu.txt"))
 put("ggml.txt", "\n".join(GGML_TWO))
@@ -723,6 +753,7 @@ def finish():
 try:
     wait("serve: the socket appears", lambda: os.path.exists(SOCK), 10)
     eq("serve: socket directory is 0700", os.stat(os.path.dirname(SOCK)).st_mode & 0o777, 0o700)
+    check("serve: an unfinished encode's file is deleted at start", not os.path.exists(STALE_PART))
 
     # -- attach and the first snapshot --
     print("  snapshot and protocol", flush=True)
@@ -823,6 +854,12 @@ try:
     s = A.until("download: cancelled", lambda s: s["setup"] == "missing" and s["download"] is None)
     check("download: cancel keeps finished files",
           all(os.path.exists(os.path.join(MODELS, n)) for n in names[:2]))
+    A.send({"cmd": "download"})
+    A.until("download: resumed slowly", lambda s: s["setup"] == "downloading"
+            and s["download"]["done"] > before + 600_000, 30)
+    # Both lines in one write: the second download starts while the
+    # cancelled one may still be blocked reading its next block.
+    A.send('{"cmd":"cancel_download"}\n{"cmd":"download"}')
 
     DL["slow"].clear()
     A.send({"cmd": "download"})
@@ -837,6 +874,10 @@ try:
        (None, 0))
     check("download: only the four files", sorted(os.listdir(MODELS)) == sorted(names),
           os.listdir(MODELS))
+    for f in FILES:
+        with open(os.path.join(MODELS, f["name"]), "rb") as fh:
+            eq(f"download: {f['name']} on disk is the checked file",
+               hashlib.sha256(fh.read()).hexdigest(), f["sha256"])
 
     # -- the device --
     print("  device", flush=True)
@@ -954,6 +995,13 @@ try:
     eq("queue: nothing composed beyond two", len([e for e in ace_log() if e.get("path") == "/lm"]), n_lm)
     t = A.ask_timers()
     eq("queue: idle while playing, no timer", t["timers"], [])
+    n_start = len([e for e in ace_log() if e["kind"] == "start"])
+    A.send({"cmd": "unload"})
+    A.until("full queue: unloaded", lambda s: model(s)["state"] == "unloaded")
+    A.send({"cmd": "load"})
+    s = A.until("full queue: load says idle, not unloaded", lambda s: model(s)["state"] == "idle", 5)
+    eq("full queue: no server for a full queue", (len([e for e in ace_log() if e["kind"] == "start"]),
+                                                 s["ready"]), (n_start, 2))
 
     A.send({"cmd": "next"})
     s = A.until("next: a new tune", lambda s: s["tune"] and not s["tune"]["kept"])
@@ -988,8 +1036,8 @@ try:
     # -- state.json --
     with open(STATE) as f:
         st = json.load(f)
-    eq("state: last genre and counter", st, {"last_genre": "lofi", "counter": st.get("counter")})
-    check("state: the counter counts the tunes", st["counter"] >= 3, st)
+    eq("state: only the counter", list(st), ["counter"])
+    check("state: the counter counts the tunes", st.get("counter", 0) >= 3, st)
     ino = os.stat(STATE).st_ino
     mtime = os.stat(STATE).st_mtime_ns
     A.send({"cmd": "toggle"})
@@ -1139,6 +1187,13 @@ try:
     meminfo(20 * GIB)
     A.until("hold: memory back", lambda s: model(s)["state"] in ("starting", "writing", "rendering", "idle"),
             10)
+    put("clients.json", "hyprctl: no instance")
+    A.send({"cmd": "next"})
+    s = A.until("hold: hyprctl failing is said", lambda s: s["error"] and "hyprctl" in s["error"], 15)
+    eq("hold: in plain words", s["error"], "hyprctl cannot list the windows, so a game would not hold composing")
+    put("clients.json", json.dumps([{"class": "kitty"}]))
+    A.send({"cmd": "next"})
+    A.until("hold: cleared when hyprctl works again", lambda s: s["error"] is None, 15)
     A.send({"cmd": "unload"})
     A.until("unload", lambda s: model(s)["state"] == "unloaded")
 
@@ -1160,11 +1215,8 @@ try:
     shutil.copy(GENRES, LIVE_GENRES)
     A.send({"cmd": "refresh"})
     s = A.until("genres: fixed", lambda s: s["error"] is None and s["genres"][0]["name"] == "Lo-fi", 5)
-    ino = os.stat(STATE).st_ino
     A.send({"cmd": "genre", "id": "synthwave"})
     A.until("genre", lambda s: s["genre"] == "synthwave")
-    check("state: replaced, not rewritten in place", os.stat(STATE).st_ino != ino)
-    eq("state: no temporary left", os.listdir(os.path.dirname(STATE)), ["state.json"])
 
     # -- MPRIS stop --
     if name:
@@ -1174,6 +1226,62 @@ try:
         A.until("mpris: stop", lambda s: s["player"] == "none", 5)
         eq("mpris: nothing plays by itself after stop", [e for e in A.quiet(1.0)
                                                          if e.get("player") == "playing"], [])
+        A.send({"cmd": "toggle"})
+        A.until("toggle: plays again after a stop", lambda s: s["player"] == "playing", 5)
+
+    # -- keep: the playing and the next kept tune are never deleted --
+    print("  keep and mpv", flush=True)
+    DT = os.path.join(MUSIC, "Downtempo")
+    DT_OLD = [os.path.join(DT, "20260101-090000-90bpm-A-minor.mp3"),
+              os.path.join(DT, "20260102-090000-92bpm-D-minor.mp3")]
+    for p in DT_OLD:
+        mp3(p, 90, "Invented Slow Hour")
+    A.send({"cmd": "genre", "id": "downtempo"})
+    A.until("keep: an old kept tune plays, the other is next",
+            lambda s: s["genre"] == "downtempo" and s["tune"] and s["tune"]["kept"]
+            and s["player"] == "playing" and s["can_next"])
+    DT_NEWER = [os.path.join(DT, "20260601-090000-90bpm-A-minor.mp3"),
+                os.path.join(DT, "20260602-090000-90bpm-A-minor.mp3")]
+    for p in DT_NEWER:
+        mp3(p, 5, "Invented Short Hour")
+    ino = os.stat(STATE).st_ino
+    scenario(lm_time=0.3, synth_time=0.3)
+    A.send({"cmd": "load"})
+    A.until("keep: a new tune finishes", lambda s: s["ready"] >= 1, 30)
+    A.send({"cmd": "unload"})
+    eq("keep: the playing and the next kept tune survive, the oldest other goes",
+       [os.path.exists(p) for p in DT_OLD + DT_NEWER], [True, True, False, True])
+    eq("keep: four of ours", len(kept_files("Downtempo")), 4)
+    check("state: replaced, not rewritten in place", os.stat(STATE).st_ino != ino)
+    eq("state: no temporary left", os.listdir(os.path.dirname(STATE)), ["state.json"])
+    A.until("keep: unloaded", lambda s: model(s)["state"] == "unloaded")
+
+    # -- mpv exiting: restarted after a pause, the service lives on --
+    for i in range(3):
+        A.until(f"mpv {i}: playing", lambda s: s["player"] == "playing", 15)
+        pid = wait(f"mpv {i}: running", mpv_pid, 5)
+        t0 = time.time()
+        os.kill(pid, signal.SIGKILL)
+        A.until(f"mpv {i}: nothing plays once it is gone", lambda s: s["player"] == "none", 5)
+        if i == 0:
+            eq("mpv: a restart is armed", "mpv_restart" in A.ask_timers()["timers"], True)
+        new = wait(f"mpv {i}: started again", lambda: (lambda p: p if p and p != pid else None)(mpv_pid()), 10)
+        check(f"mpv {i}: not before 2 s (scaled)", time.time() - t0 >= 2 * SCALE - 0.05, time.time() - t0)
+        check(f"mpv {i}: the service lives on", serve.poll() is None)
+        A.until(f"mpv {i}: playing again", lambda s: s["player"] == "playing", 10)
+
+    # -- a tune mpv cannot play: said, nothing more tried, cleared by a tune that plays --
+    BAD = os.path.join(MUSIC, "Post-rock", "20260106-100000-90bpm-E-minor.mp3")
+    os.makedirs(os.path.dirname(BAD), exist_ok=True)
+    with open(BAD, "w") as f:
+        f.write("this is not audio")
+    A.send({"cmd": "genre", "id": "postrock"})
+    s = A.until("mpv error: said in error, and nothing plays", lambda s: s["genre"] == "postrock"
+                and s["error"] and s["player"] == "none", 10)
+    eq("mpv error: mpv's reason", s["error"], "mpv could not play the tune: unrecognized file format")
+    eq("mpv error: nothing more tried", [e for e in A.quiet(1.0) if e.get("player") == "playing"], [])
+    A.send({"cmd": "genre", "id": "jazz"})
+    A.until("mpv error: cleared once a tune plays", lambda s: s["player"] == "playing" and s["error"] is None, 10)
 
     # -- writes stay inside the unit's directories --
     allowed = [os.path.join(XDG["XDG_STATE_HOME"], "desk-tunes"),
@@ -1212,10 +1320,10 @@ try:
     s = A.until("restart: a snapshot", lambda s: True, 5)
     eq("restart: nothing plays by itself", (s["genre"], s["player"], model(s)["state"]),
        (None, "none", "unloaded"))
-    A.send({"cmd": "genre", "id": st["last_genre"]})
-    A.until("restart: the last genre picked again", lambda s: s["genre"] == st["last_genre"])
+    A.send({"cmd": "genre", "id": "jazz"})
+    A.until("restart: a genre picked", lambda s: s["genre"] == "jazz")
     A.quiet(0.5)
-    eq("state: not written when the pick is the saved one",
+    eq("state: not written for a pick",
        (os.stat(STATE).st_ino, os.stat(STATE).st_mtime_ns), (ino, mtime))
     serve.send_signal(signal.SIGTERM)
     eq("restart: exits 0", serve.wait(15), 0)

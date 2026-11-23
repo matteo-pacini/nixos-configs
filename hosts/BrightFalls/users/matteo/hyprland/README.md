@@ -1194,8 +1194,8 @@ it commands.
   until a genre is picked, and G from the player. One cell per genre of the
   genres file, in its order, three across, each with its kept tunes (`31
   kept`, or `none yet`). Arrows move, Enter or a click plays; picking the
-  genre already playing changes nothing. Esc goes back to the player (or
-  closes, before any genre). A genres file the service could not read shows
+  genre already picked changes nothing while it plays and starts it when
+  nothing plays. Esc goes back to the player (or closes, before any genre). A genres file the service could not read shows
   its error in an orange strip, and the last good list stays.
 - **Player**: the genre with an `instrumental` chip; the tune's name and
   `Tune 4 · 88 BPM · A major` (`Kept tune` for one from the folder, and
@@ -1208,6 +1208,9 @@ it commands.
   `writing again: the last plan had 39 s of silence`, `idle, holding no
   memory`, `server stopped`, `playing the 31 kept tunes, shuffled`), and
   the memory the server uses while composing, else the memory free.
+- **Stopped** (after a media Stop, or a tune mpv could not play):
+  `Stopped. Space plays.` while there is a tune to start (one ready, or a
+  kept one of the genre); `Nothing to play` when there is none.
 - **Before the first tune**: `Composing the first tune…` (or `the next
   tune…` when the genre has kept ones), the stage and the time since it
   began, and the waveform as a cyan row of single dots: the server reports
@@ -1217,16 +1220,20 @@ it commands.
   is free; it resumes by itself); composing failed, with the server's
   message and the countdown to the next try, only while nothing plays
   (while something plays the well says it, with the failures in a row);
-  the genres file's error.
+  the service's `error`: the genres file's, a tune mpv could not play
+  (mpv's reason, until a tune plays), or `hyprctl` unable to list the
+  windows (so a game would not hold composing; until it can).
 - **No graphics device**: `No graphics device to compose on`, with what the
-  service found instead; kept tunes still play. R tries again, G genres.
+  service found instead; kept tunes still play. R tries again; G opens the
+  chooser, and Esc there comes back to this card.
 - **The link**: `Connecting to the tunes service…` before the first
   snapshot; `The tunes service is not installed` (`desk-tunes` not on
   PATH), `The tunes service is not running` (no socket) or `The link to the
   tunes service closed`, each with the unit's name, the client's last line
   and a countdown to the next try, R tries now; `The tunes service is newer
   than this panel` for a protocol version other than 1.
-- **Keys**: Space play or pause (with a tune), N next (when there is a next
+- **Keys**: Space play or pause (with a tune, or with none playing and one
+  to start), N next (when the snapshot's `can_next` says there is a next
   tune), R try now (after a failure), G genres, U unload or, while
   unloaded, load (not offered while held), Esc closes. The footer lists
   exactly the keys that do something. A held key acts once, except the
@@ -1931,7 +1938,13 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   plays its kept tunes first, shuffled (none twice until all have played),
   while new ones are composed; another genre cancels the job and drops the
   old genre's queued tunes (their files stay). With no new tune ready, the
-  next one is a kept one.
+  next one is a kept one. With two ready the model is `idle`, its server
+  running or not, so the panel offers U unload, not a load that would do
+  nothing.
+- **Player**: mpv restarted 2 s after it exits, doubling to a minute while
+  it keeps exiting before a tune plays. A tune mpv cannot play is said in
+  the snapshot's `error`; mpv goes on to the next tune in its playlist if
+  there is one, else the player stops until Space (or a pick).
 - **Failures**: the job is cancelled and the server stopped; retried after
   3 s the first time, then every 30 s, and `retry` (R) tries at once. A
   finished tune resets the count. Playback is never interrupted by one.
@@ -1943,7 +1956,8 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   while one runs (the game only: the server's own use would trip the
   memory check) and every 30 s while held; never while unloaded or before a
   genre is picked. Tunes already made keep playing, and composing resumes
-  by itself.
+  by itself. When `hyprctl` cannot be run or reached there is no game hold,
+  and the snapshot's `error` says so until it works again.
 - **The GPU**: always the Radeon 780M, never the RX 6800 XT, with no
   fallback. At every server start the service finds the 780M's Vulkan
   index from `vulkaninfo --summary` by its PCI ids (`0x1002:0x1900`),
@@ -1959,12 +1973,14 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   The panel's Enter downloads them into `~/.local/share/desk-tunes/models/`,
   one at a time into `<name>.part`, resumed with a range request, checked
   against its sha256, then renamed. It carries on with no client attached;
-  a cancel keeps the finished files and the partial one.
+  a cancel keeps the finished files and the partial one, and a download
+  asked for right after waits for the cancelled one to stop writing.
 - **Files**: tunes in `~/Music/Tunes/<genre name>/`, named
   `<YYYYMMDD-HHMMSS>-<bpm>bpm-<key>.mp3` (`20261122-174501-88bpm-A-major.mp3`);
   the newest 50 per genre are kept, and only files matching that pattern are
-  ever deleted, never the playing or queued ones. Waveforms in
-  `~/.cache/desk-tunes/wave/`; the last genre and the tune counter in
+  ever deleted, never the playing or queued ones. A `.<tune file>.part`
+  left by an encode that never finished is deleted at the service's start.
+  Waveforms in `~/.cache/desk-tunes/wave/`; the tune counter in
   `~/.local/state/desk-tunes/state.json`, written atomically and only on a
   change.
 - **Config**: `desk-tunes-config.nix` generates the JSON the service reads
@@ -1977,13 +1993,14 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   `ProtectHome=read-only`, a private `/tmp`) except its state, cache and
   runtime directories, `~/.local/share/desk-tunes` and `~/Music/Tunes`
   (created before the start). Mesa's shader cache is pointed at
-  `~/.cache/desk-tunes/mesa`. The sockets it connects to (PipeWire, the
+  `~/.cache/desk-tunes/mesa`, and mpv's `XDG_CACHE_HOME` (where its
+  fontconfig writes the font cache) at `~/.cache/desk-tunes/mpv`. The sockets it connects to (PipeWire, the
   session bus, Hyprland) need no write access.
 - **MPRIS**: mpv's own plugin (`mpvScripts.mpris`), so media keys and
   `playerctl` work with the panel closed: Play, Pause and Next (the same as
   N: the service keeps mpv's playlist as the playing tune and the next
-  one); Stop leaves the player stopped, with nothing restarted by itself;
-  Previous does nothing. The bus name is
+  one); Stop leaves the player stopped, with nothing restarted by itself
+  (Space in the panel starts it again); Previous does nothing. The bus name is
   `org.mpris.MediaPlayer2.mpv.desk-tunes.instance-<n>`.
 - **Speed** (measured before the build, by an agent's script, with the
   same model set on the 780M): a 180 s tune took 105 to 121 s from the
@@ -2247,13 +2264,20 @@ config on GitHub's runners, cause not known.
   GPU's memory files, a stand-in for Hugging Face) and the real ffmpeg,
   mpv (to the null output) and mpv's MPRIS plugin, driven with `playerctl`
   on a private session bus: the snapshot and protocol, the download
-  (resume, a bad checksum, cancel, no client attached, the progress rate),
+  (resume, a bad checksum, cancel, a download asked for in the same breath
+  as a cancel, no client attached, the progress rate),
   the device (llvmpipe or the eGPU first, the 780M absent, the server
-  naming another card), the queue, MPRIS, kept tunes and idle (no timer
-  armed), silence and failures (the tail cut, a rewrite, the third, the
-  backstop, the retry times), holds, the genres file changed, broken and
-  fixed, shutdown and a restart that plays nothing, keep-50 touching only
-  its own files, and nothing written outside the service's directories.
+  naming another card), the queue (and `idle`, not `unloaded`, on a load
+  with two ready), MPRIS (and Space after a Stop), kept tunes and idle (no
+  timer armed), silence and failures (the tail cut, a rewrite, the third,
+  the backstop, the retry times), holds (and `hyprctl` failing said in
+  `error` and cleared), the genres file changed, broken and fixed, keep-50
+  touching only its own files and never the playing or next kept tune, mpv
+  killed three times (restarted no sooner than 2 s, the service alive), a
+  tune mpv cannot play (its reason in `error`, nothing more tried, cleared
+  by a tune that plays), an unfinished encode's file removed at start,
+  shutdown and a restart that plays nothing, and nothing written outside
+  the service's directories.
   The installed build has no test flags. About a minute.
 - `nix build .#checks.x86_64-linux.tunes-panel`: runs
   `user/quickshell/tunes/tunes.js` under node
@@ -2262,7 +2286,8 @@ config on GitHub's runners, cause not known.
   (one file per state; `"@-N"` or `"@+N"` in a time is N s before or after
   the test's base time) and built in the test: every card, the strips and
   the well, the link's states and back-off, the position between
-  snapshots, the waveform's columns, keys, the held-key rule, the footer,
+  snapshots, the waveform's columns, keys (Space with nothing playing and
+  one to start, G from the device card), the held-key rule, the footer,
   the tick, the bar item and a protocol version other than 1.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)

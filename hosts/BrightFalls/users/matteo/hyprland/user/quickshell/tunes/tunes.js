@@ -10,7 +10,9 @@
 // "green", "orange", "red", "purple"; QML maps them to Theme.
 //
 // The snapshot's can_next is true when "next" would play another tune; N is
-// offered only then.
+// offered only then. With nothing playing (after a stop, or a tune mpv could
+// not play) Space plays when there is a tune to start: one ready, or a kept
+// one of the genre.
 //
 // The QML's part:
 //   st = initial(); each stdout line of `desk-tunes attach`: st = apply(st,
@@ -230,6 +232,12 @@ function linkLost(st, why, code, said, retryAt) {
 
 function genreOf(s, id) {
     return s.genres.find(g => g.id === id) || null;
+}
+
+// Whether "toggle" would start a tune when none is playing.
+function canPlay(s) {
+    const g = genreOf(s, s.genre);
+    return s.player === "none" && g !== null && (s.ready > 0 || g.kept > 0);
 }
 
 function genreName(s) {
@@ -465,7 +473,7 @@ function playerView(s, ui) {
         leftTone: "dim",
         right: null,
         main: s.player === "playing" ? "pause" : "play",
-        mainLit: t !== null,
+        mainLit: t !== null || canPlay(s),
         nextLit: s.canNext,
         well: wellView(s, strip !== null && m.state === "failed", ui.now)
     };
@@ -487,6 +495,9 @@ function playerView(s, ui) {
         p.wave = { cols: waveColumns([]), played: 0, forming: true };
         p.left = clock(null);
         p.right = clock(null);
+    } else if (canPlay(s)) {
+        p.name = "Stopped. Space plays.";
+        p.nameTone = "soft";
     } else if (m.state === "unloaded") {
         p.name = "Nothing to play. U loads the model.";
         p.nameTone = "soft";
@@ -506,9 +517,11 @@ function view(st, ui) {
     const s = st.snap;
     if (s.setup !== "ready")
         return setupView(s);
+    if (ui.mode === "chooser")
+        return chooserView(s, ui);
     if (s.model.state === "no_device")
         return deviceView(s);
-    if (ui.mode === "chooser" || s.genre === null)
+    if (s.genre === null)
         return chooserView(s, ui);
     return playerView(s, ui);
 }
@@ -571,7 +584,7 @@ function table(ui, st) {
     }
     const m = s.model.state;
     const t = [];
-    if (s.tune)
+    if (s.tune || canPlay(s))
         t.push({ keys: ["Space"], hint: ["Space", s.player === "playing" ? "pause" : "play"], run: send({ cmd: "toggle" }) });
     if (s.canNext)
         t.push({ keys: ["N"], hint: ["N", "next"], run: send({ cmd: "next" }) });
@@ -596,15 +609,16 @@ function key(ui, st, name, isAutoRepeat) {
 }
 
 // The chooser's genre `index` chosen (Enter or a click): back to the player,
-// and the genre asked for unless it is the one already playing.
+// and the genre asked for; the one already picked is started with "toggle"
+// when nothing plays, and left alone otherwise.
 function pick(ui, st, index) {
     const s = st.snap;
     const g = s ? s.genres[index] : undefined;
     if (!g)
         return { ui, effect: effect("none") };
     const u = copy(ui, { mode: "player", sel: index });
-    if (g.id === s.genre && s.player !== "none")
-        return { ui: u, effect: effect("none") };
+    if (g.id === s.genre)
+        return { ui: u, effect: s.player === "none" ? effect("send", { cmd: "toggle" }) : effect("none") };
     return { ui: u, effect: effect("send", { cmd: "genre", id: g.id }) };
 }
 

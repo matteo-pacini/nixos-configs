@@ -512,8 +512,31 @@ t("no device", () => {
     assert.deepEqual(hintsOf("14-no-device"), [["R", "try now"], ["G", "genres"], ["Esc", "close"]]);
     const st = load("14-no-device", NOW);
     assert.deepEqual(T.key(ui(st, NOW), st, "R", false).effect.cmd, { cmd: "retry" });
-    assert.equal(T.view(st, T.key(ui(st, NOW), st, "G", false).ui).kind, "device");
+    const g = T.key(ui(st, NOW), st, "G", false).ui;
+    assert.equal(T.view(st, g).kind, "chooser");
+    assert.deepEqual(T.hints(st, g), [["←↑↓→", "move"], ["Enter", "play"], ["Esc", "back"]]);
+    assert.equal(T.view(st, T.key(g, st, "Esc", false).ui).kind, "device");
     assert.deepEqual(T.barView(st), { tone: "red", text: "" });
+});
+
+t("stopped with tunes to play: Space and the playing genre's pick start one", () => {
+    const st = load("21-stopped", NOW);
+    const p = T.view(st, ui(st, NOW)).player;
+    assert.equal(p.name, "Stopped. Space plays.");
+    assert.equal(p.mainLit, true);
+    assert.equal(p.main, "play");
+    assert.deepEqual(p.strip, { tone: "orange", text: "mpv could not play the tune: audio output initialization failed" });
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "play"], ["G", "genres"], ["U", "unload"], ["Esc", "close"]]);
+    assert.deepEqual(T.key(ui(st, NOW), st, "Space", false).effect, { kind: "send", cmd: { cmd: "toggle" } });
+    const r = T.pick(ui(st, NOW, { mode: "chooser" }), st, 0);
+    assert.deepEqual([r.ui.mode, r.effect], ["player", { kind: "send", cmd: { cmd: "toggle" } }]);
+    assert.deepEqual(T.pick(ui(st, NOW, { mode: "chooser" }), st, 1).effect, { kind: "send", cmd: { cmd: "genre", id: "ambient" } });
+    // Kept tunes alone are enough; nothing ready and none kept is not.
+    const kept = { link: "up", snap: Object.assign({}, st.snap, { ready: 0 }) };
+    assert.equal(T.hints(kept, ui(kept, NOW))[0][0], "Space");
+    const none = { link: "up", snap: Object.assign({}, st.snap, { ready: 0, genres: [{ id: "lofi", name: "Lo-fi", kept: 0 }] }) };
+    assert.notEqual(T.hints(none, ui(none, NOW))[0][0], "Space");
+    assert.equal(T.key(ui(none, NOW), none, "Space", false).effect.kind, "none");
 });
 
 t("a broken genres file", () => {
