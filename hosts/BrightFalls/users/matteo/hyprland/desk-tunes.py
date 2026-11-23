@@ -1965,7 +1965,7 @@ class Service:
             # tune's pause, only some events later, and no snapshot may put
             # the old genre's tune or pause under the new genre.
             self.next_kept = None
-            self.current, self.pause, self.loading = cand, False, cand["path"]
+            self.current, self.pause = cand, False
             self.pos, self.pos_at = 0.0, time.time()
             self.play_now(cand)
         else:
@@ -2041,8 +2041,8 @@ class Service:
 
     def halt_player(self):
         """Nothing plays from now on; not a stop by the user."""
-        if self.current is not None or self.appended:
-            self.current, self.appended = None, None
+        if self.current is not None or self.appended or self.loading:
+            self.current, self.appended, self.loading = None, None, None
             self.mpv_cmd(["stop"])
             self.changed()
 
@@ -2138,6 +2138,7 @@ class Service:
         if cand:
             self.play_now(cand)
         else:
+            self.loading = None
             self.mpv_cmd(["stop"])
         self.maybe_compose()
 
@@ -2276,7 +2277,8 @@ class Service:
                                            t["name"], tags), done)
 
     def cmd_toggle(self):
-        if self.current is not None:
+        # A tune still loading (after a scrap or a pick) is the one toggled.
+        if self.current is not None or self.loading:
             self.mpv_cmd(["cycle", "pause"])
         elif self.genre:
             if self.ended():
@@ -2361,12 +2363,12 @@ class Service:
                 self.changed()
 
     def play_now(self, tune):
-        self.appended = None
+        self.appended, self.loading = None, tune["path"]
         self.mpv_cmd(["loadfile", tune["path"], "replace"])
         self.mpv_cmd(["set_property", "pause", False])
 
     def start_if_idle(self):
-        if self.current is None and self.wants_play:
+        if self.current is None and self.wants_play and not self.loading:
             cand = self.next_candidate()
             if cand:
                 self.play_now(cand)
@@ -2387,6 +2389,11 @@ class Service:
             self.appended = path
 
     def on_track(self, path):
+        # mpv reports a file some events after the command that loaded it,
+        # so a report may name a file since replaced (an earlier genre's
+        # tune after a pick) or stopped: only the file asked for counts.
+        if path != (self.loading or self.appended):
+            return
         queued = bool(self.ready) and self.ready[0]["path"] == path
         if queued:
             self.current = self.ready.pop(0)
@@ -2528,20 +2535,24 @@ class Service:
         if kind == "property-change":
             name, data = ev.get("name"), ev.get("data")
             if name == "pause":
-                self.pause = bool(data)
-                self.sample_pos()
-                self.changed()
+                # Applied with the position mpv gives after it, so no
+                # snapshot says paused with a position from before the pause.
+                self.sample_pos(lambda: setattr(self, "pause", bool(data)))
             elif name in ("loop-file", "loop-playlist", "shuffle"):
                 self.mpv_mode_seen(name, data)
             elif name == "path" and isinstance(data, str):
                 self.on_track(data)
             elif name == "idle-active" and data is True and self.current is not None:
-                self.on_idle(m["end_reason"] == "eof")
+                # Idle from a stop sent before the load asked for since; a
+                # load that fails clears `loading` first (end-file, below).
+                if not self.loading:
+                    self.on_idle(m["end_reason"] == "eof")
         elif kind == "end-file":
             m["end_reason"] = ev.get("reason")
             if ev.get("reason") == "error":
                 why = ev.get("file_error") if isinstance(ev.get("file_error"), str) else "unknown error"
                 self.play_error = f"mpv could not play the tune: {why}"
+                self.loading = None
                 say(self.play_error)
                 self.changed()
         elif kind in ("playback-restart", "seek"):
@@ -2549,12 +2560,20 @@ class Service:
                 self.mpv_exits = 0
             self.sample_pos()
 
-    def sample_pos(self):
+    def sample_pos(self, then=None):
+        """Ask mpv for the position; `then` runs just before it is taken
+        (at once when there is none to ask for)."""
+        def done():
+            if then:
+                then()
+                self.changed()
         # While a picked tune loads, mpv's position may still be the old one's.
         if self.current is None or self.loading:
+            done()
             return
 
         def got(ev):
+            done()
             if (ev.get("error") == "success" and isinstance(ev.get("data"), (int, float))
                     and not self.loading):
                 self.pos, self.pos_at = float(ev["data"]), time.time()
