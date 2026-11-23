@@ -2,9 +2,10 @@
 // the attach link, which card shows, every text and tone the cards, the three
 // sections of the player (now playing, up next, composer), the waveform and
 // the bar item show, what each key and click does, the footer and its undo
-// line, the global scrap, the position between snapshots, and the genre
+// line, the global scrap, the position between snapshots, the genre
 // editor: its fields, the service's rules for them and the commands it
-// sends. The QML draws
+// sends, and the share sheet: its rows, the commands and shell commands its
+// actions run and the footer line each result leaves. The QML draws
 // what these functions return and performs the effects; it decides nothing.
 // Plain JavaScript so node can run it too.
 //
@@ -18,7 +19,8 @@
 // composer's switch, off after every genre pick; with it off the model is
 // unloaded and only kept tunes play. can_next is true when "next" would play
 // another tune; N is offered only then. "stopped" means the user stopped the
-// player, so nothing starts by itself until Space.
+// player, so nothing starts by itself until Space. "shuffle" and "repeat"
+// are the service's modes; "ended" is a round over under repeat off.
 //
 // The QML's part:
 //   st = initial(); each stdout line of `desk-tunes attach`: st = apply(st,
@@ -27,14 +29,20 @@
 //   "back"); exiting: st = linkLost(st, "exited", code, its last stderr
 //   line, the time of the next start); never starting: linkLost(st,
 //   "missing", null, "", the time of the next start).
-//   On every open: ui = initialUi(st, now) and send {"cmd":"refresh"}; while
+//   On every open: ui = initialUi(st, now, $HOME) and send
+//   {"cmd":"refresh"}; while
 //   open, ui.now kept current at least once a second whenever needsTick(st,
 //   ui). A key: r = key(ui, st, name, isAutoRepeat); ui = r.ui; run r.effect.
 //   Each line also while open: ui = answer(ui, st, ev, now), for the
-//   results of the genre commands, which come to this client only; the
+//   results of the genre and share commands, which come to this client
+//   only, and the pin a snapshot confirms; the
 //   attach process stopping while open: ui = linkDown(ui, now). ui.now made
-//   current before every key() and pick().
-//   A click: on a button, the key it stands for; on a genre cell or the
+//   current before every key() and pick(). An effect "run": run
+//   effect.run.command as a one-shot process (watchdog: SIGTERM after
+//   RUN_S, SIGKILL 2 s later), then r = ran(ui, { code, said (its last
+//   stderr line), timedOut, failedToStart }, now); ui = r.ui; run r.effect.
+//   A click: on a button or a mode pill, the key it stands for; on a genre
+//   cell or the
 //   "+ New genre" cell after them, pick(ui, st, index); on the waveform,
 //   seek(st, fraction across). The genre editor's fields: every change of a
 //   field's text, ui = typed(ui, field, text); a field taking the keyboard
@@ -46,11 +54,11 @@
 //   st = r.st, send r.cmd, notify with r.summary and r.body, and when
 //   r.flash, flash the bar's note for FLASH_MS.
 //
-// view(st, ui) -> { kind, setup, chooser, player, editor }, one of the last
-//   four set and the others null:
+// view(st, ui) -> { kind, setup, chooser, player, editor, share }, one of
+//   the last five set and the others null:
 //   kind: "connecting" | "missing" | "down" | "lost" | "old" (the link) |
 //     "setup" | "failed" (the download stopped) | "download" | "chooser" |
-//     "player" | "editor".
+//     "player" | "editor" | "share".
 //   setup: { title, detail, rows: [[label, value]], bar: null | 0..1 } for
 //     every kind before "chooser".
 //   chooser: { title, chip, cells: [{ name, sub, sel, cur }], add: { name,
@@ -61,17 +69,23 @@
 //     (FIELDS' texts), fields: { name, caption, turns, lo, hi } each { label,
 //     side (the label's note), placeholder, error ("" | under the box),
 //     bad (the box in red) }, tempoError (under the two tempo boxes), hint }.
-//   player: { strip, now, next, composer }.
-//   now: { head (right of NOW PLAYING), name, nameTone, meta, wave: null |
+//   player: { strip, now, modes, next, composer }.
+//   now: { head (right of NOW PLAYING), name, nameTone, badge ("" or the
+//     words beside the name), meta, wave: null |
 //     { cols: COLS dot counts (odd, 1..ROWS), played (columns lit) }, time:
 //     null | { left, leftTone, right }, main ("play" | "pause"), mainLit,
 //     nextLit }.
+//   modes: the pills under the transport, [{ key (what a click presses),
+//     icon ("shuffle" | "repeat" | "share"), label, lit, dim }].
 //   next: { head (right of UP NEXT), rows: [{ kind ("tune" | "job" |
-//     "placeholder"), n, nTone, name, nameTone, sub, right, rightTone, bar
+//     "placeholder"), n, nTone, name, nameTone, tag ("" | "new"), star
+//     (kept for good), dim (the whole row faded), sub, right, rightTone, bar
 //     (null | 0..1), sel }] }.
 //   composer: { on, label, labelTone, lines: [{ pre, em (drawn bold), post,
 //     tone, right, rightTone }] }.
 //   strip: null | { tone, text }.
+//   share: { head (right of SHARE), name, meta, error ("" | a line in red),
+//     rows: [{ key, label, sub, right, sel }] }.
 // hints(st, ui) -> [[key, label]], the keys key() handles now that the
 //   footer names.
 // undoLine(st, ui), notice(st, ui) -> "" or the footer's text in place of
@@ -80,26 +94,40 @@
 //   dot ("" or the composer dot's tone) }; flashing: the note's flash after
 //   a global scrap is on.
 // key effect: { kind: "none" | "close" | "send" | "reattach" | "pass" (the
-//   key is the focused field's), cmd (null unless send) }.
+//   key is the focused field's) | "run", cmd (null unless send), and for
+//   "run" only, run: { what, command } }.
 
 const COLS = 78;
 const ROWS = 9;
 // The chooser's grid.
 const GRID = 3;
-const KEY_NAMES = ["Space", "N", "G", "C", "X", "Z", "R", "E", "A", "D", "Enter", "Esc", "Left", "Right", "Up", "Down", "Tab", "ShiftTab", "CtrlS"];
+const KEY_NAMES = ["Space", "N", "G", "C", "X", "Z", "R", "E", "A", "D", "S", "L", "Y", "F", "P", "O", "K", "Enter", "Esc", "Left", "Right", "Up", "Down", "Tab", "ShiftTab", "CtrlS"];
 const MOVING_KEYS = ["Left", "Right", "Up", "Down"];
 // The genre editor's fields in Tab order.
 const FIELDS = ["name", "caption", "turns", "lo", "hi"];
-// How long the footer's notice (a rename, a genre gone) shows, in seconds.
+// How long the footer's notice (a rename, a genre gone, a share action's
+// result) shows, in seconds.
 const NOTICE_S = 6;
-// How long a genre command sent counts as unanswered: its result is lost
-// with the link.
+// How long a genre or share command sent counts as unanswered: its result
+// is lost with the link.
 const WAIT_S = 5;
 // Under the editor's last field when a save got no answer.
 const NO_ANSWER = "The tunes service did not answer. Ctrl+S tries again.";
+const NOT_ANSWERED = "The tunes service did not answer.";
+// The share sheet's rows, by their letters, in order.
+const SHARE_KEYS = ["F", "P", "O", "E", "K"];
+// The QML's watchdog on a share action's command: SIGTERM after RUN_S.
+const RUN_S = 10;
+// The footer's line in characters: 420 px less the border and 14 px each
+// side, in 11 px Fira Code, whose advance is 0.6 em. KeyHints wraps between
+// hints, never inside one, so no hint may be longer.
+const FOOTER_CHARS = 59;
 
 const SETUP = ["missing", "downloading", "ready", "failed"];
 const PLAYER = ["none", "playing", "paused"];
+const REPEAT = ["all", "one", "off"];
+// What L switches each repeat mode to.
+const NEXT_REPEAT = { all: "one", one: "off", off: "all" };
 const MODEL = ["unloaded", "starting", "idle", "writing", "rendering", "held_game", "held_memory", "failed", "no_device"];
 const STAGES = ["writing", "rendering"];
 const WORKING = ["starting", "writing", "rendering"];
@@ -198,7 +226,10 @@ function tuneOf(t) {
         bpm: num(t.bpm),
         key: str(t.key) || "",
         length: num(t.length),
-        kept: t.kept === true
+        kept: t.kept === true,
+        new: t.new === true,
+        pinned: t.pinned === true,
+        pos: positive(t.pos)
     };
 }
 
@@ -247,6 +278,12 @@ function snapshot(ev) {
         keptPlaying: ev.kept_playing === true,
         canNext: ev.can_next === true,
         composing: ev.composing === true,
+        // The defaults: the behaviour from before the modes.
+        shuffle: ev.shuffle !== false,
+        repeat: oneOf(ev.repeat, REPEAT, "all"),
+        ended: ev.ended === true,
+        roundLeft: count(ev.round_left),
+        keep: positive(ev.keep),
         // The config's 2 when a snapshot lacks it.
         ahead: ahead === null ? 2 : count(ahead),
         expect: e && positive(e.writing_s) !== null && positive(e.rendering_s) !== null ? { writing: positive(e.writing_s), rendering: positive(e.rendering_s) } : null,
@@ -298,7 +335,7 @@ function apply(st, ev, now) {
 // resets: a snapshot it can read, its reply to a line it could not, or its
 // answer to a genre command.
 function healthy(ev) {
-    return obj(ev) !== null && ((ev.event === "state" && ev.v === 1) || ["error", "genre", "genre_result"].indexOf(ev.event) >= 0);
+    return obj(ev) !== null && ((ev.event === "state" && ev.v === 1) || ["error", "genre", "genre_result", "share", "share_result"].indexOf(ev.event) >= 0);
 }
 
 // The shell's report on the attach process: "back" (running again),
@@ -329,6 +366,23 @@ function keptOf(s) {
 // Whether "toggle" would start a tune when none is playing.
 function canPlay(s) {
     return s.player === "none" && s.genre !== null && (s.ready > 0 || s.queue.length > 0 || keptOf(s) > 0);
+}
+
+// The tune Y and the share sheet act on: the selected queue row, else the
+// playing tune; { name, file, i (null for the playing tune) } or null.
+function shareTarget(s, ui) {
+    const sel = rowIndex(ui, s);
+    if (sel >= 0)
+        return sel < s.queue.length ? { name: s.queue[sel].name, file: s.queue[sel].file, i: sel } : null;
+    return s.tune ? { name: s.tune.name, file: s.tune.file, i: null } : null;
+}
+
+// `prefix` and `name` as one footer label, the name elided so the hint
+// (`key`, a space, the label) fits on a footer line.
+function named(key, prefix, name) {
+    const room = FOOTER_CHARS - key.length - 1 - prefix.length;
+    const c = Array.from(name);
+    return prefix + (c.length <= room ? name : c.slice(0, Math.max(1, room - 1)).join("") + "…");
 }
 
 function undoActive(s, now) {
@@ -536,6 +590,8 @@ function check(values, genres, id) {
         errors.name = "A name cannot start with a dot.";
     else if (chars(name) > 40)
         errors.name = `A name is at most 40 characters; this one has ${chars(name)}.`;
+    else if (name.toLowerCase() === "exports")
+        errors.name = "Exports is the folder for exported copies; pick another name.";
     else {
         const other = genres.find(g => g.id !== id && g.name.toLowerCase() === name.toLowerCase());
         if (other)
@@ -621,15 +677,21 @@ function metaOf(t) {
 function nowView(s, now) {
     const t = s.tune;
     const name = genreName(s);
+    let head = name;
+    if (t && s.repeat === "one")
+        head = `${name} · repeating`;
+    else if (t && t.kept)
+        head = `${name} · kept tunes`;
     const p = {
-        head: t && t.kept ? `${name} · kept tunes` : name,
+        head,
         name: "",
         nameTone: "soft",
+        badge: t && t.pinned ? "★ kept for good" : "",
         meta: "",
         wave: null,
         time: null,
         main: s.player === "playing" ? "pause" : "play",
-        mainLit: t !== null || canPlay(s),
+        mainLit: t !== null || canPlay(s) || s.ended,
         nextLit: s.canNext
     };
     if (t) {
@@ -640,6 +702,9 @@ function nowView(s, now) {
         const played = t.length ? Math.max(0, Math.min(COLS, Math.floor(pos / t.length * COLS))) : 0;
         p.wave = { cols: waveColumns(t.wave), played };
         p.time = { left: clock(pos), leftTone: "soft", right: clock(t.length) };
+    } else if (s.ended) {
+        p.name = `Played all ${plural(keptOf(s), `${name} tune`, `${name} tunes`)}`;
+        p.meta = "Space starts over. L turns repeat on.";
     } else if (canPlay(s)) {
         // Only the user's stop is worded as one: a genre just picked starts
         // clean.
@@ -711,6 +776,9 @@ function jobRow(s, n, sel, now) {
         nTone: "cyan",
         name: j.stage === "rendering" ? "Being rendered" : "Being written",
         nameTone: "soft",
+        tag: "",
+        star: false,
+        dim: false,
         sub: parts.join(" · "),
         right: "composing",
         rightTone: "cyan",
@@ -721,12 +789,18 @@ function jobRow(s, n, sel, now) {
 
 function nextView(s, ui) {
     const sel = rowIndex(ui, s);
+    // Under repeat one the queue waits behind the repeat.
+    const waits = s.repeat === "one";
     const rows = s.queue.map((q, i) => ({
         kind: "tune",
-        n: i + 1,
+        // A kept tune's place in the order made, while shuffle is off.
+        n: num(q.pos) !== null ? q.pos : i + 1,
         nTone: "dim",
         name: q.name,
         nameTone: "normal",
+        tag: q.new ? "new" : "",
+        star: q.pinned === true,
+        dim: waits,
         sub: metaOf(q),
         right: q.length !== null ? clock(q.length) : "",
         rightTone: "dim",
@@ -744,6 +818,9 @@ function nextView(s, ui) {
                 nTone: "dim",
                 name: "Not started",
                 nameTone: "dim",
+                tag: "",
+                star: false,
+                dim: false,
                 sub: s.job !== null ? "after the one above" : "",
                 right: "",
                 rightTone: "dim",
@@ -752,8 +829,12 @@ function nextView(s, ui) {
             });
     }
     let head;
-    if (s.keptPlaying && (s.queue.length === 0 || s.queue[0].kept))
-        head = `from ${keptOf(s)} kept, shuffled`;
+    const kept = keptOf(s);
+    if (waits && s.queue.length)
+        head = "after the repeat";
+    else if (s.keptPlaying && (s.queue.length === 0 || s.queue[0].kept))
+        // round_left counts the playing tune as played.
+        head = s.shuffle ? `from ${kept} kept, shuffled` : `${Math.max(0, kept - s.roundLeft)} of ${kept}, in the order made`;
     else if (s.composing || s.queue.length)
         head = `${s.ready} ready`;
     else
@@ -765,12 +846,24 @@ function line(pre, em, post, tone, right, rightTone) {
     return { pre, em: em || "", post: post || "", tone: tone || "dim", right: right || "", rightTone: rightTone || "dim" };
 }
 
+// "2 new tunes wait until the repeat ends.", under repeat one with new tunes
+// queued; null otherwise.
+function waitingLine(s) {
+    const n = s.queue.filter(q => q.new).length;
+    if (s.repeat !== "one" || n === 0)
+        return null;
+    return line(`${n === 1 ? "1 new tune waits" : `${n} new tunes wait`} until the repeat ends.`);
+}
+
 function composerView(s, now) {
     const m = s.model;
     const name = genreName(s);
+    const waiting = waitingLine(s);
     if (!s.composing) {
         const kept = keptOf(s) > 0;
         const lines = [line(kept ? "On, it makes new " : "On, it makes ", name, ` and keeps ${s.ahead} ahead.`)];
+        if (waiting)
+            lines.push(waiting);
         if (!kept && s.need.ram !== null) {
             const ram = gib(s.need.ram);
             lines.push(line(s.expect
@@ -792,6 +885,8 @@ function composerView(s, now) {
         right = `using ${gib(m.ramUsed)} of RAM`;
     }
     const lines = [line("Makes ", name, `, keeps ${s.ahead} ahead`, "dim", right, rightTone)];
+    if (waiting)
+        lines.push(waiting);
     if (st === "writing" && m.silence !== null)
         lines.push(line(`Writing again: the last plan had ${Math.round(m.silence)} s of silence.`));
     if (st === "held_game")
@@ -816,17 +911,74 @@ function composerView(s, now) {
     return { on: true, label, labelTone, lines };
 }
 
+// The pills under the transport: lit while the mode is on; share dim while
+// Y has nothing to act on.
+function modesView(s, ui) {
+    return [
+        { key: "S", icon: "shuffle", label: "shuffle", lit: s.shuffle, dim: false },
+        { key: "L", icon: "repeat", label: `repeat ${s.repeat}`, lit: s.repeat !== "off", dim: false },
+        { key: "Y", icon: "share", label: "share", lit: false, dim: shareTarget(s, ui) === null }
+    ];
+}
+
 function playerView(s, ui) {
     return {
         kind: "player",
-        setup: null,
-        chooser: null,
-        player: { strip: errorStrip(s), now: nowView(s, ui.now), next: nextView(s, ui), composer: composerView(s, ui.now) },
-        editor: null
+        player: { strip: errorStrip(s), now: nowView(s, ui.now), modes: modesView(s, ui), next: nextView(s, ui), composer: composerView(s, ui.now) }
+    };
+}
+
+// A path with the home folder shown as ~.
+function tilde(path, home) {
+    if (home && (path === home || path.startsWith(home.replace(/\/$/, "") + "/")))
+        return "~" + path.slice(home.replace(/\/$/, "").length);
+    return path;
+}
+
+// "4.1 MB", "820 kB".
+function size(bytes) {
+    const b = num(bytes);
+    if (b === null)
+        return "";
+    return b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} kB`;
+}
+
+function shareView(s, ui) {
+    const sh = ui.share;
+    const i = sh.info;
+    let meta = "";
+    if (i) {
+        const mp3 = size(i.bytes);
+        meta = [metaOf(i), i.length !== null ? clock(i.length) : "", mp3 ? `MP3, ${mp3}` : "MP3"].filter(x => x).join(" · ");
+    } else if (busy(ui)) {
+        meta = "Asking the tunes service…";
+    }
+    const rule = s.keep !== null ? `the newest-${s.keep} rule` : "the rule that keeps the newest";
+    const rows = [
+        ["F", "Copy the file", "paste it into a chat, a mail or a folder", ""],
+        ["P", "Copy its path", i ? tilde(i.path, ui.home) : "", ""],
+        ["O", "Show it in the file manager", "", ""],
+        ["E", "Export a copy", i && i.exportPath ? `to ${tilde(i.exportPath, ui.home)}` : "", ""],
+        ["K", "Keep it for good", `never removed by ${rule}`, i ? (i.pinned ? "on" : "off") : ""]
+    ];
+    return {
+        kind: "share",
+        share: {
+            head: i && i.genre ? i.genre : genreName(s),
+            name: i ? i.name : sh.name,
+            meta,
+            error: ui.waiting && !busy(ui) ? NOT_ANSWERED : "",
+            rows: rows.map((r, k) => ({ key: r[0], label: r[1], sub: r[2], right: r[3], sel: k === sh.sel }))
+        }
     };
 }
 
 function view(st, ui) {
+    const v = viewOf(st, ui);
+    return Object.assign({ setup: null, chooser: null, player: null, editor: null, share: null }, v);
+}
+
+function viewOf(st, ui) {
     const now = ui.now;
     if (st.link !== "up" || !st.snap)
         return linkView(st, now);
@@ -835,6 +987,8 @@ function view(st, ui) {
         return setupView(s);
     if (ui.mode === "editor" && ui.ed)
         return editorView(s, ui);
+    if (ui.mode === "share" && ui.share)
+        return shareView(s, ui);
     if (ui.mode === "chooser" || ui.mode === "ask" || s.genre === null)
         return chooserView(s, ui);
     return playerView(s, ui);
@@ -850,13 +1004,17 @@ function view(st, ui) {
 // loading (genre_get unanswered), base (null | the fields genre_get
 // gave, sent back with the save) }); rev rises whenever values are replaced
 // by anything but typing, so the QML puts them in its fields; waiting:
-// null | { kind ("get" | "save" | "delete"), id, at }, the genre command
-// whose result comes next; notice: null | { text, until }, the chooser's
-// footer line.
-function initialUi(st, now) {
+// null | { kind ("get" | "save" | "delete" | "info" | "export" | "pin"),
+// id, at }, the genre or share command whose result comes next; notice:
+// null | { text, until }, the chooser's and the player's footer line. Mode
+// "share" is the share sheet on share ({ name, file, i (as shareTarget
+// gives them), info (null | the service's "share" line), sel (its row) });
+// running: null | { what, prog, name, path }, a share action's command not
+// finished; home: $HOME, shown as ~.
+function initialUi(st, now, home) {
     const s = st.snap;
     const i = s ? s.genres.findIndex(g => g.id === s.genre) : -1;
-    return { now, mode: "player", sel: Math.max(0, i), selId: null, row: null, ask: null, ed: null, rev: 0, waiting: null, notice: null };
+    return { now, mode: "player", sel: Math.max(0, i), selId: null, row: null, ask: null, ed: null, rev: 0, waiting: null, notice: null, share: null, running: null, home: str(home) || "" };
 }
 
 // A genre command sent and not answered within WAIT_S: no other is sent.
@@ -939,6 +1097,8 @@ function answer(ui, st, ev, now) {
     if (!ui || !ui.waiting || !obj(ev))
         return ui;
     const w = ui.waiting;
+    if (SHARE_WAITS.indexOf(w.kind) >= 0)
+        return shareAnswer(ui, ev, now);
     if (ev.event === "genre") {
         if (w.kind !== "get" || ev.id !== w.id || ui.mode !== "editor" || !ui.ed)
             return ui;
@@ -984,13 +1144,64 @@ function answer(ui, st, ev, now) {
     return copy(ui, { waiting: null, ed: copy(ui.ed, { refused: { field, text: text || "The genre was not saved." } }) });
 }
 
-// The attach link dropped while a genre command waited: its result will not
-// come. A save says so under the last field; an editor still waiting for its
-// genre goes back to the chooser, which says so. Returns the ui.
+const SHARE_WAITS = ["info", "export", "pin"];
+
+// The player again, the footer saying `text` for NOTICE_S.
+function sheetClosed(ui, text, now) {
+    return copy(ui, { mode: "player", share: null, waiting: null, notice: { text, until: now + NOTICE_S } });
+}
+
+// The service's "share" line fills the sheet; a "share_result" for what
+// waits closes it with the footer line: the export's or the pin's outcome,
+// or the service's refusal (the tune gone meanwhile among them).
+function shareAnswer(ui, ev, now) {
+    const w = ui.waiting;
+    const sh = ui.share;
+    if (ui.mode !== "share" || !sh)
+        return ui;
+    if (ev.event === "share") {
+        if (w.kind !== "info" || ev.name !== sh.name || str(ev.path) === null)
+            return ui;
+        const info = {
+            name: ev.name,
+            genre: str(ev.genre) || "",
+            bpm: num(ev.bpm),
+            key: str(ev.key) || "",
+            length: num(ev.length),
+            bytes: num(ev.bytes),
+            path: ev.path,
+            exportPath: str(ev.export_path) || "",
+            pinned: ev.pinned === true
+        };
+        return copy(ui, { waiting: null, share: copy(sh, { info }) });
+    }
+    if (ev.event !== "share_result")
+        return ui;
+    if (ev.ok !== true)
+        return sheetClosed(ui, str(ev.text) || "The tunes service refused.", now);
+    const name = sh.info ? sh.info.name : sh.name;
+    if (w.kind === "export" && ev.what === "export") {
+        const path = str(ev.path) || "";
+        const dir = path.lastIndexOf("/") > 0 ? tilde(path.slice(0, path.lastIndexOf("/")), ui.home) : "~/Music/Tunes/Exports";
+        return sheetClosed(ui, `Exported ${name} to ${dir}.`, now);
+    }
+    if (w.kind === "pin" && ev.what === "pin" && typeof ev.on === "boolean")
+        return sheetClosed(ui, ev.on ? `${name} is kept for good.` : `${name} is no longer kept for good.`, now);
+    return ui;
+}
+
+// The attach link dropped while a genre or share command waited: its result
+// will not come. A save says so under the last field; an editor still
+// waiting for its genre, or a share sheet for its tune, goes back, the
+// footer saying so; an export or pin says so in the sheet. Returns the ui.
 function linkDown(ui, now) {
     if (!ui || !ui.waiting)
         return ui;
     const w = ui.waiting;
+    if (w.kind === "info" && ui.mode === "share")
+        return sheetClosed(ui, NOT_ANSWERED, now);
+    if (SHARE_WAITS.indexOf(w.kind) >= 0 && ui.mode === "share")
+        return copy(ui, { waiting: copy(w, { at: -Infinity }) });
     if (w.kind === "save" && ui.mode === "editor" && ui.ed)
         return copy(ui, { waiting: null, ed: copy(ui.ed, { refused: { field: null, text: NO_ANSWER } }) });
     if (w.kind === "get" && ui.mode === "editor")
@@ -998,8 +1209,100 @@ function linkDown(ui, now) {
     return copy(ui, { waiting: null });
 }
 
-function effect(kind, cmd) {
-    return { kind, cmd: cmd || null };
+function effect(kind, cmd, run) {
+    return run ? { kind, cmd: null, run } : { kind, cmd: cmd || null };
+}
+
+// GVariant text for a string, as gdbus reads its arguments.
+function gv(s) {
+    return "'" + s.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+}
+
+// An absolute path as a file:// URI, each segment percent-encoded.
+function fileUri(path) {
+    return "file://" + path.split("/").map(encodeURIComponent).join("/");
+}
+
+function folderOf(path) {
+    const k = path.lastIndexOf("/");
+    return k > 0 ? path.slice(0, k) : "/";
+}
+
+// The shell's commands for F, P, O and O's fallback, on the file at `path`.
+// F offers the file as text/uri-list, the type file managers and chat
+// programs paste as a file; wl-copy offers the same bytes as plain text too
+// (it adds the text/plain types for any text/ type), so a text field pastes
+// the URI.
+const COMMANDS = {
+    file: path => ["wl-copy", "--type", "text/uri-list", "--", fileUri(path)],
+    path: path => ["wl-copy", "--", path],
+    show: path => ["gdbus", "call", "--session", "--dest", "org.freedesktop.FileManager1", "--object-path", "/org/freedesktop/FileManager1", "--method", "org.freedesktop.FileManager1.ShowItems", `[${gv(fileUri(path))}]`, "''"],
+    open: path => ["uwsm", "app", "--", "xdg-open", folderOf(path)]
+};
+
+// The footer after each command succeeded.
+const DONE = {
+    file: name => `Copied ${name} as a file. Paste it anywhere.`,
+    path: name => `Copied the path of ${name}.`,
+    show: name => `Showed ${name} in the file manager.`,
+    open: name => `Opened the folder of ${name}.`
+};
+
+function runCommand(u, what, info) {
+    const command = COMMANDS[what](info.path);
+    return {
+        ui: copy(u, { mode: "player", share: null, waiting: null, notice: null, running: { what, prog: command[0], name: info.name, path: info.path } }),
+        effect: effect("run", null, { what, command })
+    };
+}
+
+// One of the share sheet's letters: a shell command for F, P and O, a
+// command to the service for E and K (whose result closes the sheet). Not
+// before the service has described the tune, nor while a command waits.
+function shareAction(u, st, letter) {
+    const sh = u.share;
+    const i = sh.info;
+    if (!i || busy(u) || ((letter === "F" || letter === "P" || letter === "O") && u.running))
+        return { ui: u, effect: effect("none") };
+    if (letter === "F")
+        return runCommand(u, "file", i);
+    if (letter === "P")
+        return runCommand(u, "path", i);
+    if (letter === "O")
+        return runCommand(u, "show", i);
+    // The tune's place now: the queue moves while the sheet is open.
+    const s = st.snap;
+    const same = q => q.name === sh.name || (sh.file && q.file === sh.file);
+    const j = sh.i !== null ? s.queue.findIndex(same) : -1;
+    const name = j >= 0 ? s.queue[j].name : s.tune && same(s.tune) ? s.tune.name : sh.name;
+    const cmd = letter === "E" ? { cmd: "export", name } : { cmd: "pin", on: !i.pinned, name };
+    if (j >= 0)
+        cmd.i = j;
+    return { ui: copy(u, { waiting: { kind: letter === "E" ? "export" : "pin", id: null, at: u.now } }), effect: effect("send", cmd) };
+}
+
+// A share action's command ended: { code, said (its last stderr line),
+// timedOut, failedToStart }. Success leaves its footer line; a failed
+// ShowItems falls back to opening the folder; any other failure leaves the
+// command's own words. Returns { ui, effect }.
+function ran(ui, result, now) {
+    if (!ui || !ui.running)
+        return { ui, effect: effect("none") };
+    const r = ui.running;
+    const res = obj(result) || {};
+    const ok = !res.failedToStart && !res.timedOut && res.code === 0;
+    if (!ok && r.what === "show")
+        return { ui: copy(ui, { running: copy(r, { what: "open", prog: COMMANDS.open(r.path)[0] }) }), effect: effect("run", null, { what: "open", command: COMMANDS.open(r.path) }) };
+    let text;
+    if (ok)
+        text = DONE[r.what](r.name);
+    else if (res.failedToStart)
+        text = `${r.prog} could not be started.`;
+    else if (res.timedOut)
+        text = `${r.prog} did not finish within ${RUN_S} s.`;
+    else
+        text = str(res.said) || `${r.prog} exited with status ${res.code}.`;
+    return { ui: copy(ui, { running: null, notice: { text, until: now + NOTICE_S } }), effect: effect("none") };
 }
 
 function send(cmd) {
@@ -1037,6 +1340,15 @@ function table(ui, st) {
             { keys: ["Enter"], hint: null, run: ui.ed.focus === "turns" ? u => ({ ui: u, effect: effect("pass") }) : move(1) },
             { keys: ["CtrlS"], hint: ["Ctrl+S", "save"], run: u => save(u, st) },
             { keys: ["Esc"], hint: ["Esc", "discard"], run: u => ({ ui: copy(u, { mode: "chooser", ed: null, waiting: null, selId: u.ed.id }), effect: effect("none") }) }
+        ];
+    }
+    if (kind === "share") {
+        const last = SHARE_KEYS.length - 1;
+        return [
+            { keys: ["Up", "Down"], hint: ["↑↓", "move"], run: (u, k) => ({ ui: copy(u, { share: copy(u.share, { sel: Math.max(0, Math.min(last, u.share.sel + (k === "Down" ? 1 : -1))) }) }), effect: effect("none") }) },
+            { keys: ["Enter"], hint: ["Enter", "do it"], run: u => shareAction(u, st, SHARE_KEYS[u.share.sel]) },
+            { keys: SHARE_KEYS, hint: [SHARE_KEYS.join(" "), "directly"], run: (u, k) => shareAction(u, st, k) },
+            { keys: ["Esc"], hint: ["Esc", "back"], run: u => ({ ui: copy(u, { mode: "player", share: null, waiting: null }), effect: effect("none") }) }
         ];
     }
     if (kind === "chooser" && ui.mode === "ask") {
@@ -1100,14 +1412,34 @@ function table(ui, st) {
     };
     if (rows > 0)
         t.push(move);
-    const space = s.tune || canPlay(s) ? { keys: ["Space"], hint: ["Space", s.player === "playing" ? "pause" : "play"], run: send({ cmd: "toggle" }) } : null;
+    let space = null;
+    if (!s.tune && s.ended)
+        space = { keys: ["Space"], hint: ["Space", "start over"], run: send({ cmd: "toggle" }) };
+    else if (s.tune || canPlay(s))
+        space = { keys: ["Space"], hint: ["Space", s.player === "playing" ? "pause" : "play"], run: send({ cmd: "toggle" }) };
     let scrap = null;
     if (sel >= 0 && sel < s.queue.length)
-        scrap = { keys: ["X"], hint: ["X", `scrap ${s.queue[sel].name}`], run: sendClearing({ cmd: "scrap", i: sel, name: s.queue[sel].name }) };
+        scrap = { keys: ["X"], hint: ["X", named("X", "scrap ", s.queue[sel].name)], run: sendClearing({ cmd: "scrap", i: sel, name: s.queue[sel].name }) };
     else if (sel >= 0)
         scrap = { keys: ["X"], hint: ["X", `scrap the tune being ${s.job.stage === "rendering" ? "rendered" : "written"}`], run: sendClearing({ cmd: "scrap", job: true }) };
     else if (s.tune)
-        scrap = { keys: ["X"], hint: ["X", `scrap ${s.tune.name}`], run: send({ cmd: "scrap", name: s.tune.name }) };
+        scrap = { keys: ["X"], hint: ["X", named("X", "scrap ", s.tune.name)], run: send({ cmd: "scrap", name: s.tune.name }) };
+    const shuffle = { keys: ["S"], hint: ["S", "shuffle"], run: send({ cmd: "shuffle", on: !s.shuffle }) };
+    const repeat = { keys: ["L"], hint: ["L", `repeat ${NEXT_REPEAT[s.repeat]}`], run: send({ cmd: "repeat", mode: NEXT_REPEAT[s.repeat] }) };
+    const target = shareTarget(s, ui);
+    const share = target ? {
+        keys: ["Y"],
+        hint: ["Y", "share"],
+        run: u => {
+            const cmd = { cmd: "share_info", name: target.name };
+            if (target.i !== null)
+                cmd.i = target.i;
+            return {
+                ui: copy(u, { mode: "share", share: copy(target, { info: null, sel: 0 }), waiting: { kind: "info", id: null, at: u.now }, notice: null }),
+                effect: effect("send", cmd)
+            };
+        }
+    } : null;
     const next = s.canNext ? { keys: ["N"], hint: ["N", "next"], run: send({ cmd: "next" }) } : null;
     const undo = undoActive(s, ui.now) ? { keys: ["Z"], hint: ["Z", "undo"], run: send({ cmd: "undo" }) } : null;
     const canRetry = s.composing && (s.model.state === "failed" || s.model.state === "no_device");
@@ -1115,9 +1447,9 @@ function table(ui, st) {
     if (sel >= 0) {
         if (sel < s.queue.length)
             t.push({ keys: ["Enter"], hint: ["Enter", "play it now"], run: sendClearing({ cmd: "play", i: sel, name: s.queue[sel].name }) });
-        t.push(scrap, space, quiet(next), quiet(undo), quiet(canRetry ? retry : null), quiet(composer), quiet(genres), close);
+        t.push(scrap, share, space, quiet(next), quiet(shuffle), quiet(repeat), quiet(undo), quiet(canRetry ? retry : null), quiet(composer), quiet(genres), close);
     } else {
-        t.push(space, next, scrap, undo, canRetry ? retry : null, composer, genres, close);
+        t.push(space, next, shuffle, repeat, share, scrap, undo, canRetry ? retry : null, composer, genres, close);
     }
     return t.filter(e => e);
 }
@@ -1167,9 +1499,9 @@ function hints(st, ui) {
 }
 
 // The footer's line in place of the hints while a scrap can be undone, in
-// the player.
+// the player, unless a notice is showing (it goes within NOTICE_S).
 function undoLine(st, ui) {
-    if (view(st, ui).kind !== "player")
+    if (view(st, ui).kind !== "player" || notice(st, ui) !== "")
         return "";
     const s = st.snap;
     if (!undoActive(s, ui.now))
@@ -1177,12 +1509,14 @@ function undoLine(st, ui) {
     return `Scrapped ${s.undo.name}. Z brings it back for ${Math.ceil(s.undo.until - ui.now)} s.`;
 }
 
-// The footer's line in place of the hints in the chooser for NOTICE_S
-// after a rename, or after the genre asked for was gone; "" otherwise.
+// The footer's line in place of the hints for NOTICE_S: in the chooser
+// after a rename, or after the genre asked for was gone; in the player
+// after a share action; "" otherwise.
 function notice(st, ui) {
-    if (!ui.notice || ui.notice.until <= ui.now || ui.mode === "ask" || view(st, ui).kind !== "chooser")
+    if (!ui.notice || ui.notice.until <= ui.now || ui.mode === "ask")
         return "";
-    return ui.notice.text;
+    const kind = view(st, ui).kind;
+    return kind === "chooser" || kind === "player" ? ui.notice.text : "";
 }
 
 // The global scrap (Super+Shift+M, the panel open or not): an undo while
@@ -1259,8 +1593,8 @@ function barView(st, flashing) {
 
 if (typeof module !== "undefined")
     module.exports = {
-        COLS, ROWS, GRID, KEY_NAMES, FLASH_MS, FIELDS, NOTICE_S, WAIT_S,
+        COLS, ROWS, GRID, KEY_NAMES, FLASH_MS, FIELDS, NOTICE_S, WAIT_S, RUN_S, FOOTER_CHARS, SHARE_KEYS,
         initial, apply, healthy, linkLost, view, initialUi, key, pick, seek, hints, undoLine, notice, globalScrap, needsTick, barView,
-        typed, focus, answer, linkDown, check, parseTurns, NO_ANSWER,
+        typed, focus, answer, linkDown, ran, check, parseTurns, NO_ANSWER, NOT_ANSWERED,
         position, waveColumns, clock, gib, rate, elapsed
     };

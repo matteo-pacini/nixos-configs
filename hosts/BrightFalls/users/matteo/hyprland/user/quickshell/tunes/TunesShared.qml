@@ -33,6 +33,11 @@ Singleton {
     property bool flashing: false
     property int exitCode: -1
     property string lastStderr: ""
+    // The share action's command: stopped by its watchdog, exited, its last
+    // stderr line.
+    property bool actionTimedOut: false
+    property bool actionExited: false
+    property string actionSaid: ""
 
     // Asks Tunes.qml to open the panel on `screen`, or close it.
     signal toggleRequested(string screen)
@@ -54,7 +59,31 @@ Singleton {
             send(e.cmd);
         else if (e.kind === "reattach")
             reattach();
+        else if (e.kind === "run")
+            runCommand(e.run.command);
         return e.kind;
+    }
+
+    // A share action's command, one at a time (tunes.js offers no other
+    // while ui.running is set).
+    function runCommand(command: var): void {
+        if (action.running)
+            return;
+        actionTimedOut = false;
+        actionExited = false;
+        actionSaid = "";
+        action.command = command;
+        action.running = true;
+        actionWatchdog.restart();
+    }
+
+    function actionDone(result: var): void {
+        actionWatchdog.stop();
+        actionKill.stop();
+        if (!ui)
+            return;
+        tick();
+        run(T.ran(ui, result, Date.now() / 1000));
     }
 
     // A key name from T.KEY_NAMES pressed in the open panel. The clock is
@@ -152,7 +181,7 @@ Singleton {
 
     onOpenChanged: {
         if (open) {
-            ui = T.initialUi(st, Date.now() / 1000);
+            ui = T.initialUi(st, Date.now() / 1000, Quickshell.env("HOME") ?? "");
             send({
                 cmd: "refresh"
             });
@@ -213,6 +242,60 @@ Singleton {
             proc.running = true;
             interval = Math.min(interval * 2, 60000);
         }
+    }
+
+    // A share action's command (wl-copy, gdbus, uwsm). wl-copy's
+    // background child keeps stderr open after the command exits; exited
+    // comes from QProcess::finished, the command's own end, not the pipe's.
+    Process {
+        id: action
+
+        stderr: SplitParser {
+            onRead: line => root.actionSaid = line
+        }
+        onExited: code => {
+            root.actionExited = true;
+            root.actionDone({
+                code,
+                said: root.actionSaid,
+                timedOut: root.actionTimedOut,
+                failedToStart: false
+            });
+        }
+        // Without an exit, the command could not be started at all.
+        onRunningChanged: {
+            if (!running && !root.actionExited)
+                root.actionDone({
+                    code: -1,
+                    said: "",
+                    timedOut: false,
+                    failedToStart: true
+                });
+        }
+    }
+
+    // Process sends SIGTERM when `running` goes false; SIGKILL follows if
+    // that is not enough.
+    Timer {
+        id: actionWatchdog
+
+        interval: T.RUN_S * 1000
+        onTriggered: {
+            if (!action.running)
+                return;
+            console.info("tunes: share command still running after", T.RUN_S, "s; stopping it");
+            root.actionTimedOut = true;
+            action.running = false;
+            actionKill.restart();
+        }
+    }
+
+    Timer {
+        id: actionKill
+
+        interval: 2000
+        onTriggered: if (action.running)
+            action.signal(9)
     }
 
     // Runs once per global scrap, never while idle.
