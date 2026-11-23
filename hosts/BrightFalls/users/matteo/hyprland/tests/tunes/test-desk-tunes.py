@@ -359,11 +359,100 @@ eq("timings: an old state file", dt.read_timings({"counter": 7}), {"writing": []
 eq("expect: null until timed", dt.expect_view({"writing": [], "rendering": []}), None)
 eq("expect: both medians", dt.expect_view({"writing": [60, 70, 80], "rendering": [40, 50]}),
    {"writing_s": 70.0, "rendering_s": 45.0})
-NK = {"name": "k"}
-eq("queue: the queued tunes", dt.queue_entries([{"name": "a"}, {"name": "b"}], NK),
-   [{"name": "a"}, {"name": "b"}])
-eq("queue: else the next kept one", dt.queue_entries([], NK), [NK])
-eq("queue: else nothing", dt.queue_entries([], None), [])
+
+# -- the modes: rounds, the shuffle bag, the order made --
+eq("modes: defaults", dt.read_modes(None), {"shuffle": True, "repeat": "all"})
+eq("modes: read back", dt.read_modes({"shuffle": False, "repeat": "one", "writing": [1]}),
+   {"shuffle": False, "repeat": "one"})
+eq("modes: malformed reads as the defaults", dt.read_modes({"shuffle": 0, "repeat": "twice"}),
+   {"shuffle": True, "repeat": "all"})
+K = [f"/m/Jazz/2026010{d}-000000-90bpm-C-major.mp3" for d in range(1, 7)]
+SHUF = list(reversed(K))  # handed over in no order: the order made is the file names'
+eq("round: all left at the start, oldest first", dt.round_left(SHUF, set(), False, None), K)
+eq("round: played and busy ones are not left", dt.round_left(K, {K[0], K[3]}, True, None, {K[5]}),
+   [K[1], K[2], K[4]])
+eq("round: shuffle off, only those after the anchor",
+   dt.round_left(K, {K[2]}, False, K[2]), K[3:])
+eq("round: shuffle on ignores the anchor", dt.round_left(K, {K[2]}, True, K[2]),
+   [K[0], K[1]] + K[3:])
+eq("round: an anchor whose file is gone still places the order",
+   dt.round_left(K[:2] + K[3:], {K[1]}, False, K[2]), K[3:])
+
+
+def play_rounds(kept, shuffle, repeat, n, seed=5, anchor=None, played=None):
+    """Tunes in the order they would play, `n` of them, as the service does
+    it: choose, start (a wrap empties played), the next chosen while it
+    plays."""
+    rng, out, played = random.Random(seed), [], set(played or ())
+    current = None
+    for _ in range(n):
+        nxt, wraps = dt.choose_kept(kept, played, {current} - {None}, shuffle, anchor, repeat, rng)
+        if nxt is None:
+            break
+        if wraps:
+            played = set()
+        played.add(nxt)
+        anchor = current = nxt
+        out.append(nxt)
+    return out
+
+
+got = play_rounds(SHUF, False, "all", 14)
+eq("order made: oldest first, then round again", got, (K * 3)[:14])
+got = play_rounds(K, True, "all", 60)
+check("shuffle: every round of six plays each tune once",
+      all(sorted(got[i:i + 6]) == K for i in range(0, 60, 6)), got)
+check("shuffle: rounds are not all the same order", len({tuple(got[i:i + 6]) for i in range(0, 60, 6)}) > 1)
+check("shuffle: never the same tune twice in a row", all(a != b for a, b in zip(got, got[1:])), got)
+eq("repeat off: one round, then nothing", play_rounds(K, True, "off", 20, seed=9).__len__(), 6)
+eq("repeat off, shuffle off: one round in order", play_rounds(K, False, "off", 20), K)
+eq("repeat off: a round already over chooses nothing",
+   dt.choose_kept(K, set(K), set(), True, None, "off", random.Random(1)), (None, False))
+eq("repeat one: next wraps as repeat all does",
+   dt.choose_kept(K, set(K), {K[5]}, False, K[5], "one", None), (K[0], True))
+eq("repeat all: a round over starts another, not with the playing tune",
+   dt.choose_kept(K[:2], set(K[:2]), {K[0]}, True, None, "all", random.Random(1)), (K[1], True))
+eq("one kept tune, playing: nothing else to choose",
+   dt.choose_kept(K[:1], {K[0]}, {K[0]}, True, None, "all", random.Random(1)), (None, False))
+eq("no kept tunes", dt.choose_kept([], set(), set(), True, None, "all", random.Random(1)), (None, False))
+# Shuffle switched off mid-round: on from the tune that plays, skipping what
+# this round has played.
+eq("shuffle off mid-round: carries on after the playing tune",
+   play_rounds(K, False, "off", 10, anchor=K[2], played={K[2], K[4]}), [K[3], K[5]])
+eq("shuffle on mid-round: the rest of the round, each once",
+   sorted(play_rounds(K, True, "off", 10, anchor=K[2], played={K[2], K[4]})), [K[0], K[1], K[3], K[5]])
+# A new tune: once it has started it is the newest kept tune, played this round.
+NEW = "/m/Jazz/20260201-000000-90bpm-C-major.mp3"
+eq("a new tune joins the end of the order, not replayed this round",
+   play_rounds(K + [NEW], False, "all", 12, anchor=K[1], played={K[0], K[1], NEW}), K[2:] + K + [NEW, K[0]])
+eq("queue: the three in order after the next", dt.kept_after(K, {K[0]}, {K[0]}, K[0], "all", K[1], False, 2),
+   [K[2], K[3]])
+eq("queue: repeat off stops at the end of the round",
+   dt.kept_after(K, set(K[:4]), {K[3]}, K[3], "off", K[4], False, 2), [K[5]])
+eq("queue: repeat all wraps to the start",
+   dt.kept_after(K, set(K[:4]), {K[3]}, K[3], "all", K[4], False, 2), [K[5], K[0]])
+eq("queue: after a wrapping next, the new round's order",
+   dt.kept_after(K, set(K), {K[5]}, K[5], "all", K[0], True, 2), [K[1], K[2]])
+eq("queue: never the next twice, nor the playing one",
+   dt.kept_after(K[:2], {K[0]}, {K[0]}, K[0], "all", K[1], False, 2), [])
+# -- keep for good, exports --
+eq("pin: a hidden mark beside the tune", dt.pin_mark(K[0]), "/m/Jazz/.20260101-000000-90bpm-C-major.mp3.pin")
+check("pin: the mark is not a tune file", not dt.TUNE_FILE.match(os.path.basename(dt.pin_mark(K[0]))))
+eq("keep: pinned ones are neither counted nor deleted",
+   dt.keep_victims(names, 4, set(), {names[0], names[1]}), names[2:3])
+eq("export: the readable name", dt.export_name("Jazz", "Lazy Avenue", set()), "Jazz - Lazy Avenue.mp3")
+eq("export: a free name when taken",
+   dt.export_name("Jazz", "Lazy Avenue", {"Jazz - Lazy Avenue.mp3", "Jazz - Lazy Avenue (2).mp3"}),
+   "Jazz - Lazy Avenue (3).mp3")
+eq("export: a slash or a line break in a title", dt.export_name("Jazz", "A/B\nC", set()), "Jazz - A-BC.mp3")
+eq("export: never hidden", dt.export_name(".x", "y", set()), "x - y.mp3")
+eq("exports: refused as a genre name in any case",
+   [fe(name=n) for n in ("Exports", "exports", " EXPORTS ")],
+   [("name", "Exports is the folder for exported copies; pick another name.")] * 3)
+eq("exports: a name that only contains it is fine", fe(name="Exports Two"), None)
+gs = json.loads(REAL_GENRES_TEXT)["genres"]
+gs[2]["name"] = "exports"
+raises("exports: never a genre in the file", dt.parse_genres, json.dumps({"genres": gs}), match="Exports")
 M = "/h/Music/Tunes"
 eq("scrap: ours in a genre folder", dt.scrappable(f"{M}/Jazz/20260103-100000-120bpm-F-major.mp3", M), True)
 for what, p in (("another name", f"{M}/Jazz/my own song.mp3"),
@@ -470,6 +559,17 @@ try:
     svc.prune(svc.genre_by_id("jazz"))
     eq("prune: ... while a genre that exists keeps its newest", len(svc.list_tunes(svc.genre_by_id("jazz"))),
        REAL_CONFIG["keep"])
+    # The playing and queued tunes can fill the keep figure: the tune just
+    # placed is still not the one deleted.
+    jz = svc.genre_by_id("jazz")
+    folder = svc.genre_dir(jz)
+    svc.genre, svc.ready = jz, [{"path": os.path.join(folder, n), "kept": True} for n in svc.list_tunes(jz)]
+    FRESH = os.path.join(folder, "20270101-000000-100bpm-C-major.mp3")
+    open(FRESH, "w").close()
+    svc.prune(jz, FRESH)
+    eq("prune: never the tune just placed", (os.path.exists(FRESH), len(svc.list_tunes(jz))),
+       (True, REAL_CONFIG["keep"] + 1))
+    svc.genre, svc.ready = None, []
 finally:
     for k, v in OLD_ENV.items():
         if v is None:
@@ -1256,9 +1356,10 @@ try:
     eq("queue: next offered, no job while resting", (s["can_next"], s["job"]), (True, None))
     eq("queue: a kept tune plays, but not for want of new ones", (s["tune"]["kept"], s["kept_playing"]),
        (True, False))
-    eq("queue: the queued new tunes, named", [(e["kept"], bool(e["name"]), isinstance(e["bpm"], int),
-                                               isinstance(e["length"], float)) for e in s["queue"]],
-       [(False, True, True, True)] * 2)
+    eq("queue: the queued new tunes, named, then the next kept one",
+       [(e["kept"], e["new"], bool(e["name"]), isinstance(e["bpm"], int), isinstance(e["length"], float))
+        for e in s["queue"]][:2] + [(e["kept"], e["new"]) for e in s["queue"][2:]],
+       [(False, True, True, True, True)] * 2 + [(True, False)])
     check("expect: kept outside a job", s["expect"] is not None, s["expect"])
     log = ace_log()
     reqs = [e for e in log if e["kind"] == "req"][n_lm:]
@@ -1345,7 +1446,7 @@ try:
     # -- state.json --
     with open(STATE) as f:
         st = json.load(f)
-    eq("state: only the timings", sorted(st), ["rendering", "writing"])
+    eq("state: the timings and the modes", sorted(st), ["rendering", "repeat", "shuffle", "writing"])
     check("state: one entry per finished tune", len(st["writing"]) == len(st["rendering"]) >= 3, st)
     s = A.until("state: the medians reported are the file's",
                 lambda s: s["expect"] == dt.expect_view(dt.read_timings(st)), 5)
@@ -1702,7 +1803,7 @@ try:
     check("finalise: not in the genre folder either", gone and gone[0] not in kept_files("Downtempo"))
     eq("finalise: no scrap timer left", "scrap" in A.ask_timers()["timers"], False)
 
-    s = A.until("second scrap: two queued", lambda s: len(s["queue"]) >= 2, 30)
+    s = A.until("second scrap: two new tunes queued", lambda s: s["ready"] >= 2, 30)
     q = names(s)
     A.send({"cmd": "scrap", "i": 0})
     A.until("second scrap: the first", lambda s: s["undo"] and s["undo"]["name"] == q[0], 5)
@@ -1973,7 +2074,7 @@ try:
     eq("edit while writing: the running tune keeps the old prompt, the next has the new",
        [c.split(", ")[0] for c in lms[:2]], ["invented bebop prompt", "invented changed prompt"])
     eq("one variation: the prompt gets it", lms[0], "invented bebop prompt, walking bass, instrumental")
-    words = [e["name"] for e in s["queue"]]
+    words = [e["name"] for e in s["queue"] if e["new"]]
     check("default words: the new tunes' names", all(
         n.split(" ")[0] in dt.DEFAULT_WORDS["moods"] and n.split(" ", 1)[1] in dt.DEFAULT_WORDS["things"]
         for n in words), words)
@@ -2067,6 +2168,297 @@ try:
     A.until("editing done: jazz plays", lambda s: s["genre"] == "jazz" and s["player"] == "playing", 10)
     B.close()
 
+    # -- shuffle, repeat, keep for good, sharing --
+    print("  modes", flush=True)
+
+    def stem(p):
+        return os.path.basename(p)[:-4]
+
+    def playing_file(s):
+        return s["tune"] and s["tune"]["file"]
+
+    def files_of(s):
+        return [e["file"] for e in s["queue"]]
+
+    def mpris_player():
+        return next((p for p in playerctl("-l").stdout.split() if "desk-tunes" in p), None)
+
+    ACO_DIR = os.path.join(MUSIC, "Acoustic")
+    ACO = [os.path.join(ACO_DIR, f"2026030{d}-100000-9{d}bpm-G-major.mp3") for d in range(1, 5)]
+    for d, p in enumerate(ACO, 1):
+        mp3(p, 2, f"Invented Porch {d}")
+    s = A.until("modes: the defaults, and the keep figure", lambda s: True, 5)
+    eq("modes: the defaults, and the keep figure", (s["shuffle"], s["repeat"], s["ended"], s["keep"]),
+       (True, "all", False, 4))
+    A.send({"cmd": "shuffle", "on": False})
+    s = A.until("shuffle off: said", lambda s: s["shuffle"] is False, 5)
+    with open(STATE) as f:
+        eq("shuffle off: persisted", json.load(f)["shuffle"], False)
+    for bad in ({"cmd": "shuffle"}, {"cmd": "shuffle", "on": "no"}, {"cmd": "repeat", "mode": "twice"},
+                {"cmd": "repeat"}, {"cmd": "pin", "on": True}, {"cmd": "pin", "name": "x"},
+                {"cmd": "pin", "on": True, "name": "x", "i": -1}, {"cmd": "share_info"},
+                {"cmd": "export", "name": 3}, {"cmd": "share_info", "name": "x", "i": "0"}):
+        eq(f"malformed: {json.dumps(bad)}", answer(A, bad).get("event"), "error")
+
+    # Shuffle off: the order made, oldest first; a pick starts a new round.
+    seen = []
+    A.send({"cmd": "genre", "id": "acoustic"})
+    s = A.until("order made: the oldest plays first", lambda s: s["genre"] == "acoustic"
+                and playing_file(s) == stem(ACO[0]) and len(s["queue"]) == 3, 10)
+    eq("order made: the next three in order, with their places",
+       [(e["file"], e["pos"], e["new"], e["kept"]) for e in s["queue"]],
+       [(stem(p), i, False, True) for i, p in enumerate(ACO[1:], 2)])
+    eq("order made: the playing tune's place, the round", (s["tune"]["pos"], s["round_left"], s["kept_total"]),
+       (1, 3, 4))
+    s = A.until("order made: the second follows by itself", lambda s: playing_file(s) == stem(ACO[1]), 10)
+    eq("order made: then the rest, in order", files_of(s), [stem(ACO[2]), stem(ACO[3]), stem(ACO[0])])
+    # Repeat off mid-tune: the tune plays on; the round ends after the last one.
+    A.send({"cmd": "repeat", "mode": "off"})
+    s = A.until("repeat off: said, the tune not interrupted", lambda s: s["repeat"] == "off", 5)
+    eq("repeat off: the same tune plays, the queue ends with the round",
+       (playing_file(s), files_of(s)), (stem(ACO[1]), [stem(ACO[2]), stem(ACO[3])]))
+    s = A.until("repeat off: the last tune of the round", lambda s: seen.append(playing_file(s))
+                or playing_file(s) == stem(ACO[3]), 10)
+    eq("repeat off: the last one has nothing after it", (files_of(s), s["can_next"], s["round_left"]),
+       ([], False, 0))
+    s = A.until("repeat off: ended", lambda s: s["ended"], 10)
+    eq("ended: nothing plays, not stopped, nothing queued",
+       (s["player"], s["stopped"], s["queue"], s["round_left"]), ("none", False, [], 0))
+    eq("ended: nothing more starts", [e for e in A.quiet(1.0) if e.get("player") == "playing"], [])
+    eq("order made: each once, in order", [f for i, f in enumerate(seen) if f and f not in seen[:i]],
+       [stem(p) for p in ACO[1:]])
+    A.send({"cmd": "next"})
+    eq("ended: next does nothing", [e for e in A.quiet(0.5) if e.get("player") == "playing"], [])
+    A.send({"cmd": "toggle"})
+    s = A.until("ended: toggle starts a new round from the oldest",
+                lambda s: playing_file(s) == stem(ACO[0]) and s["player"] == "playing", 5)
+    eq("new round: not ended, three left", (s["ended"], s["round_left"]), (False, 3))
+
+    # Repeat one: the tune repeats; next, play i and scrap move the repeat.
+    A.send({"cmd": "repeat", "mode": "one"})
+    A.until("repeat one: said", lambda s: s["repeat"] == "one", 5)
+    eq("repeat one: the tune repeats past its end",
+       [playing_file(e) for e in A.quiet(3.5) if e.get("event") == "state"
+        and playing_file(e) != stem(ACO[0])], [])
+    eq("repeat one: still playing", (playing_file(A.last), A.last["player"]), (stem(ACO[0]), "playing"))
+    A.send({"cmd": "next"})
+    s = A.until("repeat one: next moves on", lambda s: playing_file(s) == stem(ACO[1]), 5)
+    eq("repeat one: and repeats that one", [playing_file(e) for e in A.quiet(3.0) if e.get("event") == "state"
+                                            and playing_file(e) != stem(ACO[1])], [])
+    s = A.last
+    eq("repeat one: the repeat stays on", s["repeat"], "one")
+    eq("repeat one: the queue is what follows the repeat", files_of(s), [stem(p) for p in ACO[2:]] + [stem(ACO[0])])
+    A.send({"cmd": "play", "i": 1, "name": s["queue"][1]["name"]})
+    s = A.until("repeat one: play i moves to it", lambda s: playing_file(s) == stem(ACO[3]), 5)
+    eq("repeat one: play i keeps the repeat, and repeats it",
+       (s["repeat"], [playing_file(e) for e in A.quiet(2.5) if e.get("event") == "state"
+                      and playing_file(e) != stem(ACO[3])]), ("one", []))
+    s = A.last
+    nxt = s["queue"][0]["file"]
+    A.send({"cmd": "scrap", "name": s["tune"]["name"]})
+    s = A.until("repeat one: scrap moves to the next", lambda s: s["undo"] and playing_file(s) == nxt, 5)
+    eq("repeat one: the repeat stays on after a scrap", s["repeat"], "one")
+    A.send({"cmd": "undo"})
+    s = A.until("repeat one: undo puts it at the head of the queue",
+                lambda s: s["undo"] is None and files_of(s)[:1] == [stem(ACO[3])], 5)
+    eq("repeat one: undo does not interrupt", (playing_file(s), s["repeat"]), (nxt, "one"))
+    # Paused from here, so no 2 s tune ends under the checks that follow.
+    A.send({"cmd": "toggle"})
+    A.until("paused for MPRIS", lambda s: s["player"] == "paused", 5)
+
+    # MPRIS LoopStatus and Shuffle, both ways.
+    player = mpris_player()
+    check("mpris: the player for the modes", player)
+    if player:
+        eq("mpris: repeat one is LoopStatus Track, shuffle off is Off",
+           (playerctl("-p", player, "loop").stdout.strip(), playerctl("-p", player, "shuffle").stdout.strip()),
+           ("Track", "Off"))
+        playerctl("-p", player, "loop", "Playlist")
+        s = A.until("mpris: loop Playlist is repeat all", lambda s: s["repeat"] == "all", 5)
+        playerctl("-p", player, "loop", "None")
+        s = A.until("mpris: loop None is repeat off", lambda s: s["repeat"] == "off", 5)
+        playerctl("-p", player, "shuffle", "On")
+        s = A.until("mpris: shuffle On", lambda s: s["shuffle"] is True, 5)
+        eq("mpris: the playing tune is not interrupted", playing_file(s), nxt)
+        check("mpris: next still offered after mpv's playlist was shuffled",
+              A.until("mpris: can next", lambda s: s["can_next"], 5).get("can_next"))
+        with open(STATE) as f:
+            eq("mpris: persisted", {k: v for k, v in json.load(f).items() if k in ("shuffle", "repeat")},
+               {"shuffle": True, "repeat": "off"})
+        A.send({"cmd": "repeat", "mode": "all"})
+        A.until("repeat all again", lambda s: s["repeat"] == "all", 5)
+        time.sleep(0.5)
+        eq("mpris: the service's change is seen there", playerctl("-p", player, "loop").stdout.strip(), "Playlist")
+        A.send({"cmd": "shuffle", "on": False})
+        A.until("shuffle off again", lambda s: s["shuffle"] is False, 5)
+        time.sleep(0.5)
+        eq("mpris: ... both", playerctl("-p", player, "shuffle").stdout.strip(), "Off")
+        eq("mpris: and stays so (no echo)", (A.last["repeat"], A.last["shuffle"]), ("all", False))
+
+    # Shuffle rounds: each kept tune once a round.
+    A.send({"cmd": "shuffle", "on": True})
+    A.until("shuffle on", lambda s: s["shuffle"] is True and s["repeat"] == "all", 5)
+    A.send({"cmd": "genre", "id": "jazz"})
+    A.until("away", lambda s: s["genre"] == "jazz", 5)
+    A.send({"cmd": "genre", "id": "acoustic"})
+    s = A.until("shuffle: a pick keeps the modes", lambda s: s["genre"] == "acoustic" and s["tune"]
+                and s["queue"], 5)
+    eq("shuffle: a pick keeps the modes, one kept entry shown, no places",
+       (s["shuffle"], s["repeat"], len(s["queue"]), s["queue"][0]["pos"] if s["queue"] else 0, s["tune"]["pos"]),
+       (True, "all", 1, None, None))
+    A.send({"cmd": "toggle"})
+    s = A.until("shuffle: paused, so only next moves on", lambda s: s["player"] == "paused", 5)
+    order = [playing_file(s)]
+    while len(order) < 8:
+        A.until(f"shuffle: tune {len(order) + 1}", lambda s: s["can_next"], 5)
+        A.send({"cmd": "next"})
+        s = A.until(f"shuffle: tune {len(order) + 1} plays", lambda s: playing_file(s) and playing_file(s) != order[-1], 5)
+        order.append(playing_file(s))
+    eq("shuffle: two rounds, each tune once in each", (sorted(order[:4]), sorted(order[4:])),
+       (sorted(map(stem, ACO)), sorted(map(stem, ACO))))
+
+    # Repeat off ended, then a pick: the new genre starts clean.
+    A.send({"cmd": "repeat", "mode": "off"})
+    A.send({"cmd": "toggle"})
+    s = A.until("ended again", lambda s: s["ended"], 15)
+    A.send({"cmd": "genre", "id": "jazz"})
+    s = A.until("ended then a pick: plays clean", lambda s: s["genre"] == "jazz" and s["player"] == "playing", 5)
+    eq("ended then a pick: not ended, not stopped, the modes kept",
+       (s["ended"], s["stopped"], s["repeat"], s["round_left"]), (False, False, "off", 1))
+    A.send({"cmd": "genre", "id": "acoustic"})
+    s = A.until("ended: once more", lambda s: s["genre"] == "acoustic" and s["ended"], 15)
+    A.send({"cmd": "repeat", "mode": "all"})
+    s = A.until("ended: repeat all carries on with a new round", lambda s: s["player"] == "playing"
+                and not s["ended"], 5)
+
+    # Keep for good.
+    print("  keep for good and sharing", flush=True)
+    s = A.until("pin: something plays", lambda s: s["tune"] and s["queue"], 5)
+    A.send({"cmd": "toggle"})
+    s = A.until("pin: paused", lambda s: s["player"] == "paused", 5)
+    tune, entry = s["tune"], s["queue"][0]
+    TUNE = os.path.join(ACO_DIR, tune["file"] + ".mp3")
+    MARK = os.path.join(ACO_DIR, "." + tune["file"] + ".mp3.pin")
+    eq("pin: another tune's name is refused",
+       answer(A, {"cmd": "pin", "on": True, "name": "Invented Nobody"}),
+       {"event": "share_result", "ok": False, "text": "That tune is no longer there."})
+    eq("pin: the playing tune", answer(A, {"cmd": "pin", "on": True, "name": tune["name"]}),
+       {"event": "share_result", "ok": True, "what": "pin", "on": True, "name": tune["name"]})
+    s = A.until("pin: the snapshot says so", lambda s: s["tune"]["pinned"], 5)
+    eq("pin: a hidden mark beside the tune, not counted as a tune", (os.path.exists(MARK), s["kept_total"]),
+       (True, 4))
+    eq("pin: a queue entry", answer(A, {"cmd": "pin", "on": True, "name": entry["name"], "i": 0}).get("ok"), True)
+    s = A.until("pin: the entry says so", lambda s: s["queue"][0]["pinned"], 5)
+    eq("pin: off again", answer(A, {"cmd": "pin", "on": False, "name": entry["name"], "i": 0}).get("on"), False)
+    A.until("pin: the entry is unpinned", lambda s: not s["queue"][0]["pinned"], 5)
+
+    # share_info and export.
+    ev = answer(A, {"cmd": "share_info", "name": tune["name"]})
+    EXPORTS = os.path.join(MUSIC, "Exports")
+    eq("share: the playing tune", ev, {"event": "share", "name": tune["name"], "genre": "Acoustic",
+                                       "bpm": tune["bpm"], "key": "G major", "length": tune["length"],
+                                       "bytes": os.path.getsize(TUNE), "path": TUNE, "pinned": True,
+                                       "export_path": os.path.join(EXPORTS, f"Acoustic - {tune['name']}.mp3")})
+    eq("share: a queue entry", answer(A, {"cmd": "share_info", "name": entry["name"], "i": 0}).get("path"),
+       os.path.join(ACO_DIR, entry["file"] + ".mp3"))
+    eq("share: a tune no longer there", answer(A, {"cmd": "share_info", "name": entry["name"], "i": 5}),
+       {"event": "share_result", "ok": False, "text": "That tune is no longer there."})
+    paths = [answer(A, {"cmd": "export", "name": tune["name"]}).get("path") for _ in range(2)]
+    eq("export: two copies, the second under a free name", paths,
+       [os.path.join(EXPORTS, f"Acoustic - {tune['name']}{n}.mp3") for n in ("", " (2)")])
+    if all(paths) and os.path.exists(paths[1]):
+        tg, length = tags(paths[1])
+        eq("export: tagged", {k: tg.get(k) for k in ("title", "genre", "tbpm", "tkey")},
+           {"title": tune["name"], "genre": "Acoustic", "tbpm": str(tune["bpm"]), "tkey": "G major"})
+        check("export: the whole tune", abs(length - 2.0) < 0.2, length)
+    eq("export: nothing else left in Exports", sorted(os.listdir(EXPORTS)), sorted(os.path.basename(p) for p in paths))
+    eq("share_info: the next export's name", answer(A, {"cmd": "share_info", "name": tune["name"]})
+       .get("export_path"), os.path.join(EXPORTS, f"Acoustic - {tune['name']} (3).mp3"))
+    s = A.until("exports: never a genre", lambda s: True, 5)
+    check("exports: never listed as a genre", "Exports" not in [g["name"] for g in s["genres"]], s["genres"])
+    eq("exports: refused by the genre editor",
+       answer(A, {"cmd": "genre_save", "id": None, "genre": {"name": "exports", "caption": "x", "turns": [],
+                                                              "bpm": [70, 120]}}),
+       no("name", "Exports is the folder for exported copies; pick another name."))
+
+    # Pin, scrap, undo.
+    A.send({"cmd": "scrap", "name": tune["name"]})
+    s = A.until("pin and scrap: scrapped", lambda s: s["undo"] and s["undo"]["name"] == tune["name"], 5)
+    eq("pin and scrap: the mark goes with it", os.path.exists(MARK), False)
+    A.send({"cmd": "undo"})
+    s = A.until("pin and undo: back at the head of the queue, pinned",
+                lambda s: s["undo"] is None and s["queue"] and s["queue"][0]["file"] == tune["file"], 5)
+    eq("pin and undo: pinned again", (s["queue"][0]["pinned"], os.path.exists(MARK)), (True, True))
+    A.send({"cmd": "toggle"})
+    A.until("paused while composing", lambda s: s["player"] == "paused", 5)
+
+    # Pinned tunes are neither deleted nor counted by the keep rule (keep is
+    # 4 here): the oldest is pinned too, and the newest unpinned are kept.
+    # The service reads the marks from disk, so the oldest is pinned by hand.
+    open(os.path.join(ACO_DIR, "." + stem(ACO[0]) + ".mp3.pin"), "w").close()
+    pinned_files = {tune["file"], stem(ACO[0])}
+    for d in (5, 6):
+        mp3(os.path.join(ACO_DIR, f"2026030{d}-100000-9{d}bpm-G-major.mp3"), 2, f"Invented Porch {d}")
+    scenario(lm_time=0.2, synth_time=0.2)
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("keep: two new tunes", lambda s: s["ready"] >= 2 and model(s)["state"] == "idle", 40)
+    A.send({"cmd": "compose", "on": False})
+    have = kept_files("Acoustic")
+    eq("keep: the pinned survive, the oldest among them, and four besides them",
+       (sorted(f for f in pinned_files if f + ".mp3" in have),
+        len([n for n in have if n[:-4] not in pinned_files])), (sorted(pinned_files), 4))
+    # The tune brought back may already have played from the head of the queue.
+    rest = [e["new"] for e in s["queue"] if e["file"] != tune["file"]]
+    eq("keep: the new tunes first, then the kept", rest, [True, True] + [False] * (len(rest) - 2))
+    eq("keep: the kept_total counts the pinned too", s["kept_total"], len(have))
+
+    # Pins follow a rename, and survive a restart (checked after it).
+    base = fields_of(answer(A, {"cmd": "genre_get", "id": "acoustic"}))
+    eq("pin and rename: ok", answer(A, {"cmd": "genre_save", "id": "acoustic", "base": base,
+                                        "genre": dict(base, name="Invented Unplugged")}).get("ok"), True)
+    UNPLUGGED = os.path.join(MUSIC, "Invented Unplugged")
+    MARK = os.path.join(UNPLUGGED, os.path.basename(MARK))
+    s = A.until("pin and rename: still pinned", lambda s: s["genres"][-1]["name"] == "Invented Unplugged"
+                and any(e["pinned"] for e in s["queue"] + [s["tune"]] if e), 5)
+    eq("pin and rename: the mark moved with the folder", os.path.exists(MARK), True)
+    ORPHAN = os.path.join(UNPLUGGED, ".20260101-000000-80bpm-C-major.mp3.pin")
+    open(ORPHAN, "w").close()
+
+    # A composed tune ends a finished round; it starts by itself, not after a stop.
+    if A.last["player"] == "paused":
+        A.send({"cmd": "toggle"})
+    A.send({"cmd": "repeat", "mode": "off"})
+    s = A.until("composer and ended: the round ends", lambda s: s["ended"], 60)
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("composer and ended: a new tune starts by itself",
+                lambda s: s["tune"] and s["tune"]["new"] and s["player"] == "playing", 30)
+    eq("composer and ended: no longer ended", s["ended"], False)
+    A.send({"cmd": "compose", "on": False})
+    if player:
+        playerctl("-p", player, "stop")
+        A.until("stopped", lambda s: s["stopped"], 5)
+        A.send({"cmd": "compose", "on": True})
+        A.until("stopped: a tune is ready", lambda s: s["ready"] >= 1, 30)
+        eq("stopped: it does not start by itself", [e for e in A.quiet(1.0) if e.get("player") == "playing"], [])
+        A.send({"cmd": "compose", "on": False})
+
+    # Repeat one with the composer on: it makes `ahead` tunes, then rests; they wait.
+    A.send({"cmd": "repeat", "mode": "one"})
+    A.send({"cmd": "toggle"})
+    s = A.until("repeat one, composing: playing", lambda s: s["player"] == "playing" and s["repeat"] == "one", 10)
+    looping = playing_file(s)
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("repeat one, composing: the queue filled, resting",
+                lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 40)
+    eq("repeat one, composing: the tune repeats on, the new ones wait", (playing_file(s), s["queue"][0]["new"]),
+       (looping, True))
+    A.send({"cmd": "compose", "on": False})
+    A.send({"cmd": "next"})
+    s = A.until("repeat one: next plays the new tune", lambda s: s["tune"] and s["tune"]["new"], 5)
+    A.send({"cmd": "shuffle", "on": False})
+    A.send({"cmd": "repeat", "mode": "one"})
+    A.until("modes left for the restart", lambda s: not s["shuffle"], 5)
+
     # -- writes stay inside the unit's directories --
     allowed = [os.path.join(XDG["XDG_STATE_HOME"], "desk-tunes"),
                os.path.join(XDG["XDG_CACHE_HOME"], "desk-tunes"),
@@ -2117,6 +2509,9 @@ try:
        (os.path.exists(GENRES_TMP), s["genres"][0]["name"], s["error"]), (False, "Lo-fi", None))
     eq("restart: the medians are read back", s["expect"], dt.expect_view(dt.read_timings(st)))
     check("restart: ... and there are some", s["expect"] is not None, s["expect"])
+    eq("restart: the modes are read back", (s["shuffle"], s["repeat"], s["ended"]), (False, "one", False))
+    eq("restart: a pin is still there, one whose tune is gone is deleted",
+       (os.path.exists(MARK), os.path.exists(ORPHAN)), (True, False))
     A.send({"cmd": "genre", "id": "jazz"})
     A.until("restart: a genre picked", lambda s: s["genre"] == "jazz")
     A.quiet(0.5)
