@@ -236,6 +236,31 @@ body = (b"--ace-batch-boundary\r\nContent-Type: audio/wav\r\n\r\nRIFFxx\r\n--ace
 eq("synth result: the audio part", dt.multipart_audio(body), b"RIFFxx")
 raises("synth result: no audio part", dt.multipart_audio,
        b"--b\r\nContent-Type: application/json\r\n\r\n{}\r\n--b--\r\n")
+eq("median: odd", dt.median([120, 104, 111]), 111.0)
+eq("median: even", dt.median([100, 110, 130, 90]), 105.0)
+eq("median: none", dt.median([]), None)
+eq("timings: the last five kept", dt.add_timing([1, 2, 3, 4, 5], 6.04), [2, 3, 4, 5, 6.0])
+eq("timings: read back", dt.read_timings({"writing": [60.5, 70], "rendering": [40]}),
+   {"writing": [60.5, 70], "rendering": [40]})
+eq("timings: malformed reads as none", dt.read_timings({"writing": ["x"], "rendering": 4}),
+   {"writing": [], "rendering": []})
+eq("timings: an old state file", dt.read_timings({"counter": 7}), {"writing": [], "rendering": []})
+eq("expect: null until timed", dt.expect_view({"writing": [], "rendering": []}), None)
+eq("expect: both medians", dt.expect_view({"writing": [60, 70, 80], "rendering": [40, 50]}),
+   {"writing_s": 70.0, "rendering_s": 45.0})
+NK = {"name": "k"}
+eq("queue: the queued tunes", dt.queue_entries([{"name": "a"}, {"name": "b"}], NK),
+   [{"name": "a"}, {"name": "b"}])
+eq("queue: else the next kept one", dt.queue_entries([], NK), [NK])
+eq("queue: else nothing", dt.queue_entries([], None), [])
+M = "/h/Music/Tunes"
+eq("scrap: ours in a genre folder", dt.scrappable(f"{M}/Jazz/20260103-100000-120bpm-F-major.mp3", M), True)
+for what, p in (("another name", f"{M}/Jazz/my own song.mp3"),
+                ("a backup", f"{M}/Jazz/20260103-100000-120bpm-F-major.mp3.bak"),
+                ("outside the music folder", "/h/Music/Other/20260103-100000-120bpm-F-major.mp3"),
+                ("a nested folder", f"{M}/Jazz/old/20260103-100000-120bpm-F-major.mp3"),
+                ("the music folder itself", f"{M}/20260103-100000-120bpm-F-major.mp3")):
+    eq(f"scrap: not {what}", dt.scrappable(p, M), False)
 files = [{"name": "a", "bytes": 10}, {"name": "b", "bytes": 5}]
 eq("need: bytes over the whole set", dt.need_bytes(files, {"a": 10, "b": 2}), 3)
 # mpv's stderr and its IPC socket can close in one select() pass: the
@@ -404,8 +429,12 @@ srv.serve_forever()
 FAKE_VULKANINFO = r'''
 import os, sys
 with open(os.path.join(os.environ["FAKE_DIR"], "vulkaninfo.log"), "a") as f:
-    f.write(" ".join(sys.argv[1:]) + "\n")
+    shown = [k for k in ("DISPLAY", "WAYLAND_DISPLAY") if k in os.environ]
+    f.write(" ".join(sys.argv[1:] + shown) + "\n")
 sys.stdout.write(open(os.path.join(os.environ["FAKE_DIR"], "vulkaninfo.txt")).read())
+sys.stdout.flush()
+if os.path.exists(os.path.join(os.environ["FAKE_DIR"], "vulkaninfo.crash")):
+    os._exit(139)
 '''
 
 FAKE_HYPRCTL = r'''
@@ -575,7 +604,8 @@ if not BUS:
 
 ENV = {k: v for k, v in os.environ.items() if k not in ("HYPRLAND_INSTANCE_SIGNATURE",)}
 ENV.update(XDG, HOME=HOME, XDG_RUNTIME_DIR=RUNTIME, PATH=FAKES + os.pathsep + os.environ["PATH"],
-           DBUS_SESSION_BUS_ADDRESS=BUS, FAKE_DIR=CTL, FAKE_SILENCE=str(SILENCE))
+           DBUS_SESSION_BUS_ADDRESS=BUS, FAKE_DIR=CTL, FAKE_SILENCE=str(SILENCE),
+           DISPLAY=":97", WAYLAND_DISPLAY="wayland-97")
 SOCK = os.path.join(RUNTIME, "desk-tunes", "sock")
 
 
@@ -772,6 +802,11 @@ try:
     eq("snapshot: nothing picked, nothing plays", (s.get("genre"), s.get("player"), s.get("tune")),
        (None, "none", None))
     eq("snapshot: no tune, no next", s.get("can_next"), False)
+    eq("snapshot: the composer is off at start, nothing queued, no job, nothing to undo",
+       {k: s.get(k) for k in ("composing", "queue", "job", "undo", "kept_total", "expect",
+                              "ahead", "stopped")},
+       {"composing": False, "queue": [], "job": None, "undo": None, "kept_total": 0,
+        "expect": None, "ahead": 2, "stopped": False})
     eq("snapshot: model", {k: model(s).get(k) for k in ("name", "variant", "device", "state",
                                                          "ram_used_bytes", "ram_free_bytes")},
        {"name": "ACE-Step 1.5 Turbo", "variant": "4B Q8", "device": "Radeon 780M",
@@ -787,14 +822,22 @@ try:
     A.send("this is not json")
     ev = A.get(5)
     eq("malformed: an error to the sender", ev and ev.get("event"), "error")
-    for bad in ('{"cmd":"bogus"}', '{"cmd":"seek","t":"soon"}', '{"cmd":"genre"}', '[1]'):
+    for bad in ('{"cmd":"bogus"}', '{"cmd":"seek","t":"soon"}', '{"cmd":"genre"}', '[1]',
+                '{"cmd":"compose"}', '{"cmd":"compose","on":1}', '{"cmd":"play"}',
+                '{"cmd":"play","i":-1}', '{"cmd":"scrap","i":"1"}', '{"cmd":"scrap","job":false}',
+                '{"cmd":"load"}', '{"cmd":"unload"}'):
         A.send(bad)
         ev = A.get(5)
-        eq(f"malformed: {bad}", ev and ev.get("event"), "error")
-    for cmd in ("next", "toggle", "unload", "retry", "cancel_download"):
+        eq(f"malformed or gone: {bad}", ev and ev.get("event"), "error")
+    for cmd in ("next", "toggle", "retry", "cancel_download", "undo", "scrap"):
         A.send({"cmd": cmd})
     A.send({"cmd": "seek", "t": 10})
     A.send({"cmd": "genre", "id": "no-such-genre"})
+    A.send({"cmd": "compose", "on": True})
+    A.send({"cmd": "compose", "on": False})
+    A.send({"cmd": "play", "i": 0})
+    A.send({"cmd": "scrap", "i": 0})
+    A.send({"cmd": "scrap", "job": True})
     got = B.quiet(1.0)
     eq("malformed and inapplicable: nothing to the other client", got, [])
     A.send({"cmd": "refresh"})
@@ -883,11 +926,24 @@ try:
     print("  device", flush=True)
     scenario(lm_time=1.0)
     A.send({"cmd": "genre", "id": "ambient"})
+    s = A.until("empty genre: picked", lambda s: s["genre"] == "ambient")
+    eq("empty genre: nothing plays, nothing queued, the composer off",
+       (s["player"], s["queue"], s["kept_total"], s["composing"], model(s)["state"]),
+       ("none", [], 0, False, "unloaded"))
+    eq("empty genre: nothing composed by itself", [e for e in A.quiet(1.0)
+                                                   if e.get("composing") or e.get("job")], [])
+    eq("empty genre: no device looked up", os.path.exists(os.path.join(CTL, "vulkaninfo.log")), False)
+    put("vulkaninfo.crash", "")
+    A.send({"cmd": "compose", "on": True})
     s = A.until("device: absent is no_device", lambda s: model(s)["state"] == "no_device")
     eq("device: what was found", model(s)["detail"],
        "found 1 other Vulkan GPU: AMD Radeon RX 6800 XT (RADV NAVI21)")
     eq("device: no server started", [e for e in ace_log() if e["kind"] == "start"], [])
-    eq("device: the genre is picked", s["genre"], "ambient")
+    eq("device: the genre is picked, the switch stays on", (s["genre"], s["composing"]),
+       ("ambient", True))
+    with open(os.path.join(CTL, "vulkaninfo.log")) as f:
+        eq("device: vulkaninfo runs without DISPLAY or WAYLAND_DISPLAY",
+           f.read().splitlines(), ["--summary"])
     t = A.ask_timers()
     eq("device: no retry armed", [n for n in t["timers"] if n == "retry"], [])
 
@@ -895,7 +951,9 @@ try:
     put("ggml.txt", "ggml_vulkan: Found 2 Vulkan devices:\nggml_vulkan: 0 = AMD Radeon 780M Graphics "
         "(RADV PHOENIX) (radv) | uma: 1\nggml_vulkan: 1 = AMD Radeon RX 6800 XT (RADV NAVI21) (radv)")
     A.send({"cmd": "retry"})
-    A.until("device: llvmpipe first, writing on Vulkan0", lambda s: model(s)["state"] == "writing")
+    A.until("device: llvmpipe first, writing on Vulkan0 (vulkaninfo crashing after its output)",
+            lambda s: model(s)["state"] == "writing")
+    os.unlink(os.path.join(CTL, "vulkaninfo.crash"))
     starts = [e for e in ace_log() if e["kind"] == "start"]
     argv = starts[-1]["argv"] if starts else []
     eq("device: --device Vulkan0", argv[argv.index("--device") + 1] if "--device" in argv else None,
@@ -916,16 +974,22 @@ try:
     s = A.until("server: memory in use is reported", lambda s: model(s)["ram_used_bytes"] is not None, 5)
     check("server: memory figure is the RSS at least", model(s)["ram_used_bytes"] > 1_000_000)
 
-    A.send({"cmd": "unload"})
-    s = A.until("unload: unloaded", lambda s: model(s)["state"] == "unloaded")
+    s = A.until("job: writing", lambda s: s["job"] and s["job"]["stage"] == "writing", 5)
+    j = s["job"]
+    check("job: started now, nothing timed yet, nothing written",
+          abs(j["started"] - time.time()) < 3 and j["expect_s"] is None and j["written_s"] is None, j)
+    eq("job: no medians yet", s["expect"], None)
+    A.send({"cmd": "compose", "on": False})
+    s = A.until("switch off: unloaded", lambda s: model(s)["state"] == "unloaded")
+    eq("switch off: no job, the switch off", (s["job"], s["composing"]), (None, False))
     log = ace_log()
-    check("unload: the job is cancelled", any(e.get("path", "").endswith("&cancel=1") for e in log))
-    wait("unload: the server is stopped", lambda: any(e["kind"] == "exit" for e in ace_log()), 5)
+    check("switch off: the job is cancelled", any(e.get("path", "").endswith("&cancel=1") for e in log))
+    wait("switch off: the server is stopped", lambda: any(e["kind"] == "exit" for e in ace_log()), 5)
 
     put("vulkaninfo.txt", fixture("vulkaninfo-egpu-first.txt"))
     put("ggml.txt", "ggml_vulkan: Found 2 Vulkan devices:\nggml_vulkan: 0 = AMD Radeon RX 6800 XT "
         "(RADV NAVI21) (radv)\nggml_vulkan: 1 = AMD Radeon RX 6800 XT (RADV NAVI21) (radv)")
-    A.send({"cmd": "load"})
+    A.send({"cmd": "compose", "on": True})
     s = A.until("device: the server's card is not the 780M", lambda s: model(s)["state"] == "no_device")
     eq("device: what the server said", model(s)["detail"],
        "the server's Vulkan1 is AMD Radeon RX 6800 XT (RADV NAVI21) (radv)")
@@ -942,17 +1006,51 @@ try:
     ambient_job = [e for e in ace_log() if e.get("path") == "/lm"][-1]
     A.send({"cmd": "genre", "id": "lofi"})
     s = A.until("genre: a kept tune plays at once", lambda s: s["player"] == "playing" and s["tune"])
-    eq("genre: it is kept", (s["tune"]["kept"], s["tune"]["n"], s["kept_playing"]), (True, None, True))
+    eq("genre: it is kept", (s["tune"]["kept"], s["kept_playing"]), (True, True))
     check("genre: one of this genre's kept tunes",
           (s["tune"]["bpm"], s["tune"]["key"]) in ((80, "A minor"), (84, "D major")), s["tune"])
     check("genre: the previous job is cancelled",
           any(e.get("path", "").endswith("&cancel=1") and e["t"] > ambient_job["t"] for e in ace_log()))
+    eq("genre: the switch goes off", (s["composing"], model(s)["state"], s["job"]),
+       (False, "unloaded", None))
+    wait("genre: the server is stopped", lambda: ace_log()[-1]["kind"] == "exit", 5)
+    s = A.until("kept mode: the other kept tune is next", lambda s: len(s["queue"]) == 1)
+    q = s["queue"][0]
+    eq("kept mode: one kept entry", (q["kept"], s["kept_total"], s["ready"], s["can_next"]),
+       (True, 2, 0, True))
+    check("kept mode: the other kept tune", {(q["bpm"], q["key"]), (s["tune"]["bpm"], s["tune"]["key"])}
+          == {(80, "A minor"), (84, "D major")}, (q, s["tune"]))
+    n_lm = len([e for e in ace_log() if e.get("path") == "/lm"])
+    A.quiet(1.0)
+    eq("kept mode: nothing composed", len([e for e in ace_log() if e.get("path") == "/lm"]), n_lm)
     s = A.until("kept tune: its title and wave from the file",
                 lambda s: s["tune"] and s["tune"]["name"].startswith("Invented Old") and
                 len(s["tune"]["wave"]) == 78)
     check("kept tune: its length", abs((s["tune"]["length"] or 0) - 90) < 0.5, s["tune"])
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("switch on: composing", lambda s: s["composing"] and s["job"], 10)
+    s = A.until("job: rendering, with how long writing took",
+                lambda s: s["job"] and s["job"]["stage"] == "rendering", 10)
+    check("job: written_s set while rendering", s["job"]["written_s"] is not None
+          and 0 < s["job"]["written_s"] < 5, s["job"])
+    s = A.until("job: the second tune has an expectation",
+                lambda s: s["job"] and s["job"]["expect_s"] is not None, 20)
+    check("expect: both medians once one tune is timed", s["expect"] and
+          set(s["expect"]) == {"writing_s", "rendering_s"}, s["expect"])
+    eq("expect: job.expect_s is the writing median while writing",
+       s["job"]["expect_s"], s["expect"][s["job"]["stage"] + "_s"])
+    s = A.until("job: the second tune rendering", lambda s: s["job"] and s["job"]["stage"] == "rendering"
+                and s["job"]["expect_s"] is not None, 20)
+    eq("expect: job.expect_s is the rendering median while rendering",
+       s["job"]["expect_s"], s["expect"]["rendering_s"])
+    check("expect: the two medians differ here, so the stage matters",
+          s["expect"]["rendering_s"] != s["expect"]["writing_s"], s["expect"])
     s = A.until("queue: two new tunes", lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 40)
-    eq("queue: next offered", s["can_next"], True)
+    eq("queue: next offered, no job while resting", (s["can_next"], s["job"]), (True, None))
+    eq("queue: the queued new tunes, named", [(e["kept"], bool(e["name"]), isinstance(e["bpm"], int),
+                                               isinstance(e["length"], float)) for e in s["queue"]],
+       [(False, True, True, True)] * 2)
+    check("expect: kept outside a job", s["expect"] is not None, s["expect"])
     log = ace_log()
     reqs = [e for e in log if e["kind"] == "req"][n_lm:]
     lm = [e for e in log if e.get("path") == "/lm"][n_lm:]
@@ -996,16 +1094,18 @@ try:
     t = A.ask_timers()
     eq("queue: idle while playing, no timer", t["timers"], [])
     n_start = len([e for e in ace_log() if e["kind"] == "start"])
-    A.send({"cmd": "unload"})
-    A.until("full queue: unloaded", lambda s: model(s)["state"] == "unloaded")
-    A.send({"cmd": "load"})
-    s = A.until("full queue: load says idle, not unloaded", lambda s: model(s)["state"] == "idle", 5)
+    A.send({"cmd": "compose", "on": False})
+    A.until("full queue: switched off", lambda s: model(s)["state"] == "unloaded")
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("full queue: on says idle, not unloaded", lambda s: model(s)["state"] == "idle", 5)
     eq("full queue: no server for a full queue", (len([e for e in ace_log() if e["kind"] == "start"]),
                                                  s["ready"]), (n_start, 2))
 
+    first_queued = s["queue"][0]["name"]
     A.send({"cmd": "next"})
     s = A.until("next: a new tune", lambda s: s["tune"] and not s["tune"]["kept"])
-    eq("next: numbered, not kept", (s["tune"]["n"], s["kept_playing"]), (1, False))
+    eq("next: the head of the queue, not kept", (s["tune"]["name"], s["kept_playing"]),
+       (first_queued, False))
     check("next: its length is the cut one", abs(s["tune"]["length"] - 10.0) < 0.2, s["tune"]["length"])
     eq("next: a 78-bar wave scaled to 1", (len(s["tune"]["wave"]), max(s["tune"]["wave"])), (78, 1.0))
     tg, _ = tags(os.path.join(MUSIC, "Lo-fi", new[0]))
@@ -1036,8 +1136,10 @@ try:
     # -- state.json --
     with open(STATE) as f:
         st = json.load(f)
-    eq("state: only the counter", list(st), ["counter"])
-    check("state: the counter counts the tunes", st.get("counter", 0) >= 3, st)
+    eq("state: only the timings", sorted(st), ["rendering", "writing"])
+    check("state: one entry per finished tune", len(st["writing"]) == len(st["rendering"]) >= 3, st)
+    s = A.until("state: the medians reported are the file's",
+                lambda s: s["expect"] == dt.expect_view(dt.read_timings(st)), 5)
     ino = os.stat(STATE).st_ino
     mtime = os.stat(STATE).st_mtime_ns
     A.send({"cmd": "toggle"})
@@ -1062,21 +1164,22 @@ try:
         A.until("mpris: pause", lambda s: s["player"] == "paused", 5)
         playerctl("-p", name, "play")
         A.until("mpris: play", lambda s: s["player"] == "playing", 5)
-        before = A.last["tune"]["n"]
-        A.until("mpris: a tune is next", lambda s: s["ready"] >= 1, 30)
+        s = A.until("mpris: a tune is next", lambda s: s["ready"] >= 1, 30)
+        nxt = s["queue"][0]["name"]
         playerctl("-p", name, "next")
-        s = A.until("mpris: next", lambda s: s["tune"] and s["tune"]["n"] != before, 5)
+        s = A.until("mpris: next", lambda s: s["tune"] and s["tune"]["name"] == nxt, 5)
         A.send({"cmd": "toggle"})
         A.until("mpris: paused for what follows", lambda s: s["player"] == "paused", 5)
 
     # -- next on kept tunes, unloaded; same genre ignored; idle --
     print("  kept tunes and idle", flush=True)
     lofi_before = kept_files("Lo-fi")
-    A.send({"cmd": "unload"})
-    A.until("unload", lambda s: model(s)["state"] == "unloaded")
+    A.until("paused before a pick", lambda s: s["player"] == "paused", 5)
     A.send({"cmd": "genre", "id": "jazz"})
-    s = A.until("unloaded: kept tunes still play", lambda s: s["genre"] == "jazz" and s["tune"]
-                and s["tune"]["kept"] and s["player"] == "playing")
+    s = A.until("pick after a pause: kept tunes play, not paused", lambda s: s["genre"] == "jazz"
+                and s["tune"] and s["tune"]["kept"] and s["player"] == "playing")
+    eq("pick after a pause: not stopped, the composer off", (s["stopped"], s["composing"]),
+       (False, False))
     eq("genre change: the old queue is dropped", s["ready"], 0)
     eq("genre change: the old genre's files stay", kept_files("Lo-fi"), lofi_before)
     first = s["tune"]["bpm"]
@@ -1110,11 +1213,16 @@ try:
     # -- silence: rewrite, three in a row; retry timing --
     print("  silence and failures", flush=True)
     A.send({"cmd": "genre", "id": "ambient"})
+    s = A.until("pick of a genre with nothing kept: the old tune leaves the player",
+                lambda s: s["genre"] == "ambient" and s["player"] == "none")
+    eq("pick of a genre with nothing kept: nothing queued, not stopped", (s["queue"], s["stopped"]),
+       ([], False))
     scenario(lm=["silent", "ok"], lm_time=0.3, synth_time=0.3)
-    A.send({"cmd": "load"})
+    A.send({"cmd": "compose", "on": True})
     s = A.until("silence: writing again", lambda s: model(s)["state"] == "writing"
                 and model(s)["silence_s"] == 6)
-    s = A.until("silence: then a tune", lambda s: s["ready"] >= 1 or (s["tune"] and not s["tune"]["kept"]))
+    s = A.until("switch on: the first finished tune starts by itself",
+                lambda s: s["tune"] and not s["tune"]["kept"] and s["player"] == "playing")
     eq("silence: cleared after", model(s)["silence_s"], None)
     A.until("ambient: two ready", lambda s: s["ready"] == 1 and model(s)["state"] == "idle"
             or s["ready"] == 2, 30)
@@ -1165,6 +1273,7 @@ try:
     check("hold: the job is cancelled", lm_ids and lm_ids[-1]["t"] >= t0 - 0.1)
     wait("hold: the server is stopped", lambda: ace_log()[-1]["kind"] == "exit", 5)
     eq("hold: no server memory", model(s)["ram_used_bytes"], None)
+    eq("hold: the switch stays on, no job", (s["composing"], s["job"]), (True, None))
     eq("hold: the player is unaffected", s["player"], "playing")
     lines = open(os.path.join(CTL, "hyprctl.log")).read().splitlines()
     eq("hold: hyprctl -i 0 with no instance signature", lines[-1], "-i 0 -j clients")
@@ -1194,8 +1303,19 @@ try:
     put("clients.json", json.dumps([{"class": "kitty"}]))
     A.send({"cmd": "next"})
     A.until("hold: cleared when hyprctl works again", lambda s: s["error"] is None, 15)
-    A.send({"cmd": "unload"})
-    A.until("unload", lambda s: model(s)["state"] == "unloaded")
+    A.send({"cmd": "compose", "on": False})
+    A.until("switch off", lambda s: model(s)["state"] == "unloaded")
+    put("clients.json", json.dumps([{"class": "steam_app_1245620"}]))
+    meminfo(3 * GIB)
+    n_hypr = len(open(os.path.join(CTL, "hyprctl.log")).read().splitlines())
+    A.send({"cmd": "next"})
+    A.send({"cmd": "retry"})
+    got = [model(e).get("state") for e in A.quiet(1.0) if e.get("event") == "state"]
+    eq("holds only while on: no hold with the switch off", [x for x in got if x != "unloaded"], [])
+    eq("holds only while on: hyprctl not asked", len(open(os.path.join(CTL, "hyprctl.log"))
+                                                     .read().splitlines()), n_hypr)
+    put("clients.json", json.dumps([{"class": "kitty"}]))
+    meminfo(20 * GIB)
 
     # -- the genres file --
     print("  genres file", flush=True)
@@ -1226,8 +1346,32 @@ try:
         A.until("mpris: stop", lambda s: s["player"] == "none", 5)
         eq("mpris: nothing plays by itself after stop", [e for e in A.quiet(1.0)
                                                          if e.get("player") == "playing"], [])
+        eq("mpris: stop is reported as stopped", A.last["stopped"], True)
         A.send({"cmd": "toggle"})
         A.until("toggle: plays again after a stop", lambda s: s["player"] == "playing", 5)
+        eq("toggle: no longer stopped", A.last["stopped"], False)
+
+        # A pick starts clean: neither a stop nor a pause carries to the new genre.
+        for how, kept_genre, empty_genre in (("stopped", "lofi", "deephouse"),
+                                             ("paused", "classical", "acoustic")):
+            for target, has_kept in ((kept_genre, True), ("jazz", True), (empty_genre, False)):
+                A.until(f"{how}: something plays", lambda s: s["player"] == "playing", 5)
+                if how == "stopped":
+                    playerctl("-p", name, "stop")
+                    A.until(f"{how}: stopped", lambda s: s["stopped"] and s["player"] == "none", 5)
+                else:
+                    A.send({"cmd": "toggle"})
+                    A.until(f"{how}: paused", lambda s: s["player"] == "paused", 5)
+                A.send({"cmd": "genre", "id": target})
+                want = "playing" if has_kept else "none"
+                s = A.until(f"{how} then a pick of {target}: {want}, not stopped",
+                            lambda s: s["genre"] == target and s["player"] == want
+                            and s["stopped"] is False, 5)
+                if not has_kept:
+                    eq(f"{how} then a pick of {target}: stays clean",
+                       [(e["player"], e["stopped"]) for e in A.quiet(0.8) if e.get("event") == "state"
+                        and (e["player"], e["stopped"]) != ("none", False)], [])
+                    A.send({"cmd": "genre", "id": "jazz"})
 
     # -- keep: the playing and the next kept tune are never deleted --
     print("  keep and mpv", flush=True)
@@ -1246,15 +1390,130 @@ try:
         mp3(p, 5, "Invented Short Hour")
     ino = os.stat(STATE).st_ino
     scenario(lm_time=0.3, synth_time=0.3)
-    A.send({"cmd": "load"})
+    A.send({"cmd": "compose", "on": True})
     A.until("keep: a new tune finishes", lambda s: s["ready"] >= 1, 30)
-    A.send({"cmd": "unload"})
+    A.send({"cmd": "compose", "on": False})
     eq("keep: the playing and the next kept tune survive, the oldest other goes",
        [os.path.exists(p) for p in DT_OLD + DT_NEWER], [True, True, False, True])
     eq("keep: four of ours", len(kept_files("Downtempo")), 4)
     check("state: replaced, not rewritten in place", os.stat(STATE).st_ino != ino)
     eq("state: no temporary left", os.listdir(os.path.dirname(STATE)), ["state.json"])
     A.until("keep: unloaded", lambda s: model(s)["state"] == "unloaded")
+
+    # -- scrap, undo and play --
+    print("  scrap and play", flush=True)
+    SCR = os.path.join(XDG["XDG_CACHE_HOME"], "desk-tunes", "scrapped")
+
+    def scrapped():
+        try:
+            return sorted(os.listdir(SCR))
+        except FileNotFoundError:
+            return []
+
+    def names(s):
+        return [e["name"] for e in s["queue"]]
+
+    A.send({"cmd": "genre", "id": "jazz"})
+    s = A.until("scrap kept: jazz plays with its other kept tune next",
+                lambda s: s["genre"] == "jazz" and s["player"] == "playing" and len(s["queue"]) == 1
+                and s["queue"][0]["kept"] and s["kept_total"] == 2, 10)
+    A.send({"cmd": "scrap", "i": 0})
+    s = A.until("scrap kept: the queue entry leaves", lambda s: s["undo"], 5)
+    eq("scrap kept: one kept left, the file set aside", (s["kept_total"], len(scrapped())), (1, 1))
+    check("scrap kept: undo for 10 s (scaled)",
+          abs(s["undo"]["until"] - time.time() - 10 * SCALE) < 0.5, s["undo"])
+    A.send({"cmd": "undo"})
+    s = A.until("undo kept: back at the head of the queue", lambda s: s["undo"] is None, 5)
+    eq("undo kept: the file is back", (s["kept_total"], scrapped(), s["queue"][0]["kept"]), (2, [], True))
+
+    A.send({"cmd": "genre", "id": "downtempo"})
+    scenario(lm_time=0.3, synth_time=0.3)
+    A.until("scrap: downtempo", lambda s: s["genre"] == "downtempo" and s["player"] == "playing", 5)
+    A.send({"cmd": "compose", "on": True})
+    s = A.until("scrap: two ready", lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 30)
+    q = names(s)
+    A.send({"cmd": "play", "i": 1})
+    s = A.until("play i: queue entry 1 plays now", lambda s: s["tune"] and s["tune"]["name"] == q[1], 5)
+    eq("play i: the rest keeps its order", names(s)[:1], q[:1])
+    # Paused, so a 10 s tune cannot end and shift the queue under the scraps below.
+    A.send({"cmd": "toggle"})
+    A.until("scrap: paused", lambda s: s["player"] == "paused", 5)
+
+    s = A.until("scrap: two ready again", lambda s: s["ready"] == 2 and model(s)["state"] == "idle", 30)
+    # Slow plans from here, so no tune finishes (and prunes) between a scrap and its checks.
+    scenario(lm_time=3.0, synth_time=0.3)
+    q, playing, count = names(s), s["tune"]["name"], len(kept_files("Downtempo"))
+    A.send({"cmd": "scrap", "i": 1})
+    s = A.until("scrap i: the entry leaves the queue at once", lambda s: s["undo"], 5)
+    eq("scrap i: undo names it, the rest stays", (s["undo"]["name"], names(s)[:1]), (q[1], q[:1]))
+    check("scrap i: gone from the queue", q[1] not in names(s), names(s))
+    eq("scrap i: the file moved aside", (len(kept_files("Downtempo")), len(scrapped())), (count - 1, 1))
+    A.send({"cmd": "undo"})
+    s = A.until("undo: back at the head of the queue", lambda s: s["undo"] is None
+                and names(s) and names(s)[0] == q[1], 5)
+    eq("undo: the file is back, what plays is unchanged",
+       (len(kept_files("Downtempo")), scrapped(), s["tune"]["name"]), (count, [], playing))
+
+    s = A.until("scrap: resting", lambda s: model(s)["state"] == "idle", 30)
+    scenario(lm_time=0.3, synth_time=0.3)
+    q = names(s)
+    A.send({"cmd": "scrap", "i": 0})
+    s = A.until("finalise: scrapped", lambda s: s["undo"], 5)
+    gone = scrapped()
+    wave = os.path.join(XDG["XDG_CACHE_HOME"], "desk-tunes", "wave", "downtempo", gone[0] + ".json") \
+        if gone else ""
+    check("finalise: the wave cache is there while undo is possible", os.path.exists(wave), wave)
+    t0 = time.time()
+    s = A.until("finalise: the undo lapses", lambda s: s["undo"] is None, 10)
+    check("finalise: after 10 s (scaled)", 10 * SCALE - 0.3 < time.time() - t0 < 10 * SCALE + 1,
+          time.time() - t0)
+    eq("finalise: the file and its wave cache are deleted", (scrapped(), os.path.exists(wave)), ([], False))
+    check("finalise: not in the genre folder either", gone and gone[0] not in kept_files("Downtempo"))
+    eq("finalise: no scrap timer left", "scrap" in A.ask_timers()["timers"], False)
+
+    s = A.until("second scrap: two queued", lambda s: len(s["queue"]) >= 2, 30)
+    q = names(s)
+    A.send({"cmd": "scrap", "i": 0})
+    A.until("second scrap: the first", lambda s: s["undo"] and s["undo"]["name"] == q[0], 5)
+    first = scrapped()
+    A.send({"cmd": "scrap", "i": 0})
+    s = A.until("second scrap: the second", lambda s: s["undo"] and s["undo"]["name"] == q[1], 5)
+    check("second scrap: the first is deleted at once", len(scrapped()) == 1 and scrapped() != first,
+          (first, scrapped()))
+    A.send({"cmd": "undo"})
+    s = A.until("second scrap: undo brings back the second", lambda s: s["undo"] is None
+                and names(s)[0] == q[1], 5)
+
+    playing, nxt = s["tune"]["name"], names(s)[0]
+    A.send({"cmd": "scrap"})
+    s = A.until("scrap playing: the next starts at once", lambda s: s["tune"]
+                and s["tune"]["name"] == nxt and s["player"] == "playing", 5)
+    eq("scrap playing: undo names it", s["undo"]["name"], playing)
+    A.send({"cmd": "undo"})
+    s = A.until("undo playing: at the head of the queue, not interrupting",
+                lambda s: s["undo"] is None and names(s)[0] == playing, 5)
+    eq("undo playing: what plays is unchanged", (s["tune"]["name"], s["player"]), (nxt, "playing"))
+
+    scenario(lm_time=2.0, synth_time=0.3)
+    for _ in range(4):
+        if A.last["job"]:
+            break
+        A.send({"cmd": "scrap", "i": 0})
+        A.quiet(0.4)
+    s = A.until("scrap job: a job runs", lambda s: s["job"] and s["job"]["stage"] == "writing", 10)
+    undo = s["undo"]
+    t0 = time.time()
+    n_lm = len([e for e in ace_log() if e.get("path") == "/lm"])
+    A.send({"cmd": "scrap", "job": True})
+    wait("scrap job: cancelled and another started",
+         lambda: any(e.get("path", "").endswith("&cancel=1") and e["t"] >= t0 for e in ace_log())
+         and len([e for e in ace_log() if e.get("path") == "/lm"]) > n_lm, 5)
+    s = A.until("scrap job: writing again", lambda s: s["job"] and s["job"]["stage"] == "writing", 5)
+    check("scrap job: no undo of its own", s["undo"] is None if undo is None
+          else s["undo"] is None or s["undo"]["name"] == undo["name"], (undo, s["undo"]))
+    A.send({"cmd": "compose", "on": False})
+    A.until("scrap: switched off", lambda s: not s["composing"] and s["job"] is None, 5)
+    A.until("scrap: undo lapsed", lambda s: s["undo"] is None, 10)
 
     # -- mpv exiting: restarted after a pause, the service lives on --
     for i in range(3):
@@ -1314,12 +1573,20 @@ try:
     with open(STATE) as f:
         st = json.load(f)
     ino, mtime = os.stat(STATE).st_ino, os.stat(STATE).st_mtime_ns
+    os.makedirs(SCR, exist_ok=True)
+    LEFT = os.path.join(SCR, "20260101-000000-80bpm-C-major.mp3")
+    with open(LEFT, "w") as f:
+        f.write("a scrap the last run never finalised")
     serve = subprocess.Popen(serve.args, env=ENV, stdout=subprocess.DEVNULL, stderr=SERVE_LOG)
     wait("restart: the socket appears", lambda: os.path.exists(SOCK), 10)
     A = Client(attach=True)
     s = A.until("restart: a snapshot", lambda s: True, 5)
-    eq("restart: nothing plays by itself", (s["genre"], s["player"], model(s)["state"]),
-       (None, "none", "unloaded"))
+    eq("restart: nothing plays by itself, the composer off",
+       (s["genre"], s["player"], model(s)["state"], s["composing"], s["undo"]),
+       (None, "none", "unloaded", False, None))
+    eq("restart: scrapped/ is emptied", scrapped(), [])
+    eq("restart: the medians are read back", s["expect"], dt.expect_view(dt.read_timings(st)))
+    check("restart: ... and there are some", s["expect"] is not None, s["expect"])
     A.send({"cmd": "genre", "id": "jazz"})
     A.until("restart: a genre picked", lambda s: s["genre"] == "jazz")
     A.quiet(0.5)
