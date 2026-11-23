@@ -9,10 +9,23 @@
 //@ pragma IconTheme Adwaita
 
 import Quickshell
+import Quickshell.Io
 import qs.calendar
 import qs.tray
 
 ShellRoot {
+    // Called by `desk-sync activate` once a switch has written every file.
+    // The answer is how the caller knows the call ran: `qs ipc call` exits 0
+    // even when the shell refused it.
+    IpcHandler {
+        target: "shell"
+
+        function reload(): string {
+            Quickshell.reload(false);
+            return "reloaded";
+        }
+    }
+
     Launcher {}
     Bar {}
     Notifications {}
@@ -31,6 +44,7 @@ ShellRoot {
     Tailscale {}
     Tokens {}
     Weather {}
+    Tunes {}
     TrayMenu {}
     Reminders {}
     Lockscreen {}

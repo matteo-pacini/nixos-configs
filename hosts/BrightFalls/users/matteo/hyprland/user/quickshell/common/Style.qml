@@ -26,6 +26,10 @@ Singleton {
     readonly property color surface: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.96)
     // Secondary text, between foreground and comment.
     readonly property color soft: Qt.tint(Theme.foreground, Qt.rgba(Theme.comment.r, Theme.comment.g, Theme.comment.b, 0.3))
+    // A well sunk into a card.
+    readonly property color well: Qt.darker(Theme.background, 1.15)
+    // The track of a switch that is on.
+    readonly property color switchOn: Qt.tint(Theme.currentLine, Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.45))
     // The empty part of bars and rings.
     readonly property color track: Qt.darker(Theme.background, 1.5)
     // The dimmed desktop behind a centred modal.
