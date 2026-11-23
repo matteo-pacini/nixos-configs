@@ -44,7 +44,10 @@ sha() { sha256sum <"$1" | cut -d' ' -f1; }
 
 # A stand-in for Quickshell's `qs`: logs its arguments and every file under
 # the live quickshell/ at the moment it is called, to $work/qs.log. It fails
-# with qs's message when $work/qs-down exists.
+# with qs's message when $work/qs-down exists. While $work/qs-refuse holds a
+# number above 0 it counts it down and refuses the call as a shell in the
+# middle of a reload does: the message on stderr, exit status 0. Otherwise
+# it answers as shell.qml's reload() does.
 mkdir -p "$work/bin"
 cat >"$work/bin/qs" <<EOF
 #!$BASH
@@ -59,6 +62,13 @@ if [ -e "$work/qs-down" ]; then
   echo 'second line'
   exit 255
 fi
+refuse=\$(cat "$work/qs-refuse" 2>/dev/null || echo 0)
+if [ "\$refuse" -gt 0 ]; then
+  echo \$((refuse - 1)) >"$work/qs-refuse"
+  echo 'Not ready to accept queries yet.' >&2
+  exit 0
+fi
+echo reloaded
 EOF
 chmod +x "$work/bin/qs"
 export PATH="$work/bin:$PATH"
@@ -351,6 +361,22 @@ ds "$work/s4" activate
 rm "$work/qs-down"
 check "no shell to reload: said, activation still succeeds" "0 desk-sync: quickshell/Bar.qml: updated
 desk-sync: quickshell: not reloaded: No running instances for \"x\" second line " "$rc $out"
+qslog >/dev/null
+
+# A shell busy with its own watcher's reload refuses the call and qs still
+# exits 0: asked again until the reload answers.
+ds "$work/s3" reset quickshell/Bar.qml
+echo 2 >"$work/qs-refuse"
+ds "$work/s4" activate
+check "refused twice, exit 0: asked again, reloaded on the third call" "0 desk-sync: quickshell/Bar.qml: updated
+desk-sync: quickshell: reloaded 3" "$rc $out $(grep -c '^qs ' "$work/qs.log")"
+qslog >/dev/null
+ds "$work/s3" reset quickshell/Bar.qml
+echo 99 >"$work/qs-refuse"
+ds "$work/s4" activate
+check "refused throughout: not reloaded after 20 calls, activation still succeeds" "0 desk-sync: quickshell/Bar.qml: updated
+desk-sync: quickshell: not reloaded: Not ready to accept queries yet.  20" "$rc $out $(grep -c '^qs ' "$work/qs.log")"
+rm "$work/qs-refuse"
 qslog >/dev/null
 
 exit "$failed"

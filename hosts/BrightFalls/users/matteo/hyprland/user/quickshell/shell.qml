@@ -15,11 +15,14 @@ import qs.tray
 
 ShellRoot {
     // Called by `desk-sync activate` once a switch has written every file.
+    // The answer is how the caller knows the call ran: `qs ipc call` exits 0
+    // even when the shell refused it.
     IpcHandler {
         target: "shell"
 
-        function reload(): void {
+        function reload(): string {
             Quickshell.reload(false);
+            return "reloaded";
         }
     }
 

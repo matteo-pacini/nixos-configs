@@ -130,16 +130,22 @@ Manager's activation.
 Activation never reloads Hyprland. It reloads the shell once, after the last
 file is in place, if it wrote any file under `quickshell/`: `qs ipc
 --any-display -p ~/.config/quickshell call shell reload`, the `shell` IPC
-target in `shell.qml` (10 s at most), and says `desk-sync: quickshell:
-reloaded` or why not (`not reloaded: No running instances…` when the shell
-is not running, as at boot, which is harmless: it loads the files when it
-starts). Quickshell's own reload on a file change is not enough for a
-switch: the files arrive one by one, so it reloads on a half-installed tree,
-and when that fails (a `.qml` already importing a directory not yet
-written) it keeps the old configuration; it never notices a new file or a
-changed `.js` file, so nothing reloads it after the last one lands. A switch
-that changes only files under `hypr/`, or only files kept as live edits,
-does not reload the shell.
+target in `shell.qml`, and says `desk-sync: quickshell: reloaded` or why
+not (`not reloaded: No running instances…` when the shell is not running,
+as at boot, which is harmless: it loads the files when it starts).
+Quickshell's own reload on a file change is not enough for a switch: the
+files arrive one by one, so it reloads on a half-installed tree, and when
+that fails (a `.qml` already importing a directory not yet written) it keeps
+the old configuration; when it succeeds, it may have read a `.js` file before
+the switch replaced it, and it never notices a new file or a changed `.js`
+file, so nothing reloads it after the last one lands. While such a reload
+runs, and until the generation it replaces is gone, the shell refuses IPC
+calls ("Not ready to accept queries yet.") and `qs ipc call` still exits 0
+(Quickshell 0.3.2 drops the call's result in `IpcClient::connect`). So
+`reload()` answers `reloaded`, and activation counts only that answer: it
+asks again every half second, 20 times at most, and otherwise says `not
+reloaded:` with the shell's last words. A switch that changes only files
+under `hypr/`, or only files kept as live edits, does not reload the shell.
 
 ## desk-sync
 

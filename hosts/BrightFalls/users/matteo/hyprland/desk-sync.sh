@@ -106,13 +106,25 @@ written() { # rel: activate_one wrote it
 # shell.qml's "shell" IPC target. --any-display: activation has no display
 # variable, and qs would otherwise look only for instances started without
 # one.
+# The call can be refused: from the start of a reload (its own watcher's, on
+# the half-installed tree) until the generation it replaces is gone, two
+# generations are alive and the shell answers "Not ready to accept queries
+# yet." without calling anything. `qs ipc call` exits 0 all the same (Quickshell 0.3.2, IpcClient::connect in
+# src/ipc/ipc.cpp drops the call's result), so only the function's own
+# answer, `reloaded` on the last line, counts, and anything else is asked
+# again every half second for 10 s. A non-zero exit is no shell at all.
 reload_shell() {
-  local out
-  if out=$(timeout 10 qs ipc --any-display -p "$config_home/quickshell" call shell reload 2>&1); then
-    echo "desk-sync: quickshell: reloaded"
-  else
-    echo "desk-sync: quickshell: not reloaded: $(tr '\n' ' ' <<<"$out")"
-  fi
+  local out tries=0
+  while out=$(timeout 10 qs ipc --any-display -p "$config_home/quickshell" call shell reload 2>&1); do
+    if [ "${out##*$'\n'}" = reloaded ]; then
+      echo "desk-sync: quickshell: reloaded"
+      return 0
+    fi
+    tries=$((tries + 1))
+    [ "$tries" -lt 20 ] || break
+    sleep 0.5
+  done
+  echo "desk-sync: quickshell: not reloaded: $(tr '\n' ' ' <<<"$out")"
 }
 
 activate() {

@@ -622,10 +622,22 @@ from the branch. In three stages:
   `WAYLAND_DISPLAY` (the first design's call crashed in the unit). Used live
   by the owner, who reported that it works; that report is the whole of the
   live evidence, so anything a report lists as expected only (below) stays
-  so until someone looks. The shell reload at the end of `desk-sync
-  activate` is deployed too; its first automatic use is the next switch.
-- **The genre editor, built and checked in the repository only, not
-  deployed**: E, A, D and `+ New genre` in the chooser, the editor card
+  so until someone looks.
+- **The shell reload at the end of `desk-sync activate`**: its first
+  automatic use, at the genre editor's switch, did not reload. The shell's
+  own watcher had started a reload mid-copy that read the old `tunes.js`,
+  the activation's call came while that reload's two generations were alive,
+  the shell refused it, `qs ipc call` exited 0 anyway, and activation said
+  `reloaded`. The panel ran the new `Tunes.qml` against the old script until
+  a reload by hand, which cleared it (proven on real hardware by the
+  coordinator; the refusal is read in Quickshell 0.3.2's source, its message
+  was not captured). Fixed in the repository, not deployed: `reload()`
+  answers `reloaded` and activation retries until it gets that (README,
+  "Activation"); simulated by the `desk-sync` check's fake `qs`. Its first
+  real test is the next switch that writes a `quickshell/` file: the log
+  should show one `Reloading configuration...` after desk-sync's last
+  `updated` line.
+- **The genre editor, deployed**: E, A, D and `+ New genre` in the chooser, the editor card
   (`tunes/EditField.qml`), the delete question, the service's
   `genre_get`, `genre_save` (with `base`) and `genre_delete`, the rename of
   a genre's folder, and the genres file moved to its own folder
@@ -637,7 +649,10 @@ from the branch. In three stages:
   `systemd-run` probe with the unit's protection on a throwaway tree, where
   the granted folder took a file replaced by a rename and its sibling files
   could be neither written nor created (with the old grant, the whole
-  folder, the sibling was written). Expected only: all the editor's QML
+  folder, the sibling was written). Proven on real hardware by the
+  coordinator, after the reload by hand above: the panel opens on a playing
+  genre with no warning and the player drawn as designed. Expected only:
+  all the editor's QML
   (focus landing in a field that just became visible, Tab and Shift+Tab
   reaching the panel before the field, Ctrl+S and the input method in a
   layer-shell text field, the fields growing, the BPM suffix, long names
