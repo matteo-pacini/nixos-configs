@@ -216,7 +216,7 @@ t("queue full: the composer rests", () => {
     assert.deepEqual(lines(p), ["Makes Jazz, keeps 2 ahead | resting, queue is full"]);
     assert.equal(p.composer.lines[0].em, "Jazz");
     assert.equal(p.composer.lines[0].rightTone, "green");
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["N", "next"], ["X", "scrap Lazy Avenue"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["N", "next"], ["S", "shuffle"], ["L", "repeat one"], ["Y", "share"], ["X", "scrap Lazy Avenue"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
     const u = ui(st, NOW);
     assert.deepEqual(T.key(u, st, "Space", false).effect.cmd, { cmd: "toggle" });
     assert.deepEqual(T.key(u, st, "N", false).effect.cmd, { cmd: "next" });
@@ -241,7 +241,7 @@ t("the first tune of a genre: being rendered, with an estimate", () => {
     assert.ok(Math.abs(job.bar - 18 / 58) < 1e-9);
     assert.equal(p.next.rows[1].kind, "placeholder");
     assert.deepEqual(lines(p), ["Makes Jazz, keeps 2 ahead | using 3.9 GiB of RAM", "ACE-Step 1.5 Turbo · 4B Q8 · Radeon 780M"]);
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["S", "shuffle"], ["L", "repeat one"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
     assert.equal(T.key(ui(st, NOW), st, "Space", false).effect.kind, "none");
     assert.equal(T.key(ui(st, NOW), st, "X", false).effect.kind, "none");
     assert.deepEqual(T.barView(st), { tone: "dim", text: "", dot: "cyan" });
@@ -300,7 +300,7 @@ t("composer off, kept tunes playing", () => {
     assert.equal(p.next.head, "from 14 kept, shuffled");
     assert.deepEqual([p.composer.on, p.composer.label], [false, "off"]);
     assert.deepEqual(lines(p), ["On, it makes new Jazz and keeps 2 ahead."]);
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["N", "next"], ["X", "scrap Brass Lantern"], ["C", "composer on"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["N", "next"], ["S", "shuffle"], ["L", "repeat one"], ["Y", "share"], ["X", "scrap Brass Lantern"], ["C", "composer on"], ["G", "genre"], ["Esc", "close"]]);
     assert.deepEqual(T.key(ui(st, NOW), st, "C", false).effect.cmd, { cmd: "compose", on: true });
     assert.deepEqual(T.barView(st), { tone: "normal", text: "Jazz", dot: "" });
     const lofi = viewAt("09-kept-tunes").player;
@@ -330,7 +330,7 @@ t("a genre with nothing kept: nothing happens by itself", () => {
     assert.equal(p.next.head, "nothing");
     // expect: 62 + 58 s is 2 min.
     assert.deepEqual(lines(p), ["On, it makes Synthwave and keeps 2 ahead.", "A tune takes about 2 min and 6 GiB of RAM while it is made."]);
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["C", "composer on"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["S", "shuffle"], ["L", "repeat one"], ["C", "composer on"], ["G", "genre"], ["Esc", "close"]]);
     // Without the medians, only the memory.
     const fresh = edit("08-nothing-kept", { expect: null });
     assert.deepEqual(lines(T.view(fresh, ui(fresh, NOW)).player)[1], "A tune takes about 6 GiB of RAM while it is made.");
@@ -363,7 +363,7 @@ t("queue selection: Up/Down, clearing, Enter plays i, X scraps i, the hint names
     assert.equal(T.key(d1, st, "Up", false).ui.row, null);
     assert.equal(T.key(u, st, "Up", false).ui.row, null);
     assert.equal(T.key(d2, st, "Up", false).ui.row.i, 0);
-    assert.deepEqual(T.hints(st, d2), [["↑↓", "select"], ["Enter", "play it now"], ["X", "scrap Quiet Ledger"], ["Space", "pause"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, d2), [["↑↓", "select"], ["Enter", "play it now"], ["X", "scrap Quiet Ledger"], ["Y", "share"], ["Space", "pause"], ["Esc", "close"]]);
     const play = T.key(d2, st, "Enter", false);
     assert.deepEqual(play.effect.cmd, { cmd: "play", i: 1, name: "Quiet Ledger" });
     assert.equal(play.ui.row, null);
@@ -500,7 +500,7 @@ t("failed: the composer says so, R tries now", () => {
     ]);
     assert.equal(p.composer.lines[1].tone, "red");
     assert.equal(lines(T.view(st, ui(st, NOW + 31)).player)[1], "Failed: ggml_vulkan: device lost. 2 failures in a row. Trying again now.");
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["X", "scrap Dusty Notebook"], ["R", "try now"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "pause"], ["S", "shuffle"], ["L", "repeat one"], ["Y", "share"], ["X", "scrap Dusty Notebook"], ["R", "try now"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
     assert.deepEqual(T.key(ui(st, NOW), st, "R", false).effect.cmd, { cmd: "retry" });
     assert.equal(T.key(ui(st, NOW), st, "R", true).effect.kind, "none");
     assert.deepEqual(T.barView(st), { tone: "normal", text: "Lo-fi", dot: "red" });
@@ -609,12 +609,12 @@ t("no device: the player stays, the composer says why, R and C", () => {
     assert.deepEqual([v.player.composer.on, v.player.composer.label, v.player.composer.labelTone], [true, "no device", "red"]);
     assert.deepEqual(lines(v.player), ["Makes Lo-fi, keeps 2 ahead", "The model server did not find the Radeon 780M among the Vulkan devices: 1 device, not this one. R tries again, C turns the composer off."]);
     assert.equal(v.player.composer.lines[1].tone, "red");
-    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "play"], ["R", "try now"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.hints(st, ui(st, NOW)), [["Space", "play"], ["S", "shuffle"], ["L", "repeat one"], ["R", "try now"], ["C", "composer off"], ["G", "genre"], ["Esc", "close"]]);
     assert.deepEqual(T.key(ui(st, NOW), st, "R", false).effect.cmd, { cmd: "retry" });
     assert.deepEqual(T.key(ui(st, NOW), st, "C", false).effect.cmd, { cmd: "compose", on: false });
     // Kept tunes playing: Space, N and X stay.
     const playing = edit("07-composer-off-kept", { composing: true, model: st.snap.model });
-    assert.deepEqual(T.hints(playing, ui(playing, NOW)).map(h => h[0]), ["Space", "N", "X", "R", "C", "G", "Esc"]);
+    assert.deepEqual(T.hints(playing, ui(playing, NOW)).map(h => h[0]), ["Space", "N", "S", "L", "Y", "X", "R", "C", "G", "Esc"]);
     // Nothing found to name.
     const bare = edit("14-no-device", { model: Object.assign({}, st.snap.model, { detail: null }) });
     assert.equal(lines(T.view(bare, ui(bare, NOW)).player)[1], "The model server did not find the Radeon 780M among the Vulkan devices. R tries again, C turns the composer off.");
@@ -1143,12 +1143,418 @@ t("unknown values fall back to the empty ones", () => {
     const s = st.snap;
     assert.equal(s.composing, false);
     assert.deepEqual(s.job, { stage: "writing", started: null, expect: null, written: null });
-    assert.deepEqual(s.queue, [{ name: "", file: "", bpm: null, key: "", length: null, kept: false }]);
+    assert.deepEqual(s.queue, [{ name: "", file: "", bpm: null, key: "", length: null, kept: false, new: false, pinned: false, pos: null }]);
     assert.equal(s.undo, null);
     assert.equal(s.expect, null);
     assert.equal(s.ahead, 2);
     assert.equal(s.stopped, false);
     assert.equal(T.view(st, ui(st, NOW)).kind, "player");
+});
+
+// Shuffle, repeat, sharing and keeping for good. 30-34 are Jazz with 14
+// kept tunes in each mode; 35-share-lines holds the service's answers to
+// the share sheet's commands, for a home of /home/someone.
+const HOME = "/home/someone";
+const SHARE = events("35-share-lines", NOW);
+const pills = p => p.modes.map(m => [m.key, m.label, m.lit, m.dim]);
+// The share sheet opened on `name`'s state (with `changes` to the ui), and
+// its tune described.
+const sheet = (name, keys) => {
+    const st = load(name, NOW);
+    const r = press(st, T.initialUi(st, NOW, HOME), (keys || []).concat(["Y"]));
+    return [st, r.ui, r.effect];
+};
+const described = (name, line) => {
+    const [st, u] = sheet(name, line === SHARE[5] ? ["Down"] : []);
+    return [st, T.answer(u, st, line || SHARE[0], NOW)];
+};
+const LAZY = "/home/someone/Music/Tunes/Jazz/20261123-070612-139bpm-C-major.mp3";
+
+t("the mode pills: lit while on, share dim with nothing to share; S and L send, L names the mode it switches to", () => {
+    const p = name => T.view(load(name, NOW), ui(load(name, NOW), NOW)).player;
+    assert.deepEqual(pills(p("30-modes-default")), [["S", "shuffle", true, false], ["L", "repeat all", true, false], ["Y", "share", false, false]]);
+    assert.deepEqual(pills(p("31-shuffle-off")), [["S", "shuffle", false, false], ["L", "repeat all", true, false], ["Y", "share", false, false]]);
+    assert.deepEqual(pills(p("32-repeat-one")), [["S", "shuffle", true, false], ["L", "repeat one", true, false], ["Y", "share", false, false]]);
+    assert.deepEqual(pills(p("33-ended")), [["S", "shuffle", true, false], ["L", "repeat off", false, false], ["Y", "share", false, true]]);
+    assert.deepEqual(p("30-modes-default").modes.map(m => m.icon), ["shuffle", "repeat", "share"]);
+    const k = (name, key) => {
+        const s = load(name, NOW);
+        return [T.hints(s, ui(s, NOW)).find(h => h[0] === key), T.key(ui(s, NOW), s, key, false).effect.cmd, T.key(ui(s, NOW), s, key, true).effect.kind];
+    };
+    assert.deepEqual(k("30-modes-default", "S"), [["S", "shuffle"], { cmd: "shuffle", on: false }, "none"]);
+    assert.deepEqual(k("31-shuffle-off", "S"), [["S", "shuffle"], { cmd: "shuffle", on: true }, "none"]);
+    assert.deepEqual(k("30-modes-default", "L"), [["L", "repeat one"], { cmd: "repeat", mode: "one" }, "none"]);
+    assert.deepEqual(k("32-repeat-one", "L"), [["L", "repeat off"], { cmd: "repeat", mode: "off" }, "none"]);
+    assert.deepEqual(k("33-ended", "L"), [["L", "repeat all"], { cmd: "repeat", mode: "all" }, "none"]);
+    // A row selected: S and L still act, unnamed.
+    const s = load("30-modes-default", NOW);
+    const sel = T.key(ui(s, NOW), s, "Down", false).ui;
+    assert.ok(!T.hints(s, sel).some(h => h[0] === "S" || h[0] === "L"));
+    assert.deepEqual(T.key(sel, s, "L", false).effect.cmd, { cmd: "repeat", mode: "one" });
+    // The footer as drawn for the defaults.
+    assert.deepEqual(T.hints(s, ui(s, NOW)).map(h => h[0]), ["Space", "N", "S", "L", "Y", "X", "C", "G", "Esc"]);
+});
+
+t("every heading and wording in every combination of shuffle, repeat, composer, new tunes ready and ended", () => {
+    const base = load("31-shuffle-off", NOW).snap;
+    const NEW = { name: "Neon Harbour", file: "20261123-080000-104bpm-A-minor", bpm: 104, key: "A minor", length: 175.6, kept: false, new: true, pinned: false, pos: null };
+    let seen = 0;
+    for (const shuffle of [true, false])
+        for (const repeat of ["all", "one", "off"])
+            for (const composing of [true, false])
+                for (const fresh of [true, false])
+                    for (const ended of [true, false]) {
+                        // A round ends only with nothing new ready, and only under repeat off.
+                        if (ended && (fresh || repeat !== "off"))
+                            continue;
+                        const kept = shuffle ? [Object.assign({}, base.queue[0], { pos: null })] : base.queue;
+                        const queue = ended ? [] : (fresh ? [NEW] : []).concat(kept);
+                        const st = edit("31-shuffle-off", {
+                            shuffle, repeat, composing, ended, queue,
+                            ready: fresh ? 1 : 0,
+                            keptPlaying: !fresh && !ended,
+                            tune: ended ? null : base.tune,
+                            player: ended ? "none" : "playing",
+                            canNext: !ended,
+                            model: Object.assign({}, base.model, { state: composing ? "idle" : "unloaded" })
+                        });
+                        const u = ui(st, NOW);
+                        const p = T.view(st, u).player;
+                        const at = `${shuffle} ${repeat} ${composing} ${fresh} ${ended}`;
+                        let now = "Jazz · kept tunes";
+                        if (ended)
+                            now = "Jazz";
+                        else if (repeat === "one")
+                            now = "Jazz · repeating";
+                        assert.equal(p.now.head, now, at);
+                        let next;
+                        if (ended)
+                            next = composing ? "0 ready" : "nothing";
+                        else if (repeat === "one")
+                            next = "after the repeat";
+                        else if (fresh)
+                            next = "1 ready";
+                        else
+                            next = shuffle ? "from 14 kept, shuffled" : "4 of 14, in the order made";
+                        assert.equal(p.next.head, next, at);
+                        const tunes = p.next.rows.filter(r => r.kind === "tune");
+                        assert.ok(tunes.every(r => r.dim === (repeat === "one")), at);
+                        assert.deepEqual(tunes.map(r => r.tag), queue.map(q => q.new ? "new" : ""), at);
+                        assert.deepEqual(tunes.map(r => r.n), queue.map((q, i) => q.pos || i + 1), at);
+                        const wait = lines(p).filter(l => l.includes("until the repeat ends"));
+                        assert.deepEqual(wait, repeat === "one" && fresh ? ["1 new tune waits until the repeat ends."] : [], at);
+                        assert.deepEqual([p.now.name, p.now.meta], ended ? ["Played all 14 Jazz tunes", "Space starts over. L turns repeat on."] : ["Lazy Avenue", "139 BPM · C major"], at);
+                        const h = T.hints(st, u);
+                        assert.deepEqual(h.find(x => x[0] === "Space"), ["Space", ended ? "start over" : "pause"], at);
+                        assert.deepEqual(h.find(x => x[0] === "L"), ["L", `repeat ${{ all: "one", one: "off", off: "all" }[repeat]}`], at);
+                        assert.equal(h.some(x => x[0] === "Y"), !ended, at);
+                        seen++;
+                    }
+    assert.equal(seen, 2 * 3 * 2 * 2 + 2 * 2);
+    // Two new tunes waiting: the plural, in the composer's well under its first line.
+    const two = T.view(load("32-repeat-one", NOW), ui(load("32-repeat-one", NOW), NOW)).player;
+    assert.deepEqual(lines(two), ["Makes Jazz, keeps 2 ahead | resting, queue is full", "2 new tunes wait until the repeat ends."]);
+    assert.deepEqual(rows(two), [[1, "Neon Harbour", "104 BPM · A minor", "2:55"], [2, "Slow Signal", "118 BPM · E minor", "2:50"]]);
+    assert.deepEqual(T.hints(load("32-repeat-one", NOW), ui(load("32-repeat-one", NOW), NOW)).map(h => h.join(" ")),
+        ["Space pause", "N next", "S shuffle", "L repeat off", "Y share", "X scrap Lazy Avenue", "C composer off", "G genre", "Esc close"]);
+});
+
+t("repeat off at the end of the round: the ended state as drawn, Space starts over", () => {
+    const st = load("33-ended", NOW);
+    const u = ui(st, NOW);
+    const p = T.view(st, u).player;
+    assert.deepEqual([p.now.name, p.now.nameTone, p.now.meta, p.now.main, p.now.mainLit, p.now.nextLit, p.now.wave, p.now.time], ["Played all 14 Jazz tunes", "soft", "Space starts over. L turns repeat on.", "play", true, false, null, null]);
+    assert.deepEqual([p.next.head, p.next.rows], ["nothing", []]);
+    assert.deepEqual(T.hints(st, u), [["Space", "start over"], ["S", "shuffle"], ["L", "repeat all"], ["C", "composer on"], ["G", "genre"], ["Esc", "close"]]);
+    assert.deepEqual(T.key(u, st, "Space", false).effect.cmd, { cmd: "toggle" });
+    assert.equal(T.key(u, st, "Space", true).effect.kind, "none");
+    for (const k of ["Y", "X", "N"])
+        assert.equal(T.key(u, st, k, false).effect.kind, "none", k);
+    assert.deepEqual(T.barView(st), { tone: "dim", text: "", dot: "" });
+    assert.equal(T.needsTick(st, u), false);
+    // One kept tune.
+    const one = edit("33-ended", { keptTotal: 1, genres: st.snap.genres.map(g => g.id === "jazz" ? Object.assign({}, g, { kept: 1 }) : g) });
+    assert.equal(T.view(one, ui(one, NOW)).player.now.name, "Played all 1 Jazz tune");
+});
+
+t("kept for good: the star beside the playing tune's name and in its queue row; shuffle off numbers kept rows by their place", () => {
+    const p = viewAt("34-pinned").player;
+    assert.equal(p.now.badge, "★ kept for good");
+    assert.deepEqual(p.next.rows.map(r => [r.name, r.star, r.tag, r.dim]), [["Brass Lantern", true, "", false]]);
+    const plain = viewAt("30-modes-default").player;
+    assert.equal(plain.now.badge, "");
+    assert.deepEqual(plain.next.rows.map(r => r.star), [false]);
+    assert.deepEqual(rows(viewAt("31-shuffle-off").player).map(r => [r[0], r[1]]), [[5, "Brass Lantern"], [6, "Quiet Ledger"], [7, "Late Tram"]]);
+});
+
+t("the share sheet: Y on the playing tune or the selected row, the info line, the rows in order", () => {
+    const [st, u, e] = sheet("30-modes-default");
+    assert.deepEqual(e, { kind: "send", cmd: { cmd: "share_info", name: "Lazy Avenue" } });
+    let v = T.view(st, u);
+    assert.equal(v.kind, "share");
+    assert.deepEqual([v.share.head, v.share.name, v.share.meta, v.share.error], ["Jazz", "Lazy Avenue", "Asking the tunes service…", ""]);
+    assert.deepEqual(v.share.rows.map(r => r.key), ["F", "P", "O", "E", "K"]);
+    assert.equal(T.needsTick(st, u), true);
+    // Nothing acts before the service has described the tune.
+    for (const k of T.SHARE_KEYS.concat(["Enter"]))
+        assert.equal(T.key(u, st, k, false).effect.kind, "none", k);
+    const d = T.answer(u, st, SHARE[0], NOW);
+    assert.equal(d.waiting, null);
+    v = T.view(st, d);
+    assert.deepEqual([v.share.head, v.share.name, v.share.meta], ["Jazz", "Lazy Avenue", "139 BPM · C major · 2:57 · MP3, 4.1 MB"]);
+    assert.deepEqual(v.share.rows.map(r => [r.key, r.label, r.sub, r.right, r.sel]), [
+        ["F", "Copy the file", "paste it into a chat, a mail or a folder", "", true],
+        ["P", "Copy its path", "~/Music/Tunes/Jazz/20261123-070612-139bpm-C-major.mp3", "", false],
+        ["O", "Show it in the file manager", "", "", false],
+        ["E", "Export a copy", "to ~/Music/Tunes/Exports/Jazz - Lazy Avenue.mp3", "", false],
+        ["K", "Keep it for good", "never removed by the newest-50 rule", "off", false]
+    ]);
+    assert.deepEqual(T.hints(st, d), [["↑↓", "move"], ["Enter", "do it"], ["F P O E K", "directly"], ["Esc", "back"]]);
+    assert.equal(T.needsTick(st, d), false);
+    // Without "keep" in the snapshot, no figure.
+    const nokeep = edit("30-modes-default", { keep: null });
+    assert.equal(T.view(nokeep, d).share.rows[4].sub, "never removed by the rule that keeps the newest");
+    // Without a home, the path in full.
+    assert.equal(T.view(st, Object.assign({}, d, { home: "" })).share.rows[1].sub, LAZY);
+    // A line for another tune changes nothing.
+    assert.equal(T.answer(u, st, SHARE[5], NOW), u);
+    // The selected row: its tune, by index; a pinned one reads on.
+    const [, r, re] = sheet("30-modes-default", ["Down"]);
+    assert.deepEqual(re.cmd, { cmd: "share_info", name: "Brass Lantern", i: 0 });
+    const b = T.answer(r, st, SHARE[5], NOW);
+    assert.deepEqual([T.view(st, b).share.name, T.view(st, b).share.meta, T.view(st, b).share.rows[4].right], ["Brass Lantern", "112 BPM · F major · 2:54 · MP3, 980 kB", "on"]);
+    // Nothing to share: the job row selected, or no tune.
+    const job = load("11-after-scrap", NOW);
+    assert.equal(T.key(press(job, ui(job, NOW), ["Down", "Down"]).ui, job, "Y", false).effect.kind, "none");
+    assert.equal(T.key(ui(load("08-nothing-kept", NOW), NOW), load("08-nothing-kept", NOW), "Y", false).effect.kind, "none");
+});
+
+t("the share sheet's keys: Up/Down and Enter, the letters, Esc, held keys once", () => {
+    const [st, d] = described("30-modes-default");
+    const sel = list => T.view(st, press(st, d, list).ui).share.rows.findIndex(r => r.sel);
+    assert.deepEqual([sel(["Down"]), sel(["Down", "Down", "Down", "Down", "Down", "Down"]), sel(["Up"]), sel(["Down", "Down", "Up"])], [1, 4, 0, 1]);
+    assert.equal(T.view(st, T.key(d, st, "Down", true).ui).share.rows[1].sel, true);
+    const enter = T.key(press(st, d, ["Down"]).ui, st, "Enter", false);
+    assert.deepEqual(enter.effect, { kind: "run", cmd: null, run: { what: "path", command: ["wl-copy", "--", LAZY] } });
+    assert.deepEqual(T.key(d, st, "F", false).effect.run, { what: "file", command: ["wl-copy", "--type", "text/uri-list", "--", "file://" + LAZY] });
+    assert.deepEqual(T.key(d, st, "O", false).effect.run, { what: "show", command: ["gdbus", "call", "--session", "--dest", "org.freedesktop.FileManager1", "--object-path", "/org/freedesktop/FileManager1", "--method", "org.freedesktop.FileManager1.ShowItems", `['file://${LAZY}']`, "''"] });
+    assert.deepEqual(T.key(d, st, "E", false).effect, { kind: "send", cmd: { cmd: "export", name: "Lazy Avenue" } });
+    assert.deepEqual(T.key(d, st, "K", false).effect, { kind: "send", cmd: { cmd: "pin", on: true, name: "Lazy Avenue" } });
+    // A shell action closes the sheet at once; the command's end says the rest.
+    const f = T.key(d, st, "F", false).ui;
+    assert.deepEqual([f.mode, f.share, f.running.what], ["player", null, "file"]);
+    for (const k of T.SHARE_KEYS.concat(["Enter", "Esc"]))
+        assert.equal(T.key(d, st, k, true).effect.kind, "none", `${k} held`);
+    const esc = T.key(d, st, "Esc", false);
+    assert.deepEqual([esc.ui.mode, esc.ui.share, esc.ui.waiting, esc.effect.kind], ["player", null, null, "none"]);
+    // Esc while asking: the late answer is not waited for.
+    const [, asking] = sheet("30-modes-default");
+    const left = T.key(asking, st, "Esc", false).ui;
+    assert.equal(T.answer(left, st, SHARE[0], NOW), left);
+    // The player's keys do nothing in the sheet.
+    for (const k of ["Space", "N", "S", "L", "Y", "X", "C", "G", "Z", "R"])
+        assert.equal(T.key(d, st, k, false).effect.kind, "none", k);
+});
+
+t("a path with spaces and quotes: the URI percent-encoded, the GVariant quoted", () => {
+    const [st, u] = sheet("30-modes-default");
+    const odd = "/home/someone/Music/Tunes/Deep house/it's #1.mp3";
+    const d = T.answer(u, st, Object.assign({}, SHARE[0], { path: odd }), NOW);
+    assert.equal(T.key(d, st, "F", false).effect.run.command[4], "file:///home/someone/Music/Tunes/Deep%20house/it's%20%231.mp3");
+    assert.equal(T.key(d, st, "O", false).effect.run.command[9], "['file:///home/someone/Music/Tunes/Deep%20house/it\\'s%20%231.mp3']");
+    assert.deepEqual(T.key(d, st, "P", false).effect.run.command, ["wl-copy", "--", odd]);
+});
+
+t("each action's result in the footer: the commands' successes and failures, ShowItems falling back to the folder", () => {
+    const [st, d] = described("30-modes-default");
+    const after = (letter, result) => T.ran(T.key(d, st, letter, false).ui, result, NOW);
+    const said = r => T.notice(st, r.ui);
+    assert.equal(said(after("F", { code: 0 })), "Copied Lazy Avenue as a file. Paste it anywhere.");
+    assert.equal(said(after("P", { code: 0 })), "Copied the path of Lazy Avenue.");
+    assert.equal(said(after("O", { code: 0 })), "Showed Lazy Avenue in the file manager.");
+    assert.equal(said(after("F", { code: 1, said: "Failed to connect to a Wayland server" })), "Failed to connect to a Wayland server");
+    assert.equal(said(after("P", { code: 1, said: "" })), "wl-copy exited with status 1.");
+    assert.equal(said(after("P", { failedToStart: true })), "wl-copy could not be started.");
+    assert.equal(said(after("F", { timedOut: true, code: 15 })), `wl-copy did not finish within ${T.RUN_S} s.`);
+    // ShowItems refused: the folder opens instead.
+    const show = after("O", { code: 1, said: "Error: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name is not activatable" });
+    assert.deepEqual(show.effect, { kind: "run", cmd: null, run: { what: "open", command: ["uwsm", "app", "--", "xdg-open", "/home/someone/Music/Tunes/Jazz"] } });
+    assert.equal(said(show), "");
+    assert.equal(said(T.ran(show.ui, { code: 0 }, NOW)), "Opened the folder of Lazy Avenue.");
+    assert.equal(said(T.ran(show.ui, { failedToStart: true }, NOW)), "uwsm could not be started.");
+    assert.equal(said(T.ran(show.ui, { code: 2, said: "uwsm: no such unit" }, NOW)), "uwsm: no such unit");
+    // ShowItems stopped by the watchdog falls back too.
+    assert.equal(T.ran(T.key(d, st, "O", false).ui, { timedOut: true }, NOW).effect.run.what, "open");
+    // The line goes after NOTICE_S; the tick runs until then.
+    const ok = after("F", { code: 0 }).ui;
+    const paused = edit("30-modes-default", { player: "paused" });
+    assert.deepEqual([T.needsTick(paused, ok), T.needsTick(paused, Object.assign({}, ok, { now: NOW + T.NOTICE_S }))], [true, false]);
+    assert.equal(T.notice(st, Object.assign({}, ok, { now: NOW + T.NOTICE_S })), "");
+    // While a command runs, the next F, P or O waits; nothing ran: nothing changes.
+    const running = T.key(d, st, "F", false).ui;
+    const again = T.key(T.key(running, st, "Y", false).ui, st, "F", false);
+    assert.equal(again.effect.kind, "none");
+    const idle = ui(st, NOW);
+    assert.equal(T.ran(idle, { code: 0 }, NOW).ui, idle);
+    assert.equal(T.ran(null, { code: 0 }, NOW).ui, null);
+});
+
+t("export and keep for good: the service's answer closes the sheet with its line; a refusal says its own words", () => {
+    const [st, d] = described("30-modes-default");
+    const e = T.key(d, st, "E", false).ui;
+    assert.deepEqual(e.waiting.kind, "export");
+    // Waiting: nothing else is sent.
+    for (const k of ["E", "K", "F"])
+        assert.equal(T.key(e, st, k, false).effect.kind, "none", k);
+    // A pin's answer is not an export's.
+    assert.equal(T.answer(e, st, SHARE[2], NOW), e);
+    let r = T.answer(e, st, SHARE[1], NOW);
+    assert.deepEqual([r.mode, r.share, r.waiting, T.notice(st, r)], ["player", null, null, "Exported Lazy Avenue to ~/Music/Tunes/Exports."]);
+    const k = T.key(d, st, "K", false).ui;
+    assert.equal(T.answer(k, st, SHARE[1], NOW), k);
+    assert.equal(T.answer(k, st, Object.assign({}, SHARE[2], { what: "export" }), NOW), k);
+    assert.equal(T.notice(st, T.answer(k, st, SHARE[2], NOW)), "Lazy Avenue is kept for good.");
+    const [, b] = described("30-modes-default", SHARE[5]);
+    assert.deepEqual(T.key(b, st, "K", false).effect.cmd, { cmd: "pin", on: false, name: "Brass Lantern", i: 0 });
+    assert.equal(T.notice(st, T.answer(T.key(b, st, "K", false).ui, st, Object.assign({}, SHARE[3], { name: "Brass Lantern" }), NOW)), "Brass Lantern is no longer kept for good.");
+    // The queue moved while the sheet was open: the command follows the
+    // tune to its place, or names it alone when it is not in the queue.
+    const moved = edit("30-modes-default", { queue: [load("31-shuffle-off", NOW).snap.queue[1], load("30-modes-default", NOW).snap.queue[0]] });
+    assert.deepEqual(T.key(b, moved, "E", false).effect.cmd, { cmd: "export", name: "Brass Lantern", i: 1 });
+    const gone = edit("30-modes-default", { queue: [] });
+    assert.deepEqual(T.key(b, gone, "E", false).effect.cmd, { cmd: "export", name: "Brass Lantern" });
+    // Refusals: for the info (the tune gone meanwhile), the export, the pin.
+    const [, asking] = sheet("30-modes-default");
+    for (const w of [asking, e, k]) {
+        r = T.answer(w, st, SHARE[4], NOW);
+        assert.deepEqual([r.mode, r.share, r.waiting, T.notice(st, r)], ["player", null, null, "Lazy Avenue is no longer there."]);
+    }
+    assert.equal(T.notice(st, T.answer(e, st, { event: "share_result", ok: false }, NOW)), "The tunes service refused.");
+});
+
+t("share commands unanswered: the wait runs out and the sheet says so; the link dropping ends it", () => {
+    const [st, asking] = sheet("30-modes-default");
+    const late = Object.assign({}, asking, { now: NOW + T.WAIT_S });
+    assert.equal(T.needsTick(st, late), false);
+    assert.deepEqual([T.view(st, late).share.error, T.view(st, late).share.meta], [T.NOT_ANSWERED, ""]);
+    // A late answer still lands.
+    assert.equal(T.answer(late, st, SHARE[0], NOW).share.info.name, "Lazy Avenue");
+    const [, d] = described("30-modes-default");
+    const e = T.key(d, st, "E", false).ui;
+    const eLate = Object.assign({}, e, { now: NOW + T.WAIT_S });
+    assert.equal(T.view(st, eLate).share.error, T.NOT_ANSWERED);
+    assert.equal(T.key(eLate, st, "E", false).effect.kind, "send");
+    // The link drops: the info's wait goes back to the player, saying so;
+    // an export's stays in the sheet, saying so, and can be sent again.
+    const down = T.linkDown(asking, NOW);
+    assert.deepEqual([down.mode, down.waiting, T.notice(st, down)], ["player", null, T.NOT_ANSWERED]);
+    const eDown = T.linkDown(e, NOW);
+    assert.deepEqual([eDown.mode, T.view(st, eDown).share.error], ["share", T.NOT_ANSWERED]);
+    assert.equal(T.key(eDown, st, "E", false).effect.kind, "send");
+});
+
+t("share and genre lines: each answers only what it was asked; healthy; no change to the state", () => {
+    const st = load("30-modes-default", NOW);
+    for (const ev of SHARE) {
+        assert.equal(T.healthy(ev), true);
+        assert.equal(T.apply(st, ev, NOW), st);
+    }
+    const [, asking] = sheet("30-modes-default");
+    for (const ev of RESULTS.concat([JAZZ]))
+        assert.equal(T.answer(asking, st, ev, NOW), asking, ev.event);
+    const [jst, editing] = jazzEditor();
+    const saving = T.key(editing, jst, "CtrlS", false).ui;
+    for (const ev of SHARE)
+        assert.equal(T.answer(saving, jst, ev, NOW), saving);
+});
+
+t("a share notice in the player: in place of the undo line while it shows, then the undo line again", () => {
+    const st = load("11-after-scrap", NOW);
+    const u = Object.assign(ui(st, NOW), { notice: { text: "Copied the path of Quiet Ledger.", until: NOW + 3 } });
+    assert.deepEqual([T.notice(st, u), T.undoLine(st, u)], ["Copied the path of Quiet Ledger.", ""]);
+    const later = Object.assign({}, u, { now: NOW + 3 });
+    assert.deepEqual([T.notice(st, later), T.undoLine(st, later)], ["", "Scrapped Lazy Avenue. Z brings it back for 7 s."]);
+    // G and Y clear it.
+    assert.equal(T.key(u, st, "G", false).ui.notice, null);
+    assert.equal(T.key(u, st, "Y", false).ui.notice, null);
+});
+
+t("S, L and Y do nothing in the editor, the delete question, the setup cards and the link's cards", () => {
+    const [st, editing] = jazzEditor();
+    for (const k of ["S", "L", "Y", "F", "P", "O", "K"])
+        assert.deepEqual(T.key(editing, st, k, false), { ui: editing, effect: { kind: "pass", cmd: null } }, k);
+    const [, c] = chooserOf("30-modes-default");
+    const asked = T.key(c, st, "D", false).ui;
+    assert.equal(asked.mode, "ask");
+    for (const k of ["S", "L", "Y"]) {
+        assert.equal(T.key(asked, st, k, false).effect.kind, "none", k);
+        assert.equal(T.key(c, st, k, false).effect.kind, "none", k);
+    }
+    for (const f of ["01-not-set-up", "02-downloading", "03-download-failed", "18-protocol-v2"]) {
+        const s = load(f, NOW);
+        for (const k of ["S", "L", "Y"])
+            assert.equal(T.key(ui(s, NOW), s, k, false).effect.kind, "none", `${f} ${k}`);
+    }
+    const lost = T.linkLost(T.initial(), "exited", 3, "", NOW + 2);
+    assert.equal(T.key(ui(lost, NOW), lost, "S", false).effect.kind, "none");
+});
+
+t("the genre editor refuses the name Exports, ignoring case", () => {
+    const g = [{ id: "jazz", name: "Jazz" }];
+    const v = name => T.check({ name, caption: "x", turns: "", lo: "70", hi: "120" }, g, null).errors.name;
+    for (const n of ["Exports", "exports", " EXPORTS "])
+        assert.equal(v(n), "Exports is the folder for exported copies; pick another name.", n);
+    assert.deepEqual([v("Exports 2"), v("Export")], ["", ""]);
+    const [st, c] = chooserOf("30-modes-default");
+    const e = T.view(st, T.typed(T.key(c, st, "A", false).ui, "name", "Exports")).editor;
+    assert.equal(e.fields.name.error, "Exports is the folder for exported copies; pick another name.");
+});
+
+t("the footer wraps inside 420 px: every hint fits on a line in every state, a long name elides in its hint", () => {
+    // 420 px less the 1 px border each side and 14 px padding each side, in
+    // 11 px Fira Code (0.6 em a character).
+    assert.equal(T.FOOTER_CHARS, Math.floor((420 - 2 - 28) / (11 * 0.6)));
+    const len = h => Array.from(`${h[0]} ${h[1]}`).length;
+    const LONG = "A Very Long Tune Name That Somebody Typed Into The File Title Tag";
+    const long = q => Object.assign({}, q, { name: LONG });
+    let checked = 0;
+    const every = (st, u, at) => {
+        for (const h of T.hints(st, u)) {
+            assert.ok(len(h) <= T.FOOTER_CHARS, `${at}: ${h.join(" ")}`);
+            checked++;
+        }
+    };
+    for (const f of fixtures().filter(f => !/^(26|27|35)-/.test(f))) {
+        const s = load(f, NOW);
+        const variants = [s];
+        if (s.snap && s.snap.tune)
+            variants.push(edit(f, { tune: long(s.snap.tune), queue: s.snap.queue.map(long) }));
+        for (const st of variants)
+            for (const mode of ["player", "chooser"])
+                for (const keys of [[], ["Down"], ["Down", "Down"], ["Y"]]) {
+                    const u = press(st, ui(st, NOW, { mode }), keys).ui;
+                    every(st, u, `${f} ${mode} ${keys}`);
+                }
+    }
+    const [st, d] = described("30-modes-default");
+    every(st, d, "share sheet");
+    assert.ok(checked > 1000);
+    // The long name: elided in the hint, kept whole in the row and the command.
+    const st2 = edit("30-modes-default", { tune: long(load("30-modes-default", NOW).snap.tune) });
+    const x = T.hints(st2, ui(st2, NOW)).find(h => h[0] === "X");
+    assert.equal(len(x), T.FOOTER_CHARS);
+    assert.ok(x[1].startsWith("scrap A Very Long Tune Name") && x[1].endsWith("…"));
+    assert.deepEqual(T.key(ui(st2, NOW), st2, "X", false).effect.cmd, { cmd: "scrap", name: LONG });
+    assert.equal(T.view(st2, ui(st2, NOW)).player.now.name, LONG);
+});
+
+t("unknown mode values fall back to the defaults", () => {
+    const st = T.apply(T.initial(), { event: "state", v: 1, setup: "ready", genre: "a", genres: [{ id: "a" }], shuffle: "no", repeat: "twice", ended: "yes", round_left: -3, keep: "fifty", tune: { name: "T", new: 1, pinned: "yes", pos: -2 } }, NOW);
+    const s = st.snap;
+    assert.deepEqual([s.shuffle, s.repeat, s.ended, s.roundLeft, s.keep], [true, "all", false, 0, null]);
+    assert.deepEqual([s.tune.new, s.tune.pinned, s.tune.pos], [false, false, null]);
+    const off = T.apply(T.initial(), { event: "state", v: 1, setup: "ready", shuffle: false, repeat: "off" }, NOW).snap;
+    assert.deepEqual([off.shuffle, off.repeat], [false, "off"]);
 });
 
 console.log(`ok: ${n} tunes-panel tests`);

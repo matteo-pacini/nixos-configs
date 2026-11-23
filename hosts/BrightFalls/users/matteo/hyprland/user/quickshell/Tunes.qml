@@ -12,10 +12,10 @@ import "tunes/tunes.js" as T
 //   qs ipc call tunes toggle
 // and the playing tune scrapped (or the last scrap undone) from anywhere:
 //   qs ipc call tunes scrap
-// Three sections: now playing, up next (the queue and the tune being
-// composed) and the composer's switch and well; or the model's download, the
-// genre chooser (with its delete question) and the genre editor, or why
-// there is nothing to show. The music itself is the
+// Three sections: now playing (with the mode pills), up next (the queue and
+// the tune being composed) and the composer's switch and well; or the
+// model's download, the genre chooser (with its delete question), the genre
+// editor and the share sheet, or why there is nothing to show. The music itself is the
 // desk-tunes service's and carries on with the panel closed. tunes.js
 // decides everything drawn and what each key and click does; this file
 // draws its views and passes keys and clicks on.
@@ -33,6 +33,7 @@ Scope {
     readonly property var chooser: v ? v.chooser : null
     readonly property var player: v ? v.player : null
     readonly property var editor: v ? v.editor : null
+    readonly property var share: v ? v.share : null
     readonly property var fields: editor ? editor.fields : null
     readonly property string hintsJson: open && TunesShared.ui ? JSON.stringify(T.hints(TunesShared.st, TunesShared.ui)) : "[]"
     readonly property var hints: JSON.parse(hintsJson).map(h => [esc(h[0]), esc(h[1])])
@@ -45,7 +46,10 @@ Scope {
     readonly property var glyph: ({
             play: "\u{f040a}",
             pause: "\u{f03e4}",
-            next: "\u{f04ad}"
+            next: "\u{f04ad}",
+            shuffle: "\u{f049d}",
+            repeat: "\u{f0456}",
+            share: "\u{f0b93}"
         })
 
     // tunes.js's tone names.
@@ -115,7 +119,14 @@ Scope {
             [Qt.Key_R]: "R",
             [Qt.Key_E]: "E",
             [Qt.Key_A]: "A",
-            [Qt.Key_D]: "D"
+            [Qt.Key_D]: "D",
+            [Qt.Key_S]: "S",
+            [Qt.Key_L]: "L",
+            [Qt.Key_Y]: "Y",
+            [Qt.Key_F]: "F",
+            [Qt.Key_P]: "P",
+            [Qt.Key_O]: "O",
+            [Qt.Key_K]: "K"
         };
         let name = always[event.key] ?? (plain ? letters[event.key] : undefined);
         if (event.key === Qt.Key_S && mods === Qt.ControlModifier)
@@ -687,6 +698,7 @@ Scope {
                     readonly property var now: root.player ? root.player.now : null
                     readonly property var next: root.player ? root.player.next : null
                     readonly property var composer: root.player ? root.player.composer : null
+                    readonly property var modes: root.player ? root.player.modes : []
 
                     visible: root.player !== null
                     width: parent.width
@@ -707,17 +719,37 @@ Scope {
                         side: playerColumn.now ? playerColumn.now.head : ""
                     }
 
-                    Text {
+                    // The name, eliding, and "★ kept for good" after it.
+                    Item {
                         x: 14
                         width: parent.width - 28
-                        topPadding: 4
-                        elide: Text.ElideRight
-                        text: playerColumn.now ? playerColumn.now.name : ""
-                        textFormat: Text.PlainText
-                        color: playerColumn.now ? root.tone(playerColumn.now.nameTone) : Theme.foreground
-                        font.family: Theme.fontUi
-                        font.pixelSize: 15
-                        font.weight: Font.Medium
+                        height: nowName.implicitHeight
+
+                        Text {
+                            id: nowName
+
+                            width: Math.min(implicitWidth, parent.width - (nowBadge.visible ? nowBadge.implicitWidth + 8 : 0))
+                            topPadding: 4
+                            elide: Text.ElideRight
+                            text: playerColumn.now ? playerColumn.now.name : ""
+                            textFormat: Text.PlainText
+                            color: playerColumn.now ? root.tone(playerColumn.now.nameTone) : Theme.foreground
+                            font.family: Theme.fontUi
+                            font.pixelSize: 15
+                            font.weight: Font.Medium
+                        }
+
+                        Text {
+                            id: nowBadge
+
+                            visible: text !== ""
+                            x: nowName.width + 8
+                            y: nowName.y + nowName.baselineOffset - baselineOffset
+                            text: playerColumn.now ? playerColumn.now.badge : ""
+                            color: Theme.comment
+                            font.family: Theme.fontMono
+                            font.pixelSize: 12
+                        }
                     }
 
                     Text {
@@ -831,6 +863,53 @@ Scope {
                         }
                     }
 
+                    // The modes: shuffle, repeat, share; lit while on, each
+                    // the key it stands for.
+                    Item {
+                        width: parent.width
+                        height: pills.implicitHeight + 10
+
+                        Row {
+                            id: pills
+
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 8
+
+                            Repeater {
+                                model: playerColumn.modes
+
+                                Rectangle {
+                                    id: pill
+
+                                    required property var modelData
+
+                                    width: pillText.implicitWidth + 18
+                                    height: pillText.implicitHeight + 4
+                                    radius: height / 2
+                                    opacity: modelData.dim ? 0.4 : 1
+                                    color: modelData.lit ? Qt.rgba(Theme.purple.r, Theme.purple.g, Theme.purple.b, 0.12) : "transparent"
+                                    border.width: 1
+                                    border.color: modelData.lit ? Theme.purple : Theme.currentLine
+
+                                    Text {
+                                        id: pillText
+
+                                        anchors.centerIn: parent
+                                        text: `${root.glyph[pill.modelData.icon]} ${pill.modelData.label}`
+                                        color: pill.modelData.lit ? Theme.foreground : Theme.comment
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 11
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: TunesShared.key(pill.modelData.key, false)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Rectangle {
                         width: parent.width
                         height: 1
@@ -861,6 +940,7 @@ Scope {
                                 width: parent.width
                                 height: qbody.implicitHeight + 12
                                 radius: 6
+                                opacity: modelData.dim ? 0.45 : 1
                                 color: modelData.sel ? Theme.currentLine : "transparent"
 
                                 Text {
@@ -879,18 +959,51 @@ Scope {
 
                                     x: 32
                                     y: 6
-                                    width: parent.width - 32 - 8 - qright.implicitWidth - (qright.implicitWidth > 0 ? 10 : 0)
+                                    width: parent.width - 32 - 8 - qside.width - (qside.width > 0 ? 10 : 0)
                                     spacing: 1
 
-                                    Text {
+                                    // The name, eliding, and the "new" tag after it.
+                                    Item {
                                         width: parent.width
-                                        elide: Text.ElideRight
-                                        text: qrow.modelData.name
-                                        textFormat: Text.PlainText
-                                        color: root.tone(qrow.modelData.nameTone)
-                                        font.family: Theme.fontUi
-                                        font.pixelSize: 14
-                                        font.weight: qrow.modelData.kind === "tune" ? Font.Medium : Font.Normal
+                                        height: qname.implicitHeight
+
+                                        Text {
+                                            id: qname
+
+                                            width: Math.min(implicitWidth, parent.width - (qtag.visible ? qtag.width + 6 : 0))
+                                            elide: Text.ElideRight
+                                            text: qrow.modelData.name
+                                            textFormat: Text.PlainText
+                                            color: root.tone(qrow.modelData.nameTone)
+                                            font.family: Theme.fontUi
+                                            font.pixelSize: 14
+                                            font.weight: qrow.modelData.kind === "tune" ? Font.Medium : Font.Normal
+                                        }
+
+                                        Rectangle {
+                                            id: qtag
+
+                                            visible: qrow.modelData.tag !== ""
+                                            x: qname.width + 6
+                                            anchors.verticalCenter: qname.verticalCenter
+                                            width: qtagText.implicitWidth + 8
+                                            height: qtagText.implicitHeight
+                                            radius: 4
+                                            color: "transparent"
+                                            border.width: 1
+                                            border.color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.45)
+
+                                            Text {
+                                                id: qtagText
+
+                                                anchors.centerIn: parent
+                                                text: qrow.modelData.tag
+                                                color: Theme.cyan
+                                                font.family: Theme.fontMono
+                                                font.pixelSize: 10
+                                                font.weight: Font.DemiBold
+                                            }
+                                        }
                                     }
 
                                     Text {
@@ -926,16 +1039,32 @@ Scope {
                                     }
                                 }
 
-                                Text {
-                                    id: qright
+                                // A star for a tune kept for good, then the length.
+                                Row {
+                                    id: qside
 
                                     anchors.right: parent.right
                                     anchors.rightMargin: 8
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: qrow.modelData.right
-                                    color: root.tone(qrow.modelData.rightTone)
-                                    font.family: Theme.fontMono
-                                    font.pixelSize: 12
+                                    spacing: 8
+
+                                    Text {
+                                        visible: qrow.modelData.star
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "★"
+                                        color: Theme.yellow
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 11
+                                    }
+
+                                    Text {
+                                        visible: text !== ""
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: qrow.modelData.right
+                                        color: root.tone(qrow.modelData.rightTone)
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 12
+                                    }
                                 }
                             }
                         }
@@ -1012,6 +1141,142 @@ Scope {
                                             font.pixelSize: 11
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // The share sheet: the tune, then one row per action, each
+                // with its letter.
+                Column {
+                    visible: root.share !== null
+                    width: parent.width
+                    bottomPadding: 6
+
+                    SecHead {
+                        title: "SHARE"
+                        side: root.share ? root.share.head : ""
+                    }
+
+                    Text {
+                        x: 14
+                        width: parent.width - 28
+                        topPadding: 4
+                        elide: Text.ElideRight
+                        text: root.share ? root.share.name : ""
+                        textFormat: Text.PlainText
+                        color: Theme.foreground
+                        font.family: Theme.fontUi
+                        font.pixelSize: 15
+                        font.weight: Font.Medium
+                    }
+
+                    Text {
+                        visible: text !== ""
+                        x: 14
+                        width: parent.width - 28
+                        topPadding: 2
+                        wrapMode: Text.Wrap
+                        text: root.share ? root.share.meta : ""
+                        textFormat: Text.PlainText
+                        color: Theme.comment
+                        font.family: Theme.fontMono
+                        font.pixelSize: 12
+                    }
+
+                    Text {
+                        visible: text !== ""
+                        x: 14
+                        width: parent.width - 28
+                        topPadding: 4
+                        wrapMode: Text.Wrap
+                        text: root.share ? root.share.error : ""
+                        textFormat: Text.PlainText
+                        color: Theme.red
+                        font.family: Theme.fontMono
+                        font.pixelSize: 12
+                    }
+
+                    Column {
+                        x: 6
+                        width: parent.width - 12
+                        topPadding: 8
+                        spacing: 2
+
+                        Repeater {
+                            model: root.share ? root.share.rows : []
+
+                            Rectangle {
+                                id: srow
+
+                                required property var modelData
+
+                                width: parent.width
+                                height: sbody.implicitHeight + 12
+                                radius: 6
+                                color: modelData.sel ? Theme.currentLine : srowArea.containsMouse ? Qt.rgba(Theme.currentLine.r, Theme.currentLine.g, Theme.currentLine.b, 0.5) : "transparent"
+
+                                Text {
+                                    x: 8
+                                    width: 14
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: srow.modelData.key
+                                    color: Theme.cyan
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 12
+                                }
+
+                                Column {
+                                    id: sbody
+
+                                    x: 32
+                                    y: 6
+                                    width: parent.width - 32 - 8 - (sright.implicitWidth > 0 ? sright.implicitWidth + 10 : 0)
+                                    spacing: 1
+
+                                    Text {
+                                        width: parent.width
+                                        wrapMode: Text.Wrap
+                                        text: srow.modelData.label
+                                        color: Theme.foreground
+                                        font.family: Theme.fontUi
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                    }
+
+                                    // A path wraps anywhere: it has no spaces to break at.
+                                    Text {
+                                        visible: text !== ""
+                                        width: parent.width
+                                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                                        text: srow.modelData.sub
+                                        textFormat: Text.PlainText
+                                        color: Theme.comment
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 11
+                                    }
+                                }
+
+                                Text {
+                                    id: sright
+
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: srow.modelData.right
+                                    color: Theme.comment
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 12
+                                }
+
+                                MouseArea {
+                                    id: srowArea
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: TunesShared.key(srow.modelData.key, false)
                                 }
                             }
                         }
