@@ -91,7 +91,9 @@ and `.js` file and the sections that cite it.
 - **It is drawn from source, not screenshots.** Each state cites the file
   and line that produces it, and each section's "Not drawn" paragraph says
   what the source does not settle. Its header names the commit it was drawn
-  from: a state added or changed since is not in it. The source wins.
+  from: a state added or changed since is not in it. A section drawn from
+  another commit says so in its introduction (the weather and tunes
+  panels'). The source wins.
 - **Keep it current.** A change to what a surface draws (a state, a string,
   a colour, a key) updates that surface's section in the same piece of
   work, and the design system section when a shared value changes. Read the
@@ -652,18 +654,22 @@ from the branch. As of 2026-11-23:
   exited 0 anyway, and activation said `reloaded`. A reload by hand cleared
   it. (The refusal is read in Quickshell 0.3.2's source; its message was
   not captured.)
-- **Built and checked in the repository only, not deployed**: the
+- **Deployed and used live by the owner, the last round** (9a51327): the
   answer-checked reload (`reload()` answers `reloaded`, and activation asks
   again until it gets that; README, "Activation"; simulated by the
-  `desk-sync` check's fake `qs`), and this round: shuffle and repeat (S, L,
-  the pills, the headings, the ended state, persisted modes, MPRIS
-  LoopStatus and Shuffle), the share sheet (Y: F, P, O run by the shell; E
-  export and K keep for good by the service) and keep for good with its
-  marks and the keep rule, `Exports` reserved. Simulated by `tunes-helper`
-  (the service against fakes, with the real mpv, its MPRIS plugin and
-  ffmpeg) and `tunes-panel`; nothing of it has run in the real unit or
-  panel. Only a live run can tell: whether a FileManager1 service answers
-  ShowItems on BrightFalls and what the fallback opens; whether a pasted
+  `desk-sync` check's fake `qs`), and shuffle and repeat (S, L, the pills,
+  the headings, the ended state, persisted modes, MPRIS LoopStatus and
+  Shuffle), the share sheet (Y: F, P, O run by the shell; E export and K
+  keep for good by the service) and keep for good with its marks and the
+  keep rule, `Exports` reserved. The owner reported that the panel works;
+  as with the rounds before, that report is the whole of the live
+  evidence, and no report says whether the switch's own reload or one by
+  hand loaded the new `tunes.js`. Simulated by `tunes-helper` (the service
+  against fakes, with the real mpv, its MPRIS plugin and ffmpeg) and
+  `tunes-panel`. Still expected only, as no one has looked: the reload
+  asking again after the shell refuses it; whether a FileManager1 service
+  answers ShowItems on BrightFalls and what the fallback opens; whether a
+  pasted
   `text/uri-list` arrives as a file in a chat or mail app; whether
   `wl-copy`'s background child outlives its `Process` and the exit is
   reported without waiting on it; LoopStatus and Shuffle in the media
@@ -676,7 +682,10 @@ from the branch. As of 2026-11-23:
   leaves no `vulkaninfo` core; the estimate from real timings; real
   `hyprctl -j clients` while a game runs; media keys on the real session
   bus with another player open; keeping ahead of playback over an hour.
-- The Shell Atlas has no tunes section yet.
+- The Shell Atlas has a tunes section, drawn from 9a51327: every state
+  the panel's source can reach, its texts produced by running `tunes.js`
+  under node over invented snapshots, and the bar item's states; the
+  coordinator publishes it.
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and
@@ -704,9 +713,9 @@ live on 2026-11-22 and load without a warning from them; Super+H is loaded
   bar's weather item should show the outdoor temperature within a minute or
   two. Until the owner has seen that, everything with the real helper is
   expected only.
-- Tunes, at the next switch from the branch (the one that brings the
-  modes, sharing and keep for good): it is the first real test of the
-  answer-checked reload. Its output should end with `desk-sync:
+- Tunes, from the switch that brought the modes, sharing and keep for
+  good, done or not by now, no report says: it was the first real test of
+  the answer-checked reload. Its output should end with `desk-sync:
   quickshell: reloaded`, and the shell's log should show one `Reloading
   configuration...` after desk-sync's last `updated` line; if the panel
   then behaves as before this round, the reload ran the old `tunes.js`
