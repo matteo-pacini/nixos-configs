@@ -175,8 +175,9 @@ and `pull` do not see them until they are added under `user/` and deployed.
 
 1. Edit the file under `~/.config` (for example `~/.config/hypr/bindings.lua`).
 2. Hyprland does not reload on its own (`disable_autoreload` in
-   `looknfeel.lua`): run `hyprctl reload`. Quickshell does: saving a file under
-   `~/.config/quickshell` reloads it, a failed reload keeps the previous
+   `looknfeel.lua`): run `hyprctl reload`. Quickshell does: saving a `.qml`
+   file it loaded reloads it (a `.js` file is never watched, so a change to
+   one alone waits for the next reload), a failed reload keeps the previous
    version running, and a "reloaded" or "failed" popup says which. Edits to
    `~/.config/desk/theme.json` reach Quickshell without a reload. `shell.qml`'s
    `//@ pragma` lines are read at startup only: after changing one,
@@ -235,10 +236,11 @@ which repeat (the lock screen is not guarded).
 | Tailscale | Super+V, bar Tailscale glyph | `tailscale` |
 | Tokens | Super+U, bar item (pie and weekly percentage) | `tokens` |
 | Weather | Super+H, bar item (condition and temperature) | `weather` |
-| Tunes | Super+M, bar item (a note glyph, and the genre while playing) | `tunes` |
+| Tunes | Super+M, bar item (a note glyph, the composer's dot, and the genre while playing); Super+Shift+M scraps the playing tune (`scrap`) | `tunes` |
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
+| The shell itself | `desk-sync activate` after a switch (`reload`, see [Activation](#activation)) | `shell` |
 
 ### Launcher
 
@@ -282,8 +284,9 @@ panel](#token-panel)), the fleet item (a server glyph and the number of hosts th
 [Fleet panel](#fleet-panel)), the office item (a bulb and the sockets' total, see [Office panel](#office-panel)), the system chip (two temperatures, see
 [System panel](#system-panel)), Bluetooth, the Tailscale item (see
 [Tailscale panel](#tailscale-panel)), network (a small Wi-Fi mark beside
-it while the radio is on and Wi-Fi is not what it shows, see [Network panel](#network-panel)), the tunes item (a note glyph, and the
-genre's name while a tune plays, see [Tunes panel](#tunes-panel)), and audio. The audio item
+it while the radio is on and Wi-Fi is not what it shows, see [Network panel](#network-panel)), the tunes item (a note glyph, the
+composer's dot, and the genre's name while a tune plays, see [Tunes
+panel](#tunes-panel)), and audio. The audio item
 shows the default output's name; left click cycles the output
 (`audio-output-cycle`), right click mutes, the wheel sets the volume in 5 %
 steps, middle click opens the audio panel; a red dot on it means an input
@@ -1180,25 +1183,28 @@ and radar on/off.
 
 `Tunes.qml`, with `tunes/TunesShared.qml` (shared with the bar: placement,
 the `desk-tunes attach` process and its restart, the state, the open
-panel's keys, clicks and clock) and `tunes/tunes.js` (every decision: how
-the service's snapshots and the link's ups and downs change the state,
-which card shows, every text and tone of the cards and the bar item, what
-each key and click does, the footer, the position between snapshots;
-node-tested). The drawings are `tunes/DotWave.qml` (the waveform) and
-`tunes/Strip.qml` (the tinted strip). Super+M, or a click on the bar item
-left of the audio item, opens it. It plays endless instrumental music in a
-chosen genre, composed on this computer by
-[`desk-tunes`](#tunes-desk-tunes); the panel only shows its state and sends
-it commands.
+panel's keys, clicks and clock, the global scrap) and `tunes/tunes.js`
+(every decision: how the service's snapshots and the link's ups and downs
+change the state, which card shows, every text and tone of the three
+sections and the bar item, what each key and click does, the footer and its
+undo line, the global scrap, the position between snapshots; node-tested).
+The drawings are `tunes/SecHead.qml` (a section's heading, with the
+composer's switch), `tunes/DotWave.qml` (the waveform) and `tunes/Strip.qml`
+(the tinted strip). Super+M, or a click on the bar item left of the audio
+item, opens it. It plays instrumental music in a chosen genre, composed on
+this computer by [`desk-tunes`](#tunes-desk-tunes); the panel only shows its
+state and sends it commands. Playing and composing are separate: a genre
+plays the tunes kept for it, and new ones are made only while the composer
+is switched on.
 
-- **Bar item**: a note glyph. Dimmed with no link to the service, before
-  the model is set up or a genre is picked, and while nothing plays or is
-  being composed; cyan while the model downloads, starts, writes or
+- **Bar item**: a note glyph for playback, dimmed with no link to the
+  service, before the model is set up or a genre is picked, and while
+  nothing plays; the foreground colour while a tune plays or is paused,
+  with the genre's name beside it while it plays. A 6 px dot beside the
+  note is the composer: cyan while the model downloads, starts, writes or
   renders; orange while composing is held (a game, or not enough memory);
-  red after a failure or with no graphics device; the foreground colour
-  while a tune plays or is paused and nothing else applies. The genre's
-  name beside it only while a tune plays. Purple with the open mark while
-  the panel is open.
+  red after a failure or with no graphics device; no dot while the composer
+  is off or resting. Purple with the open mark while the panel is open.
 - **Setting up** (until the four model files are in place): `Tunes needs a
   music model`, with the download's size, the free space the service
   measured (`free on disk`) and the memory a tune takes while composing;
@@ -1206,54 +1212,95 @@ it commands.
   the diffusion model.`), the bytes over the whole set, the speed and a
   bar; C cancels. Closing the panel does not stop the download. A download
   that stopped says why and that finished files are kept; Enter resumes.
-- **Genre chooser** (`What do you want to hear?`): what the panel opens on
-  until a genre is picked, and G from the player. One cell per genre of the
-  genres file, in its order, three across, each with its kept tunes (`31
-  kept`, or `none yet`). Arrows move, Enter or a click plays; picking the
-  genre already picked changes nothing while it plays and starts it when
-  nothing plays. Esc goes back to the player (or closes, before any genre). A genres file the service could not read shows
-  its error in an orange strip, and the last good list stays.
-- **Player**: the genre with an `instrumental` chip; the tune's name and
-  `Tune 4 · 88 BPM · A major` (`Kept tune` for one from the folder, and
-  `paused`); a waveform of 78 dot columns, the played part purple, where a
-  click seeks; the position and the length; play/pause and next buttons and
-  the genres button. Under it the model well: the model's name, variant and
-  device, a status (`composing` cyan, `2 tunes ready` green, `idle`, `held
-  for a game` or `held for memory` orange, `failed` red, `unloaded` dim), a
-  line saying what it is doing (`writing the song`, `rendering the audio`,
-  `writing again: the last plan had 39 s of silence`, `idle, holding no
-  memory`, `server stopped`, `playing the 31 kept tunes, shuffled`), and
-  the memory the server uses while composing, else the memory free.
-- **Stopped** (after a media Stop, or a tune mpv could not play):
-  `Stopped. Space plays.` while there is a tune to start (one ready, or a
-  kept one of the genre); `Nothing to play` when there is none.
-- **Before the first tune**: `Composing the first tune…` (or `the next
-  tune…` when the genre has kept ones), the stage and the time since it
-  began, and the waveform as a cyan row of single dots: the server reports
-  no progress, so none is drawn.
-- **Strips over the player**: a game running (composing is paused, tunes
-  already made keep playing); not enough memory (what a tune needs and what
-  is free; it resumes by itself); composing failed, with the server's
-  message and the countdown to the next try, only while nothing plays
-  (while something plays the well says it, with the failures in a row);
-  the service's `error`: the genres file's, a tune mpv could not play
-  (mpv's reason, until a tune plays), or `hyprctl` unable to list the
-  windows (so a game would not hold composing; until it can).
-- **No graphics device**: `No graphics device to compose on`, with what the
-  service found instead; kept tunes still play. R tries again; G opens the
-  chooser, and Esc there comes back to this card.
+- **Genre chooser** (`Genre`, with the chip `Enter plays what is kept`):
+  what the panel opens on until a genre is picked, and G from the player.
+  One cell per genre of the genres file, in its order, three across, each
+  with its kept tunes (`31 kept`, or `none yet`); the selected genre is
+  outlined and reads `playing now` (or `selected` while nothing plays), and
+  the cursor opens on it. Arrows move, Enter or a click picks: the genre
+  plays its kept tunes, shuffled, and the composer is off. Enter on the
+  selected genre reads `back to <genre>` and only closes the chooser. Esc
+  goes back to the player (or closes, before any genre). A genres file the
+  service could not read shows its error in an orange strip, and the last
+  good list stays.
+- **The player**, in three sections:
+  - **NOW PLAYING** (the genre at the right, `· kept tunes` for a kept
+    tune): the tune's name; `88 BPM · A major` (and `paused`); a waveform of
+    78 dot columns, nine dots high, the played part purple, where a click
+    seeks; the position and the length; the play/pause and next buttons.
+    With nothing loaded: `Stopped. Space plays.` after the user stopped the
+    player (a media Stop, or a tune mpv could not play) and there is
+    something to play; `Nothing playing. Space plays.` when there is
+    something to play otherwise; `Nothing yet` with the composer on (`The
+    first tune starts by itself when it is ready.`, or after a stop `The
+    player is stopped: Space starts it once a tune is ready.`); `No <genre> tunes yet`
+    / `Turn the composer on to make some.` with the composer off and
+    nothing kept. A genre just picked is never shown stopped or paused.
+  - **UP NEXT** (`2 ready`, or `from 31 kept, shuffled` while kept tunes
+    play, at the right): what N would play, in order, each row with its
+    name, `BPM · key` and length; then, with the composer on, the tune
+    being made as a row, `Being written` or `Being rendered`, with `about
+    1:10 left` and a bar once a tune has been timed (the stage's median
+    time, to the nearest 10 s; `any moment now` once it has run out), else
+    the time spent so far, and while rendering `written in M:SS`; then
+    `Not started` rows up to the two the composer keeps ahead.
+  - **COMPOSER** (the switch at the right, labelled `on`, `off`, `held for
+    a game` or `held for memory` in orange, or `failed` in red), over a
+    well. Off: `On, it makes new <genre> and keeps 2 ahead.`, and with
+    nothing kept `A tune takes about N min and 6 GiB of RAM while it is
+    made.` (the minutes from the timed medians; without them only the
+    memory). On: `Makes <genre>, keeps 2 ahead` with, at the right,
+    `resting, queue is full` (green), `starting the model` (cyan) or the
+    RAM in use while it writes or renders; `Writing again: the last plan
+    had 39 s of silence.`; the hold (orange) or the failure with its count
+    and the countdown to the next try (red); and the model line (name ·
+    variant · device) while it works or after a failure.
+- **Strip over the player**: the service's `error`: the genres file's, a
+  tune mpv could not play (mpv's reason, until a tune plays), or `hyprctl`
+  unable to list the windows (so a game would not hold composing; until it
+  can).
+- **Scrap and undo**: X scraps the selected queue row, or the tune being
+  made when its row is selected (no undo for that one), else the playing
+  tune (the next starts at once); the hint names the tune. A scrapped tune
+  leaves the player or the queue at once, and its file waits 10 s in
+  `~/.cache/desk-tunes/scrapped/` before it is deleted. For those 10 s the
+  footer is `Scrapped <name>. Z brings it back for N s.` in orange, and Z
+  puts the file back and the tune at the head of the queue, without
+  interrupting what plays. A second scrap deletes the first's file at once.
+  Super+Shift+M (`qs ipc call tunes scrap`) does the same from anywhere,
+  the panel open or not: it undoes while an undo is offered, else scraps
+  the playing tune, and sends one notification naming the tune (`Scrapped
+  <name>`, or `Brought back <name>`); with nothing playing it does nothing.
+- **No graphics device** (with the composer on): `No graphics device to
+  compose on`, with what the service found instead; kept tunes still play.
+  R tries again, C turns the composer off; G opens the chooser, and Esc
+  there comes back to this card.
 - **The link**: `Connecting to the tunes service…` before the first
   snapshot; `The tunes service is not installed` (`desk-tunes` not on
   PATH), `The tunes service is not running` (no socket) or `The link to the
   tunes service closed`, each with the unit's name, the client's last line
   and a countdown to the next try, R tries now; `The tunes service is newer
   than this panel` for a protocol version other than 1.
-- **Keys**: Space play or pause (with a tune, or with none playing and one
-  to start), N next (when the snapshot's `can_next` says there is a next
-  tune), R try now (after a failure), G genres, U unload or, while
-  unloaded, load (not offered while held), Esc closes. The footer lists
-  exactly the keys that do something. A held key acts once, except the
-  chooser's arrows.
+- **Keys** in the player (the footer lists exactly the keys that do
+  something, in this order):
+
+  | Key | Does |
+  |-----|------|
+  | Space | Play or pause (with a tune, or with none playing and one to start) |
+  | N | Next (when the snapshot's `can_next` says there is a next tune) |
+  | X | Scrap the selected row, else the playing tune |
+  | Z | Undo the last scrap, within 10 s |
+  | R | Try now, after a failure |
+  | C | Composer on or off |
+  | G | The genre chooser |
+  | ↑ ↓ | Select a row of UP NEXT (↑ from the first clears the selection) |
+  | Enter | Play the selected queue row now |
+  | Esc | Close |
+
+  With a row selected the footer is `↑↓ select`, `Enter play it now`, `X
+  scrap <name>`, Space and Esc; N, Z, R, C and G still work. The selection
+  follows its tune as the queue moves and clears when the tune is gone. A
+  held key acts once, except the arrows.
 - **Where it comes from**: `TunesShared.qml` runs `desk-tunes attach` from
   the shell's start, so the bar has the state while the panel is closed,
   and restarts it 2 s after it exits, doubling to a minute; the back-off
@@ -1264,12 +1311,13 @@ it commands.
 - **While closed**: only the attach client runs, blocked on the socket; the
   service sends a snapshot only when something changes. While open, a
   one-second tick runs only when something shown changes with the clock
-  alone (the position while playing, a countdown, the time spent
-  composing).
+  alone: in the player, the position while playing, the undo countdown,
+  the time spent on the tune being made or a retry countdown; on the
+  link's cards, the countdown to the next try.
 - **What it does not show, and why**: no composing percentage (the model
-  server reports none); no lyrics (instrumental only); the disk as `free on
-  disk`, not a named file system (the panel cannot know which one the
-  service measured).
+  server reports none; the time left is an estimate from earlier tunes); no
+  lyrics (instrumental only); the disk as `free on disk`, not a named file
+  system (the panel cannot know which one the service measured).
 
 ### Tray menu
 
@@ -1925,14 +1973,27 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   (`packages/acestep-cpp.nix`, built with ggml's Vulkan backend), as a
   child niced by 10, bound to 127.0.0.1 on a port the service picks, in its
   default mode that loads each part of the model for each job (never
-  `--keep-loaded`); started when there is something to compose and stopped
-  on unload, a hold or a failure. The player, mpv as a child: audio only,
+  `--keep-loaded`); it runs only while the composer is on and there is
+  something to compose, and is stopped when the composer goes off, on a
+  hold or a failure. The player, mpv as a child: audio only,
   `--no-config`, driven over its JSON IPC socket beside the service's,
   PipeWire client name `desk-tunes`. Every program's path is baked in by
   `desk-tunes.nix`, except `hyprctl`, taken from PATH (with `-i 0` when
   `HYPRLAND_INSTANCE_SIGNATURE` is unset).
-- **Idle** (nothing playing, the model unloaded): it blocks on its sockets
-  with no timer armed. After a start nothing plays until a genre is picked.
+- **Idle** (nothing playing, the composer off, no scrap waiting): it blocks
+  on its sockets with no timer armed. After a start nothing plays until a
+  genre is picked, and the composer is off.
+- **Playing and composing are separate.** Picking a genre plays the tunes
+  kept for it, shuffled (none twice until all have played); with none kept
+  nothing plays. A pick starts clean: not paused, not stopped, the old
+  genre's tune out of the player, the old genre's queued tunes dropped
+  (their files stay), and the composer off. Picking the genre already
+  picked does nothing. The composer is a switch (`compose`), off at the
+  service's start and after every pick, and only on with the weights in
+  place and a genre picked: then it keeps two finished tunes queued in that
+  genre, one job at a time, and the first one finished starts by itself
+  when nothing plays, unless the user stopped the player. Off cancels the
+  job and stops the model server.
 - **A tune**: the caption is the genre's caption, two different random
   "turns" from its list and `, instrumental`; the tempo a random whole BPM
   in the genre's range; lyrics `[Instrumental]`; 180 s. The language model
@@ -1949,34 +2010,48 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   plan for one tune is a failure. A backstop on the rendered audio: a run
   over 5 s under −50 dB that is not the tail discards the tune as a
   failure.
-- **Queue**: two finished tunes are kept ready behind the playing one, one
-  job at a time; a paused player gets its two and no more. Picking a genre
-  plays its kept tunes first, shuffled (none twice until all have played),
-  while new ones are composed; another genre cancels the job and drops the
-  old genre's queued tunes (their files stay). With no new tune ready, the
-  next one is a kept one. With two ready the model is `idle`, its server
-  running or not, so the panel offers U unload, not a load that would do
-  nothing.
+- **Queue**: what N plays next, in order: the finished new tunes, or with
+  none the next kept tune. A paused player gets its two and no more. With
+  two queued the model is `idle` (resting), its server running or not.
+  `play` plays a queue entry at once, the rest keeping their order.
+- **Scrap**: the playing tune (the next starts at once, or nothing plays),
+  a queue entry, or the job (cancelled, and another starts; no undo). The
+  tune leaves the player or the queue at once; its file moves to
+  `~/.cache/desk-tunes/scrapped/` and is deleted, with its cached waveform,
+  10 s later, or at once by the next scrap. `undo` within those 10 s puts
+  the file back and the tune at the head of the queue (while its genre is
+  still picked), without interrupting what plays. Only files named as the
+  service names its tunes, in a genre folder, can be scrapped.
+  `scrapped/` is emptied at the service's start.
+- **Estimate**: how long writing (from the first plan asked for to the plan
+  kept, rewrites included) and rendering (to the finished file) took is
+  recorded for each finished tune; the snapshot reports the medians of the
+  last 5 (`expect`, and the current stage's in `job`), nothing until one
+  tune has been timed.
 - **Player**: mpv restarted 2 s after it exits, doubling to a minute while
   it keeps exiting before a tune plays. A tune mpv cannot play is said in
   the snapshot's `error`; mpv goes on to the next tune in its playlist if
   there is one, else the player stops until Space (or a pick).
-- **Failures**: the job is cancelled and the server stopped; retried after
-  3 s the first time, then every 30 s, and `retry` (R) tries at once. A
-  finished tune resets the count. Playback is never interrupted by one.
+- **Failures** (only while the composer is on): the job is cancelled and
+  the server stopped; retried after 3 s the first time, then every 30 s,
+  and `retry` (R) tries at once. A finished tune resets the count, and so
+  does turning the composer off. Playback is never interrupted by one.
 - **Holds**: composing stops (the job cancelled, the server stopped) while a
   window of `hyprctl -j clients` has a class matching the games rule's
   regex in full (the `games` rule in `hypr/rules.lua`: Proton and Wine
   windows, not native Linux games), or while `MemAvailable` is under 6 GiB
   (the 780M's memory is system RAM). Checked before each job, every 10 s
   while one runs (the game only: the server's own use would trip the
-  memory check) and every 30 s while held; never while unloaded or before a
-  genre is picked. Tunes already made keep playing, and composing resumes
-  by itself. When `hyprctl` cannot be run or reached there is no game hold,
+  memory check) and every 30 s while held; only while the composer is on.
+  Tunes already made keep playing, and composing resumes by itself; a hold
+  leaves the switch on. When `hyprctl` cannot be run or reached there is no game hold,
   and the snapshot's `error` says so until it works again.
 - **The GPU**: always the Radeon 780M, never the RX 6800 XT, with no
   fallback. At every server start the service finds the 780M's Vulkan
-  index from `vulkaninfo --summary` by its PCI ids (`0x1002:0x1900`),
+  index from `vulkaninfo --summary` by its PCI ids (`0x1002:0x1900`), run
+  without `DISPLAY` and `WAYLAND_DISPLAY` (with `DISPLAY` set it opens an
+  X window for its surface section, and crashes in the unit's private
+  `/tmp`, which hides the X socket),
   counting devices as ggml does (discrete and integrated GPUs only, one per
   device UUID), since the order can change (an absent eGPU, say); passes
   `--device Vulkan<N>`; and checks the server's own `ggml_vulkan: N =
@@ -1996,7 +2071,8 @@ behaviour are the docstring at the top of `desk-tunes.py`.
   the newest 50 per genre are kept, and only files matching that pattern are
   ever deleted, never the playing or queued ones. A `.<tune file>.part`
   left by an encode that never finished is deleted at the service's start.
-  Waveforms in `~/.cache/desk-tunes/wave/`; the tune counter in
+  Waveforms in `~/.cache/desk-tunes/wave/`, scrapped tunes waiting for
+  their undo in `~/.cache/desk-tunes/scrapped/`; the stage timings in
   `~/.local/state/desk-tunes/state.json`, written atomically and only on a
   change.
 - **Config**: `desk-tunes-config.nix` generates the JSON the service reads
@@ -2015,8 +2091,9 @@ behaviour are the docstring at the top of `desk-tunes.py`.
 - **MPRIS**: mpv's own plugin (`mpvScripts.mpris`), so media keys and
   `playerctl` work with the panel closed: Play, Pause and Next (the same as
   N: the service keeps mpv's playlist as the playing tune and the next
-  one); Stop leaves the player stopped, with nothing restarted by itself
-  (Space in the panel starts it again); Previous does nothing. The bus name is
+  one); Stop leaves the player stopped (the snapshot's `stopped`), with
+  nothing started by itself until Space in the panel or a genre pick;
+  Previous does nothing. The bus name is
   `org.mpris.MediaPlayer2.mpv.desk-tunes.instance-<n>`.
 - **Speed** (measured before the build, by an agent's script, with the
   same model set on the 780M): a 180 s tune took 105 to 121 s from the
@@ -2283,11 +2360,19 @@ config on GitHub's runners, cause not known.
   (resume, a bad checksum, cancel, a download asked for in the same breath
   as a cancel, no client attached, the progress rate),
   the device (llvmpipe or the eGPU first, the 780M absent, the server
-  naming another card), the queue (and `idle`, not `unloaded`, on a load
-  with two ready), MPRIS (and Space after a Stop), kept tunes and idle (no
-  timer armed), silence and failures (the tail cut, a rewrite, the third,
-  the backstop, the retry times), holds (and `hyprctl` failing said in
-  `error` and cleared), the genres file changed, broken and fixed, keep-50
+  naming another card, `vulkaninfo` run without `DISPLAY` and
+  `WAYLAND_DISPLAY` and still read when it crashes after its output), the
+  composer switch (off at start and after a pick, kept tunes only while
+  off, on filling the queue and starting the first tune by itself, off
+  cancelling the job and stopping the server), the queue in each mode and
+  `play`, scrap (the playing tune, a queue entry, the job) and undo, the
+  10 s deletion with the cached waveform, a second scrap finishing the
+  first, `scrapped/` emptied at start, the stage timings and their medians
+  kept across a restart, a pick after a pause or a Stop with and without
+  kept tunes, `load` and `unload` refused, MPRIS (and Space after a Stop),
+  kept tunes and idle (no timer armed), silence and failures (the tail cut, a rewrite, the third,
+  the backstop, the retry times), holds (only with the composer on, leaving it
+  on; `hyprctl` failing said in `error` and cleared), the genres file changed, broken and fixed, keep-50
   touching only its own files and never the playing or next kept tune, mpv
   killed three times (restarted no sooner than 2 s, the service alive), a
   tune mpv cannot play (its reason in `error`, nothing more tried, cleared
@@ -2300,11 +2385,17 @@ config on GitHub's runners, cause not known.
   (`tests/tunes-panel/test-tunes-panel.js`) against snapshot lines
   hand-written in the service's format in `tests/tunes-panel/fixtures/`
   (one file per state; `"@-N"` or `"@+N"` in a time is N s before or after
-  the test's base time) and built in the test: every card, the strips and
-  the well, the link's states and back-off, the position between
-  snapshots, the waveform's columns, keys (Space with nothing playing and
-  one to start, G from the device card), the held-key rule, the footer,
-  the tick, the bar item and a protocol version other than 1.
+  the test's base time) and built in the test: every card; the three
+  sections (the job row's time left, never negative nor longer than the
+  estimate, the placeholder rows, the composer's wording in each state,
+  holds, failures, a rewrite after a silence); the chooser's selected
+  genre; queue selection, Enter and X on a row and on the job, the X hint
+  naming the tune; the undo footer and its countdown; a stop and a genre
+  change starting clean; the link's states and back-off; the position
+  between snapshots and a seek; the waveform's columns; every key in every
+  fixture, the held-key rule, the footer and the tick; the bar's note and
+  dot in every combination; the global scrap and its notification; and a
+  protocol version other than 1.
 - `nix build .#checks.x86_64-linux.system-panel`: runs
   `user/quickshell/system/decode.js` under node (`tests/system/test-system.js`)
   against invented gpu_metrics blobs (both layouts, unfilled fields, the

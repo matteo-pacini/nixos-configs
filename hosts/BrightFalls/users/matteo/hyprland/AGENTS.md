@@ -18,7 +18,8 @@ QML for Quickshell 0.3.2: bar, launcher, notifications, OSD, cheat sheet,
 session menu, polkit dialog, network, audio, calendar, system, Bluetooth,
 office, fleet, Tailscale, token, weather and tunes panels, tray menus, and
 a lock screen. The tunes panel has a service of its own, `desk-tunes`, a
-user unit that composes music on the iGPU with a local model and plays it.
+user unit that plays the tunes kept for a genre and, while its composer is
+switched on, composes new ones on the iGPU with a local model.
 
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
@@ -145,8 +146,9 @@ user's and are strict:
   devices (use test streams with unique client names, put volumes back).
 - After every save: `journalctl --user -u quickshell --since "-30s"
   --no-pager` must show `Configuration Loaded`, or fix the error it names at
-  once. No such line means no reload: only a changed `.qml` gives one, not a
-  `touch`, nor a `.js` changed alone (see "Practices", "Live work").
+  once. No such line means no reload: only a `.qml` file the shell loaded,
+  saved with different content, gives one; not a `touch`, not a new file,
+  nor a `.js` changed alone (see "Practices", "Live work").
 
 ### Permissions and being blocked
 
@@ -363,8 +365,9 @@ What working on this shell has taught: the rule, its reason, what taught it.
   token item's minute tick, weather (`desk-weather`, radar only while its
   page is open, and the bar item's minute tick), tunes (`desk-tunes
   attach`, blocked on the service's socket, which sends only on a change;
-  and the `desk-tunes` service itself, its own user unit, which composes and
-  plays with the panel closed and arms no timer while idle).
+  and the `desk-tunes` service itself, its own user unit, which plays with
+  the panel closed, composes only while its composer is on, and arms no
+  timer while idle).
 - **Helpers speak JSON lines, protocol in the `.py`'s docstring.** The QML
   forwards stderr (unread, Quickshell closes it: 4c8dacf), restarts at 2 s
   doubling to 60 s, and resets the back-off only on a healthy line.
@@ -405,8 +408,13 @@ What working on this shell has taught: the rule, its reason, what taught it.
 
 - **Repository first, then live as a group** (`.js` before `.qml`): a
   half-applied state logged warnings, so a mixed state is no test.
-- **Only a changed `.qml` reloads the shell**: not a `touch`, not a `.js`
-  alone (seen 2026-11-17).
+- **Only a changed `.qml` reloads the shell**: Quickshell watches only the
+  `.qml` files it loaded and their directories, and reloads only when a
+  loaded file's content differs from the running generation's; it never
+  watches a `.js` file (`src/core/scan.cpp` skips a non-directory import
+  before its `.js` branch). So not a `touch`, not a new file or directory,
+  not a `.js` alone: save a `.js` together with a `.qml` that imports it.
+  `desk-sync activate` reloads it over IPC instead (README, "Activation").
 - **Temporary hooks are removed, and their absence proven by `grep`.**
 
 ### Checklists
@@ -472,11 +480,11 @@ not.
 | `desk-fleet.nix`, `desk-fleet.py` | `desk-fleet`, the fleet panel's helper (JSON lines on stdin/stdout): probes this machine and its SSH mesh hosts read-only, reads the pipeline through `gh`, decides each host's row (`host_row()`, pure) and runs switch, boot and mode through `comin-deploy` and reboot through `systemctl reboot`, in private tmux sessions; the host list is generated from `lib/ssh-mesh.nix` and `lib/host-kinds.nix` (README, "Fleet: desk-fleet"). Run by `fleet/FleetShared.qml` |
 | `desk-tokens.nix`, `desk-tokens.py`, `desk-tokens-prices.json` | `desk-tokens`, the token panel's helper (JSON lines on stdin/stdout): reads Claude Code's transcripts incrementally into a SQLite index of replies (counters, ids, model, time, working directory; never text), folds working directories into projects (`fold_cwd()`, pure) and answers the overview, projects, project and days pages; the price table is built in (README, "Tokens: desk-tokens") |
 | `desk-weather.nix`, `desk-weather.py` | `desk-weather`, the weather panel's helper (JSON lines on stdin/stdout): Open-Meteo forecast and air quality, Met Office warnings from the whole-UK feed filtered locally, RainViewer's past radar tiles of a fixed block (only while the radar page is open), the outdoor sensor over MQTT, subscribe only; the location, region and broker in the `brightfalls/weather` secret, not declared yet (README, "Weather: desk-weather"). Run by `weather/WeatherShared.qml` |
-| `desk-tunes.nix`, `desk-tunes.py` | `desk-tunes`, the tunes panel's service and client: `serve` (the `desk-tunes` user unit) runs the model server and mpv as children, keeps the queue, the files and the weights download, decides holds, silences and the device; `attach` relays the shell's JSON lines to its socket. Protocol, files and behaviour in the `.py`'s docstring (README, "Tunes: desk-tunes"). Run by `tunes/TunesShared.qml` (attach only) |
+| `desk-tunes.nix`, `desk-tunes.py` | `desk-tunes`, the tunes panel's service and client: `serve` (the `desk-tunes` user unit) runs mpv and, while the composer switch is on, the model server as children, keeps the queue, the files, scraps and their undo, the stage timings and the weights download, decides holds, silences and the device; `attach` relays the shell's JSON lines to its socket. Protocol, files and behaviour in the `.py`'s docstring (README, "Tunes: desk-tunes"). Run by `tunes/TunesShared.qml` (attach only) |
 | `desk-tunes-config.nix` | The service's config JSON: the model files (pinned revision, sha256, sizes), the silence code, the memory threshold, the 780M's PCI ids, the game regex read from `user/hypr/rules.lua`'s `games` rule (an `assert` fails evaluation if that rule's shape changes), keep, ahead, duration |
 | `../../../../../packages/acestep-cpp.nix` | `ace-server` from acestep.cpp, with ggml's Vulkan backend: the model server `desk-tunes` runs; also the `acestep-cpp` check |
 | `weather-coast.nix` | The radar map's British Isles outline from Natural Earth (pinned by hash), clipped and simplified; installed at `~/.local/share/desk/weather/coast.json` by `default.nix` |
-| `desk-sync.sh` | `desk-sync activate|status|reset|pull` |
+| `desk-sync.sh` | `desk-sync activate|status|reset|pull`; `activate` reloads the shell once over IPC (`qs ipc … call shell reload`) after writing any file under `quickshell/` (README, "Activation") |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
 | `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `tunes/` (`run.sh`: desk-tunes' pure functions, then the service built for testing against a fake `ace-server`, `vulkaninfo` (invented outputs in `fixtures/`), `hyprctl` and Hugging Face, with the real ffmpeg, mpv and its MPRIS plugin on a private bus), `tunes-panel/` (tunes.js under node, hand-written snapshot lines in `fixtures/`), the `acestep-cpp` check (the package build alone), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
@@ -494,7 +502,9 @@ not.
 rules), `bindings.lua` (every bind, through `bind()`), `autostart.lua`.
 
 **Quickshell** (`user/quickshell/`). `shell.qml` loads one line per
-component. Root components, one per file:
+component, and holds the `shell` IPC target, whose `reload` is a soft reload
+of the whole shell (what `desk-sync activate` calls). Root components, one
+per file:
 
 | File | What |
 |------|------|
@@ -527,7 +537,7 @@ Directories (`import qs.<dir>`):
 | `tailscale/` | `TailscaleShared.qml` (shared singleton: `screen`, `toggleRequested`, the light and full `tailscale status` calls, the watchdog, `answer`, the mesh-host file), `tailscale.js` (all Tailscale decisions: a status call's result sorted into a state, the lines over it, the well, groups, rows, chips, second lines, details, copy choices, ssh allowed or why not, key to action, navigation by peer ID, footer hints, bar look, last-seen, expiry and byte wording; node-tested) |
 | `tokens/` | `TokensShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tokens` only while the panel is open and restarts it, the panel state `st`, `key()`, the limits file and its directory watch, the minute tick, `limits`, `said`), `tokens.js` (all token-panel decisions: applying the helper's answers and events and which of them reset the restart back-off, re-asks, every page's view and texts, key to action, footer hints, the limits file's reading, its "as of" times and the line after R, the bar look, the hand-set `PLAN`; node-tested) |
 | `weather/` | `WeatherShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-weather` always and restarts it, `st`, the open panel's `ui`, `key()`, `send()`, radar off on every close, the minute tick, the coast file), `weather.js` (all weather decisions: applying helper events, which reset the back-off, the forecast and radar pages' views, the bar view, keys, the footer, the errors; node-tested), `paths.js` (the drawings' geometry: art paths, scene layout, rain groups, the radar's projection; node-tested), the drawings `ConditionArt.qml`, `SkyScene.qml`, `HoursStrip.qml`, `RadarMap.qml`, `SensorRow.qml` (the outdoor sensor's battery and link row) (with `ArtSun.qml`, `ArtMoon.qml`, `ArtCloud.qml`, `WarnTriangle.qml`, `SectionLine.qml`), `Tints.qml` (singleton: the art-only tints), `Preview.qml` (every drawing with fixed inputs, for a temporary window; not loaded) |
-| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the well, the waveform's columns, the position between snapshots, keys, clicks, the footer, the bar view; node-tested), the drawings `DotWave.qml` (the dot waveform) and `Strip.qml` (the tinted strip) |
+| `tunes/` | `TunesShared.qml` (shared singleton: `screen`, `toggleRequested`, runs `desk-tunes attach` always and restarts it, `st`, the open panel's `ui`, `key()`, `pick()`, `seek()`, `send()`, `scrapPlaying()` (the IPC `scrap`: the command and one notification through `common/notify.js`), `refresh` on every open, the one-second tick only while open and `needsTick()`), `tunes.js` (all tunes decisions: applying snapshots and the link's exits, which reset the back-off, every card's view and texts, the three sections (now playing, up next with the job and its time left, the composer), queue selection, the waveform's columns, the position between snapshots, keys, clicks, the footer and its undo line, the global scrap, the bar view; node-tested), the drawings `SecHead.qml` (a section's heading, with the composer's switch), `DotWave.qml` (the dot waveform, nine rows) and `Strip.qml` (the tinted strip) |
 | `tray/` | `TrayMenu.qml` (root component: a tray icon's right-click menu over DBusMenu with `QsMenuOpener`, `tray` in `Dropdowns`; no IPC, no bind, no footer), `TrayShared.qml` (shared singleton: `screen`, `openRequested(item, screen)`), `menu.js` (header name, entry marks; node-tested) |
 | `lock/` | `LockFace.qml`, one monitor's lock face; used only by `lock.qml` |
 
@@ -593,45 +603,45 @@ read-only), weather panel (Super+H: sky, figures, warnings, hours, days, air
 quality and the outdoor sensor's battery and link row, and the radar page
 on M, through `desk-weather`).
 
-**Built on a branch, never loaded or run live:** the tunes panel (Super+M:
-endless generated instrumental music in a genre, through the `desk-tunes`
-service, `ace-server` on the Radeon 780M and mpv; README, "Tunes panel"
-and "Tunes: desk-tunes"). No file of it is in the live `~/.config`, the
-unit has never run, the weights have never been downloaded by it, and
-nobody has listened to a tune it made. What rests on what:
-- Proven on real hardware, by an agent's script, before the build (a
-  spike with the same model set and a hand-run `ace-server`, not the
-  service): on the 780M a 180 s tune in 105 to 121 s, about 5.8 GiB of
-  system RAM while composing, the RX 6800 XT's memory untouched; ggml's
-  Vulkan numbering against `vulkaninfo`, `--device` pinning each card; a
-  cancel stopping the job within a second; long silences in some of the 4B
-  language model's plans (the reason for the silence rule). Also by an
-  agent's script: a transient unit with the service's sandbox settings
-  could write its data, music and runtime directories but not the rest of
-  the home, read `~/.config/desk`, and reach the
-  session bus, the PipeWire socket, the iGPU's render node, `hyprctl -i 0`,
-  Hugging Face and a loopback port. Not probed: Vulkan inside the sandbox,
-  audio out, MPRIS on the real bus.
-- Built: `ace-server` (the `acestep-cpp` check; `--help` runs), the
-  toplevel with the unit (`systemd-analyze --user verify` clean).
-- Simulated: everything in `tunes-helper` (the service against a fake
+**Tunes, on a branch (`feat/brightfalls-tunes`), not on `master`:** the
+tunes panel (Super+M, Super+Shift+M: instrumental music in a genre through
+the `desk-tunes` service, composed by `ace-server` on the Radeon 780M and
+played by mpv; README, "Tunes panel" and "Tunes: desk-tunes"). Two
+versions, only the first deployed:
+- **The first design** (playing and composing one thing, U to unload) was
+  deployed and run live. Proven on real hardware, by the owner at the
+  keyboard with the coordinator reading the logs: the unit and its sandbox,
+  with Vulkan on the 780M and audio out; the weights downloaded with their
+  checksums; a first tune about two minutes after a genre was picked; a
+  silent tail trimmed; pause; the RX 6800 XT's memory flat while composing;
+  Super+M. Its `vulkaninfo` call crashed in the unit (a core dump at every
+  model-server start; the device was still resolved from the output
+  printed before the crash).
+- **Built and checked in the repository only, not deployed:** the redesign
+  (the three sections, the composer switch off at start and after every
+  pick, scrap and undo, queue selection, the estimate, the bar's dot,
+  Super+Shift+M and the IPC `scrap`), `vulkaninfo` run without `DISPLAY`
+  and `WAYLAND_DISPLAY`, and the shell reload at the end of `desk-sync
+  activate`. Simulated: `tunes-helper` (the service against a fake
   `ace-server`, `vulkaninfo`, `hyprctl` and Hugging Face, with the real
-  ffmpeg, mpv to the null output and mpv's MPRIS plugin on a private bus)
-  and `tunes-panel` (tunes.js against hand-written snapshots).
-  `quickshell-lint` and `hypr-config` accept the QML and Super+M.
-- Expected only: all QML (layout, the dots, clicks, hover, the card's
-  height, the bar item's tones, the tick, the attach back-off, no binding
-  loops or JS errors); the real model server on the 780M under the unit;
-  the real download (Hugging Face redirects to a CDN); real `hyprctl -j
-  clients` while a game runs; that the game regex is matched the way
-  Hyprland matches the rule (the service full-matches it; Hyprland's mode
-  not read); media keys on the real session bus with another player open;
-  Mesa honouring `MESA_SHADER_CACHE_DIR`; mpv's reason in `error` for a
-  real audio-output failure in the unit (simulated only with a file that is
-  not audio); keeping ahead of playback over an hour; Super+M free in the
-  running Hyprland (checked in the repository's binds only).
-- The Shell Atlas has no tunes section yet: it waits for the owner's live
-  test, and is drawn then.
+  ffmpeg, mpv to the null output and mpv's MPRIS plugin on a private bus),
+  `tunes-panel` (tunes.js against hand-written snapshots) and `desk-sync`
+  (the reload against a stand-in `qs`). `quickshell-lint` and `hypr-config`
+  accept the QML, Super+M and Super+Shift+M. Proven on real hardware by an
+  agent's script: the crash and its fix (`vulkaninfo` in a transient unit
+  with the service's sandbox crashes with `DISPLAY` set and lists the same
+  devices without it).
+- Expected only: all the redesign's QML (layout, the switch, the row
+  selection, the bar's dot, the notification of the global scrap, no
+  binding loops or JS errors); the scrap's move between the music folder
+  and the cache in the real unit (separate bind mounts, hence a copy, not a
+  rename); that the deployed unit leaves no `vulkaninfo` core; the real
+  `qs` found by the activation's reload; the estimate from real timings;
+  real `hyprctl -j clients` while a game runs, and the game regex matched
+  as Hyprland matches the rule; media keys on the real session bus with
+  another player open; keeping ahead of playback over an hour; Super+Shift+M
+  free in the running Hyprland (checked in the repository's binds only).
+- The Shell Atlas has no tunes section yet.
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and
@@ -659,6 +669,19 @@ live on 2026-11-22 and load without a warning from them; Super+H is loaded
   bar's weather item should show the outdoor temperature within a minute or
   two. Until the owner has seen that, everything with the real helper is
   expected only.
+- The shell reload: the running shell has no `shell` IPC target until the
+  switch that brings it, so that switch's activation prints `desk-sync:
+  quickshell: not reloaded: …` and the shell may be left on a half-written
+  tree. Read `journalctl --user -u quickshell --since "-2min" --no-pager`:
+  if the last load line is not `Configuration Loaded`, nudge it once (save
+  `~/.config/quickshell/shell.qml` unchanged: that switch changed it, so its
+  content differs from the running generation's; or `systemctl --user
+  restart quickshell`). From the next switch on, activation ends with
+  `desk-sync: quickshell: reloaded`.
+- Tunes: one `hyprctl reload` (then `hyprctl configerrors`) for
+  Super+Shift+M, and a look at `hyprctl binds` that it is free. Note
+  `coredumpctl list` for `vulkaninfo` before turning the composer on; the
+  count must not grow.
 
 From the token panel's deploy, done or not by now, no report says:
 - One `hyprctl reload` (then `hyprctl configerrors`) for Super+O, Super+G,
