@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PING_EVERY_MS, isTime, labelsOf, verdict, wants } from "../../claude-mods/keep-warm/hooks/logic.js";
+import { LOG_FILE, PING_EVERY_MS, isTime, labelsOf, logLine, verdict, wants } from "../../claude-mods/keep-warm/hooks/logic.js";
 import { register } from "../../claude-mods/keep-warm/hooks/register.ts";
 
 const NOW = 1795038000000;
@@ -68,24 +68,35 @@ test("verdict: no answer", () => {
 });
 
 // register.ts against a stand-in for Claude Code's mod engine: `handlers` by
-// event name, and every `hc` call it made, as its arguments.
-function engine(env = { HC_TERMINAL_ID: "t56" }) {
+// event name, every `hc` call it made as its arguments, every other command as
+// { argv, stdin }, and `tick()` to run its timer with the clock at `at` (ms).
+// `labels` are what `hc get` reports; `fork` answers $.model.fork.
+function engine({ env = { HC_TERMINAL_ID: "t56", HOME: "/home/u" }, labels = {}, fork = async () => undefined } = {}) {
   const handlers = {};
   const hcCalls = [];
+  const runs = [];
+  let clock = NOW;
+  let timer;
   const $ = {
     env: { get: async (name) => env[name] },
     process: {
-      run: async ([program, ...args]) => {
-        assert.equal(program, "hc");
+      run: async ([program, ...args], init) => {
+        if (program !== "hc") {
+          runs.push({ argv: [program, ...args], stdin: init?.stdin });
+          return { exitCode: 0, stdout: "" };
+        }
         hcCalls.push(args);
-        return { exitCode: 0, stdout: "{}" };
+        return { exitCode: 0, stdout: args[0] === "get" ? JSON.stringify({ labels }) : "{}" };
       },
     },
-    clock: { now: async () => NOW, every: () => {} },
+    clock: { now: async () => clock, every: (ms, f) => { timer = f; } },
+    model: { fork },
+    session: { id: async () => "3b02cc2a" },
   };
   register((name, handler) => { handlers[name] = handler; });
   const fire = (name, e = {}) => handlers[name]($, e, () => {});
-  return { fire, hcCalls };
+  const tick = (at) => { clock = at; return timer(); };
+  return { fire, tick, hcCalls, runs };
 }
 
 const CLEAR = ["label", "t56", "agent.warm_failed="];
@@ -106,8 +117,51 @@ test("register: a turn clears the failure label though this session never stoppe
 });
 
 test("register: outside a herdr-core terminal it calls nothing", async () => {
-  const { fire, hcCalls } = engine({});
+  const { fire, hcCalls } = engine({ env: {} });
   await fire("session.start", { isInteractive: true });
   await fire("turn.complete");
   assert.deepEqual(hcCalls, []);
+});
+
+test("logLine: an answered ping, with its verdict and the fork's token counts", () => {
+  const usage = reply(32907, 219882).usage;
+  assert.deepEqual(JSON.parse(logLine({ now: NOW + 999, terminal: "t56", session: "s1", reply: { ...reply(32907, 219882), text: "ok", effort: "high" }, state: "cold", stopped: true })), {
+    at: NOW / 1000, terminal: "t56", session: "s1", state: "cold", stopped: true, effort: "high", usage,
+  });
+  assert.ok(logLine({ now: NOW, reply: reply(1, 0), state: "warm", stopped: false }).endsWith("}\n"), "one line each");
+});
+
+test("logLine: a ping with no answer says why", () => {
+  const apiError = { isAnswered: false, reason: "api-error", status: 529, error: "overloaded", usage: reply(0, 0).usage };
+  assert.deepEqual(JSON.parse(logLine({ now: NOW, terminal: "t56", reply: apiError, state: "failed", stopped: false })), {
+    at: NOW / 1000, terminal: "t56", state: "failed", stopped: false, reason: "api-error", status: 529, error: "overloaded", usage: apiError.usage,
+  });
+  const threw = JSON.parse(logLine({ now: NOW, terminal: "t56", thrown: new Error("socket hang up"), state: "failed", stopped: true }));
+  assert.equal(threw.reason, "threw");
+  assert.equal(threw.error, "Error: socket hang up");
+  assert.equal(threw.usage, undefined);
+});
+
+test("register: each ping appends its log line to the shared file", async () => {
+  const forks = [reply(253005, 0), reply(32907, 219882)];
+  const { fire, tick, runs, hcCalls } = engine({ labels: on(120), fork: async () => forks.shift() });
+  await fire("session.start", { isInteractive: true });
+  await tick(NOW + PING_EVERY_MS);
+  await tick(NOW + 2 * PING_EVERY_MS);
+  assert.equal(runs.length, 2);
+  for (const run of runs) assert.deepEqual(run.argv.slice(0, 2).concat(run.argv.slice(3)), ["sh", "-c", "sh", `/home/u/${LOG_FILE}`]);
+  const [first, second] = runs.map((run) => JSON.parse(run.stdin));
+  assert.deepEqual([first.state, first.stopped, first.usage.cache_read_input_tokens], ["warm", false, 253005]);
+  assert.deepEqual([second.state, second.stopped, second.usage.cache_creation_input_tokens, second.session], ["cold", true, 219882, "3b02cc2a"]);
+  assert.deepEqual(hcCalls.at(-1), ["label", "t56", "agent.warm_state=", `agent.warm_failed=${(NOW + 2 * PING_EVERY_MS) / 1000}`]);
+  await tick(NOW + 3 * PING_EVERY_MS);
+  assert.equal(runs.length, 2, "stopped: no more pings, no more lines");
+});
+
+test("register: the second unanswered ping is logged as the one that stopped", async () => {
+  const { fire, tick, runs } = engine({ labels: on(120), fork: async () => { throw new Error("socket hang up"); } });
+  await fire("session.start", { isInteractive: true });
+  await tick(NOW + PING_EVERY_MS);
+  await tick(NOW + 2 * PING_EVERY_MS);
+  assert.deepEqual(runs.map((run) => JSON.parse(run.stdin)).map((l) => [l.state, l.stopped, l.reason]), [["failed", false, "threw"], ["failed", true, "threw"]]);
 });

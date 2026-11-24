@@ -136,6 +136,14 @@ the person turns it off, by the switch or by quitting the session.
   as "Cache cold" and `agent-list` shows once as a notification, and stops
   until the agent's next turn. Two refreshes with no answer do the same.
   It doesn't refresh a cache whose expiry has passed either.
+- **Every refresh is logged** to `~/.local/state/herdr-keep-warm/pings.jsonl`,
+  one JSON object a line from every session on the machine: `at` (epoch
+  seconds), `terminal`, `session`, `state` (`warm`, `cold` or `failed`),
+  `stopped` (this refresh gave up), the fork's `usage` and `effort`, and for
+  one with no answer its `reason`, `status` and `error`. That tells a cache
+  that was gone apart from refreshes that got no answer, which
+  `agent.warm_failed` alone doesn't. The file isn't rotated: one line per
+  switched-on session every 25 idle minutes.
 - **A session started before the mod was installed doesn't have it.** Its
   switch counts down and goes cold. Restarting the agent (the OUTDATED
   button, or `/exit` and `claude --resume`) loads it.

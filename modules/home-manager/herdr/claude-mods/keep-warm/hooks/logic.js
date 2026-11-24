@@ -54,3 +54,26 @@ export function verdict(reply) {
   // from the conversation and stays warm, so a cold ping still reads that much.
   return written * 10 > read + written + plain ? "cold" : "warm";
 }
+
+/** The ping log, under the home directory: one JSON object a line. */
+export const LOG_FILE = ".local/state/herdr-keep-warm/pings.jsonl";
+
+/** The log line, newline included, for the ping started at `now` (ms) on
+ *  `terminal` in `session`: its `reply` (undefined when the fork threw
+ *  `thrown`), the `state` verdict() made of it, and whether it `stopped` the
+ *  pings. `at` is in epoch seconds, as agent.warm_failed is; `usage` is the
+ *  fork's token counts in the API's spelling. */
+export function logLine({ now, terminal, session, reply, thrown, state, stopped }) {
+  return JSON.stringify({
+    at: Math.floor(now / 1000),
+    terminal,
+    session,
+    state,
+    stopped,
+    reason: reply === undefined ? "threw" : reply.isAnswered ? undefined : reply.reason,
+    status: reply?.status,
+    error: reply?.error ?? (thrown === undefined ? undefined : String(thrown)),
+    effort: reply?.effort,
+    usage: reply?.usage,
+  }) + "\n";
+}
