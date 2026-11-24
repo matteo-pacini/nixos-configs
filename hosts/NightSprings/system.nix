@@ -9,8 +9,8 @@
 
   custom.xcode = {
     enable = true;
-    versions = [ "27.0" ];
-    active = "27.0";
+    versions = [ "27.2" ];
+    active = "27.2";
   };
 
   services.tailscale.enable = true;

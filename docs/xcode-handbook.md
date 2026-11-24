@@ -64,5 +64,4 @@ rm -rf ~/Applications/Xcode-26.3.0.app
 | Module (`custom.xcode`) | `modules/darwin/xcode.nix` |
 | Version → hash | `modules/darwin/xcode-versions.json` |
 | `xcode-fetch` | `packages/xcode-fetch.{nix,sh}`, exposed as `apps.aarch64-darwin.xcode-fetch` |
-| xcodes 2.1.0 (overlay) | `overlays/shared.nix`, `packages/xcodes/generated/` |
 | CI check | `.github/workflows/build.yml`, `pr-build.yml` |
