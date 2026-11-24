@@ -13,6 +13,8 @@ work) is in [AGENTS.md](AGENTS.md).
 - [Activation](#activation)
 - [desk-sync](#desk-sync)
 - [Editing live](#editing-live)
+- [desk-nest](#desk-nest) (the shell in a sealed nested Hyprland, on
+  fixtures)
 - [Quickshell](#quickshell): [Launcher](#launcher), [Bar](#bar),
   [Notifications](#notifications), [OSD](#osd), [Cheat sheet](#cheat-sheet),
   [Session menu](#session-menu), [Polkit dialog](#polkit-dialog),
@@ -191,6 +193,169 @@ and `pull` do not see them until they are added under `user/` and deployed.
 4. To back out: `desk-sync reset hypr/bindings.lua`, then reload.
 5. To keep it: `desk-sync pull <checkout>`, review and commit there. After the
    next deploy the live file matches the store copy again and is `clean`.
+
+Every save here reloads the shell the session runs. To look at a panel
+while developing it, [desk-nest](#desk-nest) is the preferred way: it shows
+a checkout's shell on fixture data and leaves the running one alone.
+
+## desk-nest
+
+`desk-nest` runs the shell from a checkout, or any part of it, inside a
+nested Hyprland that is sealed off from the session, on fixture data. It is
+for developing and looking at panels without touching the shell the session
+runs. It is installed by `default.nix` (`desk-nest.nix`, `desk-nest.sh`);
+the harness it loads is in `nest/` and is never installed into `~/.config`.
+
+### The seal
+
+A Hyprland started by hand inside the session believes it has a seat
+session of its own, so it imports its environment into the user's systemd
+at start and stops `graphical-session.target` when it exits, which stops the
+session's compositor and everything bound to it. desk-nest starts it so that
+it cannot:
+
+- **Hyprland's own switches.** `HYPRLAND_NO_SD_VARS`, `HYPRLAND_NO_SD_TARGET`
+  and `HYPRLAND_NO_SD_NOTIFY` turn the systemd work off, and
+  `LIBSEAT_BACKEND` names a backend that does not exist, so it opens no seat
+  session and runs as a plain Wayland client of the session.
+- **A sandbox around it** (bubblewrap). Its own process, IPC, network and
+  host-name namespaces; the root file system read-only; only `/dev/dri`
+  from `/dev` (no input devices, no terminals); empty `/tmp`, `/run/dbus`
+  and `/run/systemd` (no system bus, no logind, no systemd sockets); an
+  empty runtime directory with only the session's Wayland socket bound back
+  in (no user systemd, no session bus, no PipeWire, no host Hyprland
+  sockets); a cleared environment; private XDG config, data, cache and state
+  homes; a private session bus; no XWayland; no update or donation popups.
+  It dies with the process that started it.
+- **Nothing real behind the shell's commands.** Inside, `PATH` is the
+  checkout's `nest/fakes/bin` first, then only the tools Nix gives
+  `desk-nest`, never the user's `PATH`. Every command the shell runs that
+  would act outside is a fake (it answers from fixtures), a stub (it logs
+  the call and does nothing) or a wrapper (it answers some calls and passes
+  the rest to the real tool, which inside reaches only the nest). The
+  `nest-commands` check fails when the shell gains a command that is none of
+  these and not listed as harmless ([Tests](#tests)).
+- **The host check.** At `up` desk-nest records the user environment
+  (`systemctl --user show-environment`), the state of
+  `graphical-session.target`, `wayland-wm@hyprland.desktop.service`,
+  `wayland-session@hyprland.desktop.target`, `hyprland-session.target` and
+  `quickshell.service`, `hyprctl instances` and the user journal's cursor.
+  `up`, `check` and `down` compare the host with that record and print
+  `host unchanged` or exactly what differs; a journal line after the cursor
+  about those units, or any `Stopped target` line, counts as a difference. It refuses to start when the
+  session cannot be read.
+
+The window goes to a hidden special workspace, `nest`, and takes no focus
+(the `desk-nest` rule in `user/hypr/rules.lua`, which also keeps it
+drawing there; without that the nest draws one frame and stops). `up`
+checks where the window is and says so. The owner brings it forward to look
+(`--visible`, or toggling the special workspace `nest`); agents work from
+screenshots taken inside. The rule matches any nested Hyprland's window,
+not only desk-nest's.
+
+### Commands
+
+Run from inside a checkout of this repository: the tree shown is that
+checkout's `user/quickshell` (or the one `--tree <dir>` names). Its state,
+logs and screenshots are in `$XDG_STATE_HOME/desk-nest/<name>/` (default
+name `nest`), never under the checkout, and the checkout gains no file.
+
+- `desk-nest up [--visible] [--watch] [--fixtures <panel>=<name>]...
+  [component...]`: start a nest. With no component named it loads the
+  default set, every component of `shell.qml` but `System`; name one or more
+  (`Bar Weather`) for a subset. It waits for the nested shell's
+  `Configuration Loaded` (or prints its errors), runs the host check, and
+  prints where the logs and screenshots are. `--visible` shows the window
+  (it toggles the special workspace, so a second toggle hides it again);
+  `--watch` goes on to `watch`.
+- `desk-nest set [component...]`: change the loaded components in place, no
+  reload (none named: the default set). A panel's helper started by a
+  shared singleton keeps running until the next reload.
+- `desk-nest fixtures`: the fixture list. `desk-nest fixture <panel>
+  <name>`: switch a panel's fixture while it runs (or before `up`).
+- `desk-nest ipc <args>`: `qs ipc` against the nested shell (`ipc show`,
+  `ipc call weather toggle`): the loaded components' targets, plus
+  `dev.qml`'s `shell` (`reload`, as in `shell.qml`) and `harness`
+  (`components`).
+- `desk-nest shot [name]`: a screenshot inside the nest; prints the PNG's
+  path. It gives up after 10 s if the nest is not drawing.
+- `desk-nest reload`: copy the checkout's shell in again and reload it.
+  `desk-nest watch`: the same on every save in the checkout, `.js` files
+  included, until Ctrl+C.
+- `desk-nest lock`: the lock screen in the nest, with the stand-in check.
+- `desk-nest status`, `desk-nest check` (the host check alone),
+  `desk-nest down` (ends the nest, then the host check).
+- `desk-nest --name <name> …`: a second nest beside the first. One nest per
+  name runs at a time; a second `up` of the same name is refused.
+
+Logs: `qs.out` (the nested shell), `hyprland.out` (the nested compositor),
+`fakes.log` (every fake and stub call, every fixture switch),
+`supervisor.out`, `lock.out`.
+
+The shown tree is a copy, `<state>/tree`, refreshed by `up`, `reload` and
+`watch`, with `nest/dev.qml` at its root: Quickshell runs that file as its
+own config (`qs -p`), so `qs.*` imports resolve as for `shell.qml`. The
+nested Quickshell's own file watch is off; a save reaches it only through
+`reload` or `watch`.
+
+### Fixtures
+
+`nest/fixtures/index` lists them, one per line: `<panel> <name>`, then
+`place`, `inside` or nothing, then a description. A panel's first line is
+its default, set at `up`.
+
+- Most panels' fakes replay the fixtures their node checks already use
+  (`tests/<panel>-panel/fixtures`: weather, office, fleet, tokens,
+  Tailscale) and re-read the chosen name twice a second, so a switch shows
+  while the nest runs. Several weather fixtures joined by `+` replay one
+  after another.
+- `place` (calendar, limits): files the shell reads itself; desk-nest writes
+  them into the nest's private homes, times moved to now.
+- `inside` (notifications): an action, not a state, sent into a running
+  nest (`fixture notifications sample`).
+- Network (an invented wired device or none), the cheat sheet (the
+  session's binds as captured in `nest/fixtures/binds.json`, or the nest's
+  own) and `lock sleep` (logind's "about to sleep", which makes the
+  shell ask for a lock; the request reaches a stub and starts nothing).
+- `nest/fixtures/home/` seeds the private homes: the palette, the Tailscale
+  mesh-host file, the `locked.json` files, the radar's coast outline.
+
+### What shows only an empty state
+
+No system bus, no PipeWire and no network inside, so: Polkit is never
+asked; Wi-Fi shows no device; the audio panel has no devices and the OSD no
+volume or Bluetooth changes; the Bluetooth panel has no adapter; the tray
+is empty unless a tray app runs in the nest. Speed tests fail, the launcher
+and the session menu launch nothing (stubs), the fleet refuses every action
+as read-only, and calendar sync never runs. `System` is out of the default
+set because it reads this machine's sensors; `up System` loads it, and it
+then shows the real machine's values, read-only. The bar reads the real
+temperatures read-only, as the live bar does.
+
+### The lock in the nest
+
+`desk-nest lock` runs `lock.qml` in the nest with one line added that points
+its PAM check at a stand-in (`nest/pam/`): only the word `nest-unlock`
+unlocks it. It is the real lock screen on the nest's display (faces, keys,
+"wrong", unlock and exit); the session is not locked. A real password can
+never work inside the sandbox (its PAM helper cannot read the password
+database there) and must never be typed into it. Not covered: the real PAM
+stack, the lock before sleep, notifications held back.
+
+### Recovery
+
+When the host check finds a difference while a nest runs, desk-nest says so
+and does not end the nest cleanly, because a clean exit is the path that
+talks to the session. It prints the recovery:
+
+1. `kill -9 <supervisor pid>` (the pid is in `<state>/supervisor`): the nest
+   ends with no cleanup.
+2. The `systemctl --user set-environment` and `unset-environment` lines that
+   put back the environment recorded at `up`.
+
+Never stop `hyprland-session.target`: it stops `graphical-session.target`
+and the session with it. If the session ends anyway, log in again at
+tuigreet on tty1; the nest's state is all in its state directory.
 
 ## Quickshell
 
@@ -2069,7 +2234,9 @@ config on GitHub's runners, cause not known.
   (`tests/quickshell-lint/`): lays `user/quickshell` out as Quickshell's
   scanner does (a `qmldir` per directory, module `qs.<dir>`, `singleton`
   from `pragma Singleton`) and runs Qt's `qmllint` on every QML file with
-  Quickshell's installed type files; then checks every `qs ipc call` in
+  Quickshell's installed type files, and desk-nest's `nest/dev.qml` at the
+  root of a separate copy of the tree (`run.sh --dev`; kept out of the IPC
+  part, since it declares `shell` a second time); then checks every `qs ipc call` in
   `bindings.lua`, `rescue.lua` and the QML against the `IpcHandler`s (the
   target and function exist, the argument count matches, every handler
   parameter has a type Quickshell carries, no target is declared twice);
@@ -2107,6 +2274,38 @@ config on GitHub's runners, cause not known.
     check each new warning against the new `.qmltypes` before allowing it.
   - It reads the repository's `user/quickshell`: a live edit is checked
     after `desk-sync pull`.
+- `nix build .#checks.x86_64-linux.desk-nest`: runs `desk-nest.sh` against
+  fake `bwrap`, `systemctl`, `hyprctl`, `journalctl`, `nsenter`, `grim` and
+  `qs` (`tests/desk-nest/run.sh`); no compositor starts. The seal's every
+  flag and environment variable, and that nothing else passes inside; the
+  refusals before a start (a detached terminal, no session, outside a
+  checkout, no harness, an unreadable host, an unknown component or
+  fixture); the copied tree, the lock's added line and the checkout left
+  without a new file; one nest per name; the host check catching each kind
+  of change, and `down` refusing a clean exit after one; `down` finding the
+  nested compositor and nothing else; a reused pid and a crash's stale
+  records left alone; each command's arguments; the stand-in PAM check
+  (`nest/pam/check.sh`) accepting only `nest-unlock`.
+- `nix build .#checks.x86_64-linux.nest-fakes`: runs the fakes in
+  `nest/fakes` as the shell runs them and reads their output with each
+  panel's `.js` under node, for every fixture in `nest/fixtures/index`, in
+  London time (`tests/nest-fakes/`): the index lists every weather, office,
+  fleet and Tailscale panel fixture and only those, `bin/` matches the fakes' names, a fixture switched while a fake
+  runs, commands answered, the wrappers' answers, every stub logging and
+  writing nothing else, `nest-place` and `nest-notify`.
+- `nix build .#checks.x86_64-linux.nest-commands`
+  (`tests/nest-commands/`): reads every command the shell can start
+  (`Process` commands in either arm of a ternary, `execDetached`, the
+  command arrays functions return, the commands of `sh -c` scripts) and
+  fails on one that is neither a name in `nest/fakes/bin` nor a `harmless`
+  line of its `allowlist`, on a command site it cannot read that is not a
+  `site` line there, on an allowlist line nothing uses, and on a Hyprland
+  dispatch that runs `exec`. It also holds `nest/dev.qml`'s component list
+  to `shell.qml`'s. Then faults planted in copies, which must fail. A new
+  command in the shell gets a fake or stub in `nest/fakes/fakes.py` and a
+  link in `bin/`, or, if it cannot reach outside the nest, a `harmless
+  <name> <why>` line; a command built from a variable gets a `site <file>
+  <expression> <where it resolves>` line.
 - `nix build .#checks.x86_64-linux.desk-unlock`: runs `desk-unlock.sh`
   against fake `hyprctl`, `systemctl` and `pkill`
   (`tests/desk-unlock/run.sh`): a crashed lock cleared at once, a stuck one
