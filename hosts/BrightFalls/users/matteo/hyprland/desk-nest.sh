@@ -64,8 +64,16 @@ cmd=$1
 shift
 [[ $name =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "a nest name is lower-case letters, digits and -"
 
-state_root=${XDG_STATE_HOME:-$HOME/.local/state}/desk-nest
+state_home=${XDG_STATE_HOME:-}
+# The XDG spec has a relative path ignored: it would put the state wherever
+# desk-nest runs, a checkout included.
+[[ $state_home == /* ]] || state_home=$HOME/.local/state
+state_root=$state_home/desk-nest
 state=$state_root/$name
+# The files the nest's processes write in the state directory, which is
+# otherwise read-only inside, so that the records the host trusts (the
+# snapshot, the pids, the checkout, the lock) cannot be changed or replaced.
+inside_files=(qs.out hyprland.out fakes.log nested.env lock.out)
 uid=$(id -u)
 host_rt=${XDG_RUNTIME_DIR:-/run/user/$uid}
 hypr_pkg=${hyprland%/bin/*}
@@ -129,6 +137,16 @@ host_session() {
   [ "$(systemctl --user is-active wayland-wm@hyprland.desktop.service || true)" = active ] ||
     die "the Hyprland session (wayland-wm@hyprland.desktop.service) is not active"
   [ -S "$host_rt/$host_wl" ] || die "the session's Wayland socket $host_rt/$host_wl does not exist"
+}
+
+# Without the window rule the nest's window maps on the owner's workspace
+# with the keyboard until place_window moves it. This reads the file, not
+# what Hyprland has loaded (hyprctl lists no window rules); place_window
+# still catches a rule not loaded yet.
+need_window_rule() {
+  local f=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/rules.lua
+  grep -qE '^[^-]*name *= *"desk-nest"' "$f" 2>/dev/null ||
+    die "$f has no window rule named desk-nest, so the nest's window would open on your workspace and take the keyboard. Deploy (the switch puts rules.lua in place unless it is edited live: desk-sync status), or copy the hl.window_rule named desk-nest from $hl/user/hypr/rules.lua into $f and run hyprctl reload. Not started."
 }
 
 host_hyprctl() {
@@ -303,11 +321,15 @@ host_differs() {
 }
 
 recovery() {
-  local sup
-  sup=$(cut -d' ' -f1 "$state/supervisor" 2>/dev/null || echo '<pid in '"$state"'/supervisor>')
-  echo "Do not end the nest cleanly: its cleanup talks to the session. Instead:"
-  echo "  kill -9 $sup    # ends the nest with no cleanup"
   local line k
+  if sandbox_pid >/dev/null 2>&1; then
+    echo "Do not end the nest cleanly: its cleanup talks to the session. Instead:"
+    echo "  kill -9 $(cut -d' ' -f1 "$state/supervisor")    # ends the nest with no cleanup"
+  else
+    # A pid recorded by a nest that has ended may be any process by now.
+    echo "No nest named $name is running: these are differences from the snapshot taken at up ($(date -r "$state/before.env" '+%F %T')), and may not be a nest's doing (a new login changes them too)."
+    echo "Only if a nest caused them, this puts the environment back:"
+  fi
   while IFS= read -r line; do
     grep -qxF -- "$line" "$state/now.env" || printf '  systemctl --user set-environment %q\n' "$line"
   done <"$state/before.env"
@@ -439,7 +461,10 @@ has_kind() { # index line, kind
 }
 
 # Writes the panel's control file, then, for a fixture the shell reads from
-# a file of its own, places that file. A fixture run inside needs the nest.
+# a file of its own, places that file: inside a running nest, else at the
+# next up (place_all). The nest's processes can write in the private homes,
+# so the host writes there only at up, after emptying them, before the nest
+# starts. A fixture run inside needs the nest.
 apply_fixture() { # panel name
   local line
   [[ $1 =~ ^[A-Za-z0-9_-]+$ ]] && [[ $2 =~ ^[A-Za-z0-9:.+_-]+$ ]] || die "no fixture '$1 $2'"
@@ -451,13 +476,14 @@ apply_fixture() { # panel name
   fi
   mkdir -p "$state/control"
   printf '%s\n' "$2" | put "$state/control/$1"
-  if has_kind "$line" place; then
-    NEST_STATE=$state NEST_FIXTURES=$nest/fixtures "$nest/fakes/bin/nest-place" "$1" "$2"
+  if has_kind "$line" place && ! lock_free; then
+    inside nest-place "$1" "$2"
   fi
 }
 
 seed() {
   local d p n line
+  rm -rf "$state/home"
   for d in config data cache state; do
     mkdir -p "$state/home/$d"
     # -L: some seed files are relative links into the checkout.
@@ -516,7 +542,7 @@ wait $hp
 '
 
 sandbox_cmd() {
-  local i
+  local i f
   inner_vars host-wayland
   sandbox=(
     bwrap --die-with-parent --new-session
@@ -528,8 +554,14 @@ sandbox_cmd() {
     --bind "$host_rt/$host_wl" "$host_rt/host-wayland"
     --ro-bind "$nest" "$nest"
     --ro-bind "$hl/tests" "$hl/tests"
-    --bind "$state" "$state"
-    --ro-bind "$state/tree" "$state/tree"
+    --ro-bind "$state" "$state"
+    --bind "$state/home" "$state/home"
+    --bind "$state/shots" "$state/shots"
+  )
+  for f in "${inside_files[@]}"; do
+    sandbox+=(--bind "$state/$f" "$state/$f")
+  done
+  sandbox+=(
     --bind "$state/home/runtime/desk" "$host_rt/desk"
     --clearenv
   )
@@ -548,7 +580,8 @@ supervise() {
   sandbox_cmd
   # Records a crashed nest left are replaced here, before anything reads them.
   printf '%s %s\n' "$$" "$(starttime $$)" >"$state/supervisor"
-  rm -f "$state/bwrap.info" "$state/sandbox" "$state/nested.env"
+  rm -f "$state/bwrap.info" "$state/sandbox"
+  : >"$state/nested.env"
   exec 3>"$state/bwrap.info"
   "${sandbox[@]}" &
   local bw=$! cp="" i
@@ -609,13 +642,17 @@ up() {
   use_checkout "$tree_arg"
   need_harness
   host_session
+  need_window_rule
   mkdir -p "$state"
   case $state/ in "$top"/*) die "the state directory $state is inside the checkout" ;; esac
   exec 9>>"$state/lock"
   flock -n 9 || die "a nest named $name is already running (desk-nest --name $name status). A second one needs another name: desk-nest --name <other> up"
   printf '%s\n' "$top" >"$state/checkout"
   printf '%s\n' "$host_wl" >"$state/host-wayland"
-  rm -f "$state/qs.out" "$state/hyprland.out"
+  for f in "${inside_files[@]}"; do
+    rm -f "$state/$f"
+    : >"$state/$f"
+  done
   sync_tree
   seed
   for f in "${fixtures[@]}"; do
@@ -631,6 +668,11 @@ up() {
   # The lock passes to the supervisor through fd 9.
   setsid -f "$0" --name "$name" _supervise </dev/null >"$state/supervisor.out" 2>&1
   exec 9>&-
+  # The nest is out of the terminal's reach from here: Ctrl+C takes it down,
+  # and a failed up says that it still runs and what to do.
+  next="desk-nest --name $name down ends it"
+  trap up_interrupted INT TERM
+  trap 'up_failed $?' EXIT
   for ((i = 0; i < 300; i++)); do
     if [ -f "$state/qs.out" ] && grep -q 'Configuration Loaded' "$state/qs.out"; then break; fi
     if [ -f "$state/qs.out" ] && grep -q 'Failed to load configuration' "$state/qs.out"; then break; fi
@@ -668,7 +710,19 @@ up() {
       echo "--visible: toggled the special workspace 'nest', but no monitor shows it"
     fi
   fi
-  check_and_report "the nest running" || exit 1
+  local rc=0
+  check_and_report "the nest running" || rc=$?
+  case $rc in
+  0) ;;
+  1)
+    next="follow the recovery above"
+    exit 1
+    ;;
+  *)
+    next="desk-nest --name $name check, and down once it says host unchanged"
+    exit 1
+    ;;
+  esac
   if [ $loaded = 1 ]; then
     echo "nest $name up: Configuration Loaded"
   else
@@ -678,8 +732,30 @@ up() {
   echo "  shell: $hl/user/quickshell (copied to $state/tree)"
   echo "  logs: $state/qs.out, $state/hyprland.out, $state/fakes.log"
   echo "  screenshots: desk-nest shot <name> -> $state/shots/"
+  next="fix the error and desk-nest --name $name reload, or desk-nest --name $name down"
   [ $loaded = 1 ] || exit 1
+  trap - INT TERM EXIT
   [ $watch = 0 ] || watch_tree
+}
+
+# up's EXIT trap once the supervisor runs.
+up_failed() { # exit status
+  [ "$1" = 0 ] || lock_free || echo "desk-nest: the nest named $name is still running: $next" >&2
+}
+
+# up's INT and TERM trap once the supervisor runs.
+up_interrupted() {
+  trap '' INT TERM
+  echo "desk-nest: interrupted; taking the nest down" >&2
+  local i
+  # down needs the sandbox's record and the nested display.
+  for ((i = 0; i < 150; i++)); do
+    lock_free && break
+    [ -s "$state/sandbox" ] && [ -s "$state/nested.env" ] && break
+    sleep 0.1
+  done
+  lock_free || "$0" --name "$name" down || true
+  exit 130
 }
 
 reload_shell() {
@@ -770,7 +846,12 @@ status() {
 
 case $cmd in
 up) up "$@" ;;
-_supervise) supervise ;;
+_supervise)
+  # Only as up starts it: holding the nest's lock on fd 9.
+  [ "$(readlink /proc/self/fd/9 2>/dev/null)" = "$(realpath -m "$state/lock")" ] && flock -n 9 ||
+    die "_supervise is started by desk-nest up only"
+  supervise
+  ;;
 set)
   saved_checkout
   write_components "$@"

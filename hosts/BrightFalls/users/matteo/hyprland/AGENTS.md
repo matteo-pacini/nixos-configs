@@ -148,7 +148,9 @@ user's and are strict:
   screenshots inside it; `desk-nest lock`, whose only accepted word is
   `nest-unlock`. Read the host
   check's verdict after `up` and `down`; on any difference, stop and report
-  with the recovery it printed (README, "desk-nest", "Recovery").
+  with the recovery it printed (README, "desk-nest", "Recovery"). If `up`
+  refuses for want of the window rule in `~/.config/hypr/rules.lua`, report
+  it: putting the rule live is the coordinator's.
 - May not: start, stop or restart the compositor or the session; run Hyprland
   nested other than through `desk-nest`; `desk-nest up --visible`, or
   bringing the nest's window forward, without the 10 s notification rule
@@ -643,25 +645,29 @@ call is expected only, as no one has looked.
 - The seal, with the prototype scripts the launcher was built from, by the
   coordinator's commands: five starts and five clean exits, among them the
   nested exit key pressed by the owner, the host unchanged every time.
-- One panel, then the whole shell, on fixtures in the nest (the
-  coordinator's commands); IPC, screenshots, a fixture switched while
-  running, components reduced in place (the same).
 - Real keys typed into a nested panel, by the owner.
-- The hidden special workspace keeping the nest drawing, with the
-  prototype's window rule (the coordinator's commands).
-- The lock in the nest with the stand-in word, typed by the owner.
+- The lock in the nest with the stand-in word, typed by the owner, with the
+  prototype.
 - A config link retargeted under a running Quickshell loads the new tree
   only after an explicit reload (the coordinator's commands).
-- The built `desk-nest`, from the merged checkout: one start and one clean
-  `down`, host unchanged, the shell loaded (the coordinator's commands).
+- The built `desk-nest`, from the merged checkout, by the coordinator's
+  commands over two runs: `up` with the window on the hidden special
+  workspace `nest`, floating at 1600x900, without focus (the focused window
+  the same before and after); `ipc show`; `shot`; a weather fixture switched
+  live (the panel and the bar changed within 2 s); a wrong fixture name
+  refused; `set Bar Weather` in place; `watch` reloading on save of a `.js`
+  file, twice; `check` and `down` saying `host unchanged`, with no window
+  or process left.
 
 Simulated only: everything in the `desk-nest`, `nest-fakes` and
-`nest-commands` checks. Not proven: reload on save (`watch`), a crash of the
-nest, a recording (no recording command exists); with the built launcher on
-real hardware, `fixture`, `set`, `ipc`, `shot`, `lock`, `watch`,
-`--visible` and `--name`; and the built launcher's window going to the
-hidden workspace: its first run opened visibly, and the window placement is
-being fixed.
+`nest-commands` checks, among them the state directory read-only inside
+the sandbox with only the nest's own files writable, the private homes
+emptied at `up`, a `place` fixture placed from inside, Ctrl+C at each stage
+of `up`, `up` failing with the nest still running, the refusal without the
+window rule in `~/.config/hypr/rules.lua`, and `check` with no nest
+running. Not proven with the built launcher: `lock`, `--visible`, `--name`
+(a second nest), a crash of the nest, a recording (no recording command
+exists).
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and

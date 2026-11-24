@@ -227,6 +227,16 @@ it cannot:
   sockets); a cleared environment; private XDG config, data, cache and state
   homes; a private session bus; no XWayland; no update or donation popups.
   It dies with the process that started it.
+- **The records desk-nest trusts are out of the nest's reach.** The state
+  directory is read-only inside, so nothing in the nest can change or
+  replace the snapshot taken at `up`, the recorded pids that `down` and the
+  other commands act on, the checkout's path or the lock. Writable inside
+  are only what the nest writes: the private homes (`home/`, where the shell
+  and its fakes keep their files), `shots/` (screenshots are taken inside)
+  and the logs `qs.out`, `hyprland.out`, `fakes.log`, `lock.out` and
+  `nested.env` (the nested display's name). desk-nest never writes into
+  the homes while a nest runs: `up` empties them and seeds them again
+  before the nest starts, and a `place` fixture is placed from inside.
 - **Nothing real behind the shell's commands.** Inside, `PATH` is the
   checkout's `nest/fakes/bin` first, then only the tools Nix gives
   `desk-nest`, never the user's `PATH`. Every command the shell runs that
@@ -242,13 +252,19 @@ it cannot:
   `quickshell.service`, `hyprctl instances` and the user journal's cursor.
   `up`, `check` and `down` compare the host with that record and print
   `host unchanged` or exactly what differs; a journal line after the cursor
-  about those units, or any `Stopped target` line, counts as a difference. It refuses to start when the
-  session cannot be read.
+  about those units, or any `Stopped target` line, counts as a difference,
+  so the owner restarting the shell while a nest runs also reads as
+  `HOST CHANGED`. It refuses to start when the session cannot be read.
 
 The window goes to a hidden special workspace, `nest`, and takes no focus
 (the `desk-nest` rule in `user/hypr/rules.lua`, which also keeps it
 drawing there; without that the nest draws one frame and stops). `up`
-checks where the window is and says so. The owner brings it forward to look
+refuses to start, `--visible` included, when `~/.config/hypr/rules.lua` has
+no rule named `desk-nest`, and says what to do (deploy, or copy the rule
+into that file and `hyprctl reload`). That reads the file, not what
+Hyprland has loaded, so `up` also checks where the window is and says so;
+if it landed elsewhere, `up` moves it to `nest` and gives focus back, or
+takes the nest down. The owner brings it forward to look
 (`--visible`, or toggling the special workspace `nest`); agents work from
 screenshots taken inside. The rule matches any nested Hyprland's window,
 not only desk-nest's.
@@ -258,7 +274,8 @@ not only desk-nest's.
 Run from inside a checkout of this repository: the tree shown is that
 checkout's `user/quickshell` (or the one `--tree <dir>` names). Its state,
 logs and screenshots are in `$XDG_STATE_HOME/desk-nest/<name>/` (default
-name `nest`), never under the checkout, and the checkout gains no file.
+name `nest`; `~/.local/state` when `XDG_STATE_HOME` is unset or not an
+absolute path), never under the checkout, and the checkout gains no file.
 
 - `desk-nest up [--visible] [--watch] [--fixtures <panel>=<name>]...
   [component...]`: start a nest. With no component named it loads the
@@ -267,12 +284,15 @@ name `nest`), never under the checkout, and the checkout gains no file.
   `Configuration Loaded` (or prints its errors), runs the host check, and
   prints where the logs and screenshots are. `--visible` shows the window
   (it toggles the special workspace, so a second toggle hides it again);
-  `--watch` goes on to `watch`.
+  `--watch` goes on to `watch`. Ctrl+C once the nest has started takes it
+  down (with the host check); an `up` that fails with the nest still
+  running says so and what to do next.
 - `desk-nest set [component...]`: change the loaded components in place, no
   reload (none named: the default set). A panel's helper started by a
   shared singleton keeps running until the next reload.
 - `desk-nest fixtures`: the fixture list. `desk-nest fixture <panel>
-  <name>`: switch a panel's fixture while it runs (or before `up`).
+  <name>`: switch a panel's fixture while it runs (or before `up`, for the
+  next one).
 - `desk-nest ipc <args>`: `qs ipc` against the nested shell (`ipc show`,
   `ipc call weather toggle`): the loaded components' targets, plus
   `dev.qml`'s `shell` (`reload`, as in `shell.qml`) and `harness`
@@ -309,8 +329,9 @@ its default, set at `up`.
   Tailscale) and re-read the chosen name twice a second, so a switch shows
   while the nest runs. Several weather fixtures joined by `+` replay one
   after another.
-- `place` (calendar, limits): files the shell reads itself; desk-nest writes
-  them into the nest's private homes, times moved to now.
+- `place` (calendar, limits): files the shell reads itself, written into
+  the nest's private homes with times moved to now: from inside a running
+  nest, or at `up` for one chosen before it.
 - `inside` (notifications): an action, not a state, sent into a running
   nest (`fixture notifications sample`).
 - Network (an invented wired device or none), the cheat sheet (the
@@ -337,9 +358,10 @@ temperatures read-only, as the live bar does.
 `desk-nest lock` runs `lock.qml` in the nest with one line added that points
 its PAM check at a stand-in (`nest/pam/`): only the word `nest-unlock`
 unlocks it. It is the real lock screen on the nest's display (faces, keys,
-"wrong", unlock and exit); the session is not locked. A real password can
-never work inside the sandbox (its PAM helper cannot read the password
-database there) and must never be typed into it. Not covered: the real PAM
+"wrong", unlock and exit); the session is not locked. The stand-in
+directory is the only PAM stack it uses: Quickshell takes `pam/desk-lock`
+from there and refuses to start the check without it, with no fallback to
+`/etc/pam.d`. Never type a password into it. Not covered: the real PAM
 stack, the lock before sleep, notifications held back.
 
 ### Recovery
@@ -349,9 +371,14 @@ and does not end the nest cleanly, because a clean exit is the path that
 talks to the session. It prints the recovery:
 
 1. `kill -9 <supervisor pid>` (the pid is in `<state>/supervisor`): the nest
-   ends with no cleanup.
+   ends with no cleanup. Printed only while that pid is provably the nest's.
 2. The `systemctl --user set-environment` and `unset-environment` lines that
    put back the environment recorded at `up`.
+
+When no nest runs (`check` after a nest ended, or after a reboot), it prints
+no kill line and says the differences may not be a nest's doing: a new
+login changes the environment too. Put the environment back only if a nest
+caused them.
 
 Never stop `hyprland-session.target`: it stops `graphical-session.target`
 and the session with it. If the session ends anyway, log in again at
@@ -2277,15 +2304,22 @@ config on GitHub's runners, cause not known.
 - `nix build .#checks.x86_64-linux.desk-nest`: runs `desk-nest.sh` against
   fake `bwrap`, `systemctl`, `hyprctl`, `journalctl`, `nsenter`, `grim` and
   `qs` (`tests/desk-nest/run.sh`); no compositor starts. The seal's every
-  flag and environment variable, and that nothing else passes inside; the
-  refusals before a start (a detached terminal, no session, outside a
-  checkout, no harness, an unreadable host, an unknown component or
-  fixture); the copied tree, the lock's added line and the checkout left
-  without a new file; one nest per name; the host check catching each kind
-  of change, and `down` refusing a clean exit after one; `down` finding the
-  nested compositor and nothing else; a reused pid and a crash's stale
-  records left alone; each command's arguments; the stand-in PAM check
-  (`nest/pam/check.sh`) accepting only `nest-unlock`.
+  flag and environment variable, `--clearenv` before them, and that nothing
+  else passes inside; every writable bind, the state directory read-only
+  under them; the refusals before a start (a detached terminal, no session,
+  no window rule in `~/.config/hypr/rules.lua`, outside a checkout, no
+  harness, an unreadable host, an unknown component or fixture, `_supervise`
+  run by hand); a relative `XDG_STATE_HOME` ignored; the copied tree, the
+  lock's added line and the checkout left without a new file; the private
+  homes emptied at `up`, a link left in them not written through, and a
+  `place` fixture placed from inside a running nest; one nest per name; the
+  host check catching each kind of change, and `down` refusing a clean exit
+  after one; no kill line from `check` with no nest running; Ctrl+C at each
+  stage of `up` (before the nest starts, waiting for the shell, placing the
+  window, checking the host) and each failed `up` that leaves the nest
+  running; `down` finding the nested compositor and nothing else; a reused
+  pid and a crash's stale records left alone; each command's arguments; the
+  stand-in PAM check (`nest/pam/check.sh`) accepting only `nest-unlock`.
 - `nix build .#checks.x86_64-linux.nest-fakes`: runs the fakes in
   `nest/fakes` as the shell runs them and reads their output with each
   panel's `.js` under node, for every fixture in `nest/fixtures/index`, in
@@ -2296,7 +2330,8 @@ config on GitHub's runners, cause not known.
 - `nix build .#checks.x86_64-linux.nest-commands`
   (`tests/nest-commands/`): reads every command the shell can start
   (`Process` commands in either arm of a ternary, `execDetached`, the
-  command arrays functions return, the commands of `sh -c` scripts) and
+  command arrays functions return, the commands of `sh -c` scripts, where
+  a path or a quoted word in command position counts as a command) and
   fails on one that is neither a name in `nest/fakes/bin` nor a `harmless`
   line of its `allowlist`, on a command site it cannot read that is not a
   `site` line there, on an allowlist line nothing uses, and on a Hyprland

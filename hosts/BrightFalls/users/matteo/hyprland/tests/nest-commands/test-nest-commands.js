@@ -131,8 +131,10 @@ function arrays(text) {
 const KEYWORDS = new Set(["do", "done", "if", "then", "else", "elif", "fi", "while", "until", "!"]);
 // The commands a shell script starts: the first word of each simple
 // command, after any keywords; `for` and `case` heads start none. A word
-// that is not a plain name (quotes left over from "$(…)", a redirection)
-// starts none either, except a `$` expansion, which is reported as found.
+// that is not a plain name (a lone quote left over from "$(…)", a
+// redirection) starts none either, except a `$` expansion, a path and a
+// quoted word, which are reported as found: the check cannot tell what they
+// run.
 function scriptCommands(script) {
     const out = [];
     for (const seg of script.replace(/\$\(/g, ";").split(/;|&&|\|\||\||\n/)) {
@@ -141,7 +143,7 @@ function scriptCommands(script) {
             continue;
         while (words.length && KEYWORDS.has(words[0]))
             words.shift();
-        if (words[0] !== undefined && /^([A-Za-z_][\w.+-]*|\$.*)$/.test(words[0]))
+        if (words[0] !== undefined && /^([A-Za-z_][\w.+-]*|[$/].*|["'].+)$/.test(words[0]))
             out.push(words[0]);
     }
     return out;

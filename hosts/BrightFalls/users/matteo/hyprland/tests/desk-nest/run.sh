@@ -10,8 +10,13 @@
 # The fakes share $FAKE: `env` is the user manager's environment, `units`
 # one "<unit> <state>" per line, `instances` hyprctl's answer, `journal` the
 # user journal after the snapshot's cursor; `nobus` makes systemctl fail as
-# from a detached terminal; `bwrap-fail` makes the sandbox end at once.
-# Every call is logged to $FAKE/log.
+# from a detached terminal; `bwrap-fail` makes the sandbox end at once;
+# `load` is what the nested shell says: ok (Configuration Loaded), fail
+# (Failed to load configuration) or none (nothing yet); `journal-fail` makes
+# reading the journal after the cursor fail. `hold` names a point where the
+# next fake to reach it waits, its pid in `held`, until `held` is removed:
+# cursor (the snapshot's journal cursor), clients (hyprctl -j clients) or
+# journal (the journal after the cursor). Every call is logged to $FAKE/log.
 #
 # The host's windows: the owner's terminal 0x1000 and another nested
 # compositor's window 0x2000 (pid 1, so not the nest's) always, and one per
@@ -87,6 +92,7 @@ fake() { # name, body
     echo "#!$BASH"
     echo 'set -euo pipefail'
     echo 'printf "%s\n" "$(basename "$0") $*" >>"$FAKE/log"'
+    echo 'hold() { [ "$(cat "$FAKE/hold" 2>/dev/null)" = "$1" ] || return 0; rm -f "$FAKE/hold"; echo $$ >"$FAKE/held"; while [ -e "$FAKE/held" ]; do sleep 0.05; done; }'
     echo "$2"
   } >"$bin/$1"
   chmod +x "$bin/$1"
@@ -109,6 +115,7 @@ window() { # address class pid floating w h workspace
 case "$1 ${2:-}" in
 "instances ") cat "$FAKE/instances" ;;
 "-j clients")
+  hold clients
   printf "[{\"address\": \"0x1000\", \"class\": \"foot\", \"pid\": 1, \"floating\": false, \"size\": [800, 600], \"workspace\": {\"name\": \"6\"}}"
   window 0x2000 aquamarine 1 false 800 600 3
   for f in "$FAKE"/win.*; do
@@ -145,8 +152,13 @@ case "$1 ${2:-}" in
 esac'
 fake journalctl '
 case "$*" in
-"--user -n 0 --show-cursor --no-pager") echo "-- cursor: s=fake" ;;
-"--user --after-cursor s=fake --no-pager") cat "$FAKE/journal" ;;
+"--user -n 0 --show-cursor --no-pager")
+  hold cursor
+  echo "-- cursor: s=fake" ;;
+"--user --after-cursor s=fake --no-pager")
+  hold journal
+  [ ! -e "$FAKE/journal-fail" ] || { echo "journalctl: fake failure" >&2; exit 1; }
+  cat "$FAKE/journal" ;;
 *) exit 9 ;;
 esac'
 fake nsenter '
@@ -190,7 +202,10 @@ esac
 printf "{\n    \"child-pid\": %s\n}\n" "$child" >&"$fd"
 eval "exec $fd>&-"
 printf "NESTED_WAYLAND=wayland-1\nNESTED_SIG=nested-sig\n" >"$state/nested.env"
-echo "  INFO: Configuration Loaded" >"$state/qs.out"
+case $(cat "$FAKE/load") in
+ok) echo "  INFO: Configuration Loaded" >"$state/qs.out" ;;
+fail) echo "  ERROR: Failed to load configuration" >"$state/qs.out" ;;
+esac
 wait $child || true'
 export HYPR_EXE=$hl_pkg/bin/.Hyprland-wrapped
 export PATH="$bin:$PATH"
@@ -235,7 +250,10 @@ healthy() {
   echo applies >"$FAKE/rule"
   echo 0x1000 >"$FAKE/active"
   : >"$FAKE/special"
-  rm -f "$FAKE/nobus" "$FAKE/bwrap-fail"
+  echo ok >"$FAKE/load"
+  rm -f "$FAKE/nobus" "$FAKE/bwrap-fail" "$FAKE/journal-fail" "$FAKE/hold" "$FAKE/held"
+  mkdir -p "$HOME/.config/hypr"
+  install -m 0644 "$rules_lua" "$HOME/.config/hypr/rules.lua"
 }
 healthy
 
@@ -300,6 +318,22 @@ rc=0
 out=$(cd "$work/plain" && "$dn" up 2>&1) || rc=$?
 contains "another repository: refused" "is not a checkout of the BrightFalls shell" "$rc $out"
 
+printf -- '-- name = "desk-nest"\n' >"$HOME/.config/hypr/rules.lua"
+nest up --visible
+check "no window rule in the live config: refused, --visible too, nothing started" "1 0" "$rc $(calls bwrap)"
+contains "no window rule in the live config: names the file" "$HOME/.config/hypr/rules.lua has no window rule named desk-nest" "$out"
+contains "no window rule in the live config: says what to do" \
+  "Deploy (the switch puts rules.lua in place unless it is edited live: desk-sync status), or copy the hl.window_rule named desk-nest from $hl/user/hypr/rules.lua" "$out"
+healthy
+
+rc=0
+out=$(cd "$co" && XDG_STATE_HOME=. "$dn" fixture weather 02-snow-night 2>&1) || rc=$?
+check "a relative XDG_STATE_HOME: ignored, as the XDG spec says" "0 02-snow-night" \
+  "$rc $(cat "$HOME/.local/state/desk-nest/nest/control/weather" 2>/dev/null)"
+listing >"$work/co.after"
+check "a relative XDG_STATE_HOME: the checkout gained no file" "" "$(diff "$work/co.before" "$work/co.after" || true)"
+rm -rf "$HOME/.local/state"
+
 mv "$hl/nest/dev.qml" "$work/dev.qml"
 nest up
 contains "harness missing: refused" "the harness is missing from $co: no $hl/nest/dev.qml" "$rc $out"
@@ -330,6 +364,11 @@ healthy
 
 # --- up -----------------------------------------------------------------------
 
+# What a nest could leave in its private homes, which the host then writes in.
+rm -rf "$state/home"
+mkdir -p "$state/home/config/desk"
+: >"$work/victim"
+ln -s "$work/victim" "$state/home/config/desk/theme.json"
 : >"$FAKE/log"
 nest up Bar Weather
 check "up: rc" 0 "$rc"
@@ -365,8 +404,7 @@ seal --chmod 0700 "$XDG_RUNTIME_DIR"
 seal --bind "$XDG_RUNTIME_DIR/wayland-1" "$XDG_RUNTIME_DIR/host-wayland"
 seal --ro-bind "$hl/nest" "$hl/nest"
 seal --ro-bind "$hl/tests" "$hl/tests"
-seal --bind "$state" "$state"
-seal --ro-bind "$state/tree" "$state/tree"
+seal --ro-bind "$state" "$state"
 seal --bind "$state/home/runtime/desk" "$XDG_RUNTIME_DIR/desk"
 seal --setenv HYPRLAND_NO_SD_VARS 1
 seal --setenv HYPRLAND_NO_SD_TARGET 1
@@ -385,8 +423,27 @@ names=$(awk 'prev == "--setenv" { print } { prev = $0 }' "$FAKE/bwrap.args" | so
 check "seal: only these variables inside" \
   "FONTCONFIG_FILE HOME HYPRLAND_NO_SD_NOTIFY HYPRLAND_NO_SD_TARGET HYPRLAND_NO_SD_VARS LANG LIBSEAT_BACKEND LOCALE_ARCHIVE NEST_FIXTURES NEST_STATE NEST_TREE PATH TERM TZ USER WAYLAND_DISPLAY XDG_CACHE_HOME XDG_CONFIG_DIRS XDG_CONFIG_HOME XDG_CURRENT_DESKTOP XDG_DATA_DIRS XDG_DATA_HOME XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_STATE_HOME" \
   "$names"
-check "seal: no bind is writable but the state, the socket and the runtime desk dir" \
-  "--bind --bind --bind" "$(grep -xE -- '--(bind|dev-bind|bind-try|rw-bind)' "$FAKE/bwrap.args" | grep -vx -- --dev-bind | paste -sd' ')"
+# bwrap applies binds in order, a later one over an earlier one.
+rw=$(python3 -I -c '
+import sys
+a = open(sys.argv[1]).read().split("\n")[:-1]
+for i in range(len(a) - 2):
+    if a[i] == "--ro-bind" and a[i + 2] == sys.argv[2]:
+        print("(the state, read-only)")
+    elif a[i] in ("--bind", "--bind-try", "--dev-bind", "--dev-bind-try") and a[i + 1] != "/dev/dri":
+        print(a[i + 2])' "$FAKE/bwrap.args" "$state")
+check "seal: the state read-only, then writable only what the nest writes, not the records the host trusts" \
+  "$(printf '%s\n' "$XDG_RUNTIME_DIR/host-wayland" "(the state, read-only)" "$state/home" "$state/shots" \
+    "$state/qs.out" "$state/hyprland.out" "$state/fakes.log" "$state/nested.env" "$state/lock.out" "$XDG_RUNTIME_DIR/desk")" \
+  "$rw"
+# bwrap applies --clearenv and --setenv in order.
+order=$(python3 -I -c '
+import sys
+a = open(sys.argv[1]).read().split("\n")[:-1]
+s = [i for i, x in enumerate(a) if x == "--setenv"]
+print("clearenv first" if a.index("--clearenv") < s[0] else "clearenv after a setenv",
+      "command last" if a.index("--info-fd") > s[-1] else "command before a setenv")' "$FAKE/bwrap.args")
+check "seal: --clearenv before every --setenv, the command after the last" "clearenv first command last" "$order"
 check "seal: nothing shares a namespace back" "" "$(grep -xE -- '--share-net|--userns|--userns2|--pidns' "$FAKE/bwrap.args" || true)"
 check "seal: the compositor's config turns XWayland and the popups off" 3 \
   "$(grep -cE 'xwayland = \{ enabled = false \}|no_update_news = true|disable_hyprland_guiutils_check = true' "$nest_lua")"
@@ -401,6 +458,8 @@ listing >"$work/co.after"
 check "tree: the checkout gained no file" "" "$(diff "$work/co.before" "$work/co.after" || true)"
 check "seed: fixture home copied, links followed" "{} no" \
   "$(cat "$state/home/config/desk/theme.json") $([ -L "$state/home/config/desk/theme.json" ] && echo yes || echo no)"
+check "seed: the homes emptied first, a link left in them not written through" "victim: file" \
+  "victim:$(cat "$work/victim") $([ -L "$state/home/config/desk/theme.json" ] && echo link || echo file)"
 check "seed: each panel's default, none for an inside line" "calendar=fixture weather=01-rain-dusk+07-warnings" \
   "$(cd "$state/control" && for f in *; do printf '%s=%s ' "$f" "$(cat "$f")"; done | sed 's/ $//')"
 contains "seed: the place panel's file placed" "nest-place calendar fixture NEST_STATE=$state" "$(cat "$FAKE/log")"
@@ -432,7 +491,8 @@ check "fixture: one not in the index refused" "1 02-snow-night" "$rc $(cat "$sta
 nest fixture 'weather;' x
 check "fixture: a malformed panel refused" 1 "$rc"
 nest fixture calendar none
-check "fixture: a place fixture placed on the host" "nest-place calendar none NEST_STATE=$state" "$(grep '^nest-place' "$FAKE/log")"
+check "fixture: a place fixture placed inside the running nest" "0 1 nest-place calendar none NEST_STATE=$state" \
+  "$rc $(calls nsenter) $(grep '^nest-place' "$FAKE/log")"
 nest fixture notifications sample
 check "fixture: an inside fixture runs inside" "0 nest-notify sample NEST_STATE=$state" "$rc $(grep '^nest-notify' "$FAKE/log")"
 check "fixture: an inside fixture writes no control" no "$([ -e "$state/control/notifications" ] && echo yes || echo no)"
@@ -550,6 +610,28 @@ check "down: no records left" "" "$(cd "$state" && ls bwrap.info sandbox supervi
 nest ipc show
 check "after down: ipc says nothing runs" "1 desk-nest: no nest named nest is running" "$rc $out"
 
+printf '%s %s\n' "$stranger" "$start" >"$state/supervisor"
+echo "NESTED_LEAK=1" >>"$FAKE/env"
+nest check
+check "check, no nest running: a difference still reported" 1 "$rc"
+contains "check, no nest running: says no nest runs" "No nest named nest is running" "$out"
+check "check, no nest running: no kill of a recorded pid" "" "$(grep kill <<<"$out" || true)"
+rm -f "$state/supervisor"
+healthy
+
+: >"$FAKE/log"
+nest fixture calendar none
+check "fixture, no nest running: written, placed only at the next up" "0 none 0" \
+  "$rc $(cat "$state/control/calendar") $(grep -c '^nest-place' "$FAKE/log" || true)"
+nest fixture calendar fixture
+
+rc=0
+out=$(cd "$co" && timeout 10 "$dn" _supervise 2>&1) || rc=$?
+check "_supervise by hand: refused, nothing started" "1 0" "$rc $(calls bwrap)"
+rc=0
+out=$(cd "$co" && timeout 10 "$dn" _supervise 2>&1 9>"$work/other") || rc=$?
+check "_supervise with another file on fd 9: refused" "1 0" "$rc $(calls bwrap)"
+
 # --- a crash: the supervisor killed, records left behind ------------------------
 
 nest --name two up --visible
@@ -627,6 +709,93 @@ contains "no window found: says so" "could not find the nest's window among the 
 contains "no window found: lists what it saw" "aquamarine windows on the host: 0x2000 other" "$out"
 contains "no window found: taken down" "nest nest ended" "$out"
 check "no window found: nothing left running" no "$(running && echo yes || echo no)"
+healthy
+
+# --- Ctrl+C during up, and an up that fails with the nest running ----------------
+
+# up in a process group of its own with SIGINT at its default (a background
+# job has it ignored), so that SIGINT to the group is a terminal's Ctrl+C.
+up_bg() {
+  (cd "$co" && exec python3 -I -c 'import os, signal, sys; os.setsid(); signal.signal(signal.SIGINT, signal.SIG_DFL); os.execv(sys.argv[1], sys.argv[1:])' "$dn" up >"$work/up.out" 2>&1) &
+  upid=$!
+}
+wait_for() { # a file to be non-empty
+  for _ in $(seq 100); do [ -s "$1" ] && return 0; sleep 0.1; done
+  echo "FAIL timed out waiting for $1"
+  failed=1
+}
+ctrl_c() { # output in $out, status in $rc
+  kill -INT -- "-$upid"
+  rm -f "$FAKE/held"
+  rc=0
+  wait "$upid" || rc=$?
+  out=$(cat "$work/up.out")
+}
+taken_down() { # stage
+  check "Ctrl+C $1: up ends 130, the nest with it" "130 no" "$rc $(running && echo yes || echo no)"
+  contains "Ctrl+C $1: says it takes the nest down" "interrupted; taking the nest down" "$out"
+  contains "Ctrl+C $1: down ran and checked the host" "host unchanged (after down)" "$out"
+}
+
+healthy
+: >"$FAKE/log"
+echo cursor >"$FAKE/hold"
+up_bg
+wait_for "$FAKE/held"
+ctrl_c
+check "Ctrl+C before the nest starts: up ends 130, nothing started" "130 0 no" \
+  "$rc $(calls bwrap) $(running && echo yes || echo no)"
+
+healthy
+echo none >"$FAKE/load"
+up_bg
+wait_for "$state/sandbox"
+wait_for "$state/nested.env"
+ctrl_c
+taken_down "while waiting for the shell"
+
+healthy
+echo clients >"$FAKE/hold"
+up_bg
+wait_for "$FAKE/held"
+ctrl_c
+taken_down "while placing the window"
+
+healthy
+echo journal >"$FAKE/hold"
+up_bg
+wait_for "$FAKE/held"
+ctrl_c
+taken_down "while checking the host"
+
+healthy
+echo fail >"$FAKE/load"
+nest up
+check "shell not loaded: up fails, the nest left running" "1 yes" "$rc $(running && echo yes || echo no)"
+contains "shell not loaded: says what to do" \
+  "the nest named nest is still running: fix the error and desk-nest --name nest reload, or desk-nest --name nest down" "$out"
+nest down
+check "shell not loaded: down after" 0 "$rc"
+
+healthy
+echo "Nov 24 10:00:00 host systemd[1]: Stopped target Graphical Interface." >"$FAKE/journal"
+nest up
+check "host changed at up: up fails, the nest left running" "1 yes" "$rc $(running && echo yes || echo no)"
+contains "host changed at up: the recovery" "kill -9 $(cut -d' ' -f1 "$state/supervisor")" "$out"
+contains "host changed at up: points at it" "the nest named nest is still running: follow the recovery above" "$out"
+healthy
+nest down
+check "host changed at up: down once unchanged" 0 "$rc"
+
+healthy
+touch "$FAKE/journal-fail"
+nest up
+check "host unreadable at up: up fails, the nest left running" "1 yes" "$rc $(running && echo yes || echo no)"
+contains "host unreadable at up: says what to do" \
+  "the nest named nest is still running: desk-nest --name nest check, and down once it says host unchanged" "$out"
+healthy
+nest down
+check "host unreadable at up: down after" 0 "$rc"
 healthy
 
 # --- the window rule, matched as Hyprland matches it --------------------------------

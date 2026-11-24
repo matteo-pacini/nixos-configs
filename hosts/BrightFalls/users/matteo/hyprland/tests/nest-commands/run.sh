@@ -45,6 +45,8 @@ plant "a new command in a Process" '^FAIL curl \(Cheatsheet.qml' qs/Cheatsheet.q
 plant "a new command in execDetached" '^FAIL firefox \(Bar.qml' qs/Bar.qml 's/execDetached(\["audio-output-cycle"\])/execDetached(["firefox"])/'
 plant "a new command in a ternary arm" '^FAIL desk-mqtt-rw \(office/OfficeShared.qml' qs/office/OfficeShared.qml 's/: \["desk-mqtt"\]/: ["desk-mqtt-rw"]/'
 plant "a new command in a sh -c script" '^FAIL curl \(Network.qml:[0-9]+ \(sh -c\)' qs/Network.qml 's/echo @route; ip -j/echo @route; curl -s x; ip -j/'
+plant "a path in a sh -c script" '^FAIL /run/current-system/sw/bin/ip \(Network.qml:[0-9]+ \(sh -c\)' qs/Network.qml 's/echo @route; ip -j/echo @route; \/run\/current-system\/sw\/bin\/ip -j/'
+plant "a quoted word in a sh -c script" "^FAIL '.HOME'/bin/ip \\(Network.qml:[0-9]+ \\(sh -c\\)" qs/Network.qml "s/echo @route; ip -j/echo @route; '\$HOME'\\/bin\\/ip -j/"
 plant "a new command in a script property" '^FAIL sensors \(system/Sensors.qml' qs/system/Sensors.qml 's/do printf .freq/do sensors; printf '"'"'freq/'
 plant "a new command from notify.js" '^FAIL notify-sender \(common/notify.js' qs/common/notify.js 's/return \["gdbus", "call"/return ["notify-sender", "call"/'
 plant "a non-literal command site" 'Launcher.qml:[0-9]+: command from "cmd" is not a literal' qs/Launcher.qml 's/execDetached(command)/execDetached(cmd)/'

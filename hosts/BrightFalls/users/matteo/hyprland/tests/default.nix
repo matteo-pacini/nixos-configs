@@ -382,9 +382,10 @@ pkgs.lib.fix (self: {
   # systemctl, hyprctl, journalctl, nsenter, grim and qs: the seal's flags and
   # environment, the host check catching each kind of change, down refusing
   # a clean exit after one, one nest per name, a reused pid left alone, the
-  # refusals before a start, where the nest's window landed and putting it
-  # right, the window rule's patterns matched with RE2 as Hyprland matches
-  # them, and the lock's stand-in PAM check. Starts no compositor.
+  # refusals before a start, the state read-only inside, Ctrl+C during up,
+  # where the nest's window landed and putting it right, the window rule's
+  # patterns matched with RE2 as Hyprland matches them, and the lock's
+  # stand-in PAM check. Starts no compositor.
   desk-nest =
     pkgs.runCommand "desk-nest-tests"
       {
