@@ -1,0 +1,1 @@
+[{"file":"hosts/BrightFalls/hardware.nix","id":"cpu-max","khz":4500000,"label":"CPU clock limit"},{"file":"hosts/BrightFalls/gaming.nix","id":"lact","label":"LACT daemon enabled"}]

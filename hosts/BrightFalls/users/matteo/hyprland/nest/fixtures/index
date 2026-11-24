@@ -1,0 +1,104 @@
+# desk-nest's fixtures: <panel> <name> [place|inside] [description]
+# The first line of a panel is its default. A name is written to
+# $NEST_STATE/control/<panel> and read by that panel's fake (nest/fakes).
+# place:  data the shell reads itself; after writing control/<panel>, the
+#         launcher runs `nest-place <panel> <name>` on the host.
+# inside: an action, not a state; the launcher runs `nest-notify <name>`
+#         inside the nest. Not run at start.
+# Names after a weather fixture name joined by + replay one after another.
+
+weather 01-rain-dusk+07-warnings rain at dusk, with warnings
+weather 01-rain-dusk
+weather 02-snow-night
+weather 03-forecast-old
+weather 04-no-forecast
+weather 05-nothing
+weather 06-first-start
+weather 07-warnings
+weather 08-radar
+weather 09-clock-change
+weather 10-config-invalid
+weather 11-config-missing
+
+office 09-live
+office 01-off-closed-socketoff
+office 02-moving
+office 03-offline
+office 04-old-silent
+office 05-fallback
+office 06-never-up
+office 07-broker-lost
+office 08-bridge-offline
+office 10-blind-closed
+office 11-config-missing
+office 12-config-invalid
+
+fleet hero
+fleet actions
+fleet chips-1
+fleet chips-2
+fleet chips-3
+fleet chips-4
+fleet github-error
+fleet long
+fleet refusals
+fleet wrong
+
+tokens full every page answered
+tokens partial part read, an empty today, a DST week
+
+limits normal place
+limits evidence place
+limits five-hour place
+limits no-evidence place
+limits no-windows place
+
+tailscale running
+tailscale peers
+tailscale overlay:all
+tailscale overlay:control-lost
+tailscale overlay:exit-node
+tailscale overlay:exit-node-down
+tailscale overlay:exit-node-unknown
+tailscale overlay:exit-node-unknown-down
+tailscale overlay:health
+tailscale overlay:latest
+tailscale overlay:newer
+tailscale overlay:self-expiring
+tailscale overlay:self-far
+tailscale overlay:urgent
+tailscale state:key-expired
+tailscale state:logged-out
+tailscale state:login-started
+tailscale state:machine-auth
+tailscale state:nostate
+tailscale state:nostate-health
+tailscale state:starting
+tailscale state:stopped
+tailscale state:unknown
+tailscale call:array
+tailscale call:backend-state-number
+tailscale call:hung
+tailscale call:in-use
+tailscale call:json-null
+tailscale call:no-backend-state
+tailscale call:no-daemon
+tailscale call:not-json
+tailscale call:silent-failure
+tailscale call:socket-failed
+
+network wired an invented wired device and route
+network none no device, no route
+
+calendar today place the export, dates moved so its day is today
+calendar fixed place the export as written (November 2026)
+calendar none place no export
+
+cheatsheet host the session's binds, captured
+cheatsheet nest the nest's own binds
+
+lock idle
+lock sleep logind says the machine is about to sleep
+
+notifications sample inside three cards, normal, critical and long
+notifications critical inside one critical card

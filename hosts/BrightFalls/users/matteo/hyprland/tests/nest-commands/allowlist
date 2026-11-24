@@ -1,0 +1,30 @@
+# Commands the shell may run in desk-nest that are neither fakes nor stubs,
+# and command sites the check cannot read, for test-nest-commands.js.
+#
+# harmless <name> <why it reaches nothing outside the nest>
+harmless cat reads files: /proc/asound, sysfs, the lock's stdin
+harmless df reads disk usage
+harmless echo prints
+harmless grep reads application entries, sysfs
+harmless head reads the calendar's url file
+harmless mkdir makes the state directory, under the nest's private XDG_STATE_HOME
+harmless od reads sysfs
+harmless printf prints, or appends under the nest's private XDG_STATE_HOME
+harmless qs IPC to Quickshell instances, which in the nest's runtime directory are only the nest's
+harmless readlink reads sysfs links
+harmless sh runs the scripts this check reads
+harmless tail waits for a process of the nest
+harmless tr filters text
+harmless true does nothing
+harmless wl-copy the nest compositor's clipboard
+#
+# site <file> <expression> <where it resolves; those arrays are checked there>
+site LockState.qml command LockState.qml's own command array
+site SessionMenu.qml LockState.command LockState.qml's command array
+site SessionMenu.qml entry.command the entries' command arrays in SessionMenu.qml
+site Launcher.qml command the uwsm array a line above
+site Tailscale.qml d.command tailscale/tailscale.js, decide()'s command arrays
+site network/SpeedTest.qml provider.command the providers' command arrays in network/SpeedTest.qml
+site bluetooth/BluetoothShared.qml Notify.command( common/notify.js, function command
+site audio/NoSignal.qml Notify.command( common/notify.js, function command
+site calendar/Reminders.qml Notify.command( common/notify.js, function command
