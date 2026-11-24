@@ -34,3 +34,21 @@ hl.layer_rule({
     match = { namespace = "^desk-calendar-full$" },
     blur  = true,
 })
+
+-- desk-nest's nested compositor (README.md, "desk-nest"): its window goes to
+-- the hidden special workspace "nest" without taking focus, and keeps
+-- getting frame callbacks there, without which the nest draws one frame and
+-- stops. Floating at a fixed size, because the nest's output takes the
+-- window's size. The app id and title are aquamarine's Wayland backend's
+-- for any nested aquamarine compositor, so any nested Hyprland matches, not
+-- only desk-nest's.
+hl.window_rule({
+    name  = "desk-nest",
+    match = { class = "^aquamarine$", initial_title = "^aquamarine - " },
+
+    workspace        = "special:nest silent",
+    no_initial_focus = true,
+    render_unfocused = true,
+    float            = true,
+    size             = { 1600, 900 },
+})

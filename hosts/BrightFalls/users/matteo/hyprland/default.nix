@@ -106,10 +106,11 @@ in
   '';
 
   # Commands the binds in user/hypr/bindings.lua and the shell's panels run,
-  # with desk-sync and desk-unlock.
+  # with desk-sync, desk-unlock and desk-nest.
   home.packages = with pkgs; [
     deskSync
     deskUnlock
+    (callPackage ./desk-nest.nix { })
     grim
     slurp
     satty

@@ -378,6 +378,60 @@ pkgs.lib.fix (self: {
     touch $out
   '';
 
+  # desk-nest (the shell in a sealed nested Hyprland) against fake bwrap,
+  # systemctl, hyprctl, journalctl, nsenter, grim and qs: the seal's flags and
+  # environment, the host check catching each kind of change, down refusing
+  # a clean exit after one, one nest per name, a reused pid left alone, the
+  # refusals before a start, and the lock's stand-in PAM check. Starts no
+  # compositor.
+  desk-nest =
+    pkgs.runCommand "desk-nest-tests"
+      {
+        nativeBuildInputs = with pkgs; [
+          diffutils
+          findutils
+          gawk
+          git
+          gnugrep
+          gnused
+          procps
+          python3
+          rsync
+          util-linux
+        ];
+      }
+      ''
+        bash ${./desk-nest/run.sh} ${../desk-nest.sh} ${../nest/hypr/nest.lua} ${../nest/pam/check.sh}
+        touch $out
+      '';
+
+  # desk-nest's fakes (nest/fakes) as the shell runs them, their output read
+  # by the panels' libraries, for every fixture in nest/fixtures/index; the
+  # stubs log and do nothing; nest-place and nest-notify.
+  nest-fakes =
+    pkgs.runCommand "nest-fakes-tests"
+      {
+        nativeBuildInputs = [
+          pkgs.python3
+          pkgs.nodejs
+        ];
+        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
+      }
+      ''
+        # Set here: the builder's setup sets TZ=UTC over the derivation's own.
+        export TZ=Europe/London
+        bash ${./nest-fakes}/run.sh ${../nest} ${./.} ${../user/quickshell}
+        touch $out
+      '';
+
+  # Every command the shell can start is a desk-nest fake or stub, or
+  # harmless by nest-commands/allowlist; nest/dev.qml loads shell.qml's
+  # components. Then faults planted in copies, which must fail.
+  nest-commands = pkgs.runCommand "nest-commands-tests" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+    bash ${./nest-commands}/run.sh ${../user/quickshell} ${../nest}
+    touch $out
+  '';
+
   desk-sync =
     pkgs.runCommand "desk-sync-tests"
       {
