@@ -2,9 +2,13 @@
 # The shell's QML through qmllint, and its IPC calls against its IpcHandlers
 # (ipc.js), then the same on copies with one fault planted each, which must
 # fail with a message naming the fault.
-# Usage: run.sh <quickshell dir> <bindings.lua> <rescue.lua> <qml import dir>...
+# Usage: run.sh [--dev <dev.qml>] <quickshell dir> <bindings.lua> <rescue.lua>
+#     <qml import dir>...
 #   (needs qmllint, jq, node and coreutils on PATH; ipc.js and allowlist are
 #   read from this script's directory)
+#   --dev: also desk-nest's root (nest/dev.qml), linted at the root of a
+#   copy of the tree as desk-nest runs it, apart from the IPC check (it
+#   declares the shell target too, as a second root of the same tree).
 #
 # qmllint sees the tree as Quickshell's scanner does (src/core/scan.cpp): a
 # qmldir per directory, "module qs" plus the path with dots, and one line per
@@ -28,6 +32,11 @@
 set -euo pipefail
 
 here=$(dirname "$(realpath "$0")")
+dev=
+if [ "$1" = --dev ]; then
+  dev=$(realpath "$2")
+  shift 2
+fi
 src=$(realpath "$1")
 bindings=$(realpath "$2")
 rescue=$(realpath "$3")
@@ -108,17 +117,30 @@ else
   failed=1
 fi
 ipc "$work/tree" "$bindings" "$rescue" || failed=1
+if [ -n "$dev" ]; then
+  prepare "$work/nest"
+  cp "$dev" "$work/nest/qs/dev.qml"
+  if lint "$work/nest" 0 "$work/nest/qs/dev.qml"; then
+    echo "qmllint: dev.qml at the tree's root, no warnings outside the allowlist"
+  else
+    failed=1
+  fi
+fi
 
 # Each fault, planted in a fresh copy, must fail with output matching the
 # pattern (grep -E).
 n=0
-plant() { # name, pattern, file in the tree (or bindings.lua), sed script
+plant() { # name, pattern, file in the tree (or bindings.lua, dev.qml), sed script
   local dir=$work/plant$((n += 1)) out rc=0
   prepare "$dir"
   if [ "$3" = bindings.lua ]; then
     cp "$bindings" "$dir/bindings.lua"
     sed -i "$4" "$dir/bindings.lua"
     out=$(ipc "$dir" "$dir/bindings.lua" "$rescue") || rc=$?
+  elif [ "$3" = dev.qml ]; then
+    cp "$dev" "$dir/qs/dev.qml"
+    sed -i "$4" "$dir/qs/dev.qml"
+    out=$(lint "$dir" 0 "$dir/qs/dev.qml") || rc=$?
   else
     sed -i "$4" "$dir/qs/$3"
     cmp -s "$src/$3" "$dir/qs/$3" && { echo "FAIL $1: the plant changed nothing"; failed=1; return; }
@@ -147,6 +169,9 @@ plant "QML call to a missing function" 'Bar.qml:[0-9]+: .*has no function "toogl
 plant "bind with an argument too many" 'launcher.toggle .* takes 0 argument\(s\), the call passes 1' bindings.lua 's/qs ipc call launcher toggle/qs ipc call launcher toggle 1/'
 plant "IPC function with an untyped parameter" 'lockscreen.hold: parameter "pid" needs one of the types' Lockscreen.qml 's/function hold(pid: int)/function hold(pid)/'
 plant "two handlers on one target" 'target "launcher" is also declared' Cheatsheet.qml 's/target: "cheatsheet"/target: "launcher"/'
+if [ -n "$dev" ]; then
+  plant "unknown component in dev.qml" 'dev.qml:[0-9]+:.*Weathr' dev.qml 's/^        Weather {}$/        Weathr {}/'
+fi
 
 echo "quickshell-lint: ${SECONDS}s"
 exit "$failed"

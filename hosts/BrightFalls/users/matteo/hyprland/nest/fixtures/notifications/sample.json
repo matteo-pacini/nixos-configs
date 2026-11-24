@@ -1,0 +1,5 @@
+[
+  {"app": "Harness", "icon": "dialog-information", "summary": "Build finished", "body": "All checks passed.", "urgency": 1},
+  {"app": "Harness", "icon": "battery-low", "summary": "Test: low battery", "body": "Invented device at 9%.", "urgency": 2},
+  {"app": "Harness", "icon": "dialog-information", "summary": "Test: a long one", "body": "A body that runs past two lines so the card has to wrap it, which is what this sample is for.", "urgency": 0}
+]
