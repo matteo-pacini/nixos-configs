@@ -131,6 +131,128 @@ host_session() {
   [ -S "$host_rt/$host_wl" ] || die "the session's Wayland socket $host_rt/$host_wl does not exist"
 }
 
+host_hyprctl() {
+  HYPRLAND_INSTANCE_SIGNATURE=$host_sig hyprctl "$@"
+}
+
+# Arguments: the sandbox pid, `hyprctl -j clients`, `hyprctl -j activewindow`.
+# One line per aquamarine window on the host: address, ours (its process
+# descends from the sandbox) or other, focused or unfocused, floating or
+# tiled, WxH, pid, workspace name (last: a name may hold spaces).
+# shellcheck disable=SC2016
+windows_py='
+import json, sys
+nest = sys.argv[1]
+active = (json.loads(sys.argv[3] or "{}") or {}).get("address", "")
+def ours(pid):
+    pid = str(pid)
+    while pid not in ("", "0", "1"):
+        if pid == nest:
+            return True
+        try:
+            with open("/proc/%s/stat" % pid) as f:
+                pid = f.read().rsplit(") ", 1)[1].split()[1]
+        except (OSError, IndexError):
+            return False
+    return False
+for w in json.loads(sys.argv[2]):
+    if w.get("class") != "aquamarine":
+        continue
+    print(w["address"], "ours" if ours(w["pid"]) else "other",
+          "focused" if w["address"] == active else "unfocused",
+          "floating" if w["floating"] else "tiled", "%dx%d" % tuple(w["size"]),
+          w["pid"], w["workspace"]["name"])
+'
+
+nest_windows() { # sandbox pid
+  local clients active
+  clients=$(host_hyprctl -j clients) && active=$(host_hyprctl -j activewindow) || return 1
+  python3 -I -c "$windows_py" "$1" "$clients" "$active"
+}
+
+focused_address() {
+  host_hyprctl -j activewindow | python3 -I -c 'import json, sys; print((json.loads(sys.stdin.read() or "{}") or {}).get("address", ""))'
+}
+
+# The monitors showing the special workspace "nest", space-separated.
+special_shown() {
+  host_hyprctl -j monitors | python3 -I -c '
+import json, sys
+print(" ".join(m["name"] for m in json.load(sys.stdin) if m["specialWorkspace"]["name"] == "special:nest"))'
+}
+
+# This nest's window, once only one is left: aquamarine maps a window for
+# its first output, which the nest replaces with DP-1's.
+our_window() { # sandbox pid; prints its nest_windows line
+  local lines mine i
+  for ((i = 0; i < 50; i++)); do
+    lines=$(nest_windows "$1") || return 1
+    mine=$(awk '$2 == "ours"' <<<"$lines")
+    if [ -n "$mine" ] && [ "$(wc -l <<<"$mine")" = 1 ]; then
+      echo "$mine"
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "aquamarine windows on the host: ${lines:-none}" | tr '\n' ';' >&2
+  return 1
+}
+
+# Makes sure this nest's window is on special:nest without focus, as the
+# window rule puts it at map, before it can take focus. A dispatch can only
+# act after the map, so when the rule missed, the window had focus from its
+# map until here. Prints what it saw and did; returns 1 if it is still not
+# on special:nest without focus.
+place_window() { # sandbox pid, the address focused before up
+  local w addr focus fl size ws
+  w=$(our_window "$1") || {
+    echo "could not find the nest's window among the host's windows"
+    return 1
+  }
+  read -r addr _ focus fl size _ ws <<<"$w"
+  if [ "$ws" = special:nest ] && [ "$focus" = unfocused ]; then
+    echo "the window is on the special workspace 'nest', without focus ($fl, $size)"
+    say_hidden
+    return 0
+  fi
+  local was=$focus
+  echo "the window rule did not apply: the window was on workspace $ws, $focus ($fl, $size)"
+  host_hyprctl dispatch "hl.dsp.window.move({ window = \"address:$addr\", workspace = \"special:nest\", follow = false })" >/dev/null || true
+  if [ "$was" = focused ] && [ -n "$2" ]; then
+    host_hyprctl dispatch "hl.dsp.focus({ window = \"address:$2\" })" >/dev/null || true
+  fi
+  w=$(our_window "$1") || {
+    echo "the nest's window is gone after moving it"
+    return 1
+  }
+  read -r addr _ focus fl size _ ws <<<"$w"
+  if [ "$ws" != special:nest ] || [ "$focus" != unfocused ]; then
+    echo "moving it did not work: it is on workspace $ws, $focus"
+    return 1
+  fi
+  echo "moved it to the special workspace 'nest', without focus ($fl, $size)"
+  say_hidden
+  [ "$was" = focused ] || return 0
+  local now
+  now=$(focused_address) || now=
+  if [ -n "$2" ] && [ "$now" = "$2" ]; then
+    echo "focus is back on the window that had it before up ($2)"
+  else
+    echo "focus is on ${now:-no window}, not on the window that had it before up (${2:-none})"
+  fi
+}
+
+say_hidden() {
+  local shown
+  if ! shown=$(special_shown); then
+    echo "could not read which monitors show the special workspace 'nest'"
+  elif [ -n "$shown" ]; then
+    echo "the special workspace 'nest' is open on $shown: the window is on screen"
+  else
+    echo "no monitor shows the special workspace 'nest': the window is hidden"
+  fi
+}
+
 # The host's session state into $state/<prefix>.{env,units,instances,cursor}.
 # Fails rather than write a snapshot that would compare equal to anything.
 snapshot() { # prefix
@@ -503,6 +625,8 @@ up() {
   done
   place_all
   write_components "${comps[@]}"
+  local before_focus
+  before_focus=$(focused_address) || before_focus=
   snapshot before || die "could not read the host session's state (systemd, hyprctl instances, the journal); not starting"
   # The lock passes to the supervisor through fd 9.
   setsid -f "$0" --name "$name" _supervise </dev/null >"$state/supervisor.out" 2>&1
@@ -518,10 +642,31 @@ up() {
     fi
     sleep 0.1
   done
-  local loaded=0
+  local loaded=0 placed=1 pid shown
   grep -q 'Configuration Loaded' "$state/qs.out" 2>/dev/null && loaded=1
+  # The supervisor records the sandbox's pid on its own clock.
+  for ((i = 0; i < 50; i++)); do
+    [ -s "$state/sandbox" ] && break
+    sleep 0.1
+  done
+  if pid=$(sandbox_pid); then
+    place_window "$pid" "$before_focus" || placed=0
+  else
+    placed=0
+  fi
+  if [ $placed = 0 ]; then
+    echo "desk-nest: the nest's window is not on the special workspace 'nest' without focus; taking the nest down" >&2
+    "$0" --name "$name" down || true
+    exit 1
+  fi
   if [ $visible = 1 ]; then
-    HYPRLAND_INSTANCE_SIGNATURE=$host_sig hyprctl dispatch 'hl.dsp.workspace.toggle_special("nest")' >/dev/null
+    host_hyprctl dispatch 'hl.dsp.workspace.toggle_special("nest")' >/dev/null || true
+    shown=$(special_shown) || shown=
+    if [ -n "$shown" ]; then
+      echo "--visible: the special workspace 'nest' is open on $shown"
+    else
+      echo "--visible: toggled the special workspace 'nest', but no monitor shows it"
+    fi
   fi
   check_and_report "the nest running" || exit 1
   if [ $loaded = 1 ]; then
@@ -530,10 +675,9 @@ up() {
     echo "nest $name up, but the shell did not load:"
     grep -nE 'ERROR|Failed|WARN' "$state/qs.out" 2>/dev/null | head -n 20 || echo "  (nothing in $state/qs.out after 30 s)"
   fi
-  echo "  shown: $hl/user/quickshell (copy in $state/tree)"
+  echo "  shell: $hl/user/quickshell (copied to $state/tree)"
   echo "  logs: $state/qs.out, $state/hyprland.out, $state/fakes.log"
   echo "  screenshots: desk-nest shot <name> -> $state/shots/"
-  echo "  the window is on the hidden special workspace 'nest'"
   [ $loaded = 1 ] || exit 1
   [ $watch = 0 ] || watch_tree
 }
@@ -589,10 +733,15 @@ down() {
     lock_free && break
     sleep 0.1
   done
-  if ! lock_free; then
+  local ended=1
+  if lock_free; then
+    echo "nest $name ended"
+  else
+    ended=0
     echo "desk-nest: the nest is still running 15 s after SIGTERM. End it with no cleanup: kill -9 $(cut -d' ' -f1 "$state/supervisor" 2>/dev/null)" >&2
   fi
-  check_and_report "after down"
+  check_and_report "after down" || exit 1
+  [ $ended = 1 ]
 }
 
 status() {
@@ -600,6 +749,14 @@ status() {
     echo "nest $name: not running"
   elif pid=$(sandbox_pid 2>/dev/null); then
     echo "nest $name: running (sandbox pid $pid, supervisor $(cut -d' ' -f1 "$state/supervisor"))"
+    local w addr focus fl size ws
+    host_sig=$(systemctl --user show-environment 2>/dev/null | sed -n 's/^HYPRLAND_INSTANCE_SIGNATURE=//p') || host_sig=
+    if [ -n "$host_sig" ] && w=$(our_window "$pid" 2>/dev/null); then
+      read -r addr _ focus fl size _ ws <<<"$w"
+      echo "  window: workspace $ws, $focus, $fl, $size"
+    else
+      echo "  window: could not be read from the host session"
+    fi
   else
     echo "nest $name: lock held, but its processes cannot be confirmed (starting?)"
   fi
@@ -657,7 +814,7 @@ lock)
   saved_checkout
   # shellcheck disable=SC2016
   inside sh -c '"$1" -n -p "$2" >"$3" 2>&1 &' sh "$qs" "$state/tree/lock-nest.qml" "$state/lock.out"
-  echo "the lock screen is up in the nest; only the word nest-unlock opens it. Never type a password. Log: $state/lock.out"
+  echo "started the lock screen in the nest (whether it came up: $state/lock.out); only the word nest-unlock opens it. Never type a password."
   ;;
 status) status ;;
 check)

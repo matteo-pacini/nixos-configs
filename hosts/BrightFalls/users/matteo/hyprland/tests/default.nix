@@ -382,8 +382,9 @@ pkgs.lib.fix (self: {
   # systemctl, hyprctl, journalctl, nsenter, grim and qs: the seal's flags and
   # environment, the host check catching each kind of change, down refusing
   # a clean exit after one, one nest per name, a reused pid left alone, the
-  # refusals before a start, and the lock's stand-in PAM check. Starts no
-  # compositor.
+  # refusals before a start, where the nest's window landed and putting it
+  # right, the window rule's patterns matched with RE2 as Hyprland matches
+  # them, and the lock's stand-in PAM check. Starts no compositor.
   desk-nest =
     pkgs.runCommand "desk-nest-tests"
       {
@@ -395,13 +396,15 @@ pkgs.lib.fix (self: {
           gnugrep
           gnused
           procps
-          python3
+          (python3.withPackages (p: [ p.google-re2 ]))
           rsync
           util-linux
         ];
       }
       ''
-        bash ${./desk-nest/run.sh} ${../desk-nest.sh} ${../nest/hypr/nest.lua} ${../nest/pam/check.sh}
+        # lua5_5: the Lua the Hyprland package embeds.
+        bash ${./desk-nest/run.sh} ${../desk-nest.sh} ${../nest/hypr/nest.lua} ${../nest/pam/check.sh} \
+          ${../user/hypr/rules.lua} ${pkgs.lib.getExe pkgs.lua5_5}
         touch $out
       '';
 

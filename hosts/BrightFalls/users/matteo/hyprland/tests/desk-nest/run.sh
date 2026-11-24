@@ -3,14 +3,24 @@
 # journalctl, nsenter, grim and qs, run with errexit, nounset and pipefail as
 # writeShellApplication runs it. Nothing here starts a compositor.
 # Usage: run.sh <desk-nest.sh> <nest/hypr/nest.lua> <nest/pam/check.sh>
+#   <user/hypr/rules.lua> <lua>
 #   (needs bash, coreutils, git, rsync, util-linux, gawk, diffutils,
-#   findutils, grep, sed and python3 on PATH)
+#   findutils, grep, sed and python3 with google-re2 on PATH)
 #
 # The fakes share $FAKE: `env` is the user manager's environment, `units`
 # one "<unit> <state>" per line, `instances` hyprctl's answer, `journal` the
 # user journal after the snapshot's cursor; `nobus` makes systemctl fail as
 # from a detached terminal; `bwrap-fail` makes the sandbox end at once.
 # Every call is logged to $FAKE/log.
+#
+# The host's windows: the owner's terminal 0x1000 and another nested
+# compositor's window 0x2000 (pid 1, so not the nest's) always, and one per
+# running fake nest, `win.<pid>` = "<workspace> <floating> <w> <h>",
+# address the pid in hex. `active` is the focused address. `rule` is how
+# the window rule behaves: applies (the nest maps on special:nest without
+# focus), missing (on workspace 6, tiled, focused), stuck (missing, and
+# dispatches change nothing) or nowindow (the nest maps no window).
+# `special` is the special workspace open on DP-1.
 #
 # The fake bwrap stands in for the sandbox: it writes the info fd's
 # child-pid, the nested display's records and the shell's "Configuration
@@ -21,6 +31,8 @@ set -euo pipefail
 script=$(realpath "$1")
 nest_lua=$(realpath "$2")
 check_sh=$(realpath "$3")
+rules_lua=$(realpath "$4")
+lua=$5
 work=$(mktemp -d)
 pids=()
 cleanup() {
@@ -90,9 +102,45 @@ case "$1 $2" in
 *) exit 9 ;;
 esac'
 fake hyprctl '
-case "$1" in
-instances) cat "$FAKE/instances" ;;
-dispatch) ;;
+addr() { printf "0x%x" "$1"; }
+window() { # address class pid floating w h workspace
+  printf ", {\"address\": \"%s\", \"class\": \"%s\", \"pid\": %s, \"floating\": %s, \"size\": [%s, %s], \"workspace\": {\"name\": \"%s\"}}" "$@"
+}
+case "$1 ${2:-}" in
+"instances ") cat "$FAKE/instances" ;;
+"-j clients")
+  printf "[{\"address\": \"0x1000\", \"class\": \"foot\", \"pid\": 1, \"floating\": false, \"size\": [800, 600], \"workspace\": {\"name\": \"6\"}}"
+  window 0x2000 aquamarine 1 false 800 600 3
+  for f in "$FAKE"/win.*; do
+    [ -f "$f" ] && kill -0 "${f##*.}" 2>/dev/null || continue
+    read -r ws fl w h <"$f"
+    window "$(addr "${f##*.}")" aquamarine "${f##*.}" "$fl" "$w" "$h" "$ws"
+  done
+  echo "]" ;;
+"-j activewindow")
+  a=$(cat "$FAKE/active")
+  if [ -n "$a" ]; then printf "{\"address\": \"%s\"}\n" "$a"; else echo "{}"; fi ;;
+"-j monitors")
+  printf "[{\"name\": \"DP-1\", \"specialWorkspace\": {\"name\": \"%s\"}}, {\"name\": \"DP-2\", \"specialWorkspace\": {\"name\": \"\"}}]\n" "$(cat "$FAKE/special")" ;;
+"dispatch "*)
+  [ "$(cat "$FAKE/rule")" != stuck ] || exit 0
+  case $2 in
+  "hl.dsp.workspace.toggle_special(\"nest\")")
+    if [ "$(cat "$FAKE/special")" = special:nest ]; then : >"$FAKE/special"; else echo special:nest >"$FAKE/special"; fi ;;
+  "hl.dsp.window.move({ window = \"address:"*"\", workspace = \"special:nest\", follow = false })")
+    a=${2#*address:}
+    a=${a%%\"*}
+    for f in "$FAKE"/win.*; do
+      [ -f "$f" ] && [ "$(addr "${f##*.}")" = "$a" ] || continue
+      read -r ws rest <"$f"
+      echo "special:nest $rest" >"$f"
+      [ "$(cat "$FAKE/active")" != "$a" ] || : >"$FAKE/active"
+    done ;;
+  "hl.dsp.focus({ window = \"address:"*"\" })")
+    a=${2#*address:}
+    echo "${a%%\"*}" >"$FAKE/active" ;;
+  *) exit 9 ;;
+  esac ;;
 *) exit 9 ;;
 esac'
 fake journalctl '
@@ -132,6 +180,13 @@ done
 [ ! -e "$FAKE/bwrap-fail" ] || { echo "bwrap: fake failure" >&2; exit 1; }
 "$HYPR_EXE" -c "while :; do sleep 1; done" &
 child=$!
+echo "$child" >"$FAKE/expect-target"
+case $(cat "$FAKE/rule") in
+applies) echo "special:nest true 1600 900" >"$FAKE/win.$child" ;;
+missing | stuck)
+  echo "6 false 1264 1380" >"$FAKE/win.$child"
+  printf "0x%x\n" "$child" >"$FAKE/active" ;;
+esac
 printf "{\n    \"child-pid\": %s\n}\n" "$child" >&"$fd"
 eval "exec $fd>&-"
 printf "NESTED_WAYLAND=wayland-1\nNESTED_SIG=nested-sig\n" >"$state/nested.env"
@@ -177,6 +232,9 @@ healthy() {
     "quickshell.service active" >"$FAKE/units"
   echo "instance host-sig: pid 100" >"$FAKE/instances"
   : >"$FAKE/journal"
+  echo applies >"$FAKE/rule"
+  echo 0x1000 >"$FAKE/active"
+  : >"$FAKE/special"
   rm -f "$FAKE/nobus" "$FAKE/bwrap-fail"
 }
 healthy
@@ -278,6 +336,9 @@ check "up: rc" 0 "$rc"
 contains "up: loaded" "nest nest up: Configuration Loaded" "$out"
 contains "up: host checked" "host unchanged (the nest running)" "$out"
 check "up: not shown without --visible" 0 "$(grep -c '^hyprctl dispatch' "$FAKE/log" || true)"
+contains "up: the window read from the host, on special:nest and unfocused" \
+  "the window is on the special workspace 'nest', without focus (floating, 1600x900)" "$out"
+contains "up: no monitor shows it" "no monitor shows the special workspace 'nest': the window is hidden" "$out"
 read -r sup _ <"$state/supervisor"
 read -r child _ <"$state/sandbox"
 echo "$child" >"$FAKE/expect-target"
@@ -403,6 +464,7 @@ contains "lock: names the word, warns off passwords" "only the word nest-unlock 
 
 nest status
 contains "status: running" "nest nest: running (sandbox pid $child" "$out"
+contains "status: where the window is" "window: workspace special:nest, unfocused, floating, 1600x900" "$out"
 
 # --- a reused pid is never touched ----------------------------------------------
 
@@ -479,6 +541,7 @@ pids+=("$decoy")
 nest down
 check "down: rc" 0 "$rc"
 contains "down: host checked after" "host unchanged (after down)" "$out"
+contains "down: says it ended" "nest nest ended" "$out"
 wait_down
 check "down: the nested compositor ended, the lock is free" "gone no" \
   "$(kill -0 "$child" 2>/dev/null && echo alive || echo gone) $(running && echo yes || echo no)"
@@ -493,6 +556,9 @@ nest --name two up --visible
 check "a second name runs" 0 "$rc"
 check "--visible shows the special workspace" 'hyprctl dispatch hl.dsp.workspace.toggle_special("nest")' \
   "$(grep '^hyprctl dispatch' "$FAKE/log")"
+check "--visible: reads that it is shown, and where" "--visible: the special workspace 'nest' is open on DP-1" "$(grep -- '^--visible' <<<"$out")"
+contains "--visible: the window was hidden and unfocused first" \
+  "the window is on the special workspace 'nest', without focus" "$out"
 state2="$XDG_STATE_HOME/desk-nest/two"
 read -r sup2 _ <"$state2/supervisor"
 read -r child2 _ <"$state2/sandbox"
@@ -512,6 +578,97 @@ check "crash: the records are the new nest's" "no no" \
 echo "$(cut -d' ' -f1 "$state2/sandbox")" >"$FAKE/expect-target"
 nest --name two down
 check "crash: down after" 0 "$rc"
+
+# --- the window rule missed: the window is put right, or the nest taken down -------
+
+healthy
+echo missing >"$FAKE/rule"
+: >"$FAKE/log"
+nest up
+check "rule missed: up succeeds" 0 "$rc"
+contains "rule missed: says where the window was" \
+  "the window rule did not apply: the window was on workspace 6, focused (tiled, 1264x1380)" "$out"
+contains "rule missed: says it moved it" "moved it to the special workspace 'nest', without focus (tiled, 1264x1380)" "$out"
+contains "rule missed: hidden" "no monitor shows the special workspace 'nest': the window is hidden" "$out"
+contains "rule missed: says focus went back" "focus is back on the window that had it before up (0x1000)" "$out"
+check "rule missed: the host's focus is back" 0x1000 "$(cat "$FAKE/active")"
+win=$(printf '0x%x' "$(cut -d' ' -f1 "$state/sandbox")")
+check "rule missed: moved by its address, silently" \
+  "hyprctl dispatch hl.dsp.window.move({ window = \"address:$win\", workspace = \"special:nest\", follow = false })" \
+  "$(grep '^hyprctl dispatch' "$FAKE/log" | grep -F 'window.move')"
+check "rule missed: the other aquamarine window untouched" 0 "$(grep -c 'address:0x2000' "$FAKE/log" || true)"
+nest status
+contains "rule missed: status after" "window: workspace special:nest, unfocused, tiled, 1264x1380" "$out"
+nest down
+check "rule missed: down" 0 "$rc"
+
+healthy
+echo special:nest >"$FAKE/special"
+nest up
+contains "special workspace already open: says the window is on screen" \
+  "the special workspace 'nest' is open on DP-1: the window is on screen" "$out"
+nest down
+
+healthy
+echo stuck >"$FAKE/rule"
+nest up
+check "cannot be put right: up fails" 1 "$rc"
+contains "cannot be put right: says what it saw" "moving it did not work: it is on workspace 6, focused" "$out"
+contains "cannot be put right: says it takes the nest down" "taking the nest down" "$out"
+contains "cannot be put right: down ran" "nest nest ended" "$out"
+contains "cannot be put right: the host checked" "host unchanged (after down)" "$out"
+check "cannot be put right: nothing left running" no "$(running && echo yes || echo no)"
+
+healthy
+echo nowindow >"$FAKE/rule"
+nest up
+check "no window found: up fails" 1 "$rc"
+contains "no window found: says so" "could not find the nest's window among the host's windows" "$out"
+contains "no window found: lists what it saw" "aquamarine windows on the host: 0x2000 other" "$out"
+contains "no window found: taken down" "nest nest ended" "$out"
+check "no window found: nothing left running" no "$(running && echo yes || echo no)"
+healthy
+
+# --- the window rule, matched as Hyprland matches it --------------------------------
+
+# Hyprland 0.57 matches each pattern against the whole string, with RE2's
+# FullMatch (src/desktop/rule/matchEngine/RegexMatchEngine.cpp); the same
+# library here. The values are those aquamarine's Wayland backend sets
+# (src/backend/Wayland.cpp: app id "aquamarine", title "aquamarine - <output>")
+# for the nest's first output and the one it is replaced with.
+cat >"$work/rules.lua" <<'LUA'
+local found
+hl = {
+  window_rule = function(r) if r.name == "desk-nest" then found = r end end,
+  layer_rule = function() end,
+}
+dofile(arg[1])
+assert(found, "no window rule named desk-nest")
+for k, v in pairs(found.match) do print("match", k, v) end
+print("workspace=" .. tostring(found.workspace))
+print("no_initial_focus=" .. tostring(found.no_initial_focus))
+LUA
+rule=$("$lua" "$work/rules.lua" "$rules_lua")
+matched=$(grep '^match' <<<"$rule" | python3 -I -c '
+import re2, sys
+values = {"class": ["aquamarine"], "initial_class": ["aquamarine"],
+          "title": ["aquamarine - DP-1", "aquamarine - WAYLAND-1"],
+          "initial_title": ["aquamarine - DP-1", "aquamarine - WAYLAND-1"]}
+for line in sys.stdin:
+    _, key, pattern = line.rstrip("\n").split("\t", 2)
+    negative = pattern.startswith("negative:")
+    if negative:
+        pattern = pattern[len("negative:"):]
+    for v in values.get(key, [None]):
+        if v is None:
+            print("%s: not a key this test knows" % key)
+        elif (re2.fullmatch(pattern, v) is None) != negative:
+            print("%s %r does not match %r" % (key, pattern, v))
+')
+check "rule: a match key" yes "$(grep -q '^match' <<<"$rule" && echo yes || echo no)"
+check "rule: every pattern matches the nest's window" "" "$matched"
+check "rule: the workspace desk-nest checks for" "workspace=special:nest silent" "$(grep '^workspace=' <<<"$rule")"
+check "rule: no focus at map" "no_initial_focus=true" "$(grep '^no_initial_focus=' <<<"$rule")"
 
 # --- the stand-in PAM check -----------------------------------------------------
 

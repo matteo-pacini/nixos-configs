@@ -39,12 +39,14 @@ hl.layer_rule({
 -- the hidden special workspace "nest" without taking focus, and keeps
 -- getting frame callbacks there, without which the nest draws one frame and
 -- stops. Floating at a fixed size, because the nest's output takes the
--- window's size. The app id and title are aquamarine's Wayland backend's
--- for any nested aquamarine compositor, so any nested Hyprland matches, not
--- only desk-nest's.
+-- window's size. The app id is aquamarine's Wayland backend's for any nested
+-- aquamarine compositor, so any nested Hyprland matches, not only
+-- desk-nest's. A pattern must match the whole string (Hyprland uses RE2's
+-- FullMatch): a prefix such as "^aquamarine - " matches no title at all.
+-- desk-nest checks where the window landed and corrects it if this misses.
 hl.window_rule({
     name  = "desk-nest",
-    match = { class = "^aquamarine$", initial_title = "^aquamarine - " },
+    match = { class = "aquamarine" },
 
     workspace        = "special:nest silent",
     no_initial_focus = true,
