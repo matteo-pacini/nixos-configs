@@ -483,7 +483,7 @@ apply_fixture() { # panel name
 
 seed() {
   local d p n line
-  rm -rf "$state/home"
+  rm -rf "${state:?}/home"
   for d in config data cache state; do
     mkdir -p "$state/home/$d"
     # -L: some seed files are relative links into the checkout.
@@ -848,8 +848,9 @@ case $cmd in
 up) up "$@" ;;
 _supervise)
   # Only as up starts it: holding the nest's lock on fd 9.
-  [ "$(readlink /proc/self/fd/9 2>/dev/null)" = "$(realpath -m "$state/lock")" ] && flock -n 9 ||
+  if [ "$(readlink /proc/self/fd/9 2>/dev/null)" != "$(realpath -m "$state/lock")" ] || ! flock -n 9; then
     die "_supervise is started by desk-nest up only"
+  fi
   supervise
   ;;
 set)

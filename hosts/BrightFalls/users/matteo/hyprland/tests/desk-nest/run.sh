@@ -365,7 +365,7 @@ healthy
 # --- up -----------------------------------------------------------------------
 
 # What a nest could leave in its private homes, which the host then writes in.
-rm -rf "$state/home"
+rm -rf "${state:?}/home"
 mkdir -p "$state/home/config/desk"
 : >"$work/victim"
 ln -s "$work/victim" "$state/home/config/desk/theme.json"
