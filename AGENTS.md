@@ -113,7 +113,7 @@ The short version:
 | Home Assistant topic docs: Zigbee watchdog, blueprints, heating, dashboards, metrics, working on the live half | `hosts/Nexus/services/home-assistant/docs/` (indexed in the `AGENTS.md` above) |
 | Home Assistant custom cards (house floorplan: where its layout lives, how to add sensors) | `hosts/Nexus/services/home-assistant/cards/README.md` |
 | BrightFalls Hyprland session and Quickshell shell: how to work on it (process, testing, safety rules, code map, open work) | `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md` |
-| BrightFalls Hyprland session and Quickshell shell: what each piece is (layers, `desk-sync`, every panel, lock screen, calendar sync) | `hosts/BrightFalls/users/matteo/hyprland/README.md` |
+| BrightFalls Hyprland session and Quickshell shell: what each piece is (layers, `desk-sync`, `desk-nest`, every panel, lock screen, calendar sync) | `hosts/BrightFalls/users/matteo/hyprland/README.md` |
 | mpv module (where each vendored file comes from, how to check for updates) | `modules/home-manager/mpv/README.md` |
 | Wallpapers: the shared PNGs (`assets/wallpapers/`), the Macs' per-display agent (`custom.deskWallpaper`, `desk-wallpaper`) | `modules/home-manager/darwin/desk-wallpaper/README.md`; BrightFalls' hyprpaper: `hosts/BrightFalls/users/matteo/hyprland/README.md`, "Wallpaper" |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |

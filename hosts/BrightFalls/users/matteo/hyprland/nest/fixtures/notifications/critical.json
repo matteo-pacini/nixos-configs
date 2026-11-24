@@ -1,0 +1,3 @@
+[
+  {"app": "Harness", "icon": "dialog-warning", "summary": "Test: critical", "body": "Stays until dismissed.", "urgency": 2}
+]

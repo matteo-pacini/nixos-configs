@@ -6,7 +6,7 @@ desktop shell (Quickshell), including work that starts in the live
 What each piece is and how it works is in [README.md](README.md); this file
 is how to work on it. Repo-wide rules are in the root `AGENTS.md`.
 
-State as of 2026-11-23. "State and open work" at the bottom says what is
+State as of 2026-11-24. "State and open work" at the bottom says what is
 unproven; check it before relying on anything.
 
 ## What this is
@@ -27,11 +27,14 @@ screen.
   from `user/` here at activation and hot-reloaded. They are developed live
   and brought back to this directory with `desk-sync pull`. README:
   "Two layers", "Activation", "desk-sync", "Editing live".
+- **`desk-nest`** runs a checkout's shell, or part of it, in a sealed nested
+  Hyprland on fixture data, apart from the user's running shell. README:
+  "desk-nest".
 
 Code is written and checked in the repository first, where the lint and
-node checks run without reloading the user's shell, and put live in a
-separate step ("Practices", "Live work"). Some changes need
-both halves at once (a panel plus the Nix file that feeds it). Decide which
+node checks run without reloading the user's shell, then looked at in
+`desk-nest`, and put live in a separate step ("Practices", "Live work").
+Some changes need both halves at once (a panel plus the Nix file that feeds it). Decide which
 half a change belongs to before starting.
 
 ## How to work here
@@ -117,9 +120,11 @@ user's and are strict:
   focus only after that check. (A focus batch once armed its timer before a
   failed notification call, and a password modal over test data held the
   keyboard unannounced.)
-- **Prefer checks that need no focus**: an IPC function that returns state,
-  a temporary no-focus preview mode, the service log, `hyprctl layers`. The
-  bar takes no focus and can be screenshotted any time.
+- **Prefer checks that need no focus**: a panel in `desk-nest` driven over
+  `desk-nest ipc` and seen with `desk-nest shot`, an IPC function that
+  returns state, a temporary no-focus preview mode, the service log,
+  `hyprctl layers`. The bar takes no focus and can be screenshotted any
+  time.
 - **Tests that need the user** are announced through the coordinator first,
   with an estimate and the number of steps, and start only on the user's go.
 - **Instructions go through the coordinator in chat**, one step at a time,
@@ -138,8 +143,19 @@ user's and are strict:
   followed by `hyprctl configerrors`; open and close surfaces over `qs ipc`;
   screenshot with `grim` (take `WAYLAND_DISPLAY` from
   `systemctl --user show-environment`).
-- May not: start, stop or restart the compositor or the session; run a nested
-  Hyprland; `hyprctl dispatch`, `eval` or `keyword`; restart the `quickshell`
+- May: run `desk-nest` with its window hidden (every command but
+  `--visible`), beside another agent's nest with `--name`; take
+  screenshots inside it; `desk-nest lock`, whose only accepted word is
+  `nest-unlock`. Read the host
+  check's verdict after `up` and `down`; on any difference, stop and report
+  with the recovery it printed (README, "desk-nest", "Recovery"). If `up`
+  refuses for want of the window rule in `~/.config/hypr/rules.lua`, report
+  it: putting the rule live is the coordinator's.
+- May not: start, stop or restart the compositor or the session; run Hyprland
+  nested other than through `desk-nest`; `desk-nest up --visible`, or
+  bringing the nest's window forward, without the 10 s notification rule
+  above (it can take keyboard focus); type a password into the nest's lock,
+  or anywhere; `hyprctl dispatch`, `eval` or `keyword`; restart the `quickshell`
   service unless a startup-only setting needs it (then say so in the report);
   `sudo`, `nixos-rebuild`, `desk-sync reset`; git, except where the brief says
   so; start other agents; change the user's audio defaults, volumes or
@@ -182,12 +198,13 @@ user's and are strict:
 
 ## Testing strategy
 
-Five levels. Each proves something different; say which one a claim rests on.
+Six levels. Each proves something different; say which one a claim rests on.
 
 | Level | What it proves | What it cannot |
 |-------|----------------|----------------|
 | Pure logic under node, and as flake checks | The decisions in the `.js` libraries, against invented fixtures | Anything QML draws, any device |
 | Builds and config checks | The toplevel builds, generated files have the right content, `Hyprland --verify-config` accepts the Lua, `qmllint` accepts the QML (syntax, imports, ids, properties, singleton members) and every `qs ipc call` names a real target and function | That it works in the session: nothing at run time (binding loops, JS errors, layout), nor members read through an outer id inside a delegate |
+| The shell in `desk-nest`, on fixtures | That the checkout's shell loads and runs (binding loops, JS errors and layout show here), what each panel draws for each fixture, keys sent over IPC, screenshots; the user's running shell untouched | Real devices and services (Wi-Fi, audio, Bluetooth, Polkit and the tray show empty states), real keyboard focus on the session, the real lock's PAM stack, the System panel's states (it reads the real machine) |
 | Injected data and preview modes, live | The panel's states and wording (a fake export, a fake sysfs tree, a data override, a no-focus preview) | That real hardware or a real service produces that data |
 | Real hardware with the user | The real path end to end | Cases the hardware cannot produce on demand |
 | After the deploy | That Nix put everything in place | |
@@ -201,7 +218,7 @@ user as written.
 **Pure logic.** Decisions live in plain `.js` files that QML imports and node
 runs (see "Practices"). Run them with
 `nix shell nixpkgs#nodejs -c node <test.js> <library>`. Every check, what it
-covers and which run in CI: README, "Tests" (the 25 checks defined in
+covers and which run in CI: README, "Tests" (the 28 checks defined in
 `tests/default.nix`).
 One check: `nix build .#checks.x86_64-linux.<name>`; all but `hypr-config`:
 `nix build -L .#checks.x86_64-linux.brightfalls-tests`, which is what CI
@@ -236,7 +253,18 @@ verify`); a live edit needs the same on a temporary copy (`config/hypr/*`,
 catch a misspelt key name in a bind (`Unknown key`), not a mouse button code
 out of range.
 
-**Injected data and previews.** Allowed during development: temporary IPC
+**The nest.** `desk-nest up` from the checkout (or `up Bar Weather` for a
+part), then `desk-nest fixture <panel> <name>`, `desk-nest ipc call …`,
+`desk-nest shot <name>`, `desk-nest reload` after an edit, and `desk-nest
+down`, which must end with `host unchanged`. `qs.out` in its state
+directory must show `Configuration Loaded`. The fixtures are listed in
+`nest/fixtures/index`; a panel state no fixture reaches gets a new fixture
+in the nest (README, "desk-nest"), not a hook in the shell. Everything seen
+there is **simulated**. A new command the shell runs needs a fake or stub
+first (the `nest-commands` check says which).
+
+**Injected data and previews.** Allowed during development, where the nest
+cannot show it: temporary IPC
 targets, a property that points a loader at a fixture, a data override, a
 no-focus preview mode on DP-2. Remove them before the report; anything kept
 on purpose is named in it (the lock screen's `DESK_LOCK_PREVIEW=1` is kept,
@@ -269,11 +297,15 @@ log has no errors.
 
 Each was learned the hard way or is one mistake away.
 
-- **Never run Hyprland nested in the live session.** Exiting the nested one
-  took the user's session down. Use `Hyprland --verify-config`.
+- **Nested Hyprland only through `desk-nest`.** Running Hyprland directly in
+  the live session stops the session when it exits: it opens a seat session
+  of its own, takes itself for the session's compositor and, on a clean
+  exit, stops `graphical-session.target`, which the live compositor is
+  bound to. To check a config, use `Hyprland --verify-config`.
 - **The lock screen can lock the user out.** Develop it in its preview
-  (`DESK_LOCK_PREVIEW=1`, no session lock, no keyboard). A build that can
-  engage a real lock carries a self-release during development (60 s and a
+  (`DESK_LOCK_PREVIEW=1`, no session lock, no keyboard) or in `desk-nest
+  lock` (a real lock of the nest's display only, opened by `nest-unlock`).
+  A build that can engage a real lock carries a self-release during development (60 s and a
   key chord) until the user has unlocked with their password; never engage a
   real lock on your own; have the recovery written, handed over and tried
   before the user depends on it (README, "If the lock screen dies"). Don't
@@ -402,8 +434,10 @@ What working on this shell has taught: the rule, its reason, what taught it.
 
 **Live work** (the rules: "The user's desktop is in use")
 
-- **Repository first, then live as a group** (`.js` before `.qml`): a
-  half-applied state logged warnings, so a mixed state is no test.
+- **Repository first, seen in `desk-nest`, then live as a group** (`.js`
+  before `.qml`): a half-applied state logged warnings, so a mixed state is
+  no test. The nest reloads `.js` and `.qml` saves alike (`desk-nest
+  reload` or `watch`).
 - **Only a changed `.qml` reloads the shell**: Quickshell watches only the
   `.qml` files it loaded and their directories, and reloads only when a
   loaded file's content differs from the running generation's; it never
@@ -420,18 +454,24 @@ what a check catches if one is forgotten; nothing catches the rest.
 
 - **Drop-down panel** (the token panel): the QML in "Code map", "To add a
   drop-down panel"; `name/name.js` and its check; the bar item and bind
-  below; README's section, Contents, table and panel counts; the code map's
-  rows. Caught: calls to a missing target, misspelt members (lint).
+  below; its name in `nest/dev.qml`'s `all` list and a `LazyLoader` there,
+  and fixtures for the nest if it has a helper; README's section, Contents,
+  table and panel counts; the code map's rows. Caught: calls to a missing target, misspelt
+  members (lint); a root component missing from `nest/dev.qml`
+  (`nest-commands`).
 - **Removing one**: the same. Lint fails while a bind names it, evaluation
   while `tests/default.nix` does. The live files stay: delete them by hand.
 - **Bar item** (`Bar.qml:503-562`): the item, its look from the `.js`
   (`limits().bar`) and a test, README's Bar sentence, and an entry under
   "Nothing runs while hidden" if it runs while closed. Caught: names.
 - **Helper** (`desk-tokens`): `.py` with its docstring, `.nix`,
-  `home.packages`, the `Process`, a helper check, README section, code map.
+  `home.packages`, the `Process`, a helper check, its fake in
+  `nest/fakes/fakes.py` and link in `nest/fakes/bin/` with fixtures in
+  `nest/fixtures/index`, README section, code map.
   A secret (`desk-mqtt`): `secrets/secrets.nix`, `age.secrets` in
   `flake.nix`, the path (`default.nix:124`), the `.age` in git. Caught: the
-  build, the check; a missing `home.packages` entry only at run time.
+  build, the check; a helper with no fake (`nest-commands`); a missing
+  `home.packages` entry only at run time.
 - **Check** (`common-panel`): `tests/<name>/` and its attribute, in
   `brightfalls-tests` by itself (`tests/default.nix:19-24`); `git add`
   first; README "Tests", the code map's `tests/` row. `-L` prints the
@@ -468,7 +508,7 @@ not.
 | Path | What |
 |------|------|
 | `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
-| `default.nix` | User side: the two layers, `desk-sync` and `desk-unlock` packages, the commands binds and panels run, the `quickshell` and `hyprpaper` user services (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
+| `default.nix` | User side: the two layers, `desk-sync`, `desk-unlock` and `desk-nest` packages, the commands binds and panels run, the `quickshell` and `hyprpaper` user services (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
@@ -479,8 +519,10 @@ not.
 | `weather-coast.nix` | The radar map's British Isles outline from Natural Earth (pinned by hash), clipped and simplified; installed at `~/.local/share/desk/weather/coast.json` by `default.nix` |
 | `desk-sync.sh` | `desk-sync activate|status|reset|pull`; `activate` reloads the shell once over IPC (`qs ipc … call shell reload`) after writing any file under `quickshell/` (README, "Activation") |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
+| `desk-nest.nix`, `desk-nest.sh` | `desk-nest`, the shell from a checkout in a sealed nested Hyprland (README, "desk-nest"): the host check, the sandbox, the detached supervisor holding one lock per nest name, the synced copy of the tree, fixtures, IPC and screenshots through `nsenter`, the lock's stand-in, `down`. Every program it runs, outside and inside, comes from the `.nix` |
+| `nest/` | desk-nest's harness, read from the checkout, never installed: `dev.qml` (the root: any subset of `shell.qml`'s components from `$NEST_STATE/harness.json`, loaded and unloaded in place; IPC `shell` and `harness`), `fakes/fakes.py` (every fake, stub and wrapper, chosen by the name it runs as; protocol in its docstring) and `fakes/bin/` (a link per name), `fixtures/` (`index`, the seed for the private homes, captured binds, network and notification samples), `hypr/nest.lua` (the nested compositor's config), `pam/` (the lock's stand-in check) |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
+| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `desk-nest/` (desk-nest.sh against fakes), `nest-fakes/` (the nest's fakes through the panels' `.js` under node), `nest-commands/` (every command the shell starts against the fakes and `allowlist`), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, and `--dev`: `nest/dev.qml` at the root of a copy, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
@@ -491,7 +533,7 @@ not.
 `rescue.lua`), `monitors.lua` (outputs, workspace rules), `input.lua`,
 `looknfeel.lua` (gaps, animations, tearing, scanout, `disable_autoreload`),
 `rules.lua` (game rule, critical-notification and calendar big-view layer
-rules), `bindings.lua` (every bind, through `bind()`), `autostart.lua`.
+rules, desk-nest's window rule), `bindings.lua` (every bind, through `bind()`), `autostart.lua`.
 
 **Quickshell** (`user/quickshell/`). `shell.qml` loads one line per
 component, and holds the `shell` IPC target, whose `reload` is a soft reload
@@ -599,14 +641,33 @@ activation asks again until it gets that) is simulated by the `desk-sync`
 check's fake `qs`; activation asking again after the real shell refuses the
 call is expected only, as no one has looked.
 
-**Left behind by the next deploy, for the owner to delete by hand**
-(`desk-sync` leaves a file dropped from the manifest alone, and nothing
-reads these any more): the live `~/.config/quickshell/Tunes.qml` and
-`~/.config/quickshell/tunes/`, `~/.config/desk/tunes/` (and
-`~/.config/desk/tunes-genres.json` if present), and the data the
-`desk-tunes` service kept: `~/.local/share/desk-tunes` (the model weights,
-about 7.6 GiB), `~/.cache/desk-tunes`, `~/.local/state/desk-tunes`, and the
-generated music in `~/Music/Tunes`.
+**desk-nest** (README, "desk-nest"). Proven on real hardware:
+- The seal, with the prototype scripts the launcher was built from, by the
+  coordinator's commands: five starts and five clean exits, among them the
+  nested exit key pressed by the owner, the host unchanged every time.
+- Real keys typed into a nested panel, by the owner.
+- The lock in the nest with the stand-in word, typed by the owner, with the
+  prototype.
+- A config link retargeted under a running Quickshell loads the new tree
+  only after an explicit reload (the coordinator's commands).
+- The built `desk-nest`, from the merged checkout, by the coordinator's
+  commands over two runs: `up` with the window on the hidden special
+  workspace `nest`, floating at 1600x900, without focus (the focused window
+  the same before and after); `ipc show`; `shot`; a weather fixture switched
+  live (the panel and the bar changed within 2 s); a wrong fixture name
+  refused; `set Bar Weather` in place; `watch` reloading on save of a `.js`
+  file, twice; `check` and `down` saying `host unchanged`, with no window
+  or process left.
+
+Simulated only: everything in the `desk-nest`, `nest-fakes` and
+`nest-commands` checks, among them the state directory read-only inside
+the sandbox with only the nest's own files writable, the private homes
+emptied at `up`, a `place` fixture placed from inside, Ctrl+C at each stage
+of `up`, `up` failing with the nest still running, the refusal without the
+window rule in `~/.config/hypr/rules.lua`, and `check` with no nest
+running. Not proven with the built launcher: `lock`, `--visible`, `--name`
+(a second nest), a crash of the nest, a recording (no recording command
+exists).
 
 **Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
 fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and

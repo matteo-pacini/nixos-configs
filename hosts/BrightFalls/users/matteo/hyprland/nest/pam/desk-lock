@@ -1,0 +1,7 @@
+# The lock screen's PAM service inside desk-nest, in place of the real
+# desk-lock: pam_exec hands what was typed to the check, which accepts only
+# the fixture word nest-unlock. A failed check is ignored and pam_deny
+# answers instead, so the lock shows "wrong", as for a wrong password,
+# rather than pam_exec's system error.
+auth [success=done default=ignore] @pam_exec@ expose_authtok quiet quiet_log @check@
+auth requisite @pam_deny@
