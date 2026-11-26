@@ -288,7 +288,10 @@ exists).
 **After a deploy**, the coordinator checks: the running generation equals the
 built one; the generated files exist (`~/.local/share/desk/*/locked.json`,
 `source.json`); new services ran (`systemctl --user status <unit>`);
-`readlink -f ~/.config/quickshell` is in this generation's store;
+`readlink -f ~/.config/quickshell` equals `readlink -f
+~/.local/state/home-manager/gcroots/current-home/home-files/.config/quickshell`
+(the path changes only when `quickshell/` does, so the comparison, not the
+path alone, tells the new link from an old one);
 `journalctl -u home-manager-matteo` shows `desk-reload: quickshell:
 reloaded` when `quickshell/` or `desk/` changed; `hyprctl configerrors` is
 empty (after `hyprctl reload` when `hypr/` changed); the shell's log has no
@@ -673,6 +676,27 @@ running. Not proven with the built launcher: `lock`, `--visible`, `--name`
 exists).
 
 **To do at the next deploy:**
+- The first switch to the read-only config links (the owner's, by hand):
+  1. Keep comin's mode `manual` until the last step, so nothing deploys
+     unattended in between.
+  2. Before the switch, `ls -d ~/.config/{quickshell,hypr,desk}.backup`
+     must find nothing; move away any that exists, or activation stops
+     before linking anything.
+  3. Switch. Home Manager moves the three real directories to
+     `~/.config/{quickshell,hypr,desk}.backup`, everything in them
+     included: `~/.config/hypr/dms/` (files from an earlier shell, not
+     loaded by `hyprland.lua`) ends up in `hypr.backup/dms/`.
+  4. Check as under "After a deploy" (Testing strategy), plus `hyprctl
+     reload; hyprctl configerrors`, and lock and unlock once (Super+L).
+  5. `diff -r ~/.config/quickshell.backup <checkout>/hosts/BrightFalls/users/matteo/hyprland/user/quickshell`,
+     the same for `desk`, and for `hypr` (only `dms/` may differ):
+     identical, or rescue an edit into a branch. Then delete
+     `~/.config/{quickshell,hypr,desk}.backup`,
+     `~/.local/state/desk/hashes/` and `~/.local/state/desk/incoming/`;
+     nothing deletes them on its own. Until the `.backup` directories are
+     gone, switching back to an older generation and forward again stops
+     at the collision.
+  6. Put comin's mode back as wanted. Then delete this item.
 - The plan-limit writer (`modules/home-manager/herdr/scripts/claude-limits.sh`)
   changes only at the switch. After it, each window in
   `$XDG_RUNTIME_DIR/desk/claude-limits.json` has `evidence_at` and `kind`.
@@ -852,8 +876,8 @@ Not worth doing, so off the list: a helper to pick the screen by name (17
 identical one-liners; a helper replaces one line with one line and has no
 natural home); a shared flash timer (seven copies of 11 lines whose
 durations differ by design and are documented); renaming
-`BluetoothPanel.qml` (`Bluetooth` is Quickshell's own singleton, and a
-rename leaves stale live files; the naming rule is under "Names to know").
+`BluetoothPanel.qml` (`Bluetooth` is Quickshell's own singleton; the
+naming rule is under "Names to know").
 
 **Open defects**, read in the source and not reproduced live (each small):
 - `lock.qml:213`: the second half of the completion test (a failure whose

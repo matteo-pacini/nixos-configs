@@ -1,8 +1,8 @@
 # desk-reload <quickshell-config-dir>: asks the running shell for one reload
 # over shell.qml's "shell" IPC target. Run by Home Manager activation after a
 # switch that changed ~/.config/quickshell or ~/.config/desk (README.md beside
-# this file, "Activation"). Always exits 0: a shell that cannot be reloaded
-# never fails activation.
+# this file, "Activation"). Given one directory, it exits 0 whatever the
+# shell answers, or does not; only a wrong argument count exits 2.
 #
 # Quickshell does not reload by itself here: its watcher holds the files of
 # the store tree it loaded, which never change, and a retargeted config link

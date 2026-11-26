@@ -98,7 +98,7 @@ in
   };
   home.activation.deskReloadShell = lib.hm.dag.entryAfter [ "onFilesChange" ] ''
     if [[ -v deskReloadShell ]]; then
-      run ${lib.getExe deskReload} ${config.xdg.configHome}/quickshell
+      run ${lib.getExe deskReload} ${config.xdg.configHome}/quickshell || true
     fi
   '';
 

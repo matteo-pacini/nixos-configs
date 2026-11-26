@@ -19,13 +19,17 @@ check() { # name expected actual
     failed=1
   fi
 }
+realtimeout=$(command -v timeout)
+# Bounded, so a script that waits on a hung qs fails here (status 124)
+# rather than hanging the check.
 dr() { # args...; output (stdout and stderr) in $out, status in $rc
   rc=0
-  out=$(bash -euo pipefail "$script" "$@" 2>&1) || rc=$?
+  out=$("$realtimeout" 30 bash -euo pipefail "$script" "$@" 2>&1) || rc=$?
 }
 
 # A stand-in for Quickshell's `qs`: logs its arguments to $work/qs.log. It
-# fails with qs's message when $work/qs-down exists. While $work/qs-refuse
+# hangs, saying nothing, when $work/qs-hang exists, and fails with qs's
+# message when $work/qs-down exists. While $work/qs-refuse
 # holds a number above 0 it counts it down and refuses the call as a shell in
 # the middle of a reload does: the message on stderr, exit status 0.
 # Otherwise it answers as shell.qml's reload() does.
@@ -33,6 +37,10 @@ mkdir -p "$work/bin"
 cat >"$work/bin/qs" <<EOF
 #!$BASH
 echo "qs \$*" >>"$work/qs.log"
+if [ -e "$work/qs-hang" ]; then
+  # exec, and no pipe kept open: timeout's signal ends the call itself.
+  exec sleep 60 >/dev/null 2>&1
+fi
 if [ -e "$work/qs-down" ]; then
   echo 'No running instances for "x"'
   echo 'second line'
@@ -47,6 +55,13 @@ fi
 echo reloaded
 EOF
 chmod +x "$work/bin/qs"
+# desk-reload's 10 s limit cut to 1 s, so the hang case is quick.
+cat >"$work/bin/timeout" <<EOF
+#!$BASH
+shift
+exec $realtimeout 1 "\$@"
+EOF
+chmod +x "$work/bin/timeout"
 export PATH="$work/bin:$PATH"
 qslog() { # the log since the last call, then emptied
   cat "$work/qs.log" 2>/dev/null || true
@@ -67,6 +82,13 @@ dr "$cfg"
 rm "$work/qs-down"
 check "no shell: said after one call, exit 0" "0 desk-reload: quickshell: not reloaded: No running instances for \"x\" second line  1" \
   "$rc $out $(calls)"
+qslog >/dev/null
+
+touch "$work/qs-hang"
+dr "$cfg"
+rm "$work/qs-hang"
+check "hung shell: cut off by the timeout after one call, said, exit 0" \
+  "0 desk-reload: quickshell: not reloaded:   1" "$rc $out $(calls)"
 qslog >/dev/null
 
 # A shell busy with a reload of its own refuses the call and qs still exits

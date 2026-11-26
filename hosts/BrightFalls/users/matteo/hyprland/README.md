@@ -122,8 +122,9 @@ can switch in the middle of a game. After a deploy that changes `hypr/`, run
 `hyprctl reload`, then `hyprctl configerrors`.
 
 It reloads the shell once when a switch changes `quickshell/` or `desk/`.
-Before linking, Home Manager compares each new store directory with the one
-the live link points at; a difference in either runs that entry's
+Before linking, Home Manager compares each new store directory with what
+is at `~/.config/<dir>` (`diff -rq`), the link or a real directory in its
+place; a difference in either runs that entry's
 `onChange`, which sets a flag, and after every link is in place
 `home.activation.deskReloadShell` runs `desk-reload ~/.config/quickshell`
 (`desk-reload.sh`, not on PATH): `qs ipc --any-display -p
@@ -155,8 +156,10 @@ does not reload the shell.
 3. Look at it in [desk-nest](#desk-nest): `Configuration Loaded` in its
    `qs.out`, then the panels on their fixtures.
 4. Commit. The owner deploys (`nixos-rebuild switch`, or comin).
-5. After the switch: `readlink -f ~/.config/quickshell` is in the new
-   generation's store. For a change under `quickshell/` or `desk/`,
+5. After the switch: `readlink -f ~/.config/quickshell` equals `readlink -f
+   ~/.local/state/home-manager/gcroots/current-home/home-files/.config/quickshell`
+   (that path changes only when `quickshell/` does, so the comparison, not
+   the path alone, tells the new link from an old one). For a change under `quickshell/` or `desk/`,
    `journalctl -u home-manager-matteo` shows `desk-reload: quickshell:
    reloaded`, and `qs log` (or `journalctl --user -u quickshell`) shows
    `Configuration Loaded` and no error; the line and column of a QML error
@@ -2037,7 +2040,8 @@ config on GitHub's runners, cause not known.
 
 - `nix build .#checks.x86_64-linux.desk-reload`: runs
   `tests/desk-reload/run.sh` against a fake `qs`: the exact call; answered
-  at once (one call); no shell (one call, said, exit 0); refused twice, then
+  at once (one call); no shell (one call, said, exit 0); a hung shell (cut
+  off by the timeout, shortened to 1 s, after one call, exit 0); refused twice, then
   reloaded on the third call; refused throughout (20 calls, `not reloaded`,
   exit 0); no argument (usage, exit 2).
 - `nix build .#checks.x86_64-linux.desk-config-links`: evaluation only,
