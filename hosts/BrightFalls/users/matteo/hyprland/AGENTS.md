@@ -637,15 +637,15 @@ read-only), weather panel (Super+H: sky, figures, warnings, hours, days, air
 quality and the outdoor sensor's battery and link row, and the radar page
 on M, through `desk-weather`).
 
-**The shell's reload after a switch** (README, "Activation"): the same IPC
-call has run live after switches, from `home-manager-matteo`; through
-`desk-reload` and the read-only links it is expected only until the first
-deploy shows `desk-reload: quickshell: reloaded` in that unit's journal. The
-answer check (`reload()` answers `reloaded`, and `desk-reload` asks again
-until it gets that) is simulated by the `desk-reload` check's fake `qs`;
-asking again after the real shell refuses the call is expected only, as no
-one has looked. The lock started from the read-only tree is expected only
-until the owner has locked and unlocked once.
+**The shell's reload after a switch** (README, "Activation"). Proven on
+real hardware: a switch replaced the three links, `home-manager-matteo`'s
+journal showed `desk-reload: quickshell: reloaded`, and the shell loaded
+from the read-only tree with no error; the owner locked and unlocked from
+it, with Super+L and with the session menu's Lock row. The answer check
+(`reload()` answers `reloaded`, and `desk-reload` asks again until it gets
+that) is simulated by the `desk-reload` check's fake `qs`; asking again
+after the real shell refuses the call is expected only, as no one has
+looked.
 
 **desk-nest** (README, "desk-nest"). Proven on real hardware:
 - The seal, with the prototype scripts the launcher was built from, by the
@@ -676,27 +676,6 @@ running. Not proven with the built launcher: `lock`, `--visible`, `--name`
 exists).
 
 **To do at the next deploy:**
-- The first switch to the read-only config links (the owner's, by hand):
-  1. Keep comin's mode `manual` until the last step, so nothing deploys
-     unattended in between.
-  2. Before the switch, `ls -d ~/.config/{quickshell,hypr,desk}.backup`
-     must find nothing; move away any that exists, or activation stops
-     before linking anything.
-  3. Switch. Home Manager moves the three real directories to
-     `~/.config/{quickshell,hypr,desk}.backup`, everything in them
-     included: `~/.config/hypr/dms/` (files from an earlier shell, not
-     loaded by `hyprland.lua`) ends up in `hypr.backup/dms/`.
-  4. Check as under "After a deploy" (Testing strategy), plus `hyprctl
-     reload; hyprctl configerrors`, and lock and unlock once (Super+L).
-  5. `diff -r ~/.config/quickshell.backup <checkout>/hosts/BrightFalls/users/matteo/hyprland/user/quickshell`,
-     the same for `desk`, and for `hypr` (only `dms/` may differ):
-     identical, or rescue an edit into a branch. Then delete
-     `~/.config/{quickshell,hypr,desk}.backup`,
-     `~/.local/state/desk/hashes/` and `~/.local/state/desk/incoming/`;
-     nothing deletes them on its own. Until the `.backup` directories are
-     gone, switching back to an older generation and forward again stops
-     at the collision.
-  6. Put comin's mode back as wanted. Then delete this item.
 - The plan-limit writer (`modules/home-manager/herdr/scripts/claude-limits.sh`)
   changes only at the switch. After it, each window in
   `$XDG_RUNTIME_DIR/desk/claude-limits.json` has `evidence_at` and `kind`.
