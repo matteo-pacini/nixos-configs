@@ -44,6 +44,7 @@ cleanup() {
   local p
   for p in "${pids[@]}"; do kill -9 "$p" 2>/dev/null || true; done
   pkill -9 -f "$work/" 2>/dev/null || true
+  chmod -R u+w "$work" 2>/dev/null || true
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -239,6 +240,14 @@ git -C "$co" init -q
 listing() { find "$co" -path "$co/.git" -prune -o -print | sort; }
 listing >"$work/co.before"
 
+# ~/.config/hypr as Home Manager installs it: a link to a read-only tree.
+# hypr-norule stands for a generation without the nest's window rule.
+mkdir -p "$work/store/hypr" "$work/store/hypr-norule" "$HOME/.config"
+install -m 0444 "$rules_lua" "$work/store/hypr/rules.lua"
+printf -- '-- name = "desk-nest"\n' >"$work/store/hypr-norule/rules.lua"
+chmod 0444 "$work/store/hypr-norule/rules.lua"
+chmod 0555 "$work/store/hypr" "$work/store/hypr-norule"
+
 state="$XDG_STATE_HOME/desk-nest/nest"
 healthy() {
   printf '%s\n' "HOME=/home/someone" "WAYLAND_DISPLAY=wayland-1" "HYPRLAND_INSTANCE_SIGNATURE=host-sig" >"$FAKE/env"
@@ -252,8 +261,7 @@ healthy() {
   : >"$FAKE/special"
   echo ok >"$FAKE/load"
   rm -f "$FAKE/nobus" "$FAKE/bwrap-fail" "$FAKE/journal-fail" "$FAKE/hold" "$FAKE/held"
-  mkdir -p "$HOME/.config/hypr"
-  install -m 0644 "$rules_lua" "$HOME/.config/hypr/rules.lua"
+  ln -sfnT "$work/store/hypr" "$HOME/.config/hypr"
 }
 healthy
 
@@ -318,12 +326,12 @@ rc=0
 out=$(cd "$work/plain" && "$dn" up 2>&1) || rc=$?
 contains "another repository: refused" "is not a checkout of the BrightFalls shell" "$rc $out"
 
-printf -- '-- name = "desk-nest"\n' >"$HOME/.config/hypr/rules.lua"
+ln -sfnT "$work/store/hypr-norule" "$HOME/.config/hypr"
 nest up --visible
 check "no window rule in the live config: refused, --visible too, nothing started" "1 0" "$rc $(calls bwrap)"
 contains "no window rule in the live config: names the file" "$HOME/.config/hypr/rules.lua has no window rule named desk-nest" "$out"
 contains "no window rule in the live config: says what to do" \
-  "Deploy (the switch puts rules.lua in place unless it is edited live: desk-sync status), or copy the hl.window_rule named desk-nest from $hl/user/hypr/rules.lua" "$out"
+  "Deploy a generation whose rules.lua has it (the hl.window_rule named desk-nest in $hl/user/hypr/rules.lua), then run hyprctl reload." "$out"
 healthy
 
 rc=0
