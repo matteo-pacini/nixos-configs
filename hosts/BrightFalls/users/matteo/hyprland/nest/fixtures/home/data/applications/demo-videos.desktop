@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Videos
+Comment=Watch films and recordings
+Exec=demo-videos
+Icon=demo-videos
+Categories=AudioVideo;Video;Player;
+Terminal=false

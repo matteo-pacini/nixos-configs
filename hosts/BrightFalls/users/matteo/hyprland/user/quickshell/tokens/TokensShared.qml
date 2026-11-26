@@ -33,6 +33,11 @@ Singleton {
     // the limits file as re-read, which loads after the key.
     readonly property string said: saying.running ? T.refreshLine(limits.reading, now) : ""
 
+    // The plan's name and price: ~/.local/share/desk/tokens/plan.json when
+    // it exists, else tokens.js's PLAN (no file is installed on the desktop).
+    property string planText: ""
+    readonly property var plan: T.plan(planText)
+
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ""
     readonly property string limitsPath: runtimeDir !== "" ? runtimeDir + "/desk/claude-limits.json" : ""
 
@@ -209,5 +214,12 @@ Singleton {
         watchChanges: root.limitsText === ""
         printErrors: false
         onFileChanged: limitsFile.reload()
+    }
+
+    FileView {
+        path: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/desk/tokens/plan.json"
+        printErrors: false
+        onLoaded: root.planText = text()
+        onLoadFailed: root.planText = ""
     }
 }

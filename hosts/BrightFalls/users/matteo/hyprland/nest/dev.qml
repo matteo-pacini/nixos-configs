@@ -20,6 +20,7 @@ import Quickshell
 import Quickshell.Io
 import qs.calendar
 import qs.tray
+import qs.system
 
 ShellRoot {
     id: root
@@ -32,8 +33,10 @@ ShellRoot {
     // this list to it.
     readonly property list<string> all: ["Launcher", "Bar", "Notifications", "Osd", "Cheatsheet", "SessionMenu", "Polkit", "Network", "Audio", "Calendar", "CalendarFull", "System", "BluetoothPanel", "Office", "Fleet", "Tailscale", "Tokens", "Weather", "TrayMenu", "Reminders", "Lockscreen"]
     // All but System, which reads the machine's own sensors (sysfs and
-    // procfs, absolute paths); the bar still reads its temperatures.
-    readonly property list<string> safe: all.filter(n => n !== "System")
+    // procfs, absolute paths); the bar still reads its temperatures. A
+    // --demo nest (NEST_DEMO set) has an invented machine bound over those
+    // paths, so all of them.
+    readonly property list<string> safe: Quickshell.env("NEST_DEMO") ? all : all.filter(n => n !== "System")
     // Empty until harness.json is read, so nothing starts a helper only to
     // be unloaded a moment later.
     property var chosen: []
@@ -57,6 +60,20 @@ ShellRoot {
 
         function components(): string {
             return root.chosen.join(" ");
+        }
+
+        // What the system item and panel have read, for desk-nest up --demo
+        // and record to wait on: the CPU's and the eGPU's temperatures and
+        // what discovery found. Touches Sensors, so a call starts its reads.
+        function sensors(): string {
+            const t = Sensors.topo;
+            return JSON.stringify({
+                cpuTemp: Sensors.s.cpuTemp ?? null,
+                egpuJunction: Sensors.s.egpuJunction ?? null,
+                k10: t?.k10 ?? null,
+                egpu: t?.egpu?.path ?? null,
+                igpu: t?.igpu?.path ?? null
+            });
         }
     }
 

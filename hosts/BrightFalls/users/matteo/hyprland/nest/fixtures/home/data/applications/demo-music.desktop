@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Music
+Comment=Play your music collection
+Exec=demo-music
+Icon=demo-music
+Categories=AudioVideo;Audio;Player;
+Terminal=false

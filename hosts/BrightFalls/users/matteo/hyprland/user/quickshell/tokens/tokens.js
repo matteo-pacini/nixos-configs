@@ -12,7 +12,8 @@
 // "grey", "muted", "fg". Fractions are 0..1.
 
 // Set by hand, from no data source: the plan's name and price, and what the
-// panel says about the 5-hour window when Claude Code reports none.
+// panel says about the 5-hour window when Claude Code reports none. The name
+// and price are the defaults of plan(): an optional plan file replaces them.
 const PLAN = { name: "Ultra", usd: 200, fiveHour: "none on this plan" };
 
 const PAGE_ROWS = 8;
@@ -48,10 +49,31 @@ const TEXT = {
     },
     top7Empty: "No Claude Code replies in the last 7 days.",
     price: "At API prices",
-    unpriced: "unpriced",
-    // The one muted line on every page that shows a cost.
-    estimate: `Estimates at API list prices; the plan is a flat $${count(PLAN.usd)}.`
+    unpriced: "unpriced"
 };
+
+// The one muted line on every page that shows a cost, for plan()'s `pl`.
+function estimateText(pl) {
+    return `Estimates at API list prices; the plan is a flat $${count(pl.usd)}.`;
+}
+
+// The plan's { name, usd } from the plan file's text (null or "" when there
+// is none): {"name": "…", "usd": <number>}. PLAN's for no file, one that is
+// not JSON, and per field for one that is not a non-empty string or a
+// finite number from 0.
+function plan(text) {
+    let d = null;
+    try {
+        d = text ? JSON.parse(text) : null;
+    } catch (e) {
+        d = null;
+    }
+    const ok = d !== null && typeof d === "object";
+    return {
+        name: ok && typeof d.name === "string" && d.name.trim() !== "" ? d.name.trim() : PLAN.name,
+        usd: ok && typeof d.usd === "number" && isFinite(d.usd) && d.usd >= 0 ? d.usd : PLAN.usd
+    };
+}
 
 // The five token types in the cost breakdowns, in drawn order, each with the
 // colour of its bar segment (the same in the overview and the detail).
@@ -775,12 +797,12 @@ function bars(last14, today, peakDate) {
     };
 }
 
-function overviewView(st, lim) {
+function overviewView(st, lim, pl) {
     const a = st.answers.overview && !st.answers.overview.error ? st.answers.overview : null;
     const reading = firstRead(st);
     const out = {
         title: TEXT.title,
-        meta: reading ? TEXT.reading : `${PLAN.name} · this host`,
+        meta: reading ? TEXT.reading : `${pl.name} · this host`,
         labels: {
             limits: "Plan limits",
             chip: "from Claude Code",
@@ -831,7 +853,7 @@ function overviewView(st, lim) {
             subagents: `${percent(l.subagent_share)} of output`,
             // cost_usd: what a helper older than the cost object sends.
             price: l.cost ? costText(l.cost) : typeof l.cost_usd === "number" ? money(l.cost_usd) : "",
-            plan: `(plan $${count(PLAN.usd)})`,
+            plan: `(plan $${count(pl.usd)})`,
             unpriced: notPriced(l.unpriced_models),
             byType: byType(l.cost, l.totals),
             families: familyCosts(l.models)
@@ -846,7 +868,7 @@ function overviewView(st, lim) {
         };
     }
     if ((out.today && out.today.cost) || (out.last30 && out.last30.price) || (out.top7 && out.top7.rows.some(r => r.cost)))
-        out.estimate = TEXT.estimate;
+        out.estimate = estimateText(pl);
     if (reading) {
         const missing = [];
         const names = { today: "today", last14: "14 days", last30: "30 days", top7: "projects" };
@@ -872,7 +894,7 @@ function overviewView(st, lim) {
     return out;
 }
 
-function projectsView(st) {
+function projectsView(st, pl) {
     const sp = shownProjects(st);
     const out = {
         title: "Projects",
@@ -925,11 +947,11 @@ function projectsView(st) {
     });
     out.unpriced = notPriced(a.unpriced_models);
     if (total || rows.some(r => costText(r.cost)))
-        out.estimate = TEXT.estimate;
+        out.estimate = estimateText(pl);
     return out;
 }
 
-function detailView(st) {
+function detailView(st, pl) {
     const out = {
         title: `‹ ${st.detail ? st.detail.name : ""}`,
         periods: periodControl(st.period),
@@ -991,11 +1013,11 @@ function detailView(st) {
         out.columns = ["Started", "Last reply", "Output", "Cost"];
     out.unpriced = notPriced(a.unpriced_models);
     if (out.cost || out.rows.some(r => r.cost))
-        out.estimate = TEXT.estimate;
+        out.estimate = estimateText(pl);
     return out;
 }
 
-function daysView(st) {
+function daysView(st, pl) {
     const out = {
         title: "Days",
         meta: "last 14 days",
@@ -1034,7 +1056,7 @@ function daysView(st) {
     }));
     if (out.rows.some(r => r.cost)) {
         out.columns = ["Day", "Output", "", "Cost", "Sessions", "Top project"];
-        out.estimate = TEXT.estimate;
+        out.estimate = estimateText(pl);
     }
     return out;
 }
@@ -1174,19 +1196,20 @@ function hints(st) {
 //     sessions, top, today }] (newest first), estimate, building, error }
 // A cost text is "" when the helper sent no cost for it; estimate (the one
 // muted line above the footer) and unpriced ("not priced: …") are "" when
-// not shown.
-function view(st, lim) {
+// not shown. `pl` is plan()'s result, PLAN's name and price when left out.
+function view(st, lim, pl) {
     const out = { single: single(st), page: st.page, hints: hints(st), overview: null, projects: null, detail: null, days: null };
     if (out.single)
         return out;
+    pl = pl || plan(null);
     if (st.page === "overview")
-        out.overview = overviewView(st, lim);
+        out.overview = overviewView(st, lim, pl);
     else if (st.page === "projects")
-        out.projects = projectsView(st);
+        out.projects = projectsView(st, pl);
     else if (st.page === "detail")
-        out.detail = detailView(st);
+        out.detail = detailView(st, pl);
     else
-        out.days = daysView(st);
+        out.days = daysView(st, pl);
     return out;
 }
 
@@ -1195,6 +1218,6 @@ if (typeof module !== "undefined")
         PLAN, PAGE_ROWS, PERIODS, KEY_NAMES, TEXT,
         tokens, count, money, costText, percent, percent1, bytes, ago, activeTime, started, resets, dayShort, dayName,
         family, split, sentence,
-        limits, refreshLine,
+        limits, refreshLine, plan, estimateText,
         initial, opened, closed, helper, event, key, hints, view
     };

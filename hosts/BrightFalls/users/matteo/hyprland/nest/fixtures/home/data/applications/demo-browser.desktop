@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Browser
+Comment=Browse the web
+Exec=demo-browser
+Icon=demo-browser
+Categories=Network;WebBrowser;
+Terminal=false

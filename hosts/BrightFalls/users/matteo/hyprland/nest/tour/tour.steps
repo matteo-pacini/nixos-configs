@@ -1,0 +1,164 @@
+# The whole shell on demo data in one take: 25 scenes, about four minutes.
+# README.md, "Recording a tour". Recorded from the starting state
+#   desk-nest up --demo --fixtures weather=demo-fine-day --fixtures office=demo-lights-on \
+#     --fixtures fleet=demo-before --fixtures tokens=demo-week --fixtures limits=demo-week \
+#     --fixtures tailscale=demo-tailnet --fixtures calendar=demo-week --fixtures cheatsheet=demo-binds
+#   desk-nest record hosts/BrightFalls/users/matteo/hyprland/nest/tour/tour.steps <outdir>
+# The captions are the caption steps below; captions.md holds the same text
+# by scene, and the desk-nest check keeps the two the same.
+# Times are seconds from the recording's start; each scene starts where the
+# one before it ends. The tray click (1034, 22) is where the tray icon sits
+# on DP-1 once the bar shows the snow and the heater, as it does by then.
+pad 0 0
+
+at 0.3    scene bar
+at 0.7    caption 3.5 A showcase of my custom Quickshell setup on Hyprland
+at 4.4    caption 3.5 The bar: workspaces, the clock with the next event, and one item per panel
+
+at 8.3    scene launcher
+at 8.6    ipc launcher toggle
+at 8.7    caption 6.2 The launcher: type to filter, Enter to start
+at 10.8   type mus
+at 13.8   keys Escape
+
+at 15.3   scene notifications
+at 15.6   fixture notifications demo-morning
+at 15.7   caption 7.2 Notifications stack at the top right, and clear with one key
+at 21.8   ipc notifications dismissAll
+
+at 23.3   scene calendar
+at 23.6   ipc calendar toggle
+at 23.7   caption 6.7 Under the clock: the month and today's events
+at 29.8   ipc calendar toggle
+
+at 30.8   scene calendar-full
+at 31.1   ipc calendarfull toggle
+at 31.2   caption 7.7 top The big view: the whole month, every event
+at 37.8   ipc calendarfull toggle
+
+at 39.3   scene weather-fine
+at 39.6   ipc weather toggle
+at 39.7   caption 5.2 Weather: now, the next hours, six days, air quality and an outdoor sensor (Zigbee2MQTT)
+
+at 45.3   scene weather-rain
+at 45.3   fixture weather demo-rain
+at 45.7   caption 5.2 Rain, with the Met Office warning in force
+
+at 51.3   scene weather-radar
+at 51.3   keys m
+at 51.7   caption 9.2 Rain radar: the past two hours, played back
+at 52.8   keys space
+at 60.3   keys m
+
+at 61.3   scene weather-snow
+at 61.3   fixture weather demo-snow
+at 61.7   caption 6.2 And snow
+at 66.8   ipc weather toggle
+
+at 68.3   scene office
+at 68.6   caption 4.4 Office: the light, the blind and the power on each socket, from Zigbee2MQTT
+at 68.6   ipc office toggle
+at 73.3   fixture office demo-blind-half
+at 73.6   caption 3.4 The blind half down, the light dimmed
+at 77.3   fixture office demo-heater
+at 77.6   caption 5.9 A heater switches on: 1.5 kW, at the top of the list
+at 82.3   ipc office toggle
+
+at 83.8   scene fleet
+at 84.1   caption 5.9 Fleet: NixOS and macOS machines, deployed from one repository by comin
+at 84.1   ipc fleet toggle
+at 90.3   fixture fleet demo-deploying
+at 90.6   caption 4.4 This computer switches by hand; the others follow by themselves
+at 95.3   fixture fleet demo-after
+at 95.6   caption 6.4 All on the new commit; one waits for a reboot
+at 100.8  ipc fleet toggle
+
+at 102.3  scene tailscale
+at 102.6  ipc tailscale toggle
+at 102.7  caption 7.7 Tailscale: every device in the tailnet, direct or relayed
+at 109.3  ipc tailscale toggle
+
+at 110.8  scene tokens
+at 111.1  caption 4.9 Claude usage: plan limits, today, and the last 30 days
+at 111.1  ipc tokens toggle
+at 116.3  keys p
+at 116.6  caption 3.4 By project
+at 120.3  keys d
+at 120.6  caption 3.4 Day by day
+at 124.3  keys Escape
+at 125.3  ipc tokens toggle
+
+at 126.8  scene system-idle
+at 126.8  fixture system demo-idle
+at 127.1  ipc system toggle
+at 127.2  caption 5.7 System: CPU, memory, both GPUs and storage, at rest
+
+at 133.3  scene system-busy
+at 133.3  fixture system demo-busy
+at 133.7  caption 6.2 Under load: a game on the card, a build on the CPU
+
+at 140.3  scene system-hot
+at 140.3  fixture system demo-hot
+at 140.7  caption 8.2 Near the limits: the readings turn orange
+at 147.3  ipc system toggle
+at 147.8  fixture system demo-idle
+
+at 149.3  scene audio
+at 149.6  ipc audio toggle
+at 149.7  caption 7.2 Audio: the DAC's format, what is playing, and live levels
+at 156.3  ipc audio toggle
+
+at 157.3  scene volume
+at 157.6  fixture audio demo-volume-up
+at 157.7  caption 7.7 Volume keys show a small overlay
+at 158.6  fixture audio demo-volume-up
+at 159.9  fixture audio demo-volume-down
+at 161.3  fixture audio demo-mute
+at 163.3  fixture audio demo-mute
+
+at 165.8  scene bluetooth
+at 166.1  caption 3.9 Bluetooth: paired devices, with their batteries
+at 166.1  ipc bluetooth toggle
+at 170.3  fixture bluetooth demo-all
+at 170.6  caption 3.4 A mouse connects
+at 174.3  ipc bluetooth toggle
+
+at 175.8  scene network
+at 176.1  ipc network toggle
+at 176.2  caption 4.8 Network: wired with its last speed test, and Wi-Fi in reach
+at 181    keys s
+at 181.6  caption 12 A speed test from the panel, on Cloudflare or Speedtest.net
+at 183    keys 1
+# The result goes back to the list by itself 1.5 s after the run ends (about
+# 192 s here); no Esc: on the list it would close the panel, and the toggle
+# below open it again.
+at 194.4  caption 3.2 The result is kept with the connection
+at 197    ipc network toggle
+
+at 198    scene tray
+at 198.4  caption 7.4 Tray icons keep their own menus
+at 198.7  click 1034 22 right
+at 204.7  keys Escape
+
+at 206.2  scene polkit
+at 206.5  fixture polkit demo-ask
+at 206.6  caption 7.7 top Requests for administrator rights are asked by the shell itself
+at 212.7  ipc polkit cancel
+at 213.2  fixture polkit demo-idle
+
+at 214.7  scene keybindings
+at 215    ipc cheatsheet toggle
+at 215.1  caption 7.2 top Every key binding, grouped, read from Hyprland
+at 221.2  ipc cheatsheet toggle
+
+at 222.7  scene session
+at 223    ipc session toggle
+at 223.1  caption 5.7 top Lock, log out, reboot, shut down
+at 227.7  ipc session toggle
+
+at 229.2  scene lock
+at 229.5  lock
+at 229.6  caption 4.25 The lock screen
+at 234.05 caption 4.25 Every figure in this video is invented data
+
+at 238.7  stop

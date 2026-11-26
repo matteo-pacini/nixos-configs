@@ -8,12 +8,15 @@
 #   nest_lua    the nested compositor's config (nest/hypr/nest.lua)
 #   nest_pam    the lock's stand-in PAM directory (nest/pam, built)
 #   inner_path  PATH inside the sandbox, after the checkout's nest/fakes/bin
+#   icon_dirs   XDG_DATA_DIRS inside: the icon themes' share directories
+#               only, so the launcher lists no installed application
 
 usage() {
   cat >&2 <<'EOF'
 usage: desk-nest [--name <name>] [--tree <checkout>] <command>
-  up [--visible] [--watch] [--fixtures <panel>=<name>]... [component...]
+  up [--visible] [--watch] [--demo] [--fixtures <panel>=<name>]... [component...]
                          start a nest (no component named: the harness's default set)
+                         --demo: the recording set (README.md, "Recording a tour")
   set [component...]     change the loaded components in place (none: the default set)
   fixtures               list the fixtures
   fixture <panel> <name> switch a panel's fixture
@@ -22,6 +25,9 @@ usage: desk-nest [--name <name>] [--tree <checkout>] <command>
   reload                 copy the checkout's shell in and reload it
   watch                  reload on every save in the checkout (until Ctrl+C)
   lock                   the lock screen in the nest; only the word nest-unlock opens it
+  record [--clips] <steps> <outdir>
+                         play a steps file against a --demo nest, recording it;
+                         --clips: one mp4 per scene marker, no captions
   status                 whether it runs, and where its files are
   check                  compare the host session with the snapshot taken at up
   down                   end the nest and check the host
@@ -41,6 +47,10 @@ components=(Launcher Bar Notifications Osd Cheatsheet SessionMenu Polkit Network
 units=(graphical-session.target wayland-wm@hyprland.desktop.service
   wayland-session@hyprland.desktop.target hyprland-session.target quickshell.service)
 rel=hosts/BrightFalls/users/matteo/hyprland
+# Where a --demo nest's wall clock starts. It runs at a hundredth of real
+# speed (nest-services clock), so it reads 09:41 for 100 minutes yet moves,
+# which the panels' rates need: two samples at one time give no rate.
+demo_time="2026-11-25 09:41:00"
 
 name=nest
 tree_arg=.
@@ -73,7 +83,7 @@ state=$state_root/$name
 # The files the nest's processes write in the state directory, which is
 # otherwise read-only inside, so that the records the host trusts (the
 # snapshot, the pids, the checkout, the lock) cannot be changed or replaced.
-inside_files=(qs.out hyprland.out fakes.log nested.env lock.out)
+inside_files=(qs.out hyprland.out fakes.log nested.env lock.out services.out)
 uid=$(id -u)
 host_rt=${XDG_RUNTIME_DIR:-/run/user/$uid}
 hypr_pkg=${hyprland%/bin/*}
@@ -260,6 +270,26 @@ place_window() { # sandbox pid, the address focused before up
   fi
 }
 
+# A demo's nest maps a window for its first output and removes that output
+# before the shell starts. Waits up to 2 s for the window to go; one still
+# there is put right as any nest's.
+no_window() { # sandbox pid, the address focused before up
+  local lines i
+  for ((i = 0; i < 20; i++)); do
+    lines=$(nest_windows "$1") || {
+      echo "could not read the host's windows"
+      return 1
+    }
+    if ! awk '$2 == "ours"' <<<"$lines" | grep -q .; then
+      echo "the nest has no window on the host: its only output is a headless DP-1"
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "the nest's window is still on the host 2 s after its output was removed"
+  place_window "$1" "$2"
+}
+
 say_hidden() {
   local shown
   if ! shown=$(special_shown); then
@@ -396,9 +426,9 @@ sandbox_pid() {
 inner_vars() {
   local hc=$1
   vars=(
-    HOME "$HOME" USER "${USER:-$(id -un)}" PATH "$nest/fakes/bin:$inner_path"
+    HOME "$HOME" USER "${USER:-$(id -un)}" PATH "$nest/fakes/bin:$nest/services/bin:$inner_path"
     LANG "${LANG:-C.UTF-8}" TERM "${TERM:-xterm-256color}"
-    XDG_DATA_DIRS "${XDG_DATA_DIRS:-}" XDG_CONFIG_DIRS "${XDG_CONFIG_DIRS:-}"
+    XDG_DATA_DIRS "$icon_dirs" XDG_CONFIG_DIRS "${XDG_CONFIG_DIRS:-}"
     LOCALE_ARCHIVE "${LOCALE_ARCHIVE:-}" FONTCONFIG_FILE /etc/fonts/fonts.conf
     XDG_RUNTIME_DIR "$host_rt" WAYLAND_DISPLAY "$hc"
     XDG_CONFIG_HOME "$state/home/config" XDG_DATA_HOME "$state/home/data"
@@ -408,20 +438,43 @@ inner_vars() {
     HYPRLAND_NO_SD_VARS 1 HYPRLAND_NO_SD_TARGET 1 HYPRLAND_NO_SD_NOTIFY 1
     LIBSEAT_BACKEND desk-nest-none
     NEST_STATE "$state" NEST_TREE "$state/tree" NEST_FIXTURES "$nest/fixtures"
+    NEST_DEMO "$(demo_clock)" NEST_PRELOAD "$faketime_preload"
+    NEST_WALLPAPER "$top/assets/wallpapers/left.png"
   )
+}
+
+# Where the wall clock of a nest started with --demo starts; empty otherwise.
+demo_clock() {
+  cat "$state/demo" 2>/dev/null || true
+}
+
+# Sets clocked to the command prefix that runs a program on the demo clock
+# (empty outside a demo): libfaketime reading the time nest-services clock
+# writes, once per real second. libc_malloc_debug comes first in the preload:
+# libfaketime's init mallocs, which inside jemalloc's own init (qs links
+# jemalloc) calls clock_gettime back into libfaketime and deadlocks.
+clock_prefix() {
+  local c
+  c=$(demo_clock)
+  clocked=()
+  [ -z "$c" ] || clocked=(env -u FAKETIME LD_PRELOAD="$faketime_preload" FAKETIME_TIMESTAMP_FILE="$state/home/runtime/demo-clock"
+    FAKETIME_CACHE_DURATION=0 FAKETIME_DONT_FAKE_MONOTONIC=1)
 }
 
 # Runs a command inside the running nest, with the nested display.
 inside() {
-  local pid wl sig i envs=()
+  local pid wl sig bus i envs=()
   pid=$(sandbox_pid) || exit 1
   wl=$(sed -n 's/^NESTED_WAYLAND=//p' "$state/nested.env" 2>/dev/null)
   sig=$(sed -n 's/^NESTED_SIG=//p' "$state/nested.env" 2>/dev/null)
-  [ -n "$wl" ] && [ -n "$sig" ] || die "the nested compositor is not up yet ($state/nested.env)"
+  bus=$(sed -n 's/^NESTED_BUS=//p' "$state/nested.env" 2>/dev/null)
+  [ -n "$wl" ] && [ -n "$sig" ] && [ -n "$bus" ] || die "the nested compositor is not up yet ($state/nested.env)"
   inner_vars "$wl"
   for ((i = 0; i < ${#vars[@]}; i += 2)); do envs+=("${vars[i]}=${vars[i + 1]}"); done
+  # The bus is the nest's own (dbus-run-session's), reachable only through
+  # the sandbox's mount and network namespaces.
   nsenter --target "$pid" --user --mount --pid --net --ipc --uts --preserve-credentials -- \
-    env -i "${envs[@]}" HYPRLAND_INSTANCE_SIGNATURE="$sig" "$@"
+    env -i "${envs[@]}" HYPRLAND_INSTANCE_SIGNATURE="$sig" DBUS_SESSION_BUS_ADDRESS="$bus" "$@"
 }
 
 # Atomically, as the real writers replace their files.
@@ -460,6 +513,15 @@ has_kind() { # index line, kind
   [ "$k" = "$2" ]
 }
 
+# Prints the fixture's index line; fails, saying why, if there is none.
+known_fixture() { # panel name
+  local line
+  [[ $1 =~ ^[A-Za-z0-9_-]+$ ]] && [[ $2 =~ ^[A-Za-z0-9:.+_-]+$ ]] || die "no fixture '$1 $2'"
+  line=$(index_line "$1" "$2")
+  [ -n "$line" ] || die "no fixture '$1 $2' (desk-nest fixtures lists them)"
+  echo "$line"
+}
+
 # Writes the panel's control file, then, for a fixture the shell reads from
 # a file of its own, places that file: inside a running nest, else at the
 # next up (place_all). The nest's processes can write in the private homes,
@@ -467,17 +529,22 @@ has_kind() { # index line, kind
 # starts. A fixture run inside needs the nest.
 apply_fixture() { # panel name
   local line
-  [[ $1 =~ ^[A-Za-z0-9_-]+$ ]] && [[ $2 =~ ^[A-Za-z0-9:.+_-]+$ ]] || die "no fixture '$1 $2'"
-  line=$(index_line "$1" "$2")
-  [ -n "$line" ] || die "no fixture '$1 $2' (desk-nest fixtures lists them)"
+  line=$(known_fixture "$1" "$2") || exit 1
   if has_kind "$line" inside; then
-    inside nest-notify "$2"
+    # Notifications are sent by the fakes; any other panel's action is a
+    # demo stand-in's (nest/services).
+    if [ "$1" = notifications ]; then
+      inside nest-notify "$2"
+    else
+      inside nest-services act "$1" "$2"
+    fi
     return
   fi
   mkdir -p "$state/control"
   printf '%s\n' "$2" | put "$state/control/$1"
   if has_kind "$line" place && ! lock_free; then
-    inside nest-place "$1" "$2"
+    clock_prefix
+    inside "${clocked[@]}" nest-place "$1" "$2"
   fi
 }
 
@@ -501,12 +568,13 @@ seed() {
 }
 
 place_all() {
-  local p line
+  local p line clocked
+  clock_prefix
   for p in "$state"/control/*; do
     [ -f "$p" ] || continue
     line=$(index_line "${p##*/}" "$(cat "$p")")
     if [ -n "$line" ] && has_kind "$line" place; then
-      NEST_STATE=$state NEST_FIXTURES=$nest/fixtures "$nest/fakes/bin/nest-place" "${p##*/}" "$(cat "$p")"
+      NEST_STATE=$state NEST_FIXTURES=$nest/fixtures "${clocked[@]}" "$nest/fakes/bin/nest-place" "${p##*/}" "$(cat "$p")"
     fi
   done
 }
@@ -515,6 +583,12 @@ place_all() {
 # replace its first output with one named as the real left monitor (the bar
 # shows workspaces by monitor name), record the display and signature for
 # ipc and shot, then start the shell on the harness root.
+# A demo (NEST_DEMO, where its clock starts) replaces it with a headless DP-1
+# instead, which draws at its own 60 Hz rather than when the host asks and
+# leaves no window on the host; hides the pointer and parks it in the
+# corner, so nothing is hovered; draws the wallpaper; starts the stand-in
+# services (nest/services) and waits for them; and runs the shell on the
+# slowed clock.
 # shellcheck disable=SC2016
 inner='
 set -eu
@@ -534,10 +608,29 @@ for i in $(seq 50); do
 done
 [ -n "$wl" ] && [ -n "$sig" ] || { echo "the nested compositor did not come up" >&2; kill $hp; exit 1; }
 export HYPRLAND_INSTANCE_SIGNATURE=$sig
-hyprctl output create wayland DP-1 >>"$NEST_STATE/hyprland.out" 2>&1
-hyprctl output remove WAYLAND-1 >>"$NEST_STATE/hyprland.out" 2>&1
-printf "NESTED_WAYLAND=%s\nNESTED_SIG=%s\n" "$wl" "$sig" >"$NEST_STATE/nested.env"
-WAYLAND_DISPLAY=$wl QT_QPA_PLATFORM=wayland "$3" -p "$NEST_TREE/dev.qml" >"$NEST_STATE/qs.out" 2>&1 &
+if [ -z "$NEST_DEMO" ]; then
+  hyprctl output create wayland DP-1 >>"$NEST_STATE/hyprland.out" 2>&1
+  hyprctl output remove WAYLAND-1 >>"$NEST_STATE/hyprland.out" 2>&1
+else
+  hyprctl output create headless DP-1 >>"$NEST_STATE/hyprland.out" 2>&1
+  hyprctl output remove WAYLAND-1 >>"$NEST_STATE/hyprland.out" 2>&1
+  hyprctl eval "hl.config({ cursor = { invisible = true } })" >>"$NEST_STATE/hyprland.out" 2>&1
+  # DP-1 sits at 1600x0 (nest.lua): its bottom-right pixel.
+  hyprctl dispatch "hl.dsp.cursor.move({ x = 3199, y = 899 })" >>"$NEST_STATE/hyprland.out" 2>&1
+  mkdir -p "$XDG_CONFIG_HOME/hypr"
+  printf "splash = false\nipc = false\nwallpaper {\n    monitor = DP-1\n    path = %s\n    fit_mode = cover\n}\n" \
+    "$NEST_WALLPAPER" >"$XDG_CONFIG_HOME/hypr/hyprpaper.conf"
+  WAYLAND_DISPLAY=$wl hyprpaper -c "$XDG_CONFIG_HOME/hypr/hyprpaper.conf" >"$NEST_STATE/services.out" 2>&1 </dev/null &
+  nest-services start >>"$NEST_STATE/services.out" 2>&1 || echo "nest-services start failed" >>"$NEST_STATE/services.out"
+fi
+printf "NESTED_WAYLAND=%s\nNESTED_SIG=%s\nNESTED_BUS=%s\n" "$wl" "$sig" "$DBUS_SESSION_BUS_ADDRESS" >"$NEST_STATE/nested.env"
+if [ -n "$NEST_DEMO" ]; then
+  set -- env LD_PRELOAD="$NEST_PRELOAD" FAKETIME_TIMESTAMP_FILE="$NEST_STATE/home/runtime/demo-clock" \
+    FAKETIME_CACHE_DURATION=0 FAKETIME_DONT_FAKE_MONOTONIC=1 "$3"
+else
+  set -- "$3"
+fi
+WAYLAND_DISPLAY=$wl QT_QPA_PLATFORM=wayland "$@" -p "$NEST_TREE/dev.qml" >"$NEST_STATE/qs.out" 2>&1 &
 wait $hp
 '
 
@@ -561,10 +654,18 @@ sandbox_cmd() {
   for f in "${inside_files[@]}"; do
     sandbox+=(--bind "$state/$f" "$state/$f")
   done
-  sandbox+=(
-    --bind "$state/home/runtime/desk" "$host_rt/desk"
-    --clearenv
-  )
+  sandbox+=(--bind "$state/home/runtime/desk" "$host_rt/desk")
+  # A demo's invented machine (nest/services, sys-seed) over the real
+  # paths the system panel and the bar read, read-only; the stand-in
+  # rewrites it through the writable home. A path the host lacks is left
+  # out: bwrap cannot make a mount point in /sys or /etc.
+  local rel dest
+  if [ -n "$(demo_clock)" ]; then
+    while read -r rel dest; do
+      if [ -e "$dest" ]; then sandbox+=(--ro-bind "$state/home/sys/$rel" "$dest"); fi
+    done < <(python3 -I "$nest/services/services.py" sys-binds)
+  fi
+  sandbox+=(--clearenv)
   for ((i = 0; i < ${#vars[@]}; i += 2)); do
     sandbox+=(--setenv "${vars[i]}" "${vars[i + 1]}")
   done
@@ -624,11 +725,12 @@ check_and_report() { # when
 }
 
 up() {
-  local visible=0 watch=0 fixtures=() comps=() f i
+  local visible=0 watch=0 demo=0 fixtures=() comps=() f i line
   while [ $# -gt 0 ]; do
     case $1 in
     --visible) visible=1 ;;
     --watch) watch=1 ;;
+    --demo) demo=1 ;;
     --fixtures)
       [ $# -ge 2 ] && [[ $2 == *=* ]] || die "--fixtures takes <panel>=<name>"
       fixtures+=("$2")
@@ -639,6 +741,7 @@ up() {
     esac
     shift
   done
+  [ $demo = 0 ] || [ $visible = 0 ] || die "--demo leaves no window on the host to show: --visible does not go with it"
   use_checkout "$tree_arg"
   need_harness
   host_session
@@ -649,16 +752,25 @@ up() {
   flock -n 9 || die "a nest named $name is already running (desk-nest --name $name status). A second one needs another name: desk-nest --name <other> up"
   printf '%s\n' "$top" >"$state/checkout"
   printf '%s\n' "$host_wl" >"$state/host-wayland"
+  if [ $demo = 1 ]; then printf '%s\n' "$demo_time" >"$state/demo"; else rm -f "$state/demo"; fi
   for f in "${inside_files[@]}"; do
     rm -f "$state/$f"
     : >"$state/$f"
   done
   sync_tree
   seed
+  [ $demo = 0 ] || python3 -I "$nest/services/services.py" sys-seed "$state/home/sys" ||
+    die "could not write the demo's invented machine into $state/home/sys"
+  # The clock's first reading, for what reads it before nest-services
+  # clock runs (place_all below, the stand-ins' start).
+  [ $demo = 0 ] || printf '%s\n' "$demo_time" >"$state/home/runtime/demo-clock"
+  # Not apply_fixture: up holds the lock already, which it would take for a
+  # running nest to place inside. place_all places them.
   for f in "${fixtures[@]}"; do
-    has_kind "$(index_line "${f%%=*}" "${f#*=}")" inside &&
+    line=$(known_fixture "${f%%=*}" "${f#*=}") || exit 1
+    has_kind "$line" inside &&
       die "${f%%=*} ${f#*=} is sent to a running nest: desk-nest fixture ${f%%=*} ${f#*=}, after up"
-    apply_fixture "${f%%=*}" "${f#*=}"
+    printf '%s\n' "${f#*=}" | put "$state/control/${f%%=*}"
   done
   place_all
   write_components "${comps[@]}"
@@ -691,10 +803,12 @@ up() {
     [ -s "$state/sandbox" ] && break
     sleep 0.1
   done
-  if pid=$(sandbox_pid); then
-    place_window "$pid" "$before_focus" || placed=0
-  else
+  if ! pid=$(sandbox_pid); then
     placed=0
+  elif [ $demo = 1 ]; then
+    no_window "$pid" "$before_focus" || placed=0
+  else
+    place_window "$pid" "$before_focus" || placed=0
   fi
   if [ $placed = 0 ]; then
     echo "desk-nest: the nest's window is not on the special workspace 'nest' without focus; taking the nest down" >&2
@@ -723,6 +837,34 @@ up() {
     exit 1
     ;;
   esac
+  # A recording starts right after up, and the shell maps its bar a moment
+  # after it says it loaded.
+  if [ $loaded = 1 ] && [ $demo = 1 ] && { [ ${#comps[@]} = 0 ] || [[ " ${comps[*]} " == *" Bar "* ]]; }; then
+    for ((i = 0; i < 100; i++)); do
+      inside hyprctl -j layers 2>/dev/null | python3 -I -c '
+import json, sys
+levels = json.load(sys.stdin).get("DP-1", {}).get("levels", {})
+sys.exit(0 if any(l.get("namespace") == "desk-bar" for ls in levels.values() for l in ls) else 1)' && break
+      sleep 0.1
+    done
+    if [ $i -lt 100 ]; then echo "the bar is mapped on DP-1"; else echo "desk-nest: no bar on DP-1 10 s after the shell loaded" >&2; fi
+  fi
+  # The system item's temperatures appear with the shell's first sensor
+  # snapshot, up to 5 s after it loaded; a take must not start before.
+  if [ $loaded = 1 ] && [ $demo = 1 ] && { [ ${#comps[@]} = 0 ] || [[ " ${comps[*]} " == *" Bar "* ]] || [[ " ${comps[*]} " == *" System "* ]]; }; then
+    local sensed=""
+    for ((i = 0; i < 200; i++)); do
+      sensed=$(demo_sensors) && break
+      sleep 0.1
+    done
+    if [ $i -lt 200 ]; then
+      echo "the shell reads the invented machine: $sensed"
+    else
+      echo "desk-nest: the shell has no CPU temperature 20 s after it loaded; it reports: ${sensed:-nothing} ($state/services.out)" >&2
+      next="desk-nest --name $name down, and send $state/services.out and $state/qs.out"
+      exit 1
+    fi
+  fi
   if [ $loaded = 1 ]; then
     echo "nest $name up: Configuration Loaded"
   else
@@ -827,7 +969,10 @@ status() {
     echo "nest $name: running (sandbox pid $pid, supervisor $(cut -d' ' -f1 "$state/supervisor"))"
     local w addr focus fl size ws
     host_sig=$(systemctl --user show-environment 2>/dev/null | sed -n 's/^HYPRLAND_INSTANCE_SIGNATURE=//p') || host_sig=
-    if [ -n "$host_sig" ] && w=$(our_window "$pid" 2>/dev/null); then
+    if [ -n "$(demo_clock)" ]; then
+      echo "  window: none (--demo: a headless DP-1, the shell's clock from $(demo_clock), a hundredth of real speed)"
+      echo "  sensors: $( (saved_checkout && demo_sensors) 2>/dev/null || true)"
+    elif [ -n "$host_sig" ] && w=$(our_window "$pid" 2>/dev/null); then
       read -r addr _ focus fl size _ ws <<<"$w"
       echo "  window: workspace $ws, $focus, $fl, $size"
     else
@@ -844,8 +989,127 @@ status() {
   echo "  logs: $state/qs.out, $state/hyprland.out, $state/fakes.log"
 }
 
+# The shell's own reading of a demo's invented machine (nest/dev.qml,
+# harness sensors): prints it, and fails while it has no CPU temperature.
+demo_sensors() {
+  local j
+  j=$(inside "$qs" ipc -p "$state/tree/dev.qml" call harness sensors 2>/dev/null) || return 1
+  printf '%s\n' "$j"
+  python3 -I -c 'import json, sys; sys.exit(0 if (json.loads(sys.argv[1]) or {}).get("cpuTemp") is not None else 1)' "$j" 2>/dev/null
+}
+
+# The lock's stand-in in the nest, on the demo clock in a --demo nest.
+start_lock() {
+  local clocked
+  clock_prefix
+  # shellcheck disable=SC2016
+  inside "${clocked[@]}" sh -c '"$1" -n -p "$2" >"$3" 2>&1 &' sh "$qs" "$state/tree/lock-nest.qml" "$state/lock.out"
+}
+
+# Plays a steps file against a running --demo nest while wf-recorder records
+# its DP-1 inside, then captions it. README.md, "Recording a tour".
+record() { # [--clips] steps outdir
+  local clips=0
+  if [ "$1" = --clips ]; then
+    clips=1
+    shift
+  fi
+  local steps=$1 out=$2 acts t0 now wait_s w t k a pid i rc=0 scenes=() stop_t='' end=''
+  saved_checkout
+  sandbox_pid >/dev/null || exit 1
+  [ -n "$(demo_clock)" ] || die "record needs a nest started with up --demo (a headless DP-1 at 60 Hz on the slowed clock)"
+  [ -f "$steps" ] || die "no steps file $steps"
+  local sensed
+  sensed=$(demo_sensors) || die "the shell has no CPU temperature from the invented machine (${sensed:-no answer}): not recording. desk-nest status shows what it reads."
+  mkdir -p "$out"
+  # Read whole first: a bad line fails before anything is recorded.
+  acts=$(python3 -I "$steps_py" "$steps" "$out/captions.txt") || exit 1
+  : >"$out/play.log"
+  rm -f "$state/shots/record.mkv" "$state/shots/record.pid"
+  # shellcheck disable=SC2016
+  inside sh -c 'wf-recorder -o DP-1 -D -r 60 -c libx264rgb -x bgr0 -p crf=0 -p preset=ultrafast -m matroska -y -f "$1" >"$2" 2>&1 </dev/null &
+    echo $! >"$3"' sh "$state/shots/record.mkv" "$state/shots/record.out" "$state/shots/record.pid"
+  t0=$(date +%s.%N)
+  pid=$(cat "$state/shots/record.pid")
+  [[ $pid =~ ^[0-9]+$ ]] || die "the recorder did not start ($state/shots/record.out)"
+  sleep 0.5
+  inside kill -0 "$pid" 2>/dev/null || die "the recorder ended at once: $(tail -n 5 "$state/shots/record.out")"
+  while IFS=$'\x1f' read -r -a w; do
+    t=${w[0]}
+    now=$(date +%s.%N)
+    wait_s=$(awk -v a="$t0" -v b="$t" -v c="$now" 'BEGIN { printf "%.3f", a + b - c }')
+    case $wait_s in -*) echo "late by ${wait_s#-} s: ${w[*]:1}" >>"$out/play.log" ;; *) sleep "$wait_s" ;; esac
+    printf '%6.2f %s\n' "$(awk -v a="$(date +%s.%N)" -v b="$t0" 'BEGIN { print a - b }')" "${w[*]:1}" >>"$out/play.log"
+    case ${w[1]} in
+    ipc) inside "$qs" ipc -p "$state/tree/dev.qml" call "${w[@]:2}" >>"$out/play.log" 2>&1 || true ;;
+    fixture) (apply_fixture "${w[2]}" "${w[3]}") >>"$out/play.log" 2>&1 || true ;;
+    set) (write_components "${w[@]:2}") >>"$out/play.log" 2>&1 || true ;;
+    keys)
+      a=()
+      for k in "${w[@]:2}"; do a+=(-k "$k"); done
+      inside wtype "${a[@]}" >>"$out/play.log" 2>&1 || true
+      ;;
+    chord) inside wtype -M "${w[2]}" -k "${w[3]}" -m "${w[2]}" >>"$out/play.log" 2>&1 || true ;;
+    type) inside wtype -- "${w[*]:2}" >>"$out/play.log" 2>&1 || true ;;
+    cursor)
+      case ${w[2]} in
+      hide) inside hyprctl eval 'hl.config({ cursor = { invisible = true } })' >>"$out/play.log" 2>&1 || true ;;
+      show) inside hyprctl eval 'hl.config({ cursor = { invisible = false } })' >>"$out/play.log" 2>&1 || true ;;
+      # DP-1 sits at 1600x0 (nest.lua); steps give x on DP-1.
+      *) inside hyprctl dispatch "hl.dsp.cursor.move({ x = $((1600 + w[2])), y = ${w[3]} })" >>"$out/play.log" 2>&1 || true ;;
+      esac
+      ;;
+    click)
+      # wlrctl clicks through the virtual-pointer protocol where the
+      # pointer is; hidden or not, it is moved there first.
+      inside hyprctl dispatch "hl.dsp.cursor.move({ x = $((1600 + w[2])), y = ${w[3]} })" >>"$out/play.log" 2>&1 || true
+      inside wlrctl pointer click "${w[4]:-left}" >>"$out/play.log" 2>&1 || true
+      ;;
+    lock) start_lock >>"$out/play.log" 2>&1 || true ;;
+    scene) scenes+=("$t ${w[2]}") ;;
+    stop)
+      stop_t=$t
+      break
+      ;;
+    esac
+  done <<<"$acts"
+  inside kill -INT "$pid" 2>/dev/null || true
+  for ((i = 0; i < 100; i++)); do
+    inside kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1
+  done
+  inside kill -0 "$pid" 2>/dev/null && echo "desk-nest: the recorder is still running 10 s after it was told to stop" >&2
+  cp "$state/shots/record.mkv" "$out/raw.mkv" || die "no recording ($state/shots/record.out)"
+  cp "$state/shots/record.out" "$out/recorder.log"
+  # "<n> <name> <start> <end>": a scene runs from its marker to the next
+  # one, the last to stop; seconds of the recording, as in the steps file.
+  : >"$out/scenes.txt"
+  for ((i = 0; i < ${#scenes[@]}; i++)); do
+    read -r t k <<<"${scenes[i]}"
+    end=$stop_t
+    [ $((i + 1)) = ${#scenes[@]} ] || read -r end _ <<<"${scenes[i + 1]}"
+    printf '%02d %s %s %s\n' $((i + 1)) "$k" "$t" "$end" >>"$out/scenes.txt"
+  done
+  if [ $clips = 1 ]; then
+    mkdir -p "$out/clips"
+    while read -r i k t end; do
+      ffmpeg -hide_banner -loglevel error -y -ss "$t" -t "$(awk -v a="$end" -v t="$t" 'BEGIN { print a - t }')" -i "$out/raw.mkv" -an \
+        -c:v libx264 -preset veryfast -crf 16 -pix_fmt yuv420p -movflags +faststart "$out/clips/$i-$k.mp4" </dev/null || rc=1
+    done <"$out/scenes.txt"
+    echo "$out: raw.mkv, captions.txt, scenes.txt, clips/ ($(wc -l <"$out/scenes.txt") scenes), play.log, recorder.log"
+    return $rc
+  fi
+  desk-nest-caption "$out/raw.mkv" "$out/captions.txt" "$out/demo.mp4" 60 || rc=$?
+  echo "$out: raw.mkv, captions.txt, scenes.txt, play.log, recorder.log$([ $rc = 0 ] && echo ", demo.mp4")"
+  return $rc
+}
+
 case $cmd in
 up) up "$@" ;;
+record)
+  [ $# = 2 ] || { [ $# = 3 ] && [ "$1" = --clips ]; } || usage
+  record "$@"
+  ;;
 _supervise)
   # Only as up starts it: holding the nest's lock on fd 9.
   if [ "$(readlink /proc/self/fd/9 2>/dev/null)" != "$(realpath -m "$state/lock")" ] || ! flock -n 9; then
@@ -894,8 +1158,7 @@ reload)
 watch) watch_tree ;;
 lock)
   saved_checkout
-  # shellcheck disable=SC2016
-  inside sh -c '"$1" -n -p "$2" >"$3" 2>&1 &' sh "$qs" "$state/tree/lock-nest.qml" "$state/lock.out"
+  start_lock
   echo "started the lock screen in the nest (whether it came up: $state/lock.out); only the word nest-unlock opens it. Never type a password."
   ;;
 status) status ;;

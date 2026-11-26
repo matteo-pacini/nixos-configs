@@ -1,0 +1,46 @@
+{
+ "hosts": [
+  {
+   "label": "Kestrel",
+   "dns": "kestrel.tail7c3e1.ts.net",
+   "alias": "kestrel",
+   "sshd": true,
+   "device": "desktop"
+  },
+  {
+   "label": "Lighthouse",
+   "dns": "lighthouse.tail7c3e1.ts.net",
+   "alias": "lighthouse",
+   "sshd": true,
+   "device": "server"
+  },
+  {
+   "label": "Marlin",
+   "dns": "marlin.tail7c3e1.ts.net",
+   "alias": "marlin",
+   "sshd": true,
+   "device": "server"
+  },
+  {
+   "label": "Pebble",
+   "dns": "pebble.tail7c3e1.ts.net",
+   "alias": "pebble",
+   "sshd": true,
+   "device": "laptop"
+  },
+  {
+   "label": "Juniper",
+   "dns": "juniper.tail7c3e1.ts.net",
+   "alias": "juniper",
+   "sshd": true,
+   "device": "laptop"
+  },
+  {
+   "label": "Tamarind",
+   "dns": "tamarind.tail7c3e1.ts.net",
+   "alias": "tamarind",
+   "sshd": true,
+   "device": "desktop"
+  }
+ ]
+}

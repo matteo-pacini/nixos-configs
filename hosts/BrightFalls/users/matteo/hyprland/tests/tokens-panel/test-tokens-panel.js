@@ -490,7 +490,7 @@ t("overview: first run, as drawn, then filling section by section", () => {
     let o = v.overview;
     assert.equal(o.meta, "reading transcripts…");
     assert.deepEqual(o.today, { output: "463 k tokens · 14 sessions", cache: "96.8 M", cost: "≈ $61" });
-    assert.equal(o.estimate, T.TEXT.estimate);
+    assert.equal(o.estimate, T.estimateText(T.PLAN));
     assert.equal(o.last14, null);
     assert.equal(o.last30, null);
     assert.equal(o.top7, null);
@@ -661,7 +661,7 @@ t("projects: 7 days, page 1 of 2, as drawn", () => {
     assert.deepEqual(p.rows[3].split.map(s => s.colour), ["cyan", "purple", "pink"]);
     assert.deepEqual(p.rows.map(x => x.cost), ["≈ $1,204", "≈ $690", "≈ $202", "≈ $180", "≈ $1.50", "≈ $61", "≈ $45", "≈ $30"]);
     assert.equal(p.unpriced, "not priced: claude-x-9");
-    assert.equal(p.estimate, T.TEXT.estimate);
+    assert.equal(p.estimate, T.estimateText(T.PLAN));
     assert.deepEqual(v.hints, [["↑↓", "select"], ["Enter", "detail"], ["Tab", "period"], ["S", "sort"], ["PgUp/PgDn", "page"], ["D", "days"], ["Esc", "back"]]);
 });
 
@@ -1042,7 +1042,7 @@ t("detail: Enter asks for the selected project; drawn as designed", () => {
     assert.ok(Math.abs(d.byType.bar[0].frac - 681.3 / 1204.1) < 1e-12);
     assert.ok(Math.abs(d.byType.bar.reduce((a, b) => a + b.frac, 0) - 1) < 1e-12);
     assert.equal(d.unpriced, "");
-    assert.equal(d.estimate, T.TEXT.estimate);
+    assert.equal(d.estimate, T.estimateText(T.PLAN));
     assert.deepEqual(d.split.map(s => s.colour), ["purple", "pink", "cyan"]);
     assert.equal(d.split[0].frac, 6540000 / 8830000);
     assert.equal(d.sentence, "Opus 74%, Fable 25%, Haiku 1% of output");
@@ -1152,7 +1152,7 @@ t("days: as drawn", () => {
     assert.equal(d.rows.length, 14);
     assert.deepEqual(d.rows[0], { day: "Tue 17", frac: 463000 / 3750000, colour: "purple", output: "463 k", cost: "≈ $60", sessions: "14", top: "alpha", today: true });
     assert.deepEqual(d.rows[2], { day: "Sun 15", frac: 1, colour: "grey", output: "3.75 M", cost: "≈ $488", sessions: "56", top: "alpha", today: false });
-    assert.equal(d.estimate, T.TEXT.estimate);
+    assert.equal(d.estimate, T.estimateText(T.PLAN));
     assert.deepEqual(d.rows.map(x => [x.day, x.output, x.sessions, x.top]), [
         ["Tue 17", "463 k", "14", "alpha"], ["Mon 16", "2.97 M", "55", "alpha"], ["Sun 15", "3.75 M", "56", "alpha"],
         ["Sat 14", "3.14 M", "36", "alpha"], ["Fri 13", "2.52 M", "34", "beta"], ["Thu 12", "3.28 M", "10", "beta"],
@@ -1227,7 +1227,7 @@ t("an older helper: no cost texts, no estimate line, no sort, nothing thrown", (
     assert.equal(o.last30.families, null);
     assert.deepEqual(o.top7.rows.map(r => r.cost), ["", "", "", ""]);
     // The 30 days' cost_usd is still a figure.
-    assert.equal(o.estimate, T.TEXT.estimate);
+    assert.equal(o.estimate, T.estimateText(T.PLAN));
     o = T.view(feed(T.opened().state, old("overview-partial.json"), "overview").state, LIM).overview;
     assert.equal(o.today.cost, "");
     assert.equal(o.estimate, "");
@@ -1326,6 +1326,28 @@ t("every hinted key is handled and every handled key is hinted, in every state",
             assert.equal(T.key(st, k).handled, false, `${label}: ${k}`);
     }
     assert.equal(T.view(states["projects error"], LIM).projects.error, "The helper could not answer: bad period.");
+});
+
+t("plan(): PLAN's name and price without a file, the file's when valid, per field", () => {
+    const own = { name: T.PLAN.name, usd: T.PLAN.usd };
+    assert.deepEqual(T.plan(null), own);
+    assert.deepEqual(T.plan(""), own);
+    assert.deepEqual(T.plan("not json"), own);
+    assert.deepEqual(T.plan("[1]"), own);
+    assert.deepEqual(T.plan('{"name": "Pro Max", "usd": 100}'), { name: "Pro Max", usd: 100 });
+    assert.deepEqual(T.plan('{"name": " ", "usd": -5}'), own);
+    assert.deepEqual(T.plan('{"name": "Team", "usd": "100"}'), { name: "Team", usd: T.PLAN.usd });
+    assert.deepEqual(T.plan('{"usd": 0}'), { name: T.PLAN.name, usd: 0 });
+});
+
+t("a plan file's name and price on every page that shows them", () => {
+    const p = T.plan('{"name": "Pro Max", "usd": 1250}');
+    const o = T.view(overview(), LIM, p).overview;
+    assert.equal(o.meta, "Pro Max · this host");
+    assert.equal(o.last30.plan, "(plan $1,250)");
+    assert.equal(o.estimate, "Estimates at API list prices; the plan is a flat $1,250.");
+    assert.equal(T.view(projects(), LIM, p).projects.estimate, o.estimate);
+    assert.equal(T.view(overview(), LIM).overview.meta, PLAN_META);
 });
 
 t("Esc on the overview closes; closed() forgets all but the ids", () => {

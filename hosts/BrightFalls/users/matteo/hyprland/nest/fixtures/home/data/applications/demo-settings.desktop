@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Comment=Change how the computer works
+Exec=demo-settings
+Icon=demo-settings
+Categories=Settings;System;
+Terminal=false

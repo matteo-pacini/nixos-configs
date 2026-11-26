@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Calculator
+Comment=Do sums and conversions
+Exec=demo-calculator
+Icon=demo-calculator
+Categories=Utility;Calculator;
+Terminal=false

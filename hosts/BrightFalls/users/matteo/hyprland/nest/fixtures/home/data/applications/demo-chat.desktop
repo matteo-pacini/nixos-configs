@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Chat
+Comment=Talk with friends and colleagues
+Exec=demo-chat
+Icon=demo-chat
+Categories=Network;InstantMessaging;
+Terminal=false

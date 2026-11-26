@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Maps
+Comment=Find places and directions
+Exec=demo-maps
+Icon=demo-maps
+Categories=Utility;Maps;
+Terminal=false

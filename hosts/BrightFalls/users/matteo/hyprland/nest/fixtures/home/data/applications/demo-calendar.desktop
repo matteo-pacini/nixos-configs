@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Calendar
+Comment=Plan your days
+Exec=demo-calendar
+Icon=demo-calendar
+Categories=Office;Calendar;
+Terminal=false

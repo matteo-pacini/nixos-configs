@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Photos
+Comment=View and organise photos
+Exec=demo-photos
+Icon=demo-photos
+Categories=Graphics;Viewer;Photography;
+Terminal=false

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+Comment=Browse and organise your files
+Exec=demo-files
+Icon=demo-files
+Categories=System;Utility;FileManager;
+Terminal=false

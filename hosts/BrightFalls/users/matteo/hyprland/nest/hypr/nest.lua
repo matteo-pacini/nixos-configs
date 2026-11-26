@@ -5,6 +5,11 @@
 -- monitor; its size is the host window's, set by the window rule in
 -- user/hypr/rules.lua.
 hl.monitor({ output = "", mode = "1600x900", position = "0x0", scale = 1 })
+-- Beside the first output, not on it: the two exist together for a moment,
+-- and overlapping outputs put up Hyprland's "monitor layout is set up
+-- incorrectly" banner. @60: a headless DP-1 (desk-nest up --demo) draws at
+-- the rate its mode names, and with none it would get 0.
+hl.monitor({ output = "DP-1", mode = "1600x900@60", position = "1600x0", scale = 1 })
 hl.config({
     xwayland = { enabled = false },
     misc = {

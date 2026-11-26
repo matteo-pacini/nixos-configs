@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Backups
+Comment=Keep copies of your files safe
+Exec=demo-backups
+Icon=demo-backups
+Categories=Utility;Archiving;
+Terminal=false

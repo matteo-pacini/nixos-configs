@@ -19,7 +19,7 @@ Scope {
     readonly property bool open: TokensShared.open
     readonly property int panelWidth: 420
 
-    readonly property var v: open ? T.view(TokensShared.st, TokensShared.limits) : null
+    readonly property var v: open ? T.view(TokensShared.st, TokensShared.limits, TokensShared.plan) : null
 
     // The views' colour keys.
     function tone(name: string): color {

@@ -62,11 +62,14 @@ const names = p => (index[p] || []).map(e => e.name);
     const now = () => Date.now() / 1000;
 
     // ---- the index against the fixtures it names --------------------------
+    // demo-* names are nest's own, in nest/fixtures/<panel>/.
+    const isDemo = n => n.startsWith("demo-");
+    const demoFile = (p, n, ext) => path.join(hl, "nest/fixtures", p, n + ext);
     for (const p of ["weather", "office", "fleet"]) {
         const files = fs.readdirSync(path.join(tests, `${p}-panel/fixtures`)).filter(f => f.endsWith(".jsonl")).map(f => f.slice(0, -6));
         const missing = files.filter(f => !names(p).includes(f));
         check(`index lists every ${p}-panel fixture`, missing.length === 0, missing.join(" "));
-        const unknown = names(p).filter(n => n.split("+").some(x => !files.includes(x)));
+        const unknown = names(p).filter(n => n.split("+").some(x => isDemo(x) ? !fs.existsSync(demoFile(p, x, ".jsonl")) : !files.includes(x)));
         check(`index names only existing ${p} fixtures`, unknown.length === 0, unknown.join(" "));
     }
     const tsFx = n => JSON.parse(fs.readFileSync(path.join(tests, `tailscale-panel/fixtures/${n}.json`), "utf8"));
@@ -75,7 +78,11 @@ const names = p => (index[p] || []).map(e => e.name);
         .concat(Object.keys(tsFx("states")).map(k => "state:" + k))
         .concat(Object.keys(tsFx("calls")).map(k => "call:" + k));
     check("index lists every tailscale-panel answer, and only those",
-          JSON.stringify([...tsWant].sort()) === JSON.stringify([...names("tailscale")].sort()));
+          JSON.stringify([...tsWant].sort()) === JSON.stringify(names("tailscale").filter(n => !isDemo(n)).sort()));
+    const tsDemo = names("tailscale").filter(isDemo);
+    check("index: every tailscale demo has its file and is placed (its mesh hosts)",
+          tsDemo.length > 0 && tsDemo.every(n => fs.existsSync(demoFile("tailscale", n, ".json")) &&
+                                                  index.tailscale.find(e => e.name === n).flag === "place"));
     for (const p of Object.keys(index))
         check(`index: ${p} has a default and no name twice`, names(p).length > 0 && new Set(names(p)).size === names(p).length);
 
@@ -261,10 +268,20 @@ const names = p => (index[p] || []).map(e => e.name);
     const sysCall = run("gdbus", ["call", "--system", "--dest", "org.freedesktop.login1"]);
     check("gdbus --system call fails", sysCall.status === 1);
 
+    // df: the system panel's call answered for a --demo nest's invented
+    // machine; any other call, or outside a demo, is the real df.
+    const dfCall = ["-B1", "--output=target,size,used", "/", "/home", "/mnt/games"];
+    const dfDemo = run("df", dfCall, { env: Object.assign({}, env, { NEST_DEMO: "2026-11-25 09:41:00" }) });
+    check("df in a demo: one invented filesystem, for each of the three paths",
+          dfDemo.status === 0 && lines(dfDemo.stdout).slice(1).every(l => /^\/\s+1999843033088 812896526336$/.test(l)) && lines(dfDemo.stdout).length === 4,
+          JSON.stringify(dfDemo.stdout));
+    const dfReal = run("df", ["-B1", "--output=target", "/"]);
+    check("df outside a demo: the real df", dfReal.status === 0 && lines(dfReal.stdout)[1] === "/", JSON.stringify(dfReal.stdout));
+
     // ---- stubs: log the call, print nothing, write nothing ------------------
     const listing = dir => fs.readdirSync(dir).sort().join(" ");
     const stubs = lines(own.stdout).filter(n => !["desk-weather", "desk-mqtt", "desk-fleet", "desk-tokens", "tailscale",
-        "nmcli", "ip", "desk-bt-agent", "gdbus", "hyprctl", "nest-place", "nest-notify"].includes(n));
+        "nmcli", "ip", "desk-bt-agent", "gdbus", "hyprctl", "nest-place", "nest-notify", "df"].includes(n));
     // name: [args, exit, stdout]
     const special = {
         systemctl: [["--user", "is-active", "calendar-sync.service"], 3, "inactive\n"],
@@ -334,13 +351,66 @@ const names = p => (index[p] || []).map(e => e.name);
         if (fs.existsSync(rec))
             fs.rmSync(rec);
         const p = run("nest-notify", [n]);
-        const calls = lines(fs.existsSync(rec) ? fs.readFileSync(rec, "utf8") : "");
+        // One call per "call " line start: a body may hold line breaks.
+        const calls = (fs.existsSync(rec) ? fs.readFileSync(rec, "utf8") : "").split(/\n(?=call )/).map(c => c.trimEnd()).filter(Boolean);
         const want = JSON.parse(fs.readFileSync(path.join(hl, `nest/fixtures/notifications/${n}.json`), "utf8")).length;
         check(`nest-notify ${n}: ${want} Notify calls on the session bus`,
               p.status === 0 && calls.length === want &&
               calls.every(c => c.startsWith("call --session --dest org.freedesktop.Notifications ") && c.endsWith(" int32 -1")),
               calls.join("\n") + p.stderr);
     }
+
+    // ---- demo fixtures ------------------------------------------------------
+    // Invented data only, worded for people: no test words in any demo file.
+    const demoFiles = [];
+    const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
+        const p = path.join(d, e.name);
+        if (e.isDirectory())
+            walk(p);
+        else if (e.name.startsWith("demo-"))
+            demoFiles.push(p);
+    });
+    walk(path.join(hl, "nest/fixtures"));
+    const testWords = demoFiles.filter(f => /\b(Test|FX|Harness|[Ff]ixture)\b/.test(fs.readFileSync(f, "utf8")));
+    check(`demo files (${demoFiles.length}) carry no test words`, demoFiles.length > 0 && testWords.length === 0, testWords.join(" "));
+
+    control("weather", "demo-rain");
+    const demoRadar = await session("desk-weather", async w => {
+        await sleep(400);
+        w({ cmd: "radar", on: true });
+        await sleep(2500);
+    });
+    const rv = demoRadar.map(l => JSON.parse(l)).filter(e => e.event === "radar").pop();
+    const tilesOk = rv && rv.frames.length === 13 && rv.frames.every(f => fs.readdirSync(f.dir).filter(n => /^\d+_\d+\.png$/.test(n)).length === rv.cols * rv.rows);
+    check("desk-weather demo-rain: 13 radar frames drawn, every tile on disk, rain at the newest",
+          tilesOk && rv.frames[12].dry === false && rv.frames[12].dir.startsWith(path.join(state, "home/cache/")),
+          JSON.stringify(rv && rv.frames.slice(-1)));
+    let wst = W.initial();
+    for (const l of demoRadar) wst = W.apply(wst, JSON.parse(l), now());
+    const rView = W.radarView(wst, now(), 12, false);
+    check("weather.js shows the demo radar's frames", rView.state === "frames" && rView.frames.length === 13, JSON.stringify(rView).slice(0, 200));
+
+    run("nest-place", ["calendar", "demo-week"]);
+    const demoHead = JSON.parse(fs.readFileSync(events, "utf8").split("\n")[0]);
+    check("nest-place calendar demo-week: generated today", demoHead.generated.startsWith(today), JSON.stringify(demoHead));
+    for (const n of tsDemo) {
+        const p = run("nest-place", ["tailscale", n]);
+        const meshHosts = JSON.parse(fs.readFileSync(path.join(home, "data/desk/tailscale/hosts.json"), "utf8")).hosts.map(h => h.label);
+        check(`nest-place tailscale ${n}: the demo mesh hosts`, p.status === 0 && meshHosts.includes("Kestrel"), meshHosts.join(" "));
+    }
+    for (const n of names("cheatsheet").filter(isDemo)) {
+        control("cheatsheet", n);
+        const demoBinds = JSON.parse(run("hyprctl", ["-j", "binds"]).stdout);
+        check(`hyprctl -j binds (${n}): the demo sheet, no tunes row`,
+              demoBinds.length > 50 && !demoBinds.some(b => /tune/i.test(b.description)), demoBinds.length);
+    }
+    const appsDir = path.join(hl, "nest/fixtures/home/data/applications");
+    const apps = fs.existsSync(appsDir) ? fs.readdirSync(appsDir).filter(f => f.endsWith(".desktop")) : [];
+    const noIcon = apps.filter(f => {
+        const icon = (/^Icon=(.*)$/m.exec(fs.readFileSync(path.join(appsDir, f), "utf8")) || [])[1];
+        return !icon || !fs.existsSync(path.join(hl, `nest/fixtures/home/data/icons/hicolor/scalable/apps/${icon}.svg`));
+    });
+    check(`launcher: ${apps.length} invented applications, each with its own icon`, apps.length >= 12 && noIcon.length === 0, noIcon.join(" "));
 
     console.log(failed ? `${failed} failed` : "all passed");
     process.exit(failed ? 1 : 0);

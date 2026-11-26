@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Text Editor
+Comment=Edit plain text files
+Exec=demo-text-editor
+Icon=demo-text-editor
+Categories=Utility;TextEditor;
+Terminal=false

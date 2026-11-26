@@ -5,7 +5,8 @@ reach outside the nest, as one program chosen by the name it is run as
 
 Fakes answer in the protocol their panel expects, replaying the fixtures
 the panel tests already use (tests/<panel>-panel/fixtures) or nest's own
-(nest/fixtures). Stubs append the call to the log and act on nothing.
+(nest/fixtures; the demo-* ones in nest/fixtures/<panel>/, invented data
+for a recorded tour). Stubs append the call to the log and act on nothing.
 Wrappers (gdbus, hyprctl, ip) answer some calls themselves and hand the
 rest to the real tool, which inside the nest reaches only the nest.
 Nothing here opens a network connection or talks to a system service.
@@ -27,7 +28,8 @@ helpers again) begins with it.
 Two names are commands for the launcher, not for the shell:
   nest-place <panel> <name>   on the host: writes the data file the shell
                               reads itself (calendar export, plan-limit
-                              file) into NEST_STATE/home, times moved to now
+                              file, a demo tailnet's mesh hosts) into
+                              NEST_STATE/home, times moved to now
   nest-notify <name>          inside the nest: sends that sample's
                               notifications over the session bus
 """
@@ -144,6 +146,31 @@ def shift_date(text, days):
     return time.strftime("%Y-%m-%d", time.gmtime(calendar.timegm((y, m, d, 12, 0, 0)) + 86400 * days))
 
 
+# Demo fixtures, named demo-*, are nest's own (nest/fixtures/<panel>/), with
+# invented data written for this moment: Wednesday 25 November 2026, 09:41
+# in London (GMT, so also UTC). Their times move by now - DEMO_AT, as the
+# test fixtures' do from their own moments.
+DEMO_DAY = (2026, 11, 25)
+DEMO_AT = calendar.timegm(DEMO_DAY + (9, 41, 0))
+
+
+def fixture_file(panel, name, ext):
+    """A fixture's file: nest/fixtures/<panel>/ for a demo-* name, else the
+    panel test's own fixtures (tests/<panel>-panel/fixtures)."""
+    if name.startswith("demo-"):
+        return f"{FIXTURES}/{panel}/{name}{ext}"
+    return f"{TESTS}/{panel}-panel/fixtures/{name}{ext}"
+
+
+def shift_iso(text, delta):
+    """Every ISO time of this century in `text` (2026-11-25T09:41:00Z, with
+    or without fraction) moved by `delta` seconds."""
+    def shift(m):
+        t = calendar.timegm(time.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S")) + float("0" + (m.group(2) or ""))
+        return iso(t + delta)
+    return re.sub(r'(20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?Z', shift, text)
+
+
 # ---- weather (desk-weather) -------------------------------------------------
 
 # The day the weather-panel fixtures' "date" fields were written for.
@@ -152,17 +179,125 @@ WEATHER_DAY = (2026, 11, 22)
 
 def weather_lines(names, only=None):
     now = int(time.time())
-    shift = days_to_today(*WEATHER_DAY)
     out = []
     for n in names.split("+"):
-        for l in read_lines(f"{TESTS}/weather-panel/fixtures/{n}.jsonl"):
+        shift = days_to_today(*(DEMO_DAY if n.startswith("demo-") else WEATHER_DAY))
+        for l in read_lines(fixture_file("weather", n, ".jsonl")):
             m = re.search(r'"event":"([a-z_]+)"', l)
             if only and not (m and m.group(1) in only):
                 continue
             l = re.sub(r'"@([+-]\d+)"', lambda m: str(now + int(m.group(1))), l)
             l = re.sub(r'"date":"(\d{4}-\d\d-\d\d)"', lambda m: '"date":"%s"' % shift_date(m.group(1), shift), l)
+            if '"@radar/' in l:
+                l = demo_radar(n, l)
             out.append(l)
     return out
+
+
+# ---- demo radar frames ------------------------------------------------------
+# A demo radar line names its frames "@radar/fNN". The tiles are drawn here
+# from nest/fixtures/weather/<fixture>.radar.json (rain cells in the block's
+# pixels at the newest frame, moving `motion` pixels a frame), in RainViewer's
+# colour scheme 2 as the helper fetches it, into the private cache once per
+# fixture. The frames' "dry" is worked out as the helper does: any echo in
+# the panel's 390 x 250 view around the centre.
+
+RADAR_COLOURS = [  # (lowest dBZ, RGBA)
+    (12, (136, 221, 238, 200)), (18, (0, 153, 204, 210)), (24, (0, 119, 170, 220)), (30, (0, 85, 136, 225)),
+    (36, (255, 238, 0, 230)), (42, (255, 170, 0, 235)), (48, (255, 112, 0, 240)), (54, (255, 68, 0, 240)),
+]
+
+
+def png(width, rows):
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+    raw = b"".join(b"\0" + bytes(r) for r in rows)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, len(rows), 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+
+
+def demo_radar(name, line):
+    import math
+    import random
+    ev = json.loads(line)
+    with open(f"{FIXTURES}/weather/{name}.radar.json") as f:
+        spec = json.load(f)
+    root = os.path.join(STATE, "home", "cache", "desk-weather", "demo-radar", name)
+    tile, cols, rows, x0, y0 = ev["tile"], ev["cols"], ev["rows"], ev["x0"], ev["y0"]
+    cx, cy = ev["centre"]
+    vl = max(0, min(cx - 195, cols * tile - 390))
+    vt = max(0, min(cy - 125, rows * tile - 250))
+    rnd = random.Random(spec.get("seed", 1))
+    lattice = [[rnd.random() for _ in range(80)] for _ in range(80)]
+
+    def value(x, y, cell):  # value noise on a `cell` px lattice, in 0..1
+        gx, gy = x / cell + 1000, y / cell + 1000
+        ix, iy = int(gx) % 79, int(gy) % 79
+        fx, fy = gx - int(gx), gy - int(gy)
+        fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+        a = lattice[iy][ix] * (1 - fx) + lattice[iy][ix + 1] * fx
+        b = lattice[iy + 1][ix] * (1 - fx) + lattice[iy + 1][ix + 1] * fx
+        return a * (1 - fy) + b * fy
+
+    def noise(x, y):  # three octaves: banks, cells, speckle
+        return 0.5 * value(x, y, 24) + 0.3 * value(x + 37, y + 11, 10) + 0.2 * value(x + 5, y + 71, 4)
+
+    blank = None
+    frames = ev["frames"]
+    for k, fr in enumerate(frames):
+        d = os.path.join(root, fr["dir"].split("/", 1)[1])
+        fr["dir"] = d
+        if os.path.isfile(d + ".dry"):
+            with open(d + ".dry") as f:
+                fr["dry"] = f.read() == "true"
+            continue
+        back = len(frames) - 1 - k
+        mx, my = -spec["motion"][0] * back, -spec["motion"][1] * back
+        px = {}
+        for c in spec["cells"]:
+            ccx, ccy = c["x"] + mx, c["y"] + my
+            r = max(c["rx"], c["ry"]) * 1.6
+            cos, sin = math.cos(math.radians(c.get("angle", 0))), math.sin(math.radians(c.get("angle", 0)))
+            peak = c["peak"] + c.get("grow", 0) * -back
+            for by in range(int(ccy - r) // 2 * 2, int(ccy + r) + 2, 2):
+                for bx in range(int(ccx - r) // 2 * 2, int(ccx + r) + 2, 2):
+                    dx, dy = bx - ccx, by - ccy
+                    u, v = (dx * cos + dy * sin) / c["rx"], (-dx * sin + dy * cos) / c["ry"]
+                    q = u * u + v * v
+                    if q < 2.6:
+                        px[(bx, by)] = max(px.get((bx, by), 0), peak * math.exp(-q) * (0.2 + 1.5 * noise(bx - mx, by - my)))
+        os.makedirs(d, exist_ok=True)
+        dry = True
+        for tx in range(x0, x0 + cols):
+            for ty in range(y0, y0 + rows):
+                ox, oy = (tx - x0) * tile, (ty - y0) * tile
+                grid = None
+                for (bx, by), v in px.items():
+                    if v < 12 or not (ox <= bx < ox + tile and oy <= by < oy + tile):
+                        continue
+                    if grid is None:
+                        grid = [bytearray(tile * 4) for _ in range(tile)]
+                    rgba = [c for lo, c in RADAR_COLOURS if v >= lo][-1]
+                    if vl <= bx < vl + 390 and vt <= by < vt + 250:
+                        dry = False
+                    for yy in (by - oy, by - oy + 1):
+                        for xx in (bx - ox, bx - ox + 1):
+                            if yy < tile and xx < tile:
+                                grid[yy][xx * 4:xx * 4 + 4] = bytes(rgba)
+                if grid is None:
+                    blank = blank or png(tile, [bytearray(tile * 4)] * tile)
+                    data = blank
+                else:
+                    data = png(tile, grid)
+                with open(os.path.join(d, f"{tx}_{ty}.png"), "wb") as f:
+                    f.write(data)
+        fr["dry"] = dry
+        # Written last: a frame cut short by an exit is drawn again.
+        put(d + ".dry", "true" if dry else "false")
+    return json.dumps(ev)
 
 
 def desk_weather():
@@ -198,7 +333,7 @@ def desk_mqtt():
 
     def play(name):
         now = time.time()
-        for l in read_lines(f"{TESTS}/office-panel/fixtures/{name}.jsonl"):
+        for l in read_lines(fixture_file("office", name, ".jsonl")):
             l = re.sub(r'"@-(\d+)"', lambda m: json.dumps(iso(now - int(m.group(1)))), l)
             try:
                 ev = json.loads(l)
@@ -254,12 +389,12 @@ FLEET_BASE = calendar.timegm((2026, 11, 16, 12, 0, 20))
 
 def desk_fleet():
     def play(name):
-        delta = time.time() - FLEET_BASE
+        delta = time.time() - (DEMO_AT if name.startswith("demo-") else FLEET_BASE)
 
         def shift(m):
             t = calendar.timegm(time.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S")) + float("0" + (m.group(2) or ""))
             return iso(t + delta)
-        for l in read_lines(f"{TESTS}/fleet-panel/fixtures/{name}.jsonl"):
+        for l in read_lines(fixture_file("fleet", name, ".jsonl")):
             emit(re.sub(r'(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?Z', shift, l))
 
     play(control("fleet"))
@@ -289,12 +424,26 @@ TOKEN_SETS = {
     "partial": {"overview": "overview-partial", "projects:today": "projects-today-empty",
                 "projects:7d": "projects-7d", "projects:30d": "projects-30d-not-ready",
                 "project": "project-alpha-7d", "days": "days-dst"},
+    "demo-week": {"overview": "demo-overview", "projects:today": "demo-projects-today", "projects:7d": "demo-projects-7d",
+                  "projects:30d": "demo-projects-30d", "project": "demo-project-7d", "days": "demo-days"},
 }
 
 
 def token_answer(name):
-    with open(f"{TESTS}/tokens-panel/fixtures/{name}.json") as f:
-        return json.load(f)
+    with open(fixture_file("tokens", name, ".json")) as f:
+        a = json.load(f)
+    if not name.startswith("demo-"):
+        return a
+    # Whole days, so the helper's day bounds stay on their hour.
+    days = days_to_today(*DEMO_DAY) * 86400
+
+    def mv(x):
+        if isinstance(x, dict):
+            return {k: mv(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return [mv(v) for v in x]
+        return x + days if isinstance(x, int) and not isinstance(x, bool) and 1.7e9 < x < 1.9e9 else x
+    return mv(a)
 
 
 def desk_tokens():
@@ -334,6 +483,13 @@ def desk_tokens():
 def tailscale():
     name = control("tailscale")
     fx = f"{TESTS}/tailscale-panel/fixtures"
+    if name.startswith("demo-"):
+        with open(fixture_file("tailscale", name, ".json")) as f:
+            status = json.loads(shift_iso(f.read(), time.time() - DEMO_AT))
+        if "--peers=false" in ARGS:
+            status.pop("Peer", None)
+        print(json.dumps(status))
+        return
 
     def load(n):
         with open(f"{fx}/{n}.json") as f:
@@ -413,8 +569,9 @@ def gdbus():
 
 
 def hyprctl():
-    if "binds" in ARGS and control("cheatsheet") == "host":
-        with open(f"{FIXTURES}/binds.json") as f:
+    sheet = control("cheatsheet")
+    if "binds" in ARGS and (sheet == "host" or sheet.startswith("demo-")):
+        with open(f"{FIXTURES}/cheatsheet/{sheet}.json" if sheet != "host" else f"{FIXTURES}/binds.json") as f:
             sys.stdout.write(f.read())
         return
     p = real("hyprctl")
@@ -484,16 +641,18 @@ def place_calendar(name, home):
         if os.path.exists(path):
             os.remove(path)
         return
-    with open(f"{TESTS}/calendar/panel/fixture-events.jsonl") as f:
+    demo = name.startswith("demo-")
+    with open(f"{FIXTURES}/calendar/{name}.jsonl" if demo else f"{TESTS}/calendar/panel/fixture-events.jsonl") as f:
         text = f.read()
-    if name == "today":
-        days = days_to_today(*CALENDAR_DAY)
+    if name == "today" or demo:
+        days = days_to_today(*(DEMO_DAY if demo else CALENDAR_DAY))
         text = re.sub(r"(?<!\d)(\d{4}-\d\d-\d\d)(?!\d)", lambda m: shift_date(m.group(1), days), text)
     put(path, text)
 
 
 def place_limits(name, home):
-    with open(f"{TESTS}/tokens-panel/fixtures/limits-{name}.json") as f:
+    with open(f"{FIXTURES}/limits/{name}.json" if name.startswith("demo-")
+              else f"{TESTS}/tokens-panel/fixtures/limits-{name}.json") as f:
         d = json.load(f)
     delta = int(time.time()) - 60 - d["written_at"]
 
@@ -505,7 +664,14 @@ def place_limits(name, home):
     put(f"{home}/runtime/desk/claude-limits.json", json.dumps(mv(d)) + "\n")
 
 
-PLACE = {"calendar": place_calendar, "limits": place_limits}
+def place_tailscale(name, home):
+    # A demo tailnet's mesh hosts (Tailscale.qml reads them on every open);
+    # the status itself is the tailscale fake's, from control/tailscale.
+    with open(f"{FIXTURES}/tailscale/demo-mesh-hosts.json") as f:
+        put(f"{home}/data/desk/tailscale/hosts.json", f.read())
+
+
+PLACE = {"calendar": place_calendar, "limits": place_limits, "tailscale": place_tailscale}
 
 
 def known(panel, name, flag):
@@ -516,7 +682,7 @@ def known(panel, name, flag):
 
 def nest_place():
     if len(ARGS) != 2 or ARGS[0] not in PLACE or STATE == "/nonexistent":
-        print("usage: NEST_STATE=<dir> nest-place calendar|limits <name>", file=sys.stderr)
+        print("usage: NEST_STATE=<dir> nest-place calendar|limits|tailscale <name>", file=sys.stderr)
         sys.exit(2)
     known(ARGS[0], ARGS[1], "place")
     PLACE[ARGS[0]](ARGS[1], os.path.join(STATE, "home"))
@@ -553,6 +719,109 @@ STUBS = ("uwsm", "xdg-open", "loginctl", "playerctl", "audio-output-cycle", "pw-
          "poweroff")
 # Called often and logged by their own code paths when it matters.
 QUIET = ("gdbus", "hyprctl", "ip", "systemctl", "systemd-run", "systemd-inhibit", "nest-place", "nest-notify")
+
+# ---- demo stand-ins (desk-nest up --demo; nest/services) ------------------------
+
+# The system panel's free-space call, answered for the invented machine
+# whose sysfs and procfs a demo binds in: one filesystem, so /home and
+# /mnt/games report / as df does for a path that is no mount point, and the
+# panel shows one row (three do not fit at 1600x900). Anything else, and
+# any df outside a demo, is the real df.
+DF_CALL = ["-B1", "--output=target,size,used", "/", "/home", "/mnt/games"]
+
+
+def df():
+    if os.environ.get("NEST_DEMO") and ARGS == DF_CALL:
+        sys.stdout.write("Mounted on     1B-blocks         Used\n" + "/          1999843033088 812896526336\n" * 3)
+        return
+    p = real("df")
+    os.execv(p, [p] + ARGS)
+
+
+FAKES["df"] = df
+
+
+# The audio panel's PipeWire tools: in a demo they reach the nest's own
+# PipeWire (nest/services), outside one they stay stubs.
+def pipewire_tool():
+    if os.environ.get("NEST_DEMO"):
+        p = real(NAME)
+        os.execv(p, [p] + ARGS)
+    if NAME == "pw-dump":
+        pw_dump()
+    else:
+        plain_stub()
+
+
+for _name in ("pw-dump", "pw-top", "wpctl"):
+    FAKES[_name] = pipewire_tool
+
+# The network panel's speed test (network/SpeedTest.qml), played in a demo:
+# about nine seconds, latency, then download, then upload, in the tool's own
+# output, ending 941 / 512 Mb/s and 7 ms. The panel stores the result itself.
+# Outside a demo the stub's refusal. Nothing here touches the network.
+SPEED_DOWN = [(p, r) for p, rates in (("100kB", (212.4, 268.9, 301.7, 286.2)), ("1MB", (511.8, 577.3, 602.6, 588.1)),
+                                      ("10MB", (781.5, 826.9, 849.3, 860.2)), ("25MB", (902.7, 917.4, 925.8)),
+                                      ("100MB", (938.6, 943.9, 941.2))) for r in rates]
+SPEED_UP = [(p, r) for p, rates in (("100kB", (98.2, 131.6, 154.3, 147.9)), ("1MB", (288.4, 331.2, 352.7, 344.6)),
+                                    ("10MB", (461.3, 488.5, 497.0)), ("25MB", (509.8, 514.1, 512.3))) for r in rates]
+SPEED_PING = 7.12
+
+
+def cloudflare_demo():
+    out = sys.stdout
+    time.sleep(0.6)
+    out.write(f"Avg GET request latency {SPEED_PING:.2f} ms (RTT excluding server processing time)\n\n")
+    out.flush()
+    summary = []
+    for direction, samples, step in (("Download", SPEED_DOWN, 0.2), ("Upload", SPEED_UP, 0.25)):
+        for i, (payload, rate) in enumerate(samples):
+            done = round(40 * (i + 1) / len(samples))
+            out.write(f"{direction} {payload:>6} [{'=' * done}{'-' * (40 - done)}] {rate:.2f} mbit/s\r")
+            out.flush()
+            time.sleep(step)
+        out.write("\n")
+        for payload in dict.fromkeys(p for p, _ in samples):
+            rates = [r for p, r in samples if p == payload]
+            summary.append(f"{direction} {payload:>6} | min {min(rates):.2f} max {max(rates):.2f} "
+                           f"avg {sum(rates) / len(rates):.2f} mbit/s")
+    out.write("\n" + "\n".join(summary) + "\n")
+    out.flush()
+
+
+def ookla_demo():
+    def line(o):
+        sys.stdout.write(json.dumps(o) + "\n")
+        sys.stdout.flush()
+    def bps(mbps):
+        return int(mbps * 1e6 / 8)
+    for i in range(1, 5):
+        line({"type": "ping", "ping": {"jitter": 0.4, "latency": SPEED_PING + 0.3 * (4 - i), "progress": i / 4}})
+        time.sleep(0.2)
+    for direction, samples, step in (("download", SPEED_DOWN, 0.2), ("upload", SPEED_UP, 0.25)):
+        mean = 0.0
+        for i, (_, rate) in enumerate(samples):
+            mean += (rate - mean) / (i + 1) if i < 3 else (rate - mean) / 3
+            line({"type": direction, direction: {"bandwidth": bps(mean), "bytes": 0, "elapsed": 0,
+                                                 "progress": (i + 1) / (len(samples) + 1)}})
+            time.sleep(step)
+        final = samples[-1][1]
+        line({"type": direction, direction: {"bandwidth": bps(final), "progress": 1}})
+    line({"type": "result", "ping": {"jitter": 0.4, "latency": SPEED_PING},
+          "download": {"bandwidth": bps(SPEED_DOWN[-1][1])}, "upload": {"bandwidth": bps(SPEED_UP[-1][1])}})
+
+
+def speed_test():
+    if not os.environ.get("NEST_DEMO"):
+        speed()
+        return
+    log("demo run: " + " ".join(ARGS))
+    (cloudflare_demo if NAME == "cfspeedtest" else ookla_demo)()
+
+
+FAKES["cfspeedtest"] = FAKES["speedtest"] = speed_test
+# Each name once in `--names`: these were stubs.
+STUBS = tuple(n for n in STUBS if n not in FAKES)
 
 if __name__ == "__main__":
     if NAME in FAKES:

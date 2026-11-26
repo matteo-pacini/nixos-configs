@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Notes
+Comment=Jot things down
+Exec=demo-notes
+Icon=demo-notes
+Categories=Office;Utility;
+Terminal=false

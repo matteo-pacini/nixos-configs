@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Mail
+Comment=Read and write email
+Exec=demo-mail
+Icon=demo-mail
+Categories=Network;Email;Office;
+Terminal=false

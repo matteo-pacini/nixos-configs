@@ -315,7 +315,8 @@ its default, set at `up`.
   own) and `lock sleep` (logind's "about to sleep", which makes the
   shell ask for a lock; the request reaches a stub and starts nothing).
 - `nest/fixtures/home/` seeds the private homes: the palette, the Tailscale
-  mesh-host file, the `locked.json` files, the radar's coast outline.
+  mesh-host file, the `locked.json` files, the radar's coast outline, an
+  invented token plan (`desk/tokens/plan.json`).
 
 ### What shows only an empty state
 
@@ -327,7 +328,8 @@ and the session menu launch nothing (stubs), the fleet refuses every action
 as read-only, and calendar sync never runs. `System` is out of the default
 set because it reads this machine's sensors; `up System` loads it, and it
 then shows the real machine's values, read-only. The bar reads the real
-temperatures read-only, as the live bar does.
+temperatures read-only, as the live bar does. `up --demo` fills all of this
+with invented stand-ins ("Recording a tour").
 
 ### The lock in the nest
 
@@ -339,6 +341,60 @@ directory is the only PAM stack it uses: Quickshell takes `pam/desk-lock`
 from there and refuses to start the check without it, with no fallback to
 `/etc/pam.d`. Never type a password into it. Not covered: the real PAM
 stack, the lock before sleep, notifications held back.
+
+### Recording a tour
+
+`desk-nest up --demo` is the nest for a video. The nested compositor gets a
+headless 1600x900 output at 60 Hz and no window on the host (`--visible`
+does not go with it), the pointer hidden, the wallpaper. The shell, the lock
+and placed fixtures run on a wall clock from 2026-11-25 09:41 at a hundredth
+of real speed (libfaketime reading a file `nest-services clock` rewrites;
+its speed modifier would stretch every timer too). Everything on screen is
+invented: `nest/services/services.py` runs, inside the sandbox only,
+
+- a machine bound read-only over the sysfs and procfs paths the system
+  panel and the bar read (fixture `system`: `demo-idle`, `demo-busy`,
+  `demo-hot`);
+- PipeWire and WirePlumber with their own config: a DAC, speakers, a
+  talking microphone and a tune playing (`audio`, with inside actions for
+  the volume OSD);
+- a system bus of the nest's own, with BlueZ and NetworkManager from
+  python-dbusmock (`bluetooth`, `wifi`) and a polkit authority that asks
+  the shell's agent once (`polkit demo-ask`; never type into the dialog);
+- a tray app with a menu, a speed test that plays (key `s` in the network
+  panel), and seeded speed-test history.
+
+`up --demo` returns once the bar is on screen and the shell reads the
+invented CPU temperature; `status` shows what it reads.
+
+`desk-nest record [--clips] <steps> <outdir>` plays a steps file against a
+`--demo` nest while wf-recorder records the output inside, then captions it
+(`desk-nest-caption`). A steps file holds, one per line (`#` comments):
+
+- `pad <before> <after>`, `title|end <start> <end> "<title>" "<sub>"`: cards;
+- `at <t> <action>`, `t` in seconds from the recording's start: `scene
+  <name>`, `ipc <target> <function> [args]`, `fixture <panel> <name>`, `set
+  [components]`, `keys <key>...`, `chord <mod> <key>`, `type <text>`, `cursor
+  hide|show|<x> <y>`, `click <x> <y> [left|right|middle]`, `lock`, `stop`;
+- `at <t> caption <seconds> [top|bottom|center] <text>`: the text is the
+  rest of the line as written, apostrophes and quotes included.
+
+The whole file is checked before anything is recorded. Out come `raw.mkv`
+(lossless), `captions.txt`, `scenes.txt` (each scene's start and end),
+`play.log`, `recorder.log`, and `demo.mp4`; with `--clips`, one mp4 per
+scene and no captions.
+
+The whole tour is `nest/tour/tour.steps`, 25 scenes in about four minutes,
+captions included; `nest/tour/captions.md` is their text by scene (the
+desk-nest check keeps the two the same). From the top of a checkout:
+
+```
+desk-nest up --demo --fixtures weather=demo-fine-day --fixtures office=demo-lights-on \
+  --fixtures fleet=demo-before --fixtures tokens=demo-week --fixtures limits=demo-week \
+  --fixtures tailscale=demo-tailnet --fixtures calendar=demo-week --fixtures cheatsheet=demo-binds
+desk-nest record hosts/BrightFalls/users/matteo/hyprland/nest/tour/tour.steps <outdir>
+desk-nest down
+```
 
 ### Recovery
 
@@ -1176,7 +1232,7 @@ the plan limits as Claude Code last reported them. It is read-only.
   shows what they would cost at API list prices (`≈ $4.37`, `≈ $3,571`,
   `≈ $12.3 k`), as priced by the helper reply by reply. Each such page
   carries once, muted above the footer, `Estimates at API list prices; the
-  plan is a flat $200.` (the plan figure from `PLAN`). A quantity made only
+  plan is a flat $200.` (the plan's price, below). A quantity made only
   of models missing from the price table says `unpriced` instead of a
   figure; one partly so says `≈ $N + unpriced`, and the page names the
   models once (`not priced: …`). A helper older than the cost fields gives
@@ -1232,7 +1288,11 @@ the plan limits as Claude Code last reported them. It is read-only.
   nothing else runs.
 - **Set by hand**: `PLAN` at the top of `tokens/tokens.js` holds the plan's
   name and price and the 5-hour row's text when Claude Code reports no
-  5-hour window. Nothing reads them from the account.
+  5-hour window. Nothing reads them from the account. An optional
+  `~/.local/share/desk/tokens/plan.json`, `{"name": "…", "usd": 100}`, replaces
+  the name and price (per field, when valid), read once at shell start. Nix
+  installs none, so the desktop shows `PLAN`'s; desk-nest seeds an invented
+  plan for its nests.
 - **What it does not show, and why**: no per-model weekly percentage (the
   status line's input carries only `five_hour`, `seven_day`, the all-models
   week, and a gateway's `spend_limit`, and the panel never reads credentials
@@ -2184,7 +2244,9 @@ config on GitHub's runners, cause not known.
   and progress events and limits files built in the test: every page's view
   and texts, the figures at API prices, keys, footers, the limits file's
   reading and the bar item, with days that cross the daylight-saving change
-  of 1 November 2026; the plan's name and price come from `PLAN` itself.
+  of 1 November 2026; the plan's name and price come from `PLAN` itself,
+  and the plan file's reading (valid, missing, invalid per field) is checked
+  on its own.
   Under 1 s.
 - `nix build .#checks.x86_64-linux.weather-helper`:
   `tests/weather/test-desk-weather.py` runs `desk-weather`'s pure functions

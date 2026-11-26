@@ -1,0 +1,6 @@
+[
+  {"app": "Mail", "icon": "demo-mail", "summary": "Sam: Lunch today?", "body": "Still on for one o'clock? I've booked a table by the window at the Old Bakery.", "urgency": 1},
+  {"app": "Browser", "icon": "demo-browser", "summary": "Download complete", "body": "garden-plan-2027.pdf · 2.4 MB", "urgency": 0},
+  {"app": "Backups", "icon": "demo-backups", "summary": "Backup finished", "body": "Your home folder is backed up to the network drive.\n1,284 files changed, 3.1 GB copied in 6 minutes.\nThe next backup runs tonight at 22:00.", "urgency": 1},
+  {"app": "Music", "icon": "demo-music", "summary": "Now playing", "body": "Morning Tide · The Lantern Quartet", "urgency": 0}
+]

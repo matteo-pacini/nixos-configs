@@ -1,0 +1,194 @@
+{
+ "Version": "1.104.5-t0000000-g0000000",
+ "BackendState": "Running",
+ "AuthURL": "",
+ "TailscaleIPs": [
+  "100.64.0.1",
+  "fd7a:115c:a1e0::1"
+ ],
+ "Self": {
+  "ID": "nKestrel",
+  "HostName": "Kestrel",
+  "DNSName": "kestrel.tail7c3e1.ts.net.",
+  "OS": "linux",
+  "UserID": 1,
+  "TailscaleIPs": [
+   "100.64.0.1",
+   "fd7a:115c:a1e0::1"
+  ],
+  "Relay": "lhr",
+  "Online": true
+ },
+ "Health": [],
+ "MagicDNSSuffix": "tail7c3e1.ts.net",
+ "CurrentTailnet": {
+  "MagicDNSSuffix": "tail7c3e1.ts.net",
+  "MagicDNSEnabled": true
+ },
+ "Peer": {
+  "nodekey:02": {
+   "ID": "nLighthouse",
+   "HostName": "Lighthouse",
+   "DNSName": "lighthouse.tail7c3e1.ts.net.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.2",
+    "fd7a:115c:a1e0::2"
+   ],
+   "CurAddr": "198.51.100.23:41641",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 3310000000,
+   "TxBytes": 164000000,
+   "LastWrite": "2026-11-25T09:40:58Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": true,
+   "ExitNodeOption": true,
+   "Active": true
+  },
+  "nodekey:03": {
+   "ID": "nMarlin",
+   "HostName": "Marlin",
+   "DNSName": "marlin.tail7c3e1.ts.net.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.3",
+    "fd7a:115c:a1e0::3"
+   ],
+   "CurAddr": "198.51.100.24:41641",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 48200000,
+   "TxBytes": 9600000,
+   "LastWrite": "2026-11-25T09:40:52Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": true
+  },
+  "nodekey:04": {
+   "ID": "nPebble",
+   "HostName": "Pebble",
+   "DNSName": "pebble.tail7c3e1.ts.net.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.4",
+    "fd7a:115c:a1e0::4"
+   ],
+   "CurAddr": "",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 12400000,
+   "TxBytes": 3100000,
+   "LastWrite": "2026-11-25T09:40:41Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": true
+  },
+  "nodekey:05": {
+   "ID": "nJuniper",
+   "HostName": "Juniper",
+   "DNSName": "juniper.tail7c3e1.ts.net.",
+   "OS": "macOS",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.5",
+    "fd7a:115c:a1e0::5"
+   ],
+   "CurAddr": "",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 730000,
+   "TxBytes": 212000,
+   "LastWrite": "2026-11-25T09:22:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false
+  },
+  "nodekey:06": {
+   "ID": "nTamarind",
+   "HostName": "Tamarind",
+   "DNSName": "tamarind.tail7c3e1.ts.net.",
+   "OS": "macOS",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.6",
+    "fd7a:115c:a1e0::6"
+   ],
+   "CurAddr": "",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 96000000,
+   "TxBytes": 21000000,
+   "LastWrite": "2026-11-25T08:55:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false
+  },
+  "nodekey:07": {
+   "ID": "nphone",
+   "HostName": "phone",
+   "DNSName": "phone.tail7c3e1.ts.net.",
+   "OS": "iOS",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.7",
+    "fd7a:115c:a1e0::7"
+   ],
+   "CurAddr": "",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 1200000,
+   "TxBytes": 340000,
+   "LastWrite": "2026-11-25T09:12:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false
+  },
+  "nodekey:08": {
+   "ID": "ntablet",
+   "HostName": "tablet",
+   "DNSName": "tablet.tail7c3e1.ts.net.",
+   "OS": "android",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.8",
+    "fd7a:115c:a1e0::8"
+   ],
+   "CurAddr": "",
+   "Relay": "lhr",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "2026-11-23T20:14:00Z",
+   "Online": false,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false
+  }
+ },
+ "ClientVersion": {
+  "RunningLatest": true
+ },
+ "ExitNodeStatus": {
+  "ID": "nLighthouse",
+  "Online": true,
+  "TailscaleIPs": [
+   "100.64.0.2/32"
+  ]
+ }
+}

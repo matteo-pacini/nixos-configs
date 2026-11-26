@@ -3,7 +3,8 @@
 # journalctl, nsenter, grim and qs, run with errexit, nounset and pipefail as
 # writeShellApplication runs it. Nothing here starts a compositor.
 # Usage: run.sh <desk-nest.sh> <nest/hypr/nest.lua> <nest/pam/check.sh>
-#   <user/hypr/rules.lua> <lua>
+#   <user/hypr/rules.lua> <lua> <nest/record/steps.py> <nest/services/services.py>
+#   <nest/tour> <nest/fixtures/index>
 #   (needs bash, coreutils, git, rsync, util-linux, gawk, diffutils,
 #   findutils, grep, sed and python3 with google-re2 on PATH)
 #
@@ -38,6 +39,10 @@ nest_lua=$(realpath "$2")
 check_sh=$(realpath "$3")
 rules_lua=$(realpath "$4")
 lua=$5
+steps_py=$(realpath "$6")
+services_py=$(realpath "$7")
+tour=$(realpath "$8")
+tour_index=$(realpath "$9")
 work=$(mktemp -d)
 pids=()
 cleanup() {
@@ -66,7 +71,7 @@ mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
 python3 -I -c 'import socket, sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$XDG_RUNTIME_DIR/wayland-1"
 # Present in the caller's environment, and never to reach the sandbox.
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/nowhere NOTIFY_SOCKET=/nowhere MANAGERPID=1 \
-  HYPRLAND_INSTANCE_SIGNATURE=host-sig WAYLAND_DISPLAY=wayland-1
+  HYPRLAND_INSTANCE_SIGNATURE=host-sig WAYLAND_DISPLAY=wayland-1 XDG_DATA_DIRS=/host/share
 
 pam="$work/pam dir"
 mkdir -p "$pam"
@@ -84,6 +89,9 @@ dn=$work/desk-nest
   printf 'nest_lua=%q\n' "$nest_lua"
   printf 'nest_pam=%q\n' "$pam"
   printf 'inner_path=%q\n' "$inner"
+  printf 'icon_dirs=%q\n' "$work/icons a/share:$work/icons b/share"
+  printf 'faketime_preload=%q\n' "/malloc debug.so /faketime.so"
+  printf 'steps_py=%q\n' "$steps_py"
   cat "$script"
 } >"$dn"
 chmod +x "$dn"
@@ -115,6 +123,7 @@ window() { # address class pid floating w h workspace
 }
 case "$1 ${2:-}" in
 "instances ") cat "$FAKE/instances" ;;
+"-j layers") echo "{\"DP-1\": {\"levels\": {\"2\": [{\"namespace\": \"desk-bar\"}]}}}" ;;
 "-j clients")
   hold clients
   printf "[{\"address\": \"0x1000\", \"class\": \"foot\", \"pid\": 1, \"floating\": false, \"size\": [800, 600], \"workspace\": {\"name\": \"6\"}}"
@@ -173,10 +182,32 @@ shift 2
 exec env -i FAKE="$FAKE" "$@"'
 fake grim 'echo png >"$1"'
 fake qs '
+[ -z "${FAKETIME_TIMESTAMP_FILE:-}" ] || echo "faketime $FAKETIME_TIMESTAMP_FILE CACHE=$FAKETIME_CACHE_DURATION FAKETIME=${FAKETIME:-} LD_PRELOAD=$LD_PRELOAD MONO=${FAKETIME_DONT_FAKE_MONOTONIC:-}" >>"$FAKE/log"
 case "$*" in
 ipc*" call shell reload") echo reloaded ;;
+ipc*" call harness sensors")
+  if [ -e "$FAKE/nosensors" ]; then echo "{\"cpuTemp\": null, \"k10\": null}"; else echo "{\"cpuTemp\": 41.2, \"k10\": \"/sys/class/hwmon/hwmon0\"}"; fi ;;
 ipc*) echo "ipc answered" ;;
 esac'
+fake wtype ''
+fake wlrctl ''
+# The recorder: writes its file, and a last line once SIGINT stops it.
+# Python: started with & by sh, it has SIGINT ignored, which bash cannot
+# trap and wf-recorder's own handler undoes.
+fake wf-recorder '
+exec python3 -I -c "
+import signal, sys, time
+f = sys.argv[-1]
+open(f, \"w\").write(\"frames\\n\")
+def stop(*_):
+    open(f, \"a\").write(\"stopped\\n\")
+    sys.exit(0)
+signal.signal(signal.SIGINT, stop)
+while True:
+    time.sleep(0.05)
+" "$@"'
+fake desk-nest-caption 'echo mp4 >"$3"'
+fake ffmpeg 'echo mp4 >"${*: -1}"'
 fake bwrap '
 printf "%s\n" "$@" >"$FAKE/bwrap.args.$$"
 mv "$FAKE/bwrap.args.$$" "$FAKE/bwrap.args"
@@ -202,7 +233,7 @@ missing | stuck)
 esac
 printf "{\n    \"child-pid\": %s\n}\n" "$child" >&"$fd"
 eval "exec $fd>&-"
-printf "NESTED_WAYLAND=wayland-1\nNESTED_SIG=nested-sig\n" >"$state/nested.env"
+printf "NESTED_WAYLAND=wayland-1\nNESTED_SIG=nested-sig\nNESTED_BUS=unix:path=/tmp/nest-bus\n" >"$state/nested.env"
 case $(cat "$FAKE/load") in
 ok) echo "  INFO: Configuration Loaded" >"$state/qs.out" ;;
 fail) echo "  ERROR: Failed to load configuration" >"$state/qs.out" ;;
@@ -228,11 +259,21 @@ weather 02-snow-night
 calendar fixture place
 calendar none place
 notifications sample inside
+audio demo-mute inside
 EOF
+# The demo's stand-ins: the real program, which up --demo runs to seed and
+# bind its tree; inside, a stub that logs (an action of a stand-in).
+mkdir -p "$hl/nest/services/bin"
+cp "$services_py" "$hl/nest/services/services.py"
+{
+  echo "#!$BASH"
+  echo 'printf "%s\n" "nest-services $* BUS=${DBUS_SESSION_BUS_ADDRESS:-}" >>"$FAKE/log"'
+} >"$hl/nest/services/bin/nest-services"
+chmod +x "$hl/nest/services/bin/nest-services"
 for f in nest-place nest-notify; do
   {
     echo "#!$BASH"
-    echo 'printf "%s\n" "$(basename "$0") $* NEST_STATE=${NEST_STATE:-}" >>"$FAKE/log"'
+    echo 'printf "%s\n" "$(basename "$0") $* NEST_STATE=${NEST_STATE:-} BUS=${DBUS_SESSION_BUS_ADDRESS:-} FT=${FAKETIME_TIMESTAMP_FILE:-}" >>"$FAKE/log"'
   } >"$hl/nest/fakes/bin/$f"
   chmod +x "$hl/nest/fakes/bin/$f"
 done
@@ -425,11 +466,12 @@ seal --setenv XDG_CONFIG_HOME "$state/home/config"
 seal --setenv NEST_STATE "$state"
 seal --setenv NEST_TREE "$state/tree"
 seal --setenv NEST_FIXTURES "$hl/nest/fixtures"
-seal --setenv PATH "$hl/nest/fakes/bin:$inner"
+seal --setenv PATH "$hl/nest/fakes/bin:$hl/nest/services/bin:$inner"
+seal --setenv XDG_DATA_DIRS "$work/icons a/share:$work/icons b/share"
 seal --info-fd 3 dbus-run-session -- sh -c
 names=$(awk 'prev == "--setenv" { print } { prev = $0 }' "$FAKE/bwrap.args" | sort | paste -sd' ')
 check "seal: only these variables inside" \
-  "FONTCONFIG_FILE HOME HYPRLAND_NO_SD_NOTIFY HYPRLAND_NO_SD_TARGET HYPRLAND_NO_SD_VARS LANG LIBSEAT_BACKEND LOCALE_ARCHIVE NEST_FIXTURES NEST_STATE NEST_TREE PATH TERM TZ USER WAYLAND_DISPLAY XDG_CACHE_HOME XDG_CONFIG_DIRS XDG_CONFIG_HOME XDG_CURRENT_DESKTOP XDG_DATA_DIRS XDG_DATA_HOME XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_STATE_HOME" \
+  "FONTCONFIG_FILE HOME HYPRLAND_NO_SD_NOTIFY HYPRLAND_NO_SD_TARGET HYPRLAND_NO_SD_VARS LANG LIBSEAT_BACKEND LOCALE_ARCHIVE NEST_DEMO NEST_FIXTURES NEST_PRELOAD NEST_STATE NEST_TREE NEST_WALLPAPER PATH TERM TZ USER WAYLAND_DISPLAY XDG_CACHE_HOME XDG_CONFIG_DIRS XDG_CONFIG_HOME XDG_CURRENT_DESKTOP XDG_DATA_DIRS XDG_DATA_HOME XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_STATE_HOME" \
   "$names"
 # bwrap applies binds in order, a later one over an earlier one.
 rw=$(python3 -I -c '
@@ -442,7 +484,7 @@ for i in range(len(a) - 2):
         print(a[i + 2])' "$FAKE/bwrap.args" "$state")
 check "seal: the state read-only, then writable only what the nest writes, not the records the host trusts" \
   "$(printf '%s\n' "$XDG_RUNTIME_DIR/host-wayland" "(the state, read-only)" "$state/home" "$state/shots" \
-    "$state/qs.out" "$state/hyprland.out" "$state/fakes.log" "$state/nested.env" "$state/lock.out" "$XDG_RUNTIME_DIR/desk")" \
+    "$state/qs.out" "$state/hyprland.out" "$state/fakes.log" "$state/nested.env" "$state/lock.out" "$state/services.out" "$XDG_RUNTIME_DIR/desk")" \
   "$rw"
 # bwrap applies --clearenv and --setenv in order.
 order=$(python3 -I -c '
@@ -499,11 +541,14 @@ check "fixture: one not in the index refused" "1 02-snow-night" "$rc $(cat "$sta
 nest fixture 'weather;' x
 check "fixture: a malformed panel refused" 1 "$rc"
 nest fixture calendar none
-check "fixture: a place fixture placed inside the running nest" "0 1 nest-place calendar none NEST_STATE=$state" \
+check "fixture: a place fixture placed inside the running nest" "0 1 nest-place calendar none NEST_STATE=$state BUS=unix:path=/tmp/nest-bus FT=" \
   "$rc $(calls nsenter) $(grep '^nest-place' "$FAKE/log")"
 nest fixture notifications sample
-check "fixture: an inside fixture runs inside" "0 nest-notify sample NEST_STATE=$state" "$rc $(grep '^nest-notify' "$FAKE/log")"
+check "fixture: an inside fixture runs inside" "0 nest-notify sample NEST_STATE=$state BUS=unix:path=/tmp/nest-bus FT=" "$rc $(grep '^nest-notify' "$FAKE/log")"
 check "fixture: an inside fixture writes no control" no "$([ -e "$state/control/notifications" ] && echo yes || echo no)"
+nest fixture audio demo-mute
+check "fixture: a stand-in's action runs inside" "0 nest-services act audio demo-mute BUS=unix:path=/tmp/nest-bus" \
+  "$rc $(grep '^nest-services' "$FAKE/log")"
 nest fixtures
 contains "fixtures: the index" "weather 02-snow-night" "$out"
 
@@ -806,6 +851,161 @@ nest down
 check "host unreadable at up: down after" 0 "$rc"
 healthy
 
+# --- fixtures chosen at up ------------------------------------------------------
+
+: >"$FAKE/log"
+nest up --fixtures calendar=none --fixtures weather=02-snow-night Bar
+check "up --fixtures: starts" "0 none 02-snow-night" \
+  "$rc $(cat "$state/control/calendar") $(cat "$state/control/weather")"
+check "up --fixtures: the place fixture placed on the host, before the start, once" \
+  "nest-place calendar none NEST_STATE=$state BUS=unix:path=/nowhere FT=" "$(grep '^nest-place' "$FAKE/log")"
+check "up --fixtures: nothing run inside for it" 0 "$(calls nsenter)"
+nest down
+check "up --fixtures: down" 0 "$rc"
+healthy
+
+# --- the recording set ------------------------------------------------------------
+
+: >"$FAKE/log"
+nest up --demo --visible
+check "--demo --visible: refused before start" "1 0" "$rc $(calls bwrap)"
+: >"$FAKE/log"
+# Its window goes with its first output, before the shell starts.
+echo nowindow >"$FAKE/rule"
+nest up --demo --fixtures calendar=none Bar
+check "--demo: starts" 0 "$rc"
+contains "--demo: no window on the host, said so" "the nest has no window on the host: its only output is a headless DP-1" "$out"
+contains "--demo: up waits for the bar on DP-1" "the bar is mapped on DP-1" "$out"
+contains "--demo: up waits for the shell's first temperature" 'the shell reads the invented machine: {"cpuTemp": 41.2' "$out"
+check "--demo: no window moved, nothing shown" 0 "$(grep -c '^hyprctl dispatch' "$FAKE/log" || true)"
+seal --setenv NEST_DEMO "2026-11-25 09:41:00"
+seal --setenv NEST_PRELOAD "/malloc debug.so /faketime.so"
+seal --setenv NEST_WALLPAPER "$co/assets/wallpapers/left.png"
+# The invented machine: seeded on the host before the start, bound read-only
+# over each real path this machine has, after /proc is mounted.
+check "--demo: the invented machine seeded" "AMD Ryzen 5 8600G w/ Radeon 760M Graphics" \
+  "$(sed -n 's/^model name\t: //p' "$state/home/sys/proc/cpuinfo" | sort -u)"
+want=0
+while read -r rel dest; do
+  [ -e "$dest" ] || continue
+  want=$((want + 1))
+  seal --ro-bind "$state/home/sys/$rel" "$dest"
+done < <(python3 -I "$services_py" sys-binds)
+check "--demo: /proc/stat among the binds" yes "$(has_args --ro-bind "$state/home/sys/proc/stat" /proc/stat && echo yes || echo no)"
+check "--demo: no other bind onto a real path but these and the seal's" "$want" \
+  "$(grep -c "^$state/home/sys/" "$FAKE/bwrap.args")"
+order=$(python3 -I -c '
+import sys
+a = open(sys.argv[1]).read().split("\n")[:-1]
+print("after /proc" if a.index("/proc/stat") > a.index("--proc") else "before /proc")' "$FAKE/bwrap.args")
+check "--demo: the binds come after /proc is mounted" "after /proc" "$order"
+check "--demo: the place fixture placed on the demo clock" \
+  "nest-place calendar none NEST_STATE=$state BUS=unix:path=/nowhere FT=$state/home/runtime/demo-clock" "$(grep '^nest-place' "$FAKE/log")"
+check "--demo: the clock's first reading written before the start" "2026-11-25 09:41:00" "$(cat "$state/home/runtime/demo-clock")"
+read -r child _ <"$state/sandbox"
+echo "$child" >"$FAKE/expect-target"
+nest status
+contains "--demo: status" "window: none (--demo: a headless DP-1, the shell's clock from 2026-11-25 09:41:00, a hundredth of real speed)" "$out"
+contains "--demo: status shows what the shell reads" 'sensors: {"cpuTemp": 41.2' "$out"
+: >"$FAKE/log"
+nest lock
+for _ in $(seq 50); do grep -q '^faketime' "$FAKE/log" && break; sleep 0.1; done
+check "--demo: the lock on the demo clock, malloc debug preloaded first" \
+  "faketime $state/home/runtime/demo-clock CACHE=0 FAKETIME= LD_PRELOAD=/malloc debug.so /faketime.so MONO=1" "$(grep '^faketime' "$FAKE/log")"
+
+steps=$work/demo.steps
+cat >"$steps" <<'EOF'
+# a comment
+pad 1 2
+title -1 0 "A title" "its line"
+at 0 scene bar-1
+at 0 caption 1.5 top The bar's "own" clock, # and all
+at 0.1 ipc weather toggle
+at 0.2 fixture weather 02-snow-night
+at 0.3 scene keys
+at 0.3 keys Down Return
+at 0.3 type hello there
+at 0.4 chord ctrl a
+at 0.4 cursor 10 20
+at 0.45 click 30 12 right
+at 0.5 set Bar Weather
+at 0.6 stop
+EOF
+: >"$FAKE/log"
+touch "$FAKE/nosensors"
+: >"$FAKE/log"
+nest record "$steps" "$work/no-sensors"
+check "record: refused while the shell has no temperature" "1 0" "$rc $(grep -c '^wf-recorder' "$FAKE/log" || true)"
+contains "record: says why" "the shell has no CPU temperature from the invented machine" "$out"
+rm -f "$FAKE/nosensors"
+: >"$FAKE/log"
+nest record "$steps" "$work/take one"
+check "record: rc" 0 "$rc"
+contains "record: lists what it wrote" "$work/take one: raw.mkv, captions.txt, scenes.txt, play.log, recorder.log, demo.mp4" "$out"
+check "record: the caption track" "$(printf '%s\n' 'pad 1 2' "title -1 0 'A title' 'its line'" "0 1.5 top The bar's \"own\" clock, # and all")" \
+  "$(cat "$work/take one/captions.txt")"
+check "record: the recorder ran inside, was stopped by SIGINT, its file copied out" \
+  "$(printf '%s\n' frames stopped)" "$(cat "$work/take one/raw.mkv")"
+check "record: on DP-1, every frame, 60 fps, lossless" \
+  "wf-recorder -o DP-1 -D -r 60 -c libx264rgb -x bgr0 -p crf=0 -p preset=ultrafast -m matroska -y -f $state/shots/record.mkv" \
+  "$(grep '^wf-recorder' "$FAKE/log")"
+check "record: ipc, keys, text, chord" \
+  "$(printf '%s\n' "qs ipc -p $state/tree/dev.qml call weather toggle" "wtype -k Down -k Return" "wtype -- hello there" "wtype -M ctrl -k a -m ctrl")" \
+  "$(grep -E '^(qs ipc|wtype)' "$FAKE/log" | grep -v 'call harness sensors')"
+check "record: the fixture and the components switched" '02-snow-night {"components": ["Bar","Weather"]}' \
+  "$(cat "$state/control/weather") $(cat "$state/harness.json")"
+check "record: the pointer moved on DP-1 (at 1600x0), and a right click there" \
+  "$(printf '%s\n' "hyprctl dispatch hl.dsp.cursor.move({ x = 1610, y = 20 })" "hyprctl dispatch hl.dsp.cursor.move({ x = 1630, y = 12 })" "wlrctl pointer click right")" \
+  "$(grep -E '^(hyprctl dispatch|wlrctl)' "$FAKE/log")"
+check "record: captioned from the copy" "desk-nest-caption $work/take one/raw.mkv $work/take one/captions.txt $work/take one/demo.mp4 60" \
+  "$(grep '^desk-nest-caption' "$FAKE/log")"
+check "record: the scenes, each to the next marker, the last to stop" "$(printf '%s\n' '01 bar-1 0 0.3' '02 keys 0.3 0.6')" \
+  "$(cat "$work/take one/scenes.txt")"
+
+: >"$FAKE/log"
+nest record --clips "$steps" "$work/clips"
+check "record --clips: rc, no captioning" "0 0" "$rc $(grep -c '^desk-nest-caption' "$FAKE/log" || true)"
+contains "record --clips: lists what it wrote" "$work/clips: raw.mkv, captions.txt, scenes.txt, clips/ (2 scenes)" "$out"
+check "record --clips: one clip per scene, cut from the copy" \
+  "$(printf '%s\n' "ffmpeg -hide_banner -loglevel error -y -ss 0 -t 0.3 -i $work/clips/raw.mkv -an -c:v libx264 -preset veryfast -crf 16 -pix_fmt yuv420p -movflags +faststart $work/clips/clips/01-bar-1.mp4" \
+    "ffmpeg -hide_banner -loglevel error -y -ss 0.3 -t 0.3 -i $work/clips/raw.mkv -an -c:v libx264 -preset veryfast -crf 16 -pix_fmt yuv420p -movflags +faststart $work/clips/clips/02-keys.mp4")" \
+  "$(grep '^ffmpeg' "$FAKE/log")"
+check "record --clips: the files" "01-bar-1.mp4 02-keys.mp4" "$(cd "$work/clips/clips" && echo *)"
+
+for bad in 'at 1 jump' 'at 1 caption' 'at x ipc a b' 'at 1 chord hyper a' 'at 1 cursor 1' 'at 1 click 1 2 double' 'at 2 ipc a b
+at 1 stop' 'at 1 ipc a b' 'at 1 stop
+at 2 ipc a b' 'pad 1' "at 1 type 'unclosed"; do
+  printf '%s\n' "$bad" >"$steps"
+  : >"$FAKE/log"
+  nest record "$steps" "$work/bad"
+  check "record: refused before recording: ${bad//$'\n'/ / }" "1 0" "$rc $(grep -c '^wf-recorder' "$FAKE/log" || true)"
+done
+contains "record: names the line" "demo.steps:1: No closing quotation" "$(nest record "$steps" "$work/bad"; echo "$out")"
+
+nest down
+check "--demo: down" 0 "$rc"
+healthy
+touch "$FAKE/nosensors"
+nest up --demo Bar
+check "--demo, no temperature in 20 s: up fails, the nest left running" "1 yes" "$rc $(running && echo yes || echo no)"
+contains "--demo, no temperature: says so" "the shell has no CPU temperature 20 s after it loaded" "$out"
+read -r child _ <"$state/sandbox"
+echo "$child" >"$FAKE/expect-target"
+nest down
+rm -f "$FAKE/nosensors"
+healthy
+nest up Bar
+read -r child _ <"$state/sandbox"
+echo "$child" >"$FAKE/expect-target"
+printf 'at 0 stop\n' >"$steps"
+nest record "$steps" "$work/plain"
+check "record: refused on a nest without --demo" "1 0" "$rc $(grep -c '^wf-recorder' "$FAKE/log" || true)"
+contains "record: says why" "record needs a nest started with up --demo" "$out"
+check "a plain up after a demo: no demo record left" no "$([ -e "$state/demo" ] && echo yes || echo no)"
+check "a plain up: no invented machine bound" 0 "$(grep -c "^$state/home/sys/" "$FAKE/bwrap.args" || true)"
+nest down
+healthy
+
 # --- the window rule, matched as Hyprland matches it --------------------------------
 
 # Hyprland 0.57 matches each pattern against the whole string, with RE2's
@@ -853,5 +1053,44 @@ pw() { printf '%s' "$1" | bash "$check_sh" && echo accept || echo reject; }
 check "pam check: the fixture word" accept "$(pw nest-unlock)"
 check "pam check: anything else" "reject reject reject" "$(pw wrong) $(pw '') $(pw 'nest-unlock
 ')"
+
+# --- the tour (nest/tour) -----------------------------------------------------------
+
+rc=0
+out=$(python3 -I "$steps_py" "$tour/tour.steps" "$work/tour.track" 2>&1 >"$work/tour.actions") || rc=$?
+check "tour: record reads tour.steps" "0 " "$rc $out"
+# Scenes in order and each one's caption text, from tour.steps (the track
+# record writes) and from captions.md; they must be the same.
+tour_cmp=$(python3 -I -c '
+import re, sys
+acts, track, md, index = (open(p).read() for p in sys.argv[1:5])
+known = {tuple(l.split("#")[0].split()[:2]) for l in index.splitlines()}
+used = [tuple(l.split("\x1f")[2:4]) for l in acts.splitlines() if l.split("\x1f")[1] == "fixture"]
+print("unknown fixtures:", " ".join(sorted({" ".join(f) for f in used if f not in known})))
+scenes = [(float(l.split("\x1f")[0]), l.split("\x1f")[2]) for l in acts.splitlines() if l.split("\x1f")[1] == "scene"]
+def scene_at(t):
+    return [n for s, n in scenes if s <= t][-1]
+steps = {}
+for l in track.splitlines():
+    if l.startswith(("pad", "title", "end")):
+        continue
+    start, _, rest = l.split(None, 2)
+    pos, _, text = rest.partition(" ")
+    steps.setdefault(scene_at(float(start)), []).append(text if pos in ("top", "bottom", "center") else rest)
+doc, cur = {}, None
+for l in md.splitlines():
+    if l.startswith("## "):
+        cur = l[3:].strip()
+        doc[cur] = []
+    elif cur and l.strip():
+        doc[cur].append(l.strip())
+print("scenes:", " ".join(n for _, n in scenes))
+print("same:", [n for _, n in scenes] == list(doc) and all(steps.get(n, []) == doc[n] for n in doc))
+' "$work/tour.actions" "$work/tour.track" "$tour/captions.md" "$tour_index")
+check "tour: every fixture it switches to is in the index" "unknown fixtures: " "$(head -1 <<<"$tour_cmp")"
+check "tour: the scenes, in order" \
+  "scenes: bar launcher notifications calendar calendar-full weather-fine weather-rain weather-radar weather-snow office fleet tailscale tokens system-idle system-busy system-hot audio volume bluetooth network tray polkit keybindings session lock" \
+  "$(sed -n 2p <<<"$tour_cmp")"
+check "tour: captions.md and the caption steps say the same, scene by scene" "same: True" "$(tail -1 <<<"$tour_cmp")"
 
 exit "$failed"

@@ -4,8 +4,11 @@
 # place:  data the shell reads itself; after writing control/<panel>, the
 #         launcher runs `nest-place <panel> <name>` on the host.
 # inside: an action, not a state; the launcher runs `nest-notify <name>`
-#         inside the nest. Not run at start.
+#         (notifications) or `nest-services act <panel> <name>` (a demo
+#         stand-in's) inside the nest. Not run at start.
 # Names after a weather fixture name joined by + replay one after another.
+# demo-* fixtures are nest's own (nest/fixtures/<panel>/), invented data for
+# Wednesday 25 November 2026 09:41, moved to now like the others.
 
 weather 01-rain-dusk+07-warnings rain at dusk, with warnings
 weather 01-rain-dusk
@@ -19,6 +22,9 @@ weather 08-radar
 weather 09-clock-change
 weather 10-config-invalid
 weather 11-config-missing
+weather demo-fine-day demo: a sunny, frosty morning
+weather demo-rain demo: rain, a yellow warning, the radar over Heathfield
+weather demo-snow demo: snow this morning
 
 office 09-live
 office 01-off-closed-socketoff
@@ -32,6 +38,9 @@ office 08-bridge-offline
 office 10-blind-closed
 office 11-config-missing
 office 12-config-invalid
+office demo-lights-on demo: light on, blind open, desk sockets on
+office demo-blind-half demo: blind half down, light dimmed
+office demo-heater demo: the heater's socket drawing 1.5 kW
 
 fleet hero
 fleet actions
@@ -43,15 +52,20 @@ fleet github-error
 fleet long
 fleet refusals
 fleet wrong
+fleet demo-before demo: an invented fleet taking up a deploy
+fleet demo-deploying demo: S pressed on this computer, its switch running
+fleet demo-after demo: everything on the new commit, one reboot staged
 
 tokens full every page answered
 tokens partial part read, an empty today, a DST week
+tokens demo-week demo: a busy week, invented projects
 
 limits normal place
 limits evidence place
 limits five-hour place
 limits no-evidence place
 limits no-windows place
+limits demo-week place demo: weekly 46 %, 5-hour 22 %
 
 tailscale running
 tailscale peers
@@ -86,6 +100,8 @@ tailscale call:no-daemon
 tailscale call:not-json
 tailscale call:silent-failure
 tailscale call:socket-failed
+tailscale demo-tailnet place demo: the invented fleet's tailnet, direct and relayed
+tailscale demo-exit-node place demo: the same, through Lighthouse as exit node
 
 network wired an invented wired device and route
 network none no device, no route
@@ -93,12 +109,46 @@ network none no device, no route
 calendar today place the export, dates moved so its day is today
 calendar fixed place the export as written (November 2026)
 calendar none place no export
+calendar demo-week place demo: an ordinary week, moved so its Wednesday is today
 
 cheatsheet host the session's binds, captured
 cheatsheet nest the nest's own binds
+cheatsheet demo-binds demo: the captured binds, generic app names, no stale rows
 
 lock idle
 lock sleep logind says the machine is about to sleep
 
 notifications sample inside three cards, normal, critical and long
 notifications critical inside one critical card
+notifications demo-morning inside demo: mail, a download, a backup, a song
+notifications demo-message inside demo: one chat message
+
+# The invented machine a demo binds over sysfs and procfs (nest/services,
+# `nest-services system`); only a nest started with up --demo reads it.
+system demo-idle at rest
+system demo-busy under load: a game on the card, a build on the CPU
+system demo-hot near the card's limits: orange, not throttling
+
+# The demo's private PipeWire (nest/services, `nest-services audio`).
+audio demo-playing a tune playing on the DAC
+audio demo-speakers the same tune, the desk speakers the default output
+audio demo-quiet nothing playing
+audio demo-volume-up inside the default output 8% up (the OSD shows)
+audio demo-volume-down inside the default output 8% down
+audio demo-mute inside the default output muted, or unmuted
+
+# The demo's BlueZ on the nest's own system bus (nest/services, python-dbusmock).
+bluetooth demo-connected headphones and keyboard connected, with batteries
+bluetooth demo-all the travel mouse connected too
+bluetooth demo-off the adapter powered off
+
+# The demo's NetworkManager on the nest's own system bus (nest/services,
+# python-dbusmock). Not `network`: that panel name drives the nmcli and ip fakes.
+wifi demo-joined wired up, Wi-Fi joined to Harbour, four more networks in reach
+wifi demo-off the Wi-Fi radio off
+
+# The demo's polkit authority on the nest's own system bus (nest/services).
+# demo-ask sends the shell's agent one request for root, never answered; to
+# ask again, switch to demo-idle first. Never type into the dialog.
+polkit demo-idle no request
+polkit demo-ask a request to change the system time zone

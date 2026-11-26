@@ -407,7 +407,8 @@ pkgs.lib.fix (self: {
       ''
         # lua5_5: the Lua the Hyprland package embeds.
         bash ${./desk-nest/run.sh} ${../desk-nest.sh} ${../nest/hypr/nest.lua} ${../nest/pam/check.sh} \
-          ${../user/hypr/rules.lua} ${pkgs.lib.getExe pkgs.lua5_5}
+          ${../user/hypr/rules.lua} ${pkgs.lib.getExe pkgs.lua5_5} ${../nest/record/steps.py} ${../nest/services/services.py} \
+          ${../nest/tour} ${../nest/fixtures/index}
         touch $out
       '';
 
