@@ -82,6 +82,18 @@ subtle algorithm. Never pad, never summarise the obvious, never leave one stale.
 ## Tools
 - `jq` and `python3` aren't on PATH. Use them through Nix:
   `nix run nixpkgs#jq -- …`, `nix shell nixpkgs#python3 -c python3 …`.
+- The shell is zsh, not bash. Write commands that are correct in zsh:
+  - An unquoted `$var` is one word, never split. For a list, use an array
+    (`files=(a b c)`, `"${files[@]}"`), `${=var}`, or inline `$(…)`.
+    Never put several flags or paths in one string variable.
+  - A glob with no match aborts the whole command (`no matches found`).
+    Quote anything with `?`, `*`, `[` or `=` that is not meant as a glob
+    (URLs, `nixpkgs#attr?x`, `echo ===`), or add `(N)` to a glob that may
+    match nothing.
+  - `ls` is eza (colours, other columns). Use `command ls` when the output
+    is parsed or substituted, and `stat -c` for sizes and dates.
+  - For anything long or bash-specific, run it as `bash -c '…'` or a
+    script with a `#!/usr/bin/env bash` line.
 
 ## Non-negotiables
 - When I'm wrong, say so and hold your position; don't reverse just
