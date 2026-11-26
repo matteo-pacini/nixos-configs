@@ -58,7 +58,7 @@
     comin.inputs.nixpkgs.follows = "nixpkgs";
     # Only used by comin's formatter; following avoids a second nixpkgs in the lock.
     comin.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-    hex.url = "github:anomalyco/hex/v3.3.0";
+    hex.url = "github:anomalyco/hex/v3.5.0";
     # Must share the system's glibc: Mesa's Vulkan drivers load into Hex's
     # process, and an older glibc leaves it with no GPU adapter.
     hex.inputs.nixpkgs.follows = "nixpkgs";
@@ -146,7 +146,7 @@
               inherit inputs;
             };
             home-manager.sharedModules = [
-              inputs.nvf.homeManagerModules.default
+              inputs.nvf.homeModules.default
               self.homeManagerModules.default
             ];
           }
@@ -208,7 +208,7 @@
               inherit inputs;
             };
             home-manager.sharedModules = [
-              inputs.nvf.homeManagerModules.default
+              inputs.nvf.homeModules.default
               self.homeManagerModules.default
             ];
           }
@@ -297,7 +297,7 @@
               inherit inputs;
             };
             home-manager.sharedModules = [
-              inputs.nvf.homeManagerModules.default
+              inputs.nvf.homeModules.default
               self.homeManagerModules.default
             ];
           }
@@ -343,7 +343,7 @@
             home-manager.backupFileExtension = "backup";
             home-manager.sharedModules = [
               inputs.mac-app-util.homeManagerModules.default
-              inputs.nvf.homeManagerModules.default
+              inputs.nvf.homeModules.default
               self.homeManagerModules.default
               self.homeManagerModules.sleepmode
               self.homeManagerModules.deskWallpaper
@@ -405,7 +405,7 @@
             home-manager.backupFileExtension = "backup";
             home-manager.sharedModules = [
               inputs.mac-app-util.homeManagerModules.default
-              inputs.nvf.homeManagerModules.default
+              inputs.nvf.homeModules.default
               self.homeManagerModules.default
               self.homeManagerModules.sleepmode
               self.homeManagerModules.deskWallpaper
