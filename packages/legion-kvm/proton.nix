@@ -4,26 +4,23 @@
 # the guest over virtiofs, where /nix/store does not exist.
 { proton-ge-bin, fetchzip }:
 proton-ge-bin.overrideAttrs (
-  finalAttrs: old: {
+  finalAttrs: _: {
     version = "GE-Proton11-11";
     __intentionallyOverridingVersion = true;
     steamDisplayName = "GE-Proton11-11 (Legion)";
-    passthru = old.passthru // {
-      variants = old.passthru.variants // {
-        x86_64-linux = {
-          toolName = "${finalAttrs.version}-x86_64";
-          src = fetchzip {
-            url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${finalAttrs.version}/${finalAttrs.version}-x86_64.tar.gz";
-            hash = "sha256-3tVgf83IkteFtVo/bHd4yG1xCtPeuW8FXaTrHOLjvKQ=";
-          };
-        };
-      };
+    # mkProtonBinDerivation reads src and toolName from `variants` before
+    # overrideAttrs applies, so they are set here directly.
+    toolName = "${finalAttrs.version}-x86_64";
+    src = fetchzip {
+      url = "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${finalAttrs.version}/${finalAttrs.version}-x86_64.tar.gz";
+      hash = "sha256-3tVgf83IkteFtVo/bHd4yG1xCtPeuW8FXaTrHOLjvKQ=";
     };
     installPhase = ''
       runHook preInstall
       echo "${finalAttrs.pname} should not be installed into environments. Please use programs.steam.extraCompatPackages instead." > $out
       cp -r --no-preserve=ownership $src $steamcompattool
-      chmod u+w $steamcompattool $steamcompattool/compatibilitytool.vdf
+      # preFixup rewrites both files in place.
+      chmod u+w $steamcompattool $steamcompattool/compatibilitytool.vdf $steamcompattool/proton
       runHook postInstall
     '';
   }
