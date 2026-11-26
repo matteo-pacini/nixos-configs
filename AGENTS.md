@@ -87,9 +87,9 @@ The short version:
 BrightFalls runs a Hyprland session (no GNOME) with a desktop shell written for Quickshell, in `hosts/BrightFalls/users/matteo/hyprland/`. It has its own instructions in `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md`. **Read that file before any work on that session or its shell, including work that starts in the live `~/.config/quickshell` or `~/.config/hypr` and touches no file in that directory.**
 
 The short version:
-- The config files are writable copies under `~/.config`, edited live and hot-reloaded, then brought back to the repo with `desk-sync pull`. Nix pins packages and generates the data the shell shows.
-- The user works at that desktop while agents test on it: one live writer at a time, and a desktop notification 10 seconds before anything takes keyboard focus, then another when it is free.
-- Never run Hyprland nested in the live session, never engage the lock screen on your own, never type a password or accept a Bluetooth pairing.
+- The config files are read-only Home Manager links into `~/.config`; work happens in a checkout and `desk-nest` (the shell in a sealed nested Hyprland, on fixtures), and a deploy puts it live. Nix pins packages and generates the data the shell shows.
+- The user works at that desktop while agents test on it: one agent on the live desktop at a time, and a desktop notification 10 seconds before anything takes keyboard focus, then another when it is free.
+- Run Hyprland nested only through `desk-nest`, never directly in the live session; never engage the lock screen on your own, never type a password or accept a Bluetooth pairing.
 - Reports keep apart what was proven on real hardware, what only with simulated data, and what is only expected.
 
 ## Where to Find Things
@@ -113,7 +113,7 @@ The short version:
 | Home Assistant topic docs: Zigbee watchdog, blueprints, heating, dashboards, metrics, working on the live half | `hosts/Nexus/services/home-assistant/docs/` (indexed in the `AGENTS.md` above) |
 | Home Assistant custom cards (house floorplan: where its layout lives, how to add sensors) | `hosts/Nexus/services/home-assistant/cards/README.md` |
 | BrightFalls Hyprland session and Quickshell shell: how to work on it (process, testing, safety rules, code map, open work) | `hosts/BrightFalls/users/matteo/hyprland/AGENTS.md` |
-| BrightFalls Hyprland session and Quickshell shell: what each piece is (layers, `desk-sync`, `desk-nest`, every panel, lock screen, calendar sync) | `hosts/BrightFalls/users/matteo/hyprland/README.md` |
+| BrightFalls Hyprland session and Quickshell shell: what each piece is (layers, activation, `desk-nest`, every panel, lock screen, calendar sync) | `hosts/BrightFalls/users/matteo/hyprland/README.md` |
 | mpv module (where each vendored file comes from, how to check for updates) | `modules/home-manager/mpv/README.md` |
 | Wallpapers: the shared PNGs (`assets/wallpapers/`), the Macs' per-display agent (`custom.deskWallpaper`, `desk-wallpaper`) | `modules/home-manager/darwin/desk-wallpaper/README.md`; BrightFalls' hyprpaper: `hosts/BrightFalls/users/matteo/hyprland/README.md`, "Wallpaper" |
 | Herdr module (mods, workbench layout, agent labels, tests) | `modules/home-manager/herdr/README.md`; how to change it: `modules/home-manager/herdr/AGENTS.md` |
