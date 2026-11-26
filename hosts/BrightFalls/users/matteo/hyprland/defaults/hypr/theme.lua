@@ -2,7 +2,7 @@
 -- Dracula values below, returned as a table with the same keys (colours as
 -- "#rrggbb", fonts as family names).
 --
--- Never raises, so a broken live edit of theme.json cannot cost the desktop
+-- Never raises, so a broken theme.json cannot cost the desktop
 -- its colours: a missing or unreadable file, a missing key, or a value of the
 -- wrong form falls back to the built-in value for that key. Keys that are not
 -- below are ignored.

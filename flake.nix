@@ -447,6 +447,7 @@
         // inputs.nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
           import ./hosts/BrightFalls/users/matteo/hyprland/tests {
             pkgs = inputs.nixpkgs.legacyPackages.${system};
+            home = self.nixosConfigurations.BrightFalls.config.home-manager.users.matteo;
           }
         )
       );

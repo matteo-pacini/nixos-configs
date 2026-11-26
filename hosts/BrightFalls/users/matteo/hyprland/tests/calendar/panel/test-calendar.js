@@ -1,8 +1,8 @@
 // Fixture test for quickshell/calendar/queries.js against fixture-events.jsonl
 // (next to this file). Run in the Europe/London zone:
 //   TZ=Europe/London node test-calendar.js [path/to/queries.js]
-// The default library is the repository's; pass ~/.config/quickshell/calendar/queries.js
-// to test a live edit. As a flake check: nix build .#checks.x86_64-linux.calendar-panel
+// The default library is the repository's; pass another checkout's
+// queries.js to test that copy. As a flake check: nix build .#checks.x86_64-linux.calendar-panel
 "use strict";
 const fs = require("fs");
 const path = require("path");
