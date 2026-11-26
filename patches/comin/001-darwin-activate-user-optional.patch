@@ -1,0 +1,26 @@
+Port of https://github.com/nlewo/comin/pull/239 to comin v0.14.0.
+
+--- a/internal/executor/utils.go	2026-11-26 12:41:57.256599934 +0000
++++ b/internal/executor/utils.go	2026-11-26 12:41:57.309636821 +0000
+@@ -263,12 +263,15 @@
+ 		return nil
+ 	}
+ 
+-	logrus.Infof("nix: activating user environment: '%s'", activateUserExe)
+-	userCmd := exec.Command(activateUserExe)
+-	userCmd.Stdout = os.Stdout
+-	userCmd.Stderr = os.Stderr
+-	if err := userCmd.Run(); err != nil {
+-		return fmt.Errorf("user activation command %s fails with %s", activateUserExe, err)
++	// nix-darwin no longer builds activate-user since nix-darwin/nix-darwin#1825.
++	if isStorePathExist(activateUserExe) {
++		logrus.Infof("nix: activating user environment: '%s'", activateUserExe)
++		userCmd := exec.Command(activateUserExe)
++		userCmd.Stdout = os.Stdout
++		userCmd.Stderr = os.Stderr
++		if err := userCmd.Run(); err != nil {
++			return fmt.Errorf("user activation command %s fails with %s", activateUserExe, err)
++		}
+ 	}
+ 
+ 	logrus.Infof("nix: activating system environment: '%s'", activateExe)

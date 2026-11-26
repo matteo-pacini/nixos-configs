@@ -27,6 +27,14 @@ in
       {
         services.comin = {
           enable = true;
+          # nix-darwin no longer builds `activate-user`, which comin still runs
+          # unconditionally, so every Darwin deployment fails before `activate`.
+          # WAIT-FOR merged: https://github.com/nlewo/comin/pull/239
+          package = inputs.comin.packages.${pkgs.stdenv.hostPlatform.system}.comin.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [
+              ../../patches/comin/001-darwin-activate-user-optional.patch
+            ];
+          });
           # Prometheus metrics; nothing scrapes them yet, so keep them off the LAN.
           exporter.listen_address = "127.0.0.1";
           remotes = [
