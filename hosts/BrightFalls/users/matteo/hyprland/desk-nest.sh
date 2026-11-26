@@ -146,7 +146,7 @@ host_session() {
 need_window_rule() {
   local f=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/rules.lua
   grep -qE '^[^-]*name *= *"desk-nest"' "$f" 2>/dev/null ||
-    die "$f has no window rule named desk-nest, so the nest's window would open on your workspace and take the keyboard. Deploy (the switch puts rules.lua in place unless it is edited live: desk-sync status), or copy the hl.window_rule named desk-nest from $hl/user/hypr/rules.lua into $f and run hyprctl reload. Not started."
+    die "$f has no window rule named desk-nest, so the nest's window would open on your workspace and take the keyboard. Deploy a generation whose rules.lua has it (the hl.window_rule named desk-nest in $hl/user/hypr/rules.lua), then run hyprctl reload. Not started."
 }
 
 host_hyprctl() {

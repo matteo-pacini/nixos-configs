@@ -1,8 +1,9 @@
 # BrightFalls desktop config (Hyprland session)
 
-Nix pins the packages. The desktop's config files are ordinary writable files
-under `~/.config`, so they can be edited and reloaded with no rebuild. This
-directory holds the canonical copy. This file says what each piece is and how
+Nix pins the packages and owns the desktop's config files: `~/.config/quickshell`,
+`~/.config/hypr` and `~/.config/desk` are read-only links to this
+directory's `user/` in the store. A change is made in a checkout, looked at
+in [desk-nest](#desk-nest), and put live by a deploy. This file says what each piece is and how
 it works; how to work on it (process, testing, safety rules, code map, open
 work) is in [AGENTS.md](AGENTS.md).
 
@@ -11,8 +12,7 @@ work) is in [AGENTS.md](AGENTS.md).
 - [The session](#the-session)
 - [Two layers](#two-layers)
 - [Activation](#activation)
-- [desk-sync](#desk-sync)
-- [Editing live](#editing-live)
+- [Deploying a change](#deploying-a-change)
 - [desk-nest](#desk-nest) (the shell in a sealed nested Hyprland, on
   fixtures)
 - [Quickshell](#quickshell): [Launcher](#launcher), [Bar](#bar),
@@ -85,8 +85,8 @@ in `users/matteo/desktop.nix`.
 
 | Directory | Installed at | How |
 |-----------|--------------|-----|
-| `defaults/` | `~/.local/share/desk/` | Read-only links into the store (`xdg.dataFile`). Holds what a live edit must not be able to break: `hypr/rescue.lua` (terminal, reload, exit and restore-monitors binds) and `hypr/theme.lua` (reads the palette, with built-in fallbacks). |
-| `user/` | `~/.config/` | Every file is copied, at the same relative path, as a regular 0644 file by `desk-sync activate`. This tree is the manifest: add a file here and it is installed, with no list to update in `default.nix`. |
+| `defaults/` | `~/.local/share/desk/` | Read-only links into the store, one per file (`xdg.dataFile`). Holds what a broken file under `user/` must not be able to take down: `hypr/rescue.lua` (terminal, reload, exit and restore-monitors binds) and `hypr/theme.lua` (reads the palette, with built-in fallbacks). `hypr-config`, the check that runs the Lua through Hyprland, is not in CI (see [Tests](#tests)), so a deployed `bindings.lua` can fail at run time. |
+| `user/` | `~/.config/` | One read-only link per directory (`xdg.configFile`): `~/.config/quickshell`, `~/.config/hypr` and `~/.config/desk` each point at that directory in the store. Add a file here and it is installed, with no list to update in `default.nix`; remove one and it is gone after the next switch. Nothing else can be put in those three directories. |
 
 `user/hypr/hyprland.lua` loads each user file with `require`, which Hyprland
 isolates: an error in one file shows in `hyprctl configerrors` and the rest
@@ -109,94 +109,70 @@ hosts](#tailscale-status-and-mesh-hosts)).
 
 ## Activation
 
-Home Manager runs `desk-sync activate` after linking the generation, at boot
-(comin) and on `nixos-rebuild switch`. For each file in the manifest, with
-the hash of the store copy it last installed kept in
-`~/.local/state/desk/hashes/<path>`:
+Home Manager puts the three links in place at every activation: at boot
+(comin) and on `nixos-rebuild switch`. A real file or directory where a link
+goes is moved aside to `<path>.backup` first (`backupFileExtension` in
+`flake.nix`); if `<path>.backup` already exists, activation stops before
+linking anything and names the path, and the fix is to move that `.backup`
+away and switch again. Nothing deletes a `.backup`.
 
-| Live file | Result |
-|-----------|--------|
-| absent | store copy installed, hash recorded |
-| a symlink into `/nix/store` (left by an older generation) | replaced with a writable copy, hash recorded |
-| identical to the new store copy | hash recorded |
-| matches the recorded hash (not edited since it was installed) | replaced with the new store copy, hash recorded |
-| anything else (edited live, including a symlink out of the store or a directory at the file's path) | left untouched; a new store copy goes to `~/.local/state/desk/incoming/<path>`, hash not recorded |
+Activation never reloads Hyprland: a reload ends game mode and
+`single-monitor`'s rule (see [single-monitor](#single-monitor)), and comin
+can switch in the middle of a game. After a deploy that changes `hypr/`, run
+`hyprctl reload`, then `hyprctl configerrors`.
 
-A file dropped from the manifest is left in place, and activation says so
-once. One file failing is reported and does not stop the others or Home
-Manager's activation.
+It reloads the shell once when a switch changes `quickshell/` or `desk/`.
+Before linking, Home Manager compares each new store directory with what
+is at `~/.config/<dir>` (`diff -rq`), the link or a real directory in its
+place; a difference in either runs that entry's
+`onChange`, which sets a flag, and after every link is in place
+`home.activation.deskReloadShell` runs `desk-reload ~/.config/quickshell`
+(`desk-reload.sh`, not on PATH): `qs ipc --any-display -p
+~/.config/quickshell call shell reload`, the `shell` IPC target in
+`shell.qml`. It says `desk-reload: quickshell: reloaded` or why not (`not
+reloaded: No running instances…` when the shell is not running, as at boot,
+which is harmless: it loads the files when it starts), in `journalctl -u
+home-manager-matteo`, and never fails activation.
 
-Activation never reloads Hyprland. It reloads the shell once, after the last
-file is in place, if it wrote any file under `quickshell/`: `qs ipc
---any-display -p ~/.config/quickshell call shell reload`, the `shell` IPC
-target in `shell.qml`, and says `desk-sync: quickshell: reloaded` or why
-not (`not reloaded: No running instances…` when the shell is not running,
-as at boot, which is harmless: it loads the files when it starts).
-Quickshell's own reload on a file change is not enough for a switch: the
-files arrive one by one, so it reloads on a half-installed tree, and when
-that fails (a `.qml` already importing a directory not yet written) it keeps
-the old configuration; when it succeeds, it may have read a `.js` file before
-the switch replaced it, and it never notices a new file or a changed `.js`
-file, so nothing reloads it after the last one lands. While such a reload
+The shell does not reload by itself on a switch: Quickshell watches the
+files of the tree it loaded, which are in the store and never change, and
+does not notice the link pointing at another tree; it never watches a `.js`
+file at all. `Theme.qml`'s watch on `~/.config/desk/theme.json` lands in the
+store the same way, which is why `desk/` sets the flag too. While a reload
 runs, and until the generation it replaces is gone, the shell refuses IPC
 calls ("Not ready to accept queries yet.") and `qs ipc call` still exits 0
 (Quickshell 0.3.2 drops the call's result in `IpcClient::connect`). So
-`reload()` answers `reloaded`, and activation counts only that answer: it
+`reload()` answers `reloaded`, and `desk-reload` counts only that answer: it
 asks again every half second, 20 times at most, and otherwise says `not
-reloaded:` with the shell's last words. A switch that changes only files
-under `hypr/`, or only files kept as live edits, does not reload the shell.
+reloaded:` with the shell's last words. A switch that changes only `hypr/`
+does not reload the shell.
 
-## desk-sync
+## Deploying a change
 
-- `desk-sync status [-v]`: each manifest file as `clean`, `edited`,
-  `incoming-pending` (edited, and a newer store copy is waiting) or `missing`.
-  `-v` adds a diff from the store copy to the live file.
-- `desk-sync reset <path>|--all`: put the store copy back, record its hash,
-  drop its incoming copy, and print what applies it (`hyprctl reload` for
-  `hypr/`; `qs ipc call shell reload` for `quickshell/`, since a reset
-  `.js` file, or a `.qml` file the shell did not load, reaches the shell
-  only with its next reload, as in [Activation](#activation)). `<path>` is relative to `~/.config`
-  (`hypr/bindings.lua`) or the live path.
-- `desk-sync pull <checkout-dir>`: copy edited live files into
-  `<checkout-dir>/hosts/BrightFalls/users/matteo/hyprland/user/` and print
-  `git status --short` for that subtree. No commit. Two kinds of file are
-  not copied, each named on stderr, and pull exits 1 after copying the rest:
-  - one whose newer store copy is waiting in `incoming/` (`incoming-pending`):
-    it was edited on an older version, and the checkout may already hold the
-    newer one. Merge by hand and `desk-sync reset` it, or reset it and edit
-    again, then pull.
-  - one where a line the edit added or changed (against the store copy, by
-    `diff`'s alignment) looks like a secret: a private key block, a
-    `password=`/`token:`-style assignment, a bearer token, or a run of 40 or
-    more letters, digits, `_`, `+` or `=` holding at least one letter and
-    one digit. Lines shipped in the store copy are not scanned. The message
-    gives the live file's line numbers.
+1. Change the files under `user/` in a checkout (a worktree of this
+   repository).
+2. Run the checks that cover it (see [Tests](#tests)): `brightfalls-tests`,
+   and `hypr-config` for a change under `hypr/`.
+3. Look at it in [desk-nest](#desk-nest): `Configuration Loaded` in its
+   `qs.out`, then the panels on their fixtures.
+4. Commit. The owner deploys (`nixos-rebuild switch`, or comin).
+5. After the switch: `readlink -f ~/.config/quickshell` equals `readlink -f
+   ~/.local/state/home-manager/gcroots/current-home/home-files/.config/quickshell`
+   (that path changes only when `quickshell/` does, so the comparison, not
+   the path alone, tells the new link from an old one). For a change under `quickshell/` or `desk/`,
+   `journalctl -u home-manager-matteo` shows `desk-reload: quickshell:
+   reloaded`, and `qs log` (or `journalctl --user -u quickshell`) shows
+   `Configuration Loaded` and no error; the line and column of a QML error
+   are in the `caused by @File.qml[line:col]` line. For a change under
+   `hypr/`: Hyprland does not reload on its own (`disable_autoreload` in
+   `looknfeel.lua`), so `hyprctl reload`, then `hyprctl configerrors` must
+   print nothing. `shell.qml`'s `//@ pragma` lines are read at startup only:
+   after changing one, `systemctl --user restart quickshell`.
 
-`desk-sync` knows the manifest of the generation it was built with, which is
-the one activation installed. Files created live are not in it, so `status`
-and `pull` do not see them until they are added under `user/` and deployed.
-
-## Editing live
-
-1. Edit the file under `~/.config` (for example `~/.config/hypr/bindings.lua`).
-2. Hyprland does not reload on its own (`disable_autoreload` in
-   `looknfeel.lua`): run `hyprctl reload`. Quickshell does: saving a `.qml`
-   file it loaded reloads it (a `.js` file is never watched, so a change to
-   one alone waits for the next reload), a failed reload keeps the previous
-   version running, and a "reloaded" or "failed" popup says which. Edits to
-   `~/.config/desk/theme.json` reach Quickshell without a reload. `shell.qml`'s
-   `//@ pragma` lines are read at startup only: after changing one,
-   `systemctl --user restart quickshell`.
-3. `hyprctl configerrors` must print nothing. Quickshell's errors and
-   warnings: `qs log` (or `journalctl --user -u quickshell`); the line and
-   column of a QML error are in the `caused by @File.qml[line:col]` line.
-4. To back out: `desk-sync reset hypr/bindings.lua`, then reload.
-5. To keep it: `desk-sync pull <checkout>`, review and commit there. After the
-   next deploy the live file matches the store copy again and is `clean`.
-
-Every save here reloads the shell the session runs. To look at a panel
-while developing it, [desk-nest](#desk-nest) is the preferred way: it shows
-a checkout's shell on fixture data and leaves the running one alone.
+A deployed change that breaks the desktop is undone by switching back to
+the previous generation. Until then, `rescue.lua`'s binds (terminal, reload,
+exit, restore monitors; see [The session](#the-session)) work even when
+`bindings.lua` fails.
 
 ## desk-nest
 
@@ -260,8 +236,8 @@ The window goes to a hidden special workspace, `nest`, and takes no focus
 (the `desk-nest` rule in `user/hypr/rules.lua`, which also keeps it
 drawing there; without that the nest draws one frame and stops). `up`
 refuses to start, `--visible` included, when `~/.config/hypr/rules.lua` has
-no rule named `desk-nest`, and says what to do (deploy, or copy the rule
-into that file and `hyprctl reload`). That reads the file, not what
+no rule named `desk-nest`, and says what to do (deploy a generation whose
+`rules.lua` has it, then `hyprctl reload`). That reads the file, not what
 Hyprland has loaded, so `up` also checks where the window is and says so;
 if it landed elsewhere, `up` moves it to `nest` and gives focus back, or
 takes the nest down. The owner brings it forward to look
@@ -388,7 +364,9 @@ tuigreet on tty1; the nest's state is all in its state directory.
 
 `user/quickshell/` is the desktop shell, one process run as the `quickshell`
 user service (Hyprland session only, `Restart=on-failure`) with `qs`, which
-loads `~/.config/quickshell/shell.qml`. `shell.qml` lists the components,
+loads `~/.config/quickshell/shell.qml`, through the read-only link (see
+[Activation](#activation): it reloads after a switch that changes it, not
+on its own). `shell.qml` lists the components,
 one line each; a new component is a new file beside it and a line there, and
 a component's own parts go in a directory named after it (`import
 qs.<dir>`). Its one pragma sets the icon theme (Adwaita); pragmas are read
@@ -434,7 +412,7 @@ which repeat (the lock screen is not guarded).
 | Notifications | Super+comma, Super+Shift+comma, Super+Ctrl+comma | `notifications` |
 | Polkit dialog | opens on a request | `polkit` |
 | Lock screen | Super+L, session menu | `lockscreen` |
-| The shell itself | `desk-sync activate` after a switch (`reload`, see [Activation](#activation)) | `shell` |
+| The shell itself | Home Manager activation after a switch that changes it (`reload`, see [Activation](#activation)) | `shell` |
 
 ### Launcher
 
@@ -531,8 +509,8 @@ does not show for the values present at startup. No IPC.
 focused monitor with the binds in groups over three columns and a filter.
 
 - It lists what the running Hyprland has bound (`hyprctl -j binds`, read
-  when it opens and after each config reload), so a live edit shows after
-  `hyprctl reload`.
+  when it opens and after each config reload), so a deployed change to the
+  binds shows after `hyprctl reload`.
 - A bind is on it when it has a description, `"<Group>: <Description>"`: in
   `hypr/bindings.lua` write it with the local `bind(group, keys, description,
   dispatcher, opts)` helper, not bare `hl.bind`. `rescue.lua` has its own
@@ -1414,8 +1392,8 @@ pictures on the same monitors (`modules/home-manager/darwin/desk-wallpaper/READM
   hyprpaper's config a single `#` starts a comment). A monitor with no match
   shows `misc.background_color`.
 - **The config** is generated in `default.nix` and passed to hyprpaper by
-  store path (`-c`); nothing is written under `~/.config/hypr`, which stays
-  desk-sync's. Splash text and hyprpaper's IPC are off.
+  store path (`-c`); nothing is written under `~/.config/hypr`, which is the
+  linked `user/hypr`. Splash text and hyprpaper's IPC are off.
 - **To change a picture**, replace the PNG in `assets/wallpapers/` (same
   size, or the crop changes), rebuild and switch: the new store path changes
   the unit, and the switch restarts it. The Macs pick up the same file. A new monitor needs its description copied into
@@ -1527,7 +1505,7 @@ layout back when it ends, by exit, crash or signal (`display-layout`,
 **Restoring by hand**, if DP-2 stays off:
 
 - **Super+Shift+D** runs `display-layout restore`. It is in `rescue.lua`, out
-  of reach of live edits, and works while locked. With nothing to restore it
+  of reach of a broken `bindings.lua`, and works while locked. With nothing to restore it
   changes nothing; if the config reload fails, it sets the layout directly.
 - **Super+Shift+R** (reload) applies `monitors.lua`, as long as the config
   parses.
@@ -2060,11 +2038,19 @@ merging into `master`. `hypr-config` is run by hand before a change to the
 Hyprland config, not in CI: Hyprland's verify crashes (exit 139) on the full
 config on GitHub's runners, cause not known.
 
-- `nix build .#checks.x86_64-linux.desk-sync`: runs `tests/run.sh` against a
-  temporary HOME: activation's table (a live symlink out of the store and a
-  live directory at a file's path included), `status`, `reset`, and `pull`
-  (a file with a newer copy in `incoming/` refused, the rest copied; the
-  secret scan on added lines only, with the live file's line numbers).
+- `nix build .#checks.x86_64-linux.desk-reload`: runs
+  `tests/desk-reload/run.sh` against a fake `qs`: the exact call; answered
+  at once (one call); no shell (one call, said, exit 0); a hung shell (cut
+  off by the timeout, shortened to 1 s, after one call, exit 0); refused twice, then
+  reloaded on the third call; refused throughout (20 calls, `not reloaded`,
+  exit 0); no argument (usage, exit 2).
+- `nix build .#checks.x86_64-linux.desk-config-links`: evaluation only,
+  from BrightFalls' Home Manager configuration (passed in by `flake.nix` as
+  `home`): `~/.config/quickshell`, `hypr` and `desk` are each one link to
+  `user/<dir>` (not `recursive`), with the reload flag in `onChange` on
+  `quickshell` and `desk` only; no other file is linked inside them;
+  `deskReloadShell` runs after `onFilesChange`. Builds nothing of the
+  system (`tests/desk-config-links.nix`).
 - `nix build .#checks.x86_64-linux.calendar-export`: exports
   `tests/calendar/fixtures/` (five calendars: a weekly series with an
   EXDATE, a moved and a cancelled occurrence; New York; all-day, multi-day
@@ -2299,15 +2285,14 @@ config on GitHub's runners, cause not known.
     the upstream gap or qmllint limit. No `// qmllint disable` in the QML.
     After a Quickshell or Qt update, delete the lines reported unused and
     check each new warning against the new `.qmltypes` before allowing it.
-  - It reads the repository's `user/quickshell`: a live edit is checked
-    after `desk-sync pull`.
 - `nix build .#checks.x86_64-linux.desk-nest`: runs `desk-nest.sh` against
   fake `bwrap`, `systemctl`, `hyprctl`, `journalctl`, `nsenter`, `grim` and
   `qs` (`tests/desk-nest/run.sh`); no compositor starts. The seal's every
   flag and environment variable, `--clearenv` before them, and that nothing
   else passes inside; every writable bind, the state directory read-only
   under them; the refusals before a start (a detached terminal, no session,
-  no window rule in `~/.config/hypr/rules.lua`, outside a checkout, no
+  no window rule in `~/.config/hypr/rules.lua`, which the test lays out as
+  Home Manager does, a link to a read-only tree, outside a checkout, no
   harness, an unreadable host, an unknown component or fixture, `_supervise`
   run by hand); a relative `XDG_STATE_HOME` ignored; the copied tree, the
   lock's added line and the checkout left without a new file; the private

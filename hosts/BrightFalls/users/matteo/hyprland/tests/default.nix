@@ -2,7 +2,9 @@
 # covers. One check: nix build .#checks.x86_64-linux.<name>
 # All but hypr-config, through one attribute (what CI builds):
 #   nix build -L .#checks.x86_64-linux.brightfalls-tests
-{ pkgs }:
+# home: BrightFalls' Home Manager configuration for matteo, read only by
+# desk-config-links.
+{ pkgs, home }:
 let
   calendarExport = import ../calendar-export.nix { inherit pkgs; };
   # The work directory is only known at build time; substituted below.
@@ -436,21 +438,16 @@ pkgs.lib.fix (self: {
     touch $out
   '';
 
-  desk-sync =
-    pkgs.runCommand "desk-sync-tests"
-      {
-        nativeBuildInputs = with pkgs; [
-          diffutils
-          findutils
-          gnugrep
-          gnused
-          git
-        ];
-      }
-      ''
-        bash ${./run.sh} ${../desk-sync.sh}
-        touch $out
-      '';
+  # desk-reload against a fake qs: the exact call, the retries while the
+  # shell refuses it, and no shell at all; it never fails.
+  desk-reload = pkgs.runCommand "desk-reload-tests" { } ''
+    bash ${./desk-reload}/run.sh ${../desk-reload.sh}
+    touch $out
+  '';
+
+  # The config links and the reload hook, read from BrightFalls' Home Manager
+  # configuration at evaluation; builds nothing of the system.
+  desk-config-links = import ./desk-config-links.nix { inherit pkgs home; };
 
   quickshell-lint = import ./quickshell-lint { inherit pkgs; };
 })

@@ -8,23 +8,14 @@
   ...
 }:
 let
-  deskSync = pkgs.writeShellApplication {
-    name = "desk-sync";
+  # Run by activation only, not put on PATH.
+  deskReload = pkgs.writeShellApplication {
+    name = "desk-reload";
     runtimeInputs = with pkgs; [
       coreutils
-      diffutils
-      findutils
-      gnugrep
-      gnused
-      git
       quickshell
     ];
-    text = ''
-      manifest="${./user}"
-      config_home="${config.xdg.configHome}"
-      state="${config.xdg.stateHome}/desk"
-    ''
-    + builtins.readFile ./desk-sync.sh;
+    text = builtins.readFile ./desk-reload.sh;
   };
 
   # Recovery from a text console when the lock screen dies (README.md, "Lock
@@ -78,8 +69,8 @@ in
   imports = [ ./calendar.nix ];
 
   # The two layers of the desktop's config; see README.md. defaults/ is
-  # linked read-only from the store; every file under user/ is copied to the
-  # same path under ~/.config as a writable file, keeping live edits.
+  # linked file by file under ~/.local/share/desk; each directory of user/ is
+  # one read-only link under ~/.config.
   xdg.dataFile."desk" = {
     source = ./defaults;
     recursive = true;
@@ -90,9 +81,25 @@ in
   xdg.dataFile."desk/weather/coast.json".source = pkgs.callPackage ./weather-coast.nix { };
   # The shell's token panel and bar item read the file this writes.
   custom.herdr.workbench.claudeLimitsFile.enable = true;
-  home.activation.deskSync = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    run ${lib.getExe deskSync} activate ||
-      echo "desk-sync: some files under ${config.xdg.configHome} were not installed, see above" >&2
+  # A change to quickshell/ or desk/ (the palette the shell reads) sets the
+  # flag, and the shell is asked for one reload after every link is in place:
+  # Quickshell does not notice a retargeted link. No Hyprland reload: it would
+  # end game mode and single-monitor's rule, and a switch can come from comin
+  # mid-game. onChange runs in onFilesChange, in the same shell as the entry
+  # below.
+  xdg.configFile."quickshell" = {
+    source = ./user/quickshell;
+    onChange = "deskReloadShell=1";
+  };
+  xdg.configFile."hypr".source = ./user/hypr;
+  xdg.configFile."desk" = {
+    source = ./user/desk;
+    onChange = "deskReloadShell=1";
+  };
+  home.activation.deskReloadShell = lib.hm.dag.entryAfter [ "onFilesChange" ] ''
+    if [[ -v deskReloadShell ]]; then
+      run ${lib.getExe deskReload} ${config.xdg.configHome}/quickshell || true
+    fi
   '';
 
   # Sourced by UWSM only when it starts Hyprland. The links come from udev,
@@ -106,9 +113,8 @@ in
   '';
 
   # Commands the binds in user/hypr/bindings.lua and the shell's panels run,
-  # with desk-sync, desk-unlock and desk-nest.
+  # with desk-unlock and desk-nest.
   home.packages = with pkgs; [
-    deskSync
     deskUnlock
     (callPackage ./desk-nest.nix { })
     grim
@@ -142,7 +148,8 @@ in
 
   # The desktop shell, from user/quickshell/ (installed at
   # ~/.config/quickshell, the default config `qs` runs and `qs ipc` talks to).
-  # It reloads on its own when a file there changes. It is also the
+  # It reloads after a switch that changes that tree (deskReloadShell above)
+  # and on `qs ipc call shell reload`, never on its own. It is also the
   # notification daemon, with no D-Bus activation file for that name: a
   # notification sent before the shell is up is lost.
   systemd.user.services.quickshell = {
@@ -159,7 +166,7 @@ in
   };
 
   # Wallpapers (README.md, "Wallpaper"). The config goes by store path rather
-  # than through `settings`, so ~/.config/hypr holds only desk-sync's files;
+  # than through `settings`, so ~/.config/hypr is only the linked user/hypr;
   # a new picture changes ExecStart, which restarts the unit on a switch.
   services.hyprpaper.enable = true;
   systemd.user.services.hyprpaper.Service.ExecStart =

@@ -549,7 +549,7 @@ FAKES = {
 # Started by the shell, or by what it starts (`uwsm app -- xdg-open`,
 # ghostty's ssh), or by the helpers it replaces.
 STUBS = ("uwsm", "xdg-open", "loginctl", "playerctl", "audio-output-cycle", "pw-top", "notify-send",
-         "comin-deploy", "desk-sync", "wpctl", "pactl", "ghostty", "ssh", "gh", "tmux", "sudo", "reboot",
+         "comin-deploy", "wpctl", "pactl", "ghostty", "ssh", "gh", "tmux", "sudo", "reboot",
          "poweroff")
 # Called often and logged by their own code paths when it matters.
 QUIET = ("gdbus", "hyprctl", "ip", "systemctl", "systemd-run", "systemd-inhibit", "nest-place", "nest-notify")

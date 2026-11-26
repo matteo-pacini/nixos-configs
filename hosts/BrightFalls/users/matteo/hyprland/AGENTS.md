@@ -1,8 +1,9 @@
 # Agent instructions: the BrightFalls Hyprland session and its Quickshell shell
 
 Read this before any work on the Hyprland session on BrightFalls or on its
-desktop shell (Quickshell), including work that starts in the live
-`~/.config/quickshell` or `~/.config/hypr` and never touches this directory.
+desktop shell (Quickshell), including work that starts from the deployed
+`~/.config/quickshell` or `~/.config/hypr` (read-only links to `user/` here)
+and never touches this directory.
 What each piece is and how it works is in [README.md](README.md); this file
 is how to work on it. Repo-wide rules are in the root `AGENTS.md`.
 
@@ -22,18 +23,19 @@ screen.
 - **Nix** (`hosts/BrightFalls/desktop-hyprland.nix` for the system,
   `default.nix` here for the user) pins the packages, declares services,
   secrets, PAM, and generates read-only data the shell shows. The
-  wallpapers (`assets/wallpapers/` at the repo root) are Nix-only too: never edited live.
-- **The config files** are ordinary writable files under `~/.config`, copied
-  from `user/` here at activation and hot-reloaded. They are developed live
-  and brought back to this directory with `desk-sync pull`. README:
-  "Two layers", "Activation", "desk-sync", "Editing live".
+  wallpapers (`assets/wallpapers/` at the repo root) come from Nix too.
+- **The config files** are `user/` here, linked read-only into `~/.config`
+  by Home Manager (one link per directory). They are developed in a
+  checkout, looked at in `desk-nest`, and put live by a deploy, which
+  reloads the shell when they changed. README: "Two layers", "Activation",
+  "Deploying a change".
 - **`desk-nest`** runs a checkout's shell, or part of it, in a sealed nested
   Hyprland on fixture data, apart from the user's running shell. README:
   "desk-nest".
 
 Code is written and checked in the repository first, where the lint and
 node checks run without reloading the user's shell, then looked at in
-`desk-nest`, and put live in a separate step ("Practices", "Live work").
+`desk-nest`, and put live by a deploy ("Practices", "Live work").
 Some changes need both halves at once (a panel plus the Nix file that feeds it). Decide which
 half a change belongs to before starting.
 
@@ -53,25 +55,21 @@ with the user, you are both: keep the same discipline.
   sync, system sensors and Bluetooth pairing): a read-only investigation that
   proves the mechanism with evidence and builds nothing permanent. Its report
   decides the design; the build brief cites it.
-- **One live writer at a time.** Only one agent edits the live
-  `~/.config/quickshell` and `~/.config/hypr` at once: every save reloads
-  the user's running shell, so two writers break each other's tests.
-  Repository-only and research agents can run beside it. When two agents
+- **One agent on the live desktop at a time.** Only one agent drives the
+  user's running shell (opens surfaces over `qs ipc`, takes focus) at once,
+  so two agents do not break each other's tests. Repository-only, nest and
+  research agents can run beside it. When two agents
   build two halves of one feature (say, a sync service in the repository and
-  its panel live), they share a written **contract** (file formats, paths,
+  its panel), they share a written **contract** (file formats, paths,
   commands); only the coordinator changes it.
 - **Brief in, report out.** An agent gets one brief file, writes one report
   file, and sends one line when done (`hc send <coordinator> "…"`). The
-  report lists live files edited and created (full paths, and whether each
+  report lists files edited and created (full paths, and whether each
   new file is hand-written or generated data), decisions with the source
   checked, what was verified with the decisive output, what is only
   expected, temporary things to remove, and how the user tests it by hand.
-- **Bringing work back is the coordinator's job**, not the live agent's:
-  `desk-sync pull <worktree>` for files already in the manifest (it refuses
-  a file with a newer copy waiting in `incoming/`, or with an added line
-  that looks like a secret: README, "desk-sync"), a hand copy
-  into `user/…` for files created live, then `diff -rq` of the live tree
-  against `user/` must be silent, then a grep for leftovers (test IPC
+- **Merging is the coordinator's job**: agents commit on their own
+  branches; the coordinator merges them, then greps for leftovers (test IPC
   targets, overrides, temporary paths) before the commit.
 - **Deploys are the user's.** Commit when asked; give the switch command for
   the worktree they deploy from, never "pull" (the commits are already
@@ -138,8 +136,7 @@ user's and are strict:
 
 ### What an agent may do in the live session
 
-- May: edit files under `~/.config/quickshell` and `~/.config/hypr`; read-only
-  `hyprctl` queries; `hyprctl reload` only where the brief allows it, always
+- May: read-only `hyprctl` queries; `hyprctl reload` only where the brief allows it, always
   followed by `hyprctl configerrors`; open and close surfaces over `qs ipc`;
   screenshot with `grim` (take `WAYLAND_DISPLAY` from
   `systemctl --user show-environment`).
@@ -150,21 +147,21 @@ user's and are strict:
   check's verdict after `up` and `down`; on any difference, stop and report
   with the recovery it printed (README, "desk-nest", "Recovery"). If `up`
   refuses for want of the window rule in `~/.config/hypr/rules.lua`, report
-  it: putting the rule live is the coordinator's.
+  it: the rule reaches that file only by a deploy, which is the owner's.
 - May not: start, stop or restart the compositor or the session; run Hyprland
   nested other than through `desk-nest`; `desk-nest up --visible`, or
   bringing the nest's window forward, without the 10 s notification rule
   above (it can take keyboard focus); type a password into the nest's lock,
   or anywhere; `hyprctl dispatch`, `eval` or `keyword`; restart the `quickshell`
   service unless a startup-only setting needs it (then say so in the report);
-  `sudo`, `nixos-rebuild`, `desk-sync reset`; git, except where the brief says
+  `sudo`, `nixos-rebuild`; git, except where the brief says
   so; start other agents; change the user's audio defaults, volumes or
   devices (use test streams with unique client names, put volumes back).
-- After every save: `journalctl --user -u quickshell --since "-30s"
-  --no-pager` must show `Configuration Loaded`, or fix the error it names at
-  once. No such line means no reload: only a `.qml` file the shell loaded,
-  saved with different content, gives one; not a `touch`, not a new file,
-  nor a `.js` changed alone (see "Practices", "Live work").
+- After a deploy that changes `quickshell/` or `desk/`: `journalctl --user
+  -u quickshell --since "-5min" --no-pager` must show `Configuration
+  Loaded`; report any error it names. No such line means no reload: look
+  for `desk-reload` in `journalctl -u home-manager-matteo` (README,
+  "Activation").
 
 ### Permissions and being blocked
 
@@ -218,13 +215,12 @@ user as written.
 **Pure logic.** Decisions live in plain `.js` files that QML imports and node
 runs (see "Practices"). Run them with
 `nix shell nixpkgs#nodejs -c node <test.js> <library>`. Every check, what it
-covers and which run in CI: README, "Tests" (the 28 checks defined in
+covers and which run in CI: README, "Tests" (the 29 checks defined in
 `tests/default.nix`).
 One check: `nix build .#checks.x86_64-linux.<name>`; all but `hypr-config`:
 `nix build -L .#checks.x86_64-linux.brightfalls-tests`, which is what CI
 builds and which takes a new check in `tests/default.nix` with no other
-edit. The node checks and `quickshell-lint` read the repository's files, so
-they fail until a live change to those files is pulled. For a new test,
+edit. The node checks and `quickshell-lint` read the repository's files. For a new test,
 break the code once and watch it fail.
 
 **Builds.** Before every push, on the merged branch, the coordinator runs:
@@ -248,8 +244,7 @@ add an allowlist line, is in README, "Tests". So after a QML change the
 `Configuration Loaded` line in the shell's log is still the proof that it
 loads. For Lua, the `hypr-config` check runs `Hyprland --verify-config`
 on the repository's files laid out like the install (`tests/hypr/run.sh
-verify`); a live edit needs the same on a temporary copy (`config/hypr/*`,
-`share/desk/hypr/*`, `XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointed at it). Both
+verify`). Both
 catch a misspelt key name in a bind (`Unknown key`), not a mouse button code
 out of range.
 
@@ -263,17 +258,17 @@ in the nest (README, "desk-nest"), not a hook in the shell. Everything seen
 there is **simulated**. A new command the shell runs needs a fake or stub
 first (the `nest-commands` check says which).
 
-**Injected data and previews.** Allowed during development, where the nest
-cannot show it: temporary IPC
-targets, a property that points a loader at a fixture, a data override, a
-no-focus preview mode on DP-2. Remove them before the report; anything kept
-on purpose is named in it (the lock screen's `DESK_LOCK_PREVIEW=1` is kept,
-and so is `audio/NoSignal.qml`'s `statusRoot`, pointed at a copy of the
-`/proc/asound` tree to simulate a microphone that sends nothing, and the
-`readOnly` switches in `office/OfficeShared.qml` and `fleet/FleetShared.qml`,
-which start their helper with `--read-only`; README, "Office panel" and
-"Fleet panel").
-`qs ipc show` at the end must list only the real targets.
+**Injected data and previews.** The running shell is the deployed store
+copy, so a temporary hook in it (an IPC target, a property that points a
+loader at a fixture, a data override) needs a deploy: make it a nest
+fixture instead. Preview modes run from the deployed copy or from a
+checkout (`qs -n -p <checkout>/…/lock.qml`), on DP-2 without focus. Those
+kept on purpose: the lock screen's `DESK_LOCK_PREVIEW=1`;
+`audio/NoSignal.qml`'s `statusRoot`, pointed at a copy of the `/proc/asound`
+tree to simulate a microphone that sends nothing; and the `readOnly`
+switches in `office/OfficeShared.qml` and `fleet/FleetShared.qml`, which
+start their helper with `--read-only` (README, "Office panel" and "Fleet
+panel"). `qs ipc show` on the running shell lists only the real targets.
 
 **Real hardware.** Announced, in as few rounds as possible, with the user
 doing anything that needs a password, a key or a device. Live tests use
@@ -283,15 +278,24 @@ and leave state as it was.
 **Stand-ins before a deploy.** Things only Nix provides (a generated
 `locked.json`, a helper on PATH, a PAM service, a WirePlumber drop-in) are
 stood in for by hand so the live shell can be tested: a hand-made file at the
-final path, an out-link, an existing equivalent. Every stand-in is listed in
-the report and **removed before the next deploy**: Home Manager will not
-replace a regular file with its link (it moves it aside as `.backup`).
+final path, an out-link, an existing equivalent. Nothing can be stood in for
+inside `~/.config/quickshell`, `hypr` or `desk`: they are read-only links.
+Every stand-in is listed in the report and **removed before the next
+deploy**: Home Manager will not replace a regular file with its link (it
+moves it aside as `.backup`, and stops activation if that `.backup` already
+exists).
 
 **After a deploy**, the coordinator checks: the running generation equals the
 built one; the generated files exist (`~/.local/share/desk/*/locked.json`,
 `source.json`); new services ran (`systemctl --user status <unit>`);
-`desk-sync status` is clean; `hyprctl configerrors` is empty; the shell's
-log has no errors.
+`readlink -f ~/.config/quickshell` equals `readlink -f
+~/.local/state/home-manager/gcroots/current-home/home-files/.config/quickshell`
+(the path changes only when `quickshell/` does, so the comparison, not the
+path alone, tells the new link from an old one);
+`journalctl -u home-manager-matteo` shows `desk-reload: quickshell:
+reloaded` when `quickshell/` or `desk/` changed; `hyprctl configerrors` is
+empty (after `hyprctl reload` when `hypr/` changed); the shell's log has no
+errors.
 
 ## Safety rules
 
@@ -402,8 +406,7 @@ What working on this shell has taught: the rule, its reason, what taught it.
   `desk-tokens` runs only while open, on purpose (`TokensShared.qml:39-45`).
   A one-shot command gets a watchdog (`tailscale status`: SIGTERM at 10 s,
   SIGKILL 2 s later).
-- **Write atomically and only on change** (`desk-sync.sh:41-44`,
-  `claude-limits.sh:106-107`, `calendar-export.py:127-145`): each write wakes
+- **Write atomically and only on change** (`claude-limits.sh:106-107`, `calendar-export.py:127-145`): each write wakes
   every watcher; idle sessions made the limits file flip (489eef5).
 - **Several writers need a merge rule**: the plan-limit file's is newest
   evidence (herdr README); "highest wins" kept a stale 88 % (7be6975).
@@ -411,8 +414,7 @@ What working on this shell has taught: the rule, its reason, what taught it.
   exception, `tests/fleet/fixtures/*.probe`, holds only public fields.
 - **Privacy is held by checks**: `tokens-helper` (no network code, no text
   printed), `calendar-export` (counts, no names), `wifi-panel` (no password
-  in state), `office-helper` (errors name the key, not the value),
-  `desk-sync` (secret-shaped lines refused).
+  in state), `office-helper` (errors name the key, not the value).
 - **Set `TZ` in a check's script**: the builder resets a derivation's to UTC
   (`tests/default.nix:121`); `calendar-panel` passed vacuously (f35eef7).
 - **No new inline component in a loaded file**: a hot reload may not
@@ -420,11 +422,10 @@ What working on this shell has taught: the rule, its reason, what taught it.
 
 **Nix and the two layers**
 
-- **A switch leaves a live-edited file**, its new copy in `incoming/`, which
-  `pull` refuses, so an old edit cannot overwrite newer work (f35eef7).
-- **No store path in a `user/` file**: the copy outlives its generation (the
-  mpv shim's crash loop, 8dd7558); pass it on a command line (hyprpaper's
-  `-c`).
+- **No store path in a `user/` file**: the tree goes into the store as
+  source, so a path written in it is no reference Nix keeps alive, and it
+  does not follow a package update (the mpv shim's crash loop, 8dd7558);
+  pass it on a command line (hyprpaper's `-c`).
 - **Monitors by description where the tool allows** (hyprpaper's `desc:`,
   `default.nix:54-58`): connector numbers follow probe order (6b035fa).
   Hyprland and the bar still name DP-1 and DP-2.
@@ -434,17 +435,18 @@ What working on this shell has taught: the rule, its reason, what taught it.
 
 **Live work** (the rules: "The user's desktop is in use")
 
-- **Repository first, seen in `desk-nest`, then live as a group** (`.js`
-  before `.qml`): a half-applied state logged warnings, so a mixed state is
-  no test. The nest reloads `.js` and `.qml` saves alike (`desk-nest
-  reload` or `watch`).
-- **Only a changed `.qml` reloads the shell**: Quickshell watches only the
-  `.qml` files it loaded and their directories, and reloads only when a
+- **Repository first, seen in `desk-nest`, then live by a deploy.** The
+  nest reloads `.js` and `.qml` saves alike (`desk-nest reload` or
+  `watch`).
+- **Only a changed `.qml` reloads a shell run from a writable tree** (a
+  `qs -p <checkout>` run; the reason the nest has its own `watch`):
+  Quickshell watches only the `.qml` files it loaded and their directories, and reloads only when a
   loaded file's content differs from the running generation's; it never
   watches a `.js` file (`src/core/scan.cpp` skips a non-directory import
   before its `.js` branch). So not a `touch`, not a new file or directory,
   not a `.js` alone: save a `.js` together with a `.qml` that imports it.
-  `desk-sync activate` reloads it over IPC instead (README, "Activation").
+  The deployed shell's files never change; activation reloads it over IPC
+  (`desk-reload`, README, "Activation").
 - **Temporary hooks are removed, and their absence proven by `grep`.**
 
 ### Checklists
@@ -460,7 +462,7 @@ what a check catches if one is forgotten; nothing catches the rest.
   members (lint); a root component missing from `nest/dev.qml`
   (`nest-commands`).
 - **Removing one**: the same. Lint fails while a bind names it, evaluation
-  while `tests/default.nix` does. The live files stay: delete them by hand.
+  while `tests/default.nix` does.
 - **Bar item** (`Bar.qml:503-562`): the item, its look from the `.js`
   (`limits().bar`) and a test, README's Bar sentence, and an entry under
   "Nothing runs while hidden" if it runs while closed. Caught: names.
@@ -508,7 +510,7 @@ not.
 | Path | What |
 |------|------|
 | `../../../desktop-hyprland.nix` | System side: Hyprland with UWSM and the hidden plain entry, udev GPU links, logind keys, `desk-lock` PAM service, Fira Sans, and every generated `locked.json` |
-| `default.nix` | User side: the two layers, `desk-sync`, `desk-unlock` and `desk-nest` packages, the commands binds and panels run, the `quickshell` and `hyprpaper` user services (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
+| `default.nix` | User side: the two layers, the shell's reload after a switch (`deskReloadShell`), the `desk-unlock` and `desk-nest` packages, the commands binds and panels run, the `quickshell` and `hyprpaper` user services (the wallpaper's config), the Tailscale panel's mesh-host file (`~/.local/share/desk/tailscale/hosts.json`, from `lib/ssh-mesh.nix` and `lib/host-kinds.nix`), imports `calendar.nix` |
 | `calendar.nix` | `pimsync.conf`, `source.json`, `calendar-sync.service` and `.timer` |
 | `calendar-export.nix`, `calendar-export.py` | The export step (khal, time-zone fix, alarms) and its khal config; shared with the check |
 | `bt-agent.nix`, `bt-agent.py` | `desk-bt-agent`, the BlueZ pairing agent the shell runs (JSON lines on stdin/stdout); also reports each device's links, calls from PipeWire's telephony service on the session bus |
@@ -517,12 +519,12 @@ not.
 | `desk-tokens.nix`, `desk-tokens.py`, `desk-tokens-prices.json` | `desk-tokens`, the token panel's helper (JSON lines on stdin/stdout): reads Claude Code's transcripts incrementally into a SQLite index of replies (counters, ids, model, time, working directory; never text), folds working directories into projects (`fold_cwd()`, pure) and answers the overview, projects, project and days pages; the price table is built in (README, "Tokens: desk-tokens") |
 | `desk-weather.nix`, `desk-weather.py` | `desk-weather`, the weather panel's helper (JSON lines on stdin/stdout): Open-Meteo forecast and air quality, Met Office warnings from the whole-UK feed filtered locally, RainViewer's past radar tiles of a fixed block (only while the radar page is open), the outdoor sensor over MQTT, subscribe only; the location, region and broker in the `brightfalls/weather` secret, not declared yet (README, "Weather: desk-weather"). Run by `weather/WeatherShared.qml` |
 | `weather-coast.nix` | The radar map's British Isles outline from Natural Earth (pinned by hash), clipped and simplified; installed at `~/.local/share/desk/weather/coast.json` by `default.nix` |
-| `desk-sync.sh` | `desk-sync activate|status|reset|pull`; `activate` reloads the shell once over IPC (`qs ipc … call shell reload`) after writing any file under `quickshell/` (README, "Activation") |
+| `desk-reload.sh` | `desk-reload <quickshell-config-dir>`: asks the running shell for one reload over IPC (`qs ipc … call shell reload`), retrying while it refuses; run by activation after a switch that changed `quickshell/` or `desk/`, not on PATH (README, "Activation") |
 | `desk-unlock.sh` | Recovery from a text console when the lock screen dies |
 | `desk-nest.nix`, `desk-nest.sh` | `desk-nest`, the shell from a checkout in a sealed nested Hyprland (README, "desk-nest"): the host check, the sandbox, the detached supervisor holding one lock per nest name, the synced copy of the tree, fixtures, IPC and screenshots through `nsenter`, the lock's stand-in, `down`. Every program it runs, outside and inside, comes from the `.nix` |
 | `nest/` | desk-nest's harness, read from the checkout, never installed: `dev.qml` (the root: any subset of `shell.qml`'s components from `$NEST_STATE/harness.json`, loaded and unloaded in place; IPC `shell` and `harness`), `fakes/fakes.py` (every fake, stub and wrapper, chosen by the name it runs as; protocol in its docstring) and `fakes/bin/` (a link per name), `fixtures/` (`index`, the seed for the private homes, captured binds, network and notification samples), `hypr/nest.lua` (the nested compositor's config), `pam/` (the lock's stand-in check) |
 | `gen-emoji.py` | Generates `user/quickshell/launcher/emoji.txt` (not installed) |
-| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `run.sh` (desk-sync), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `desk-nest/` (desk-nest.sh against fakes), `nest-fakes/` (the nest's fakes through the panels' `.js` under node), `nest-commands/` (every command the shell starts against the fakes and `allowlist`), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, and `--dev`: `nest/dev.qml` at the root of a copy, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
+| `tests/` | Flake checks, and `brightfalls-tests`, every check but `hypr-config` (README, "Tests"): `desk-reload/` (desk-reload.sh against a fake `qs`), `desk-config-links.nix` (the config links and the reload hook, evaluated from the host's Home Manager configuration), `calendar/fixtures` + `expected.jsonl` (export), `calendar/panel/` (queries.js under node in London time), `bluetooth/` (services.js and devices.js under node), `tray/` (menu.js under node, button types from Quickshell's type file), `common-panel/` (common/notify.js under node, its arguments read as gdbus reads them), `office-panel/` (office.js under node, hand-written helper lines in `fixtures/`), `office/` (desk-mqtt against a loopback Mosquitto), `system/` (decode.js under node), `display-layout/` (display-layout.sh against a fake hyprctl), `hypr/` (`run.sh verify`: the Lua through `Hyprland --verify-config`, the `hypr-config` check; `run.sh theme`: theme.lua under Lua, the `hypr-theme` check), `desk-unlock/` (desk-unlock.sh against fakes), `bluetooth/test-bt-agent.py` (desk-bt-agent against private D-Bus daemons), `audio-output-cycle/` (audio-output-cycle against fake PipeWire tools), `fleet/` (desk-fleet's model against cut-down real probes in `fixtures/` and built cases, then the helper against fakes), `fleet-panel/` (fleet.js under node, hand-written helper lines in `fixtures/`), `tailscale-panel/` (tailscale.js under node, hand-made status answers in `fixtures/`), `wifi-panel/` (wifi.js under node, invented networks and the module's enum names in `fixtures/`, checked against the installed Quickshell's type file), `tokens/` (desk-tokens' pure functions, then the built helper against invented transcript trees built by the test), `tokens-panel/` (tokens.js under node in New York time, hand-written helper answers and limits files in `fixtures/`), `weather/` (desk-weather's pure functions, then the helper built for testing against a local server and a loopback Mosquitto), `weather-panel/` (weather.js under node in London time, hand-written helper lines in `fixtures/`), `weather-art/` (paths.js under node: projection, scene layout, rain groups), `desk-nest/` (desk-nest.sh against fakes), `nest-fakes/` (the nest's fakes through the panels' `.js` under node), `nest-commands/` (every command the shell starts against the fakes and `allowlist`), `quickshell-lint/` (`run.sh`: qmllint over `user/quickshell` laid out as Quickshell does, and `--dev`: `nest/dev.qml` at the root of a copy, `ipc.js`: every `qs ipc call` against the `IpcHandler`s, `allowlist`: accepted warnings with their causes) |
 | `defaults/hypr/` | Read-only layer: `rescue.lua` (terminal, reload, exit, restore-monitors binds), `theme.lua` |
 | `../../../display-layout.sh` | `display-layout single` and `restore`, behind `single-monitor` and Super+Shift+D (built in `gaming.nix`) |
 | `../../../../../assets/wallpapers/` | `left.png` (DP-1) and `right.png` (DP-2), drawn by the `hyprpaper` service declared in `default.nix`, monitors matched by description (README, "Wallpaper") |
@@ -537,7 +539,7 @@ rules, desk-nest's window rule), `bindings.lua` (every bind, through `bind()`), 
 
 **Quickshell** (`user/quickshell/`). `shell.qml` loads one line per
 component, and holds the `shell` IPC target, whose `reload` is a soft reload
-of the whole shell (what `desk-sync activate` calls). Root components, one
+of the whole shell (what activation calls through `desk-reload`). Root components, one
 per file:
 
 | File | What |
@@ -614,8 +616,8 @@ the rest of what changes with it is under "Practices", "Checklists".
 
 As of the date at the top.
 
-**Built and on `master`:** the session under UWSM, the config machinery and
-`desk-sync`, the palette, launcher (apps, calculator, emoji), bar,
+**Built and on `master`:** the session under UWSM, the config links and the
+reload after a switch, the palette, launcher (apps, calculator, emoji), bar,
 notifications (critical ones above fullscreen), OSD, cheat sheet, session
 menu, polkit dialog, network panel with speed test (two providers), audio
 panel (the DAC stack, per-program rows and levels, inputs, no-signal flag),
@@ -635,11 +637,15 @@ read-only), weather panel (Super+H: sky, figures, warnings, hours, days, air
 quality and the outdoor sensor's battery and link row, and the radar page
 on M, through `desk-weather`).
 
-**The shell's reload after a switch** (README, "Activation"): deployed, and
-has run live after switches. The answer check (`reload()` answers `reloaded`, and
-activation asks again until it gets that) is simulated by the `desk-sync`
-check's fake `qs`; activation asking again after the real shell refuses the
-call is expected only, as no one has looked.
+**The shell's reload after a switch** (README, "Activation"): the same IPC
+call has run live after switches, from `home-manager-matteo`; through
+`desk-reload` and the read-only links it is expected only until the first
+deploy shows `desk-reload: quickshell: reloaded` in that unit's journal. The
+answer check (`reload()` answers `reloaded`, and `desk-reload` asks again
+until it gets that) is simulated by the `desk-reload` check's fake `qs`;
+asking again after the real shell refuses the call is expected only, as no
+one has looked. The lock started from the read-only tree is expected only
+until the owner has locked and unlocked once.
 
 **desk-nest** (README, "desk-nest"). Proven on real hardware:
 - The seal, with the prototype scripts the launcher was built from, by the
@@ -669,22 +675,28 @@ running. Not proven with the built launcher: `lock`, `--visible`, `--name`
 (a second nest), a crash of the nest, a recording (no recording command
 exists).
 
-**Live now, ahead of the deploy:** every QML and `.js` file of the sweep's
-fixes was copied into the live `~/.config/quickshell` on 2026-11-17 and
-loaded without a warning (`diff -rq` of the live tree against `user/`
-silent, `qs ipc show` unchanged). `desk-sync status` shows the 37 changed
-files as `edited`; `common/notify.js` is not in the deployed manifest.
-There are no stand-ins for those.
-
-The weather panel's QML and `.js` files and `hypr/bindings.lua` were copied
-live on 2026-11-22 and load without a warning from them; Super+H is loaded
-(`hyprctl reload`, `configerrors` empty). Its stand-in: a hand-made
-`~/.local/share/desk/weather/coast.json` (a regular file).
-
 **To do at the next deploy:**
-- Nothing to undo by hand: the 37 `edited` files match the new generation and
-  turn `clean`, and `common/notify.js` is installed with the same content.
-  Check `desk-sync status` is all `clean`.
+- The first switch to the read-only config links (the owner's, by hand):
+  1. Keep comin's mode `manual` until the last step, so nothing deploys
+     unattended in between.
+  2. Before the switch, `ls -d ~/.config/{quickshell,hypr,desk}.backup`
+     must find nothing; move away any that exists, or activation stops
+     before linking anything.
+  3. Switch. Home Manager moves the three real directories to
+     `~/.config/{quickshell,hypr,desk}.backup`, everything in them
+     included: `~/.config/hypr/dms/` (files from an earlier shell, not
+     loaded by `hyprland.lua`) ends up in `hypr.backup/dms/`.
+  4. Check as under "After a deploy" (Testing strategy), plus `hyprctl
+     reload; hyprctl configerrors`, and lock and unlock once (Super+L).
+  5. `diff -r ~/.config/quickshell.backup <checkout>/hosts/BrightFalls/users/matteo/hyprland/user/quickshell`,
+     the same for `desk`, and for `hypr` (only `dms/` may differ):
+     identical, or rescue an edit into a branch. Then delete
+     `~/.config/{quickshell,hypr,desk}.backup`,
+     `~/.local/state/desk/hashes/` and `~/.local/state/desk/incoming/`;
+     nothing deletes them on its own. Until the `.backup` directories are
+     gone, switching back to an older generation and forward again stops
+     at the collision.
+  6. Put comin's mode back as wanted. Then delete this item.
 - The plan-limit writer (`modules/home-manager/herdr/scripts/claude-limits.sh`)
   changes only at the switch. After it, each window in
   `$XDG_RUNTIME_DIR/desk/claude-limits.json` has `evidence_at` and `kind`.
@@ -701,7 +713,7 @@ From the token panel's deploy, done or not by now, no report says:
   Super+V and Super+U, if the running Hyprland has not loaded them; the
   cheat sheet lists "Tokens" in the Session group once it has.
 - `~/.config/mako/` is left over from before the shell was the notification
-  daemon (`desk-sync` leaves dropped files alone); delete it.
+  daemon; delete it.
 - `systemctl --user restart quickshell`, if the shell has not started since
   `shell.qml` lost `//@ pragma UseQApplication` (pragmas are read at startup
   only); then check its log is clean.
@@ -864,8 +876,8 @@ Not worth doing, so off the list: a helper to pick the screen by name (17
 identical one-liners; a helper replaces one line with one line and has no
 natural home); a shared flash timer (seven copies of 11 lines whose
 durations differ by design and are documented); renaming
-`BluetoothPanel.qml` (`Bluetooth` is Quickshell's own singleton, and a
-rename leaves stale live files; the naming rule is under "Names to know").
+`BluetoothPanel.qml` (`Bluetooth` is Quickshell's own singleton; the
+naming rule is under "Names to know").
 
 **Open defects**, read in the source and not reproduced live (each small):
 - `lock.qml:213`: the second half of the completion test (a failure whose
@@ -895,9 +907,6 @@ rename leaves stale live files; the naming rule is under "Names to know").
 - Quickshell's `Process`, read in its source (`src/io/process.cpp:290-299`),
   not seen: a restart asked for while a start fails is lost, for any
   `Process` in the shell.
-- `desk-sync.sh:43-44`: `reset` on a live directory at a manifest file's
-  path fails ("could not reset") and leaves `<path>.desk-new` beside it.
-  A hand-made state; removing the stray file on a failed `mv` is one line.
 - `desk-fleet.py`: a restarted helper refuses a second action on a host
   whose earlier action still runs, but does not follow or report that
   action; only `attach` shows it.
