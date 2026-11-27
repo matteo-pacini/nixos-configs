@@ -29,10 +29,6 @@
       url = "github:dracula/xcode";
       flake = false;
     };
-    colorls-dracula-theme = {
-      url = "github:dracula/colorls";
-      flake = false;
-    };
     sublime-dracula-theme = {
       url = "github:dracula/sublime";
       flake = false;
@@ -46,6 +42,10 @@
       flake = false;
     };
     mac-app-util.url = "github:hraban/mac-app-util";
+    mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.cl-nix-lite.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
     nvf.url = "github:NotAShelf/nvf";
     nvf.inputs.nixpkgs.follows = "nixpkgs";
     nix-index-database.url = "github:nix-community/nix-index-database";
