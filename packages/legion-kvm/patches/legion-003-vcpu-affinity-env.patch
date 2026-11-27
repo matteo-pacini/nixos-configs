@@ -1,0 +1,30 @@
+diff --git a/src/venus.rs b/src/venus.rs
+index 854079e..a459764 100644
+--- a/src/venus.rs
++++ b/src/venus.rs
+@@ -380,6 +380,7 @@ pub(crate) fn run(args: &[OsString]) -> Result<()> {
+     let (vendor_id, device_id) = crate::graphics::pci_id(&node)?;
+     command.args(["-machine","q35,accel=kvm,smm=off,memory-backend=ram","-cpu",&model,"-m",&memory_mib.to_string()])
+         .args(topology.qemu_args(&model)?)
++        .env("LEGION_VCPU_AFFINITY", vcpu_affinity(&topology))
+         .args(["-object",&ram.argument,"-nodefaults","-no-reboot","-monitor","none","-serial","stdio","-nic","none"])
+         .args(["-device","virtio-keyboard-pci","-device","virtio-tablet-pci"])
+         .args(["-display",&if config.window { if fullscreen { "sdl,gl=es,full-screen=on".to_owned() } else { "sdl,gl=es".to_owned() } } else { format!("egl-headless,rendernode={}",qemu_path(&node)?) },
+@@ -683,3 +684,17 @@ fn retry_window(config: &Config, x11_available: bool, stderr: &str, console_empt
+ #[cfg(test)]
+ #[path = "../tests/unit/venus.rs"]
+ mod tests;
++
++/// Host CPU for each vCPU, in QEMU cpu_index order: socket, then core by
++/// (die, core), then thread, as `Topology::qemu_args` lays them out. QEMU's
++/// vCPU threads pin themselves from this list, so the guest's SMT siblings
++/// are host siblings too.
++fn vcpu_affinity(topology: &legion_cpu_topology::Topology) -> String {
++    let mut cores: Vec<_> = topology.cores.iter().collect();
++    cores.sort_by_key(|core| (core.package, core.die, core.core));
++    cores
++        .iter()
++        .flat_map(|core| core.cpu_ids.iter().map(u32::to_string))
++        .collect::<Vec<_>>()
++        .join(",")
++}

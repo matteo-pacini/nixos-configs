@@ -1,0 +1,53 @@
+--- a/accel/kvm/kvm-accel-ops.c
++++ b/accel/kvm/kvm-accel-ops.c
+@@ -28,12 +28,50 @@
+ #include <linux/kvm.h>
+ #include "kvm-cpus.h"
+ 
++/*
++ * Pin this vCPU thread to the host CPU at position cpu_index in the
++ * comma-separated LEGION_VCPU_AFFINITY list (set by the legion launcher).
++ * Unset or malformed leaves the thread unpinned.
++ */
++static void legion_pin_vcpu(int index)
++{
++    const char *list = getenv("LEGION_VCPU_AFFINITY");
++    unsigned long host;
++    cpu_set_t set;
++    char *end;
++    int err;
++
++    if (!list || !*list) {
++        return;
++    }
++    for (int i = 0; i < index; i++) {
++        list = strchr(list, ',');
++        if (!list) {
++            warn_report("LEGION_VCPU_AFFINITY has no entry for vCPU %d", index);
++            return;
++        }
++        list++;
++    }
++    host = strtoul(list, &end, 10);
++    if (end == list || (*end != ',' && *end != '\0') || host >= CPU_SETSIZE) {
++        warn_report("LEGION_VCPU_AFFINITY entry for vCPU %d is invalid", index);
++        return;
++    }
++    CPU_ZERO(&set);
++    CPU_SET(host, &set);
++    err = pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
++    if (err) {
++        warn_report("pin vCPU %d to host CPU %lu: %s", index, host, strerror(err));
++    }
++}
++
+ static void *kvm_vcpu_thread_fn(void *arg)
+ {
+     CPUState *cpu = arg;
+     int r;
+ 
+     rcu_register_thread();
++    legion_pin_vcpu(cpu->cpu_index);
+ 
+     bql_lock();
+     qemu_thread_get_self(cpu->thread);
