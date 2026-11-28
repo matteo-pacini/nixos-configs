@@ -77,8 +77,12 @@ bind("Capture and dictation", "SUPER + SHIFT + Print", "Edit monitor in Satty", 
     hl.dispatch(hl.dsp.exec_cmd("grim -o " .. hl.get_active_monitor().name .. " - | " .. satty))
 end)
 -- Hyprland gives the portal shortcuts Hex registers no key, so these run
--- Hex's commands instead. Toggle matches Hex's shortcut_mode setting.
-bind("Capture and dictation", "CTRL + ALT + SPACE", "Dictate", hl.dsp.exec_cmd("hex dictation toggle"))
+-- Hex's commands instead. Dictation records while the chord is held: the
+-- release bind matches the modifiers held at press, so letting go of Ctrl or
+-- Alt before Space still stops it.
+bind("Capture and dictation", "CTRL + ALT + SPACE", "Dictate (hold)", hl.dsp.exec_cmd("hex dictation start"))
+bind("Capture and dictation", "CTRL + ALT + SPACE", "Dictate (hold)", hl.dsp.exec_cmd("hex dictation stop"),
+    { release = true })
 bind("Capture and dictation", "CTRL + ALT + V", "Paste last dictation", hl.dsp.exec_cmd("hex paste-last"))
 
 bind("Notifications", "SUPER + COMMA", "Dismiss newest", hl.dsp.exec_cmd("qs ipc call notifications dismissNewest"))
