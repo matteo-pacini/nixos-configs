@@ -35,8 +35,6 @@ let
   # CLAUDE_CODE_PLUGIN_DIRS takes `~`. A copy, not a store path: Claude Code
   # writes the mod's type definitions into its folder.
   keepWarmMod = "~/.claude/herdr-mods/keep-warm";
-  # The switch and the labels the mod reads come with the workbench.
-  keepWarm = cfg.workbench.enable && config.custom.claude-code.enable;
 
   # Gives a Claude session the name its terminal was renamed to in the
   # workbench. See the script's header.
@@ -86,47 +84,42 @@ in
     # every activation, dropping hooks added any other way. Every herdr hook is
     # in this one definition: extraSettings is `types.attrs`, which merges
     # definitions shallowly, so a second `hooks` elsewhere would replace this one.
-    custom.claude-code.extraSettings = lib.mkIf config.custom.claude-code.enable (
-      {
-        hooks = {
-          SessionStart = [
-            {
-              hooks = [
-                {
-                  type = "command";
-                  command = "${lib.getExe claudeSession} start";
-                }
-              ];
-            }
-          ]
-          # The rename comes from the workbench's mods.
-          ++ lib.optionals cfg.workbench.enable claudeTitleHook;
-          SessionEnd = [
-            {
-              hooks = [
-                {
-                  type = "command";
-                  command = "${lib.getExe claudeSession} end";
-                }
-              ];
-            }
-          ];
-        }
+    custom.claude-code.extraSettings = lib.mkIf config.custom.claude-code.enable {
+      hooks = {
+        SessionStart = [
+          {
+            hooks = [
+              {
+                type = "command";
+                command = "${lib.getExe claudeSession} start";
+              }
+            ];
+          }
+        ]
+        ++ claudeTitleHook;
+        SessionEnd = [
+          {
+            hooks = [
+              {
+                type = "command";
+                command = "${lib.getExe claudeSession} end";
+              }
+            ];
+          }
+        ];
         # agent.ask: set when a prompt shows, cleared by the
         # rest. A denied prompt fires none of them.
-        // lib.optionalAttrs cfg.workbench.enable {
-          PermissionRequest = agentAskHook;
-          PostToolUse = agentAskHook;
-          UserPromptSubmit = agentAskHook ++ claudeTitleHook;
-          Stop = agentAskHook;
-        };
-      }
+        PermissionRequest = agentAskHook;
+        PostToolUse = agentAskHook;
+        UserPromptSubmit = agentAskHook ++ claudeTitleHook;
+        Stop = agentAskHook;
+      };
       # Every Claude Code session loads the mod; it pings only in a terminal
       # whose switch is on. See its header.
-      // lib.optionalAttrs keepWarm { env.CLAUDE_CODE_PLUGIN_DIRS = keepWarmMod; }
-    );
+      env.CLAUDE_CODE_PLUGIN_DIRS = keepWarmMod;
+    };
 
-    home.activation.herdrKeepWarmMod = lib.mkIf keepWarm (
+    home.activation.herdrKeepWarmMod = lib.mkIf config.custom.claude-code.enable (
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         run rm -rf "$HOME/.claude/herdr-mods/keep-warm"
         run mkdir -p "$HOME/.claude/herdr-mods"

@@ -1,5 +1,5 @@
-# Claude Code statusLine command for hosts with the herdr-app agent-list mod.
-# Renders the in-pane status line with ccstatusline and, inside a herdr-app
+# Claude Code statusLine command for every herdr-core host.
+# Renders the in-pane status line with ccstatusline and, inside a herdr-core
 # terminal, sets context usage, prompt-cache expiry and lifetime, model, effort,
 # version and the session's name (claude.name, absent until it has one) as
 # terminal labels for the mods to draw. They count the cache down themselves.

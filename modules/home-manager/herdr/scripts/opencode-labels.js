@@ -1,5 +1,5 @@
-// opencode plugin for hosts with the herdr-app agent-list mod. Inside a
-// herdr-app terminal, sets the labels Claude Code's statusLine sets (model,
+// opencode plugin for every herdr-core host. Inside a
+// herdr-core terminal, sets the labels Claude Code's statusLine sets (model,
 // effort, context, version) from opencode's session events, for the mod to
 // draw, and the session id for its restart button. opencode reports no
 // prompt-cache expiry, so there is no cache label. While it waits on a

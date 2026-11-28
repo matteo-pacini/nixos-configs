@@ -1,5 +1,5 @@
-# Claude Code and Codex hook for hosts with the herdr-app agent-list mod.
-# Inside a herdr-app terminal, a PermissionRequest sets `agent.ask` (one line:
+# Claude Code and Codex hook for every herdr-core host.
+# Inside a herdr-core terminal, a PermissionRequest sets `agent.ask` (one line:
 # the tool and its command, file or question) and `agent.ask_detail` (the
 # agent's own description of it); any other event clears both. Trust them
 # only while the agent is blocked: denying a Claude prompt fires no hook, so a

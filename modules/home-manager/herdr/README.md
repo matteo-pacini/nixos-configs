@@ -26,6 +26,11 @@ Mods can't see inside an agent, so each agent writes what the mods draw onto its
 own terminal as `hc label` key/values. Mods read them from `terminals()`. An
 empty value removes a label.
 
+Every machine with `custom.herdr.enable` sets them, headless ones included:
+an agent on a headless host is drawn by the app on another machine, which can
+show only the labels the agent's machine writes. The `workbench.*` options
+decide what this machine's app draws, not which labels its agents set.
+
 | Label | Set by | Read by |
 |-------|--------|---------|
 | `agent.model`, `agent.effort`, `agent.ctx`, `agent.ctxk`, `agent.version` | `claude-statusline.sh` (Claude's statusLine), `codex-labels.sh` (Codex hooks), `opencode-labels.js` | `agent-list` |
@@ -267,10 +272,14 @@ switches to the layout (`herdrWorkbenchLayout`).
 nix build .#checks.x86_64-linux.herdr-layout   # layout.nix, every option combination
 nix build .#checks.x86_64-linux.herdr-js       # lib/ and the mods' pure logic; each mod parses
 nix build .#checks.x86_64-linux.herdr-scripts  # hook scripts and the hooks.json merge
+nix build .#checks.x86_64-linux.herdr-headless # a herdr-core host with no desktop sets every label
 ```
 
-CI runs all three on pull requests (the `herdr-tests` job in
-`.github/workflows/pr-build.yml`). They also exist for `aarch64-darwin`.
+CI runs all four on pull requests (the `herdr-tests` job in
+`.github/workflows/pr-build.yml`). The first three also exist for
+`aarch64-darwin`. `herdr-headless` (`tests/headless.nix`) evaluates Nexus's
+Home Manager configuration: the label producers and the keep-warm mod are
+there, the workbench's mods are not.
 
 - **JS** (`tests/js/*.test.mjs`, `node --test`). `tests/js/hooks.mjs`
   resolves `herdr`, `gpui-kit` and `gpui-base`, which only the app provides,
