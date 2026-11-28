@@ -1,6 +1,8 @@
 # The terminal labels the workbench mods draw (agent.model, agent.ctx,
 # agent.ask, ...), set from inside each agent: Claude Code's statusLine and
 # hooks, Codex's hooks, opencode's plugin. Mods read them from `terminals()`.
+# Every herdr-core host sets them, desktop or not: the app that draws an agent
+# may run on another machine than the agent.
 {
   config,
   lib,
@@ -72,12 +74,17 @@ in
     recording Claude Code's plan-limit reading (the weekly and 5-hour
     `rate_limits` its status line receives) in
     `$XDG_RUNTIME_DIR/desk/claude-limits.json`, for a desktop shell to show.
-    Takes effect with the workbench, whose status line writes it
+    Needs the workbench
   '';
 
-  config = lib.mkIf (cfg.enable && cfg.workbench.enable) (
+  config = lib.mkIf cfg.enable (
     lib.mkMerge [
       {
+        assertions = lib.optional cfg.workbench.claudeLimitsFile.enable {
+          assertion = cfg.workbench.enable;
+          message = "custom.herdr.workbench.claudeLimitsFile needs custom.herdr.workbench.";
+        };
+
         home.packages = [ agentAsk ];
 
         custom.claude-code.extraSettings.statusLine = {

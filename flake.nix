@@ -449,6 +449,10 @@
             pkgs = inputs.nixpkgs.legacyPackages.${system};
             home = self.nixosConfigurations.BrightFalls.config.home-manager.users.matteo;
           }
+          // import ./modules/home-manager/herdr/tests/headless.nix {
+            pkgs = inputs.nixpkgs.legacyPackages.${system};
+            home = self.nixosConfigurations.Nexus.config.home-manager.users.matteo;
+          }
         )
       );
 

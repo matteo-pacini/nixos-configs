@@ -69,7 +69,8 @@ jobs:
           nix build -L \
             .#checks.x86_64-linux.herdr-layout \
             .#checks.x86_64-linux.herdr-js \
-            .#checks.x86_64-linux.herdr-scripts
+            .#checks.x86_64-linux.herdr-scripts \
+            .#checks.x86_64-linux.herdr-headless
 
   # hosts/BrightFalls/users/matteo/hyprland/tests: needs only cache.nixos.org, so no tailnet.
   brightfalls-tests:
